@@ -102,6 +102,7 @@ describe('Model', function() {
 			var table = model.tableMap()['borehole'];
 			var row = {'name': null, 'user': 'mocha', 'date': '2000-01-01', 'lat': 123.45, 'lon': 67.890, 'desc': 'a unit-test pit' };
 			model.insert(table, [row], function(err, result) { 
+				console.log(err);
 				assert(err instanceof Error, 'sqlite null constraint holds');
 				done();
 			});
@@ -111,6 +112,7 @@ describe('Model', function() {
 			var table = model.tableMap()['borehole'];
 			var row = {'name': 'test', 'user': 'mocha', 'date': '2000-41-01', 'lat': 123.45, 'lon': 67.890, 'desc': 'a unit-test pit' };
 			model.insert(table, [row], function(err, result) { 
+				console.log(err);
 				assert(err instanceof Error, 'sqlite check constraint holds');
 				done();
 			});
@@ -146,6 +148,7 @@ describe('Model', function() {
 			var row = {'id': 666, 'name': 'test', 'user': 'mucha', 'date': '2000-01-01', 'lat': 123.45, 'lon': 67.890, 'desc': 'a unit-test pit' };
 
 			model.update(table, [row], function(err, result) { 
+				console.log(err);
 				assert(err instanceof Error, 'row does not exist');
 				done(); 
 			});
@@ -157,6 +160,7 @@ describe('Model', function() {
 			var row = {'id': 1, 'from': 'foo', 'to': 100, 'user': 'mocha', 'date': '2000-01-01', 'borehole_pid': 1 };
 
 			model.update(table, [row], function(err, result) { 
+				console.log(err);
 				assert(err instanceof Error, 'update did not fail');
 				done(); 
 			});
@@ -169,6 +173,7 @@ describe('Model', function() {
 			var row = {'id': 1, 'from': 50, 'to': 100, 'user': 'mocha', 'date': '2000-01-01', 'borehole_pid': 666 };
 
 			model.update(table, [row], function(err, result) { 
+				console.log(err);
 				assert(err instanceof Error, 'update did not fail');
 				done(); 
 			});

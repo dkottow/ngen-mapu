@@ -18,7 +18,7 @@ var cc = require('./controller.js')
 
 var app = express();
 
-var log = global.log.child({'mod': 'g6.model.js'});
+var log = global.log.child({'mod': 'g6.server.js'});
 
 function serveProjects(projectDir) {
 

@@ -185,6 +185,7 @@ describe('Model', function() {
 			var table = model.tableMap()['fracture'];
 
 			model.delete(table, [10, 11, 12], function(err, result) {
+				console.log(err);
 				assert(err == null, 'deleted some rows');
 				done(); 
 			});

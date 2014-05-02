@@ -143,7 +143,7 @@ function buildSelectSql(filterFields, filterAncestor, table, fields) {
 	});
 
 	sql = sql + joins + where;
-	console.log(sql, sql_params);
+	//console.log(sql, sql_params);
 	return {'query': sql, 'params': sql_params};
 }
 
@@ -328,7 +328,7 @@ function Model(dbFile)
 		var sql = "UPDATE " + table['name'] 
 			+ ' SET "' + fieldNames.join('" = ?, "') + '" = ?'
 			+ " WHERE id = ?"; 
-		console.log(sql);
+		//console.log(sql);
 
 		var err = null;
 		var modCount = 0;	
@@ -347,7 +347,7 @@ function Model(dbFile)
 				if (err == null) {					
 					var params = _.map(fieldNames, function(fn) { return r[fn]; });
 					params.push(r['id']);
-					console.log(params);
+					//console.log(params);
 
 					stmt.run(params, function(e) {
 						err = e;
@@ -374,6 +374,56 @@ function Model(dbFile)
 		});
 		db.close();
 	}
+
+	this.delete = function(table, rows, cbDone) {
+
+		if (rows.length == 0) return;
+
+		var idParams = _.times(rows.length, function(fn) { return "?"; });
+
+		var sql = "DELETE FROM " + table['name'] 
+				+ " WHERE id IN (" + idParams.join(', ') + ")";
+		//console.log(sql);
+
+		var err = null;
+		var delCount = 0;
+		var db = new sqlite3.Database(this.dbFile);
+		
+		db.serialize(function() {
+			db.run("PRAGMA foreign_keys = ON;");
+			db.run("BEGIN TRANSACTION");
+
+			var stmt = db.prepare(sql, function(e) {
+				err = e;
+			});
+
+			if (err == null) 
+			{
+				stmt.run(rows, function(e) { 
+					err = e;
+					delCount = this.changes;
+				});
+			}
+
+			stmt.finalize(function() { 
+				if (err == null && delCount != rows.length) {
+					//console.log(delCount + " <> " + rows.length);
+					err = new Error("G6_MODEL_ERROR: delete row count mismatch");
+				}
+
+				if (err == null) {
+					db.run("COMMIT TRANSACTION");
+				} else {
+					log.warn("Model.delete() failed. Rollback.");
+					db.run("ROLLBACK TRANSACTION");
+				}
+				cbDone(err, delCount); 
+			});	
+
+		});
+		db.close();
+	}
+
 
 }
 

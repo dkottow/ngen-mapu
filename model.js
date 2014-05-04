@@ -166,15 +166,43 @@ function Model(dbFile)
 					+ me.dbFile + "'");
 				cbAfter(err);
 			} else {
-				db.get("SELECT value FROM _defs_ WHERE name = $name"
-					, {$name : "tables"}
-					, function(err, row) {
+/*
+	select table_name, field_name, value from _defs_ where table_name in 
+	(select name from sqlite_master where type = 'table')
+
+	splice that with PRAGMAS
+
+*/
+				db.all("SELECT table_name, field_name, value FROM _defs_ WHERE table_name IN (SELECT name FROM sqlite_master WHERE type = 'table')"
+					, function(err ,rows) {
 						if (err) { 
 							log.error("Get table defs failed.");
 							cbAfter(err);
 						} else {
+							//console.log(rows);
 
-							me.tables = JSON.parse(row.value);
+							var tableRows = _.filter(rows, function(r) {
+								return r['field_name'].length == 0;
+							}); 
+
+							me.tables = [];
+							me.tables = _.map(tableRows, function(r) {
+								var t = {'name': r['table_name']};
+								return  _.extend(t, JSON.parse(r['value']));
+							});	
+
+							_.each(me.tables, function(t) {
+								var fieldRows = _.filter(rows, function(r) {
+									return r['table_name'] == t['name'] 
+										&& r['field_name'].length > 0;
+								});
+								var fieldDefs = _.map(fieldRows, function(r) {
+									var f = {'name': r['field_name']};
+									return _.extend(f, JSON.parse(r['value']));
+								});
+								//console.log(fieldDefs);
+								t['fields'] = _.object(_.pluck(fieldDefs, "name"), fieldDefs);
+							});
 
 							var doAfter = _.after(me.tables.length, function() {
 								buildTableTree(me.tables);	
@@ -182,23 +210,27 @@ function Model(dbFile)
 							});
 
 							_.each(me.tables, function(t) {
-
 								db.all(util.format("PRAGMA table_info(%s)"
 										, t['name'])
 										, function(err, rows) {
 									if (err) {
 										log.error(err);
 									}
-									t['fields'] = _.object(_.pluck(rows, "name"), rows);
+									_.each(rows, function(r) {
+										var fieldDef = t['fields'][r['name']];
+										fieldDef = _.extend(fieldDef, r);
+										//console.log(fieldDef);
+									});
 									//console.dir(t);
 
 									doAfter();					
 								});
 								
 							});
-						}
+						} //if (err)
 					});
-				}
+
+				} //if (err)
 		});
 	}
 

@@ -166,13 +166,8 @@ function Model(dbFile)
 					+ me.dbFile + "'");
 				cbAfter(err);
 			} else {
-/*
-	select table_name, field_name, value from _defs_ where table_name in 
-	(select name from sqlite_master where type = 'table')
 
-	splice that with PRAGMAS
-
-*/
+				//get table and field attributes from table _defs_
 				db.all("SELECT table_name, field_name, value FROM _defs_ WHERE table_name IN (SELECT name FROM sqlite_master WHERE type = 'table')"
 					, function(err ,rows) {
 						if (err) { 
@@ -209,6 +204,7 @@ function Model(dbFile)
 								cbAfter();
 							});
 
+							//add field attributes from schema info (sqlite)
 							_.each(me.tables, function(t) {
 								db.all(util.format("PRAGMA table_info(%s)"
 										, t['name'])

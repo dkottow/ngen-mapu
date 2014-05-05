@@ -51,6 +51,7 @@ function serveProjects(projectDir) {
 		}); 
 
 		app.get("/rest", function(req, res) {
+			log.info(req.method + " " + req.url);
 			res.send(dataBases);
 		});
 

@@ -13,6 +13,7 @@ function Controller(app, restBase, model)
 
 		//describe database 
 		var defsHandler = function(req, res) {
+			log.info(req.method + " " + req.url);
 			var defs = me.model.defs();
 			_.each(defs, function(t) {
 				t['url'] = me.base + "/" + t['name'];

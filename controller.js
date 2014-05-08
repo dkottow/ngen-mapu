@@ -28,10 +28,14 @@ function Controller(app, restBase, model)
 			var url = me.base + "/" + table['name'];
 
 			//select all table rows 
+//TODO add filter by field value 
 			//	can be filtered by some *ancestor* table id 
 			//	given in query string. 
 			//
-			//		e.g. /[base]/fracture?borehole=1 
+			//		e.g. 
+			//			given table tree: borehole > rock > fracture
+			//
+			//			/[base]/fracture?borehole=1 
 			//			 will give you all fractures (of all rocks) 
 			//			 belonging to borehole.id=1	
 			//
@@ -49,7 +53,7 @@ function Controller(app, restBase, model)
 						res.send(result); 
 					}
 				});
-			}		//
+			}		
 
 			me.app.get(url, getRowsHandler);	
 			me.app.get(url + rowsExt, getRowsHandler);	
@@ -93,6 +97,7 @@ function Controller(app, restBase, model)
 			me.app.put(url + "/:id", putRowHandler);
 			me.app.put(url + rowsExt + "/:id", putRowHandler);
 
+			//delete row in table
 			var deleteRowHandler = function(req, res) {
 				log.info(req.method + " " + req.url);
 				var id = req.param('id');

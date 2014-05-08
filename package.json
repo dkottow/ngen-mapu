@@ -1,13 +1,15 @@
 
 {
   "name": "rest-server",
-  "description": "backbone compliant rest server",
+  "description": "serves a directory tree of sqlite files through a rest api",
   "version": "0.0.1",
   "private": true,
   "dependencies": {
     "express": "3.x",
 	"sqlite3": "2.1.x",
-	"node-dir": ""
+	"node-dir": "*",
+	"underscore": "*",
+	"bunyan": "*"
   }
 }
 

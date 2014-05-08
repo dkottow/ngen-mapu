@@ -13,20 +13,21 @@ var assert = require('assert');
 if (global.log) {
 	var log = global.log.child({'mod': 'g6.model.js'});
 } else {
+	//e.g when testing 
 	var log = require('bunyan').createLogger({
 				'name': 'g6.model.js', 'level': 'info'
 		});
 }
 
 /*
- * buildTableTree constructs a description of tables 
+ * buildTableTree constructs a description of tables in memory 
  *
  * input: tables array that describe each table as JSON
  * output: the same tables array 
  *		   modified having a doubly-linked tree structure
  *
  * a table can have one parent table
- * parents are physically linked by foreign keys named parent_pid 
+ * parents are physically linked by foreign keys named <parent>_pid 
  *
  * in memory we add "forward pointers" to the children as well
  *
@@ -291,12 +292,22 @@ function Model(dbFile)
 		});
 	}
 
+	this.getDeep = function(depth, filterFields, table, fields, cbResult) {
+		
+				//get top-level row	
+				this.get(filterFields, {}, table, fields, 
+							function(err, result) { 
+				});
+				//work recursively into children until depth
+	}
+
 	this.insert = function(table, rows, cbDone) {
 
 		if (rows.length == 0) return;
 
 		var fieldNames = _.filter(_.keys(rows[0]) 
 							, function(fn) { 
+				//filter out id and any non-field key
 				return _.has(table['fields'], fn) && fn != 'id'; 
 		});
 

@@ -23,7 +23,7 @@ if (global.log) {
  * buildTableTree constructs a description of tables in memory 
  *
  * input: tables array that describe each table as JSON
- * output: the same tables array 
+ * output: none, the same tables array is
  *		   modified having a doubly-linked tree structure
  *
  * a table can have one parent table
@@ -59,28 +59,28 @@ function buildTableTree(tables) {
 				pt['parent'] = _.find(tables, function(t) {
 					return t['name'] == pt['parent'];
 				});
-			}
-
-
-			if (pt['subtypes']) {					
-				//change subtype (one-to-one) attr from name to obj ref
-				pt['subtypes'] = _.map(pt['subtypes'], function(ct) {
-					return _.find(tables, function(t) { 
-						return t['name'] == ct; 
-					});
-				});				
-			} 
 			
-			//add children
-			pt['children'] = _.filter(tables, function(t) {
-				return t['parent'] == pt['name'] 
-					&&  ! _.contains(pt['subtypes'], t);
-			});
-
+				if ( ! _.contains(_.keys(pt['fields']), pt['parent']['name'] + "_pid")) {
+					//console.log(pt['name'] + " SUPER " + pt['parent']['name']);
+					pt['supertype'] = pt['parent'];
+				}
+			}
 		});
 
 		parentTables = childTables;
 	}
+
+	_.each(tables, function(t) {
+
+		t['children'] = _.filter(tables, function(ct) {
+			return ct['parent'] && ct['parent']['name'] == t['name']  && ! ct['supertype'];
+		});
+
+		t['subtypes'] = _.filter(tables, function(ct) {
+			return ct['supertype'] && ct['supertype']['name'] == t['name'];
+		});
+	});
+
 }
 
 function buildSelectSql(filterFields, filterAncestor, table, fields) {
@@ -151,14 +151,107 @@ function buildSelectSql(filterFields, filterAncestor, table, fields) {
 function Model(dbFile) 
 {
 	this.dbFile = dbFile;
-	this.tables = [];
+	this.tables = {};
 
-	this.tableMap = function() {
-		return _.object(_.pluck(this.tables, 'name'), this.tables);
+	this.tableMap = function() { return this.tables; }
+	
+	var me = this;
+	function initTableDefs(db, err, cbAfter) {
+		if (err == null) {
+			//get table and field attributes from table _defs_
+			db.all("SELECT name, parent, custom FROM _tabledef_ WHERE name IN (SELECT name FROM sqlite_master WHERE type = 'table')"
+				, function(err ,rows) {
+					if (err) { 
+						log.error("Get table defs failed.");
+
+					} else {
+					//console.log(rows);
+
+						var tables = _.map(rows, function(r) {
+							var t = { "name": r['name']
+									, "parent": r['parent'] 
+							};
+							return  _.extend(t, JSON.parse(r['custom']));
+						});	
+						me.tables = _.object(_.pluck(tables, 'name'), tables);
+					}
+					cbAfter(err);
+			});			
+		} else {
+			cbAfter(err);
+		}
+	}
+
+	function initFieldDefs(db, err, cbAfter) {
+		if (err) {
+			cbAfter(err);
+
+		} else {
+			db.all("SELECT name, table_name, ordering, domain FROM _fielddef_ WHERE table_name IN (SELECT name FROM sqlite_master WHERE type = 'table')"
+				, function(err ,rows) {
+					if (err) { 
+						log.error("Get field defs failed.");
+						cbAfter(err);
+
+					} else {
+						//console.log(rows);
+
+						var tableNames = _.uniq(_.pluck(rows, 'table_name'));
+
+						_.each(tableNames, function(tn) {
+							me.tables[tn]['fields'] = {};
+						});
+
+						_.each(rows, function(r) {
+							var fieldDef = {
+							  'order' : r['ordering']					
+							};
+							if (r['domain']) {
+								fieldDef['domain'] = JSON.parse(r['domain']);	
+							}
+							me.tables[r['table_name']]['fields'][r['name']] = fieldDef;
+						});
+						//console.dir(me.tables);
+
+						var doAfter = _.after(tableNames.length, function() {
+							cbAfter();
+						});
+
+						_.each(tableNames, function(tn) {
+							var sql = util.format("PRAGMA table_info(%s)", tn);
+							//console.log(sql);
+							db.all(sql, function(err, rows) {
+								if (err) {
+									log.error(sql + ' failed.');
+									cbAfter(err);
+									return;
+
+								} else {
+									_.each(rows, function(r) {
+										//console.log(r);
+										var fn = r['name'];
+										var fieldDef = me.tables[tn]['fields'][fn];
+										if ( ! fieldDef) {
+											var err = new Error("G6_MODEL_ERROR: "
+														+ tn + '.' + fn + ' not found.');
+											cbAfter(err);
+											return;	
+											 
+										} else {
+											fieldDef = _.extend(fieldDef, r);
+											//console.log(fieldDef);
+										}
+									});
+									doAfter();
+								}
+							});
+						});
+					}
+			});
+		}
 	}
 
 	this.init = function(cbAfter) {
-		var me = this;
 		var db = new sqlite3.cached.Database( this.dbFile
 							, sqlite3.OPEN_READWRITE
 							, function(err) {
@@ -167,77 +260,26 @@ function Model(dbFile)
 					+ me.dbFile + "'");
 				cbAfter(err);
 			} else {
-
-				//get table and field attributes from table _defs_
-				db.all("SELECT table_name, field_name, value FROM _defs_ WHERE table_name IN (SELECT name FROM sqlite_master WHERE type = 'table')"
-					, function(err ,rows) {
-						if (err) { 
-							log.error("Get table defs failed.");
-							cbAfter(err);
-						} else {
-							//console.log(rows);
-
-							var tableRows = _.filter(rows, function(r) {
-								return r['field_name'].length == 0;
-							}); 
-
-							me.tables = [];
-							me.tables = _.map(tableRows, function(r) {
-								var t = {'name': r['table_name']};
-								return  _.extend(t, JSON.parse(r['value']));
-							});	
-
-							_.each(me.tables, function(t) {
-								var fieldRows = _.filter(rows, function(r) {
-									return r['table_name'] == t['name'] 
-										&& r['field_name'].length > 0;
-								});
-								var fieldDefs = _.map(fieldRows, function(r) {
-									var f = {'name': r['field_name']};
-									return _.extend(f, JSON.parse(r['value']));
-								});
-								//console.log(fieldDefs);
-								t['fields'] = _.object(_.pluck(fieldDefs, "name"), fieldDefs);
-							});
-
-							var doAfter = _.after(me.tables.length, function() {
-								buildTableTree(me.tables);	
-								cbAfter();
-							});
-
-							//add field attributes from schema info (sqlite)
-							_.each(me.tables, function(t) {
-								db.all(util.format("PRAGMA table_info(%s)"
-										, t['name'])
-										, function(err, rows) {
-									if (err) {
-										log.error(err);
-									}
-									_.each(rows, function(r) {
-										var fieldDef = t['fields'][r['name']];
-										fieldDef = _.extend(fieldDef, r);
-										//console.log(fieldDef);
-									});
-									//console.dir(t);
-
-									doAfter();					
-								});
-								
-							});
-						} //if (err)
+				initTableDefs(db, err, function(err) { 
+					initFieldDefs(db, err, function(err) {
+						if (err == null) {
+							buildTableTree(_.values(me.tables));
+						}
+						cbAfter(err);
 					});
-
-				} //if (err)
+				});
+			}
 		});
 	}
 
 
 	this.defs = function() {
-		assert(_.isArray(this.tables)); 
+		assert(_.isObject(this.tables)); 
 		var tableDefs = _.map(this.tables, function(table) {
 			//replace parent, subtypes table refs with table names
 			var t = _.clone(table);
 			if (t['parent']) t['parent'] = t['parent']['name'];
+			if (t['supertype']) t['supertype'] = t['supertype']['name'];
 			if (t['subtypes']) {
 				var subtypes = t['subtypes'];
 				t['subtypes'] = []
@@ -260,7 +302,9 @@ function Model(dbFile)
 		//TODO do SELECT count(*) UNION ALL foreach table 
 		//to add row counts.
 
-		return _.object(_.pluck(tableDefs, 'name'), tableDefs);
+		console.dir(tableDefs);
+		return tableDefs;
+		//return _.object(_.pluck(tableDefs, 'name'), tableDefs);
 	}
 
 	this.all = function(filterFields, filterAncestor, table, fields, cbResult) {

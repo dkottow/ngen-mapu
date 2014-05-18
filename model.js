@@ -165,13 +165,17 @@ function Model(dbFile)
 						log.error("Get table defs failed.");
 
 					} else {
-					//console.log(rows);
+					console.log(rows);
 
 						var tables = _.map(rows, function(r) {
-							var t = { "name": r['name']
-									, "parent": r['parent'] 
+							var tableDef = { 
+								  "name": r['name']
+								, "parent": r['parent'] 
 							};
-							return  _.extend(t, JSON.parse(r['custom']));
+							if (r['custom']) {
+								tableDef = _.extend(tableDef, JSON.parse(r['custom']))
+							}
+							return  tableDef;
 						});	
 						me.tables = _.object(_.pluck(tables, 'name'), tables);
 					}
@@ -208,6 +212,9 @@ function Model(dbFile)
 							};
 							if (r['domain']) {
 								fieldDef['domain'] = JSON.parse(r['domain']);	
+							}
+							if (r['custom']) {
+								fieldDef = _.extend(fieldDef, JSON.parse(r['custom']))
 							}
 							me.tables[r['table_name']]['fields'][r['name']] = fieldDef;
 						});
@@ -302,9 +309,8 @@ function Model(dbFile)
 		//TODO do SELECT count(*) UNION ALL foreach table 
 		//to add row counts.
 
-		console.dir(tableDefs);
-		return tableDefs;
-		//return _.object(_.pluck(tableDefs, 'name'), tableDefs);
+		//console.dir(tableDefs);
+		return _.object(_.pluck(tableDefs, 'name'), tableDefs);
 	}
 
 	this.all = function(filterFields, filterAncestor, table, fields, cbResult) {

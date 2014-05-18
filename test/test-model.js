@@ -67,6 +67,7 @@ describe('Model', function() {
 			_.each(roots, function(t) {
 				model.all({}, {}, t, '*', function(err, result) {
 					assert(err == null);
+					console.log('got ' + result.length + " " + t.name);
 					assert(result.length > 0, 'got some ' + t.name);
 					allDone();
 				});

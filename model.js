@@ -27,57 +27,52 @@ if (global.log) {
  *		   modified having a doubly-linked tree structure
  *
  * a table can have one parent table
- * parents are physically linked by foreign keys named <parent>_pid 
+ *
+ * the parent can have a one-to-many relationship 
+ * between a parent row and the table's rows (parent-children)
+ * in that case the table will have a FK to the parent
+ * using a field named <parent>_pid 
+ *
+ * or the parent can be in a one-to-one relationship
+ * between a parent row and a matching table row (supertype-subtype)
+ * in that case the table will have a FK to the parent (supertype) 
+ * on its own id field. That is, subtype and supertype rows share common ids.
  *
  * in memory we add "forward pointers" to the children as well
- *
- * some tables may have subtypes which are linked one-to-one  
- * by sharing the same primary key
  *
  */
 function buildTableTree(tables) {
 
-	var parentTables = _.filter(tables, function(t) {
-		return t['parent'] == null;
+	_.each(tables, function(table) {
+
+		var parentName = table['parent'];
+		if (parentName != null) {
+
+			if (_.contains(_.keys(table['fields']), parentName + "_pid")) {
+				//parent-child relationship
+				table['parent'] = _.find(tables, function(t) {
+					return t['name'] == parentName;
+				});
+
+			} else {
+				//supertype-subtype relationship
+				table['supertype'] = _.find(tables, function(t) {
+					return t['name'] == parentName;
+				});
+				delete(table['parent']);
+			}
+		}
+
 	});
 
-	var depth = 0;
-	while(parentTables.length > 0) {
+	_.each(tables, function(table) {
 
-		var childTables = _.filter(tables, function(t) {
-			return _.some(parentTables, function(pt) {
-				return pt['name'] == t['parent'];
-			});
+		table['children'] = _.filter(tables, function(t) {
+			return t['parent'] && t['parent']['name'] == table['name'];
 		});
 
-		_.each(parentTables, function (pt) {
-
-			//obtain rest url
-			if (pt['parent']) {
-
-				//change parent attr from name to obj ref
-				pt['parent'] = _.find(tables, function(t) {
-					return t['name'] == pt['parent'];
-				});
-			
-				if ( ! _.contains(_.keys(pt['fields']), pt['parent']['name'] + "_pid")) {
-					//console.log(pt['name'] + " SUPER " + pt['parent']['name']);
-					pt['supertype'] = pt['parent'];
-				}
-			}
-		});
-
-		parentTables = childTables;
-	}
-
-	_.each(tables, function(t) {
-
-		t['children'] = _.filter(tables, function(ct) {
-			return ct['parent'] && ct['parent']['name'] == t['name']  && ! ct['supertype'];
-		});
-
-		t['subtypes'] = _.filter(tables, function(ct) {
-			return ct['supertype'] && ct['supertype']['name'] == t['name'];
+		table['subtypes'] = _.filter(tables, function(t) {
+			return t['supertype'] && t['supertype']['name'] == table['name'];
 		});
 	});
 
@@ -109,16 +104,20 @@ function buildSelectSql(filterFields, filterAncestor, table, fields) {
 		var hasAncestor = false;
 
 		var t = table;
-		while(t['parent']) {
-			var pt = t['parent'];
-			var pid_name = pt['name'] + "_pid";
+		while(t['parent'] || t['supertype']) {
+			var pt;
 
-			if (pt['subtypes']) {
-				//one-one to parent
-				joins = joins + util.format(" INNER JOIN %s ON %s.id = %s.id", pt['name'], pt['name'], t['name']);
+			if (t['parent']) {
+				pt = t['parent'];
+				var pid_name = pt['name'] + "_pid";
+				joins = joins + util.format(" INNER JOIN %s ON %s.%s = %s.id", 
+											pt['name'], t['name'], 
+											pid_name, pt['name']);
 
-			} else {
-				joins = joins + util.format(" INNER JOIN %s ON %s.%s = %s.id", pt['name'], t['name'], pid_name, pt['name']);
+			} else if (t['supertype']) {
+				pt = t['supertype'];
+				joins = joins + util.format(" INNER JOIN %s ON %s.id = %s.id", 
+											pt['name'], t['name'], pt['name']);
 
 			}
 	
@@ -165,7 +164,7 @@ function Model(dbFile)
 						log.error("Get table defs failed.");
 
 					} else {
-					console.log(rows);
+					//console.log(rows);
 
 						var tables = _.map(rows, function(r) {
 							var tableDef = { 
@@ -285,6 +284,7 @@ function Model(dbFile)
 		var tableDefs = _.map(this.tables, function(table) {
 			//replace parent, subtypes table refs with table names
 			var t = _.clone(table);
+			t["fields"] = _.clone(t["fields"]);
 			if (t['parent']) t['parent'] = t['parent']['name'];
 			if (t['supertype']) t['supertype'] = t['supertype']['name'];
 			if (t['subtypes']) {
@@ -300,6 +300,26 @@ function Model(dbFile)
 			_.each(children, function(ct) {
 				t['children'].push(ct['name']);
 			});
+
+
+			if (t["supertype"]) {
+
+				var sid_order = t["fields"]["id"]["order"] + 1;
+				_.each(t["fields"], function(f) {
+					if (f["order"] >= sid_order) {
+						f["order"] = f["order"] + 1;
+					}
+				});
+
+				var sid = t["supertype"] + "_sid";
+				t["fields"][sid] = { 
+					"order": sid_order,
+					"name": sid,
+					"type": "INTEGER",
+					"notnull": 1,
+					"pk": 0
+				};
+			}
 
 			//t['fields'] = JSON.stringify(t['fields']);
 
@@ -323,6 +343,11 @@ function Model(dbFile)
 				log.warn("model.all() failed.");	
 			}
 			//console.dir(rows);
+			if (table["supertype"]) {
+				_.each(rows, function(r) {
+					r[table["supertype"]["name"] + "_sid"] = r['id'];
+				});
+			}
 			cbResult(err, rows);
 		});
 		
@@ -335,9 +360,14 @@ function Model(dbFile)
 
 		db.get(sql['query'], sql['params'], function(err, row) {
 			if (err) {
-				log.warn("model.get()  failed.");	
+				log.warn("model.get() failed.");	
 			}
-			//console.dir(rows);
+
+			if (table["supertype"]) {
+				row[table["supertype"]["name"] + "_sid"] = row['id'];
+			}
+
+			//console.dir(row);
 			cbResult(err, row);
 		});
 	}
@@ -348,7 +378,8 @@ function Model(dbFile)
 				this.get(filterFields, {}, table, fields, 
 							function(err, result) { 
 				});
-				//work recursively into children until depth
+				//TODO work recursively into children until depth
+				while (depth--) {}
 	}
 
 	this.insert = function(table, rows, cbDone) {
@@ -360,6 +391,14 @@ function Model(dbFile)
 				//filter out id and any non-field key
 				return _.has(table['fields'], fn) && fn != 'id'; 
 		});
+
+		if (table["supertype"]) {
+			//exception do insert with id = supertype.id when rows are subtype
+			_.each(rows, function(r) {
+				r['id'] = r[table["supertype"]["name"] + "_sid"];
+			});
+		}
+
 
 		var fieldParams = _.times(fieldNames.length, function(fn) { return "?"; });
 
@@ -413,6 +452,15 @@ function Model(dbFile)
 							, function(fn) { 
 				return _.has(table['fields'], fn) && fn != 'id'; 
 		});
+
+		if (table["supertype"]) {
+			fieldNames.push('id');
+			//update id according to <supertype>_sid
+			_.each(rows, function(r) {
+				r['id'] = r[table["supertype"]["name"] + "_sid"];
+			});
+		}
+
 
 		var sql = "UPDATE " + table['name'] 
 			+ ' SET "' + fieldNames.join('" = ?, "') + '" = ?'

@@ -59,7 +59,7 @@ describe('Model', function() {
 
 		it('all root tables', function(done) {
 			var roots = _.filter(model.tables, function(t) {
-				return t.parent == null;
+				return t['parent'] == null && t['supertype'] == null;
 			});
 
 			var allDone = _.after(roots.length, done);			
@@ -183,7 +183,7 @@ describe('Model', function() {
 
   	describe('delete()', function() {		
 		it('delete some fracture rows', function(done) {
-			var table = model.tableMap()['fracture'];
+			var table = model.tableMap()['borehole'];
 
 			model.delete(table, [10, 11, 12], function(err, result) {
 				console.log(err);

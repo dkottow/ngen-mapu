@@ -1,10 +1,11 @@
 var express = require('express');
-var dir = require('node-dir')
-var _ = require('underscore')
+var bodyParser = require('body-parser');
+var dir = require('node-dir');
+var _ = require('underscore');
 
-var fs = require('fs')
-var path = require('path')
-var util = require('util')
+var fs = require('fs');
+var path = require('path');
+var util = require('util');
 
 var bunyan = require('bunyan');
 
@@ -13,8 +14,9 @@ global.log = bunyan.createLogger({
 	'level': 'info'
 });
 
-var mm = require('./model.js')
-var cc = require('./controller.js')
+var mm = require('./model.js');
+var cc = require('./controller.js');
+var xdata = require('./xdata-upload.js');
 
 var app = express();
 
@@ -52,8 +54,11 @@ function loadDirectoryTree(rootDir) {
 						log.info("Serving " + f + " @ " + restBase);
 						var model = new mm.Model(dbFile);
 						var controller = new cc.Controller(app, restBase, model);
+						var xDocController = new xdata.XDocController(app, restBase, model);
+
 						model.init(function() { 
 							controller.init(); 
+							xDocController.init();
 						});
 
 						dbUrls.push(restBase);
@@ -69,7 +74,7 @@ function loadDirectoryTree(rootDir) {
 log.info("Listening on port 3000");
 app.listen(3000);
 
-app.use(express.json());
+app.use(bodyParser()); //json parsing 
 
 app.use(function(err, req, res, next){
 	log.error(err);

@@ -5,11 +5,16 @@
   "version": "0.0.1",
   "private": true,
   "dependencies": {
-    "express": "3.x",
+    "express": "4.x",
+    "body-parser": "*",
 	"sqlite3": "2.1.x",
 	"node-dir": "*",
 	"underscore": "*",
-	"bunyan": "*"
+	"bunyan": "*",
+// xdata-upload
+	"xmldom": "*"
+	"xpath": "*"
+	"multer": "*"
   }
 }
 

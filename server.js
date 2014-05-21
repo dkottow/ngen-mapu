@@ -20,23 +20,35 @@ var app = express();
 
 var log = global.log.child({'mod': 'g6.server.js'});
 
-function serveProjects(projectDir) {
+var REST_ROOTDIR = "projects";
 
-	log.info("Root dir ./" + projectDir);
-	dir.subdirs(projectDir, function(err, projects) {
 
-		var dataBases = [];
+function loadDirectoryTree(rootDir) {
+	log.info("Loading directory tree. Root dir ./" + rootDir);
 
-		projects.forEach( function(projectDir) {
-			fs.readdir(projectDir, function(err, files) {
-				log.info("Scanning " + projectDir);
+	var dbUrls = [];
+
+	dir.subdirs(rootDir, function(err, subDirs) {
+		log.info("found " + subDirs.length + " subdirs.");
+
+		var routeBaseUrl = _.after(subDirs.length, function() {
+			//serve the dbUrls found.
+			app.get("/rest", function(req, res) {
+				log.info(req.method + " " + req.url);
+				res.send(dbUrls);
+			});
+		});
+
+		subDirs.forEach( function(dir) {
+			fs.readdir(dir, function(err, files) {
+				log.info("Scanning " + dir);
 				files.forEach( function(f) {
 					if (path.extname(f) == ".sqlite") {
 						restBase = util.format("/rest/%s/%s" 
-						  , path.relative("projects", projectDir).replace(/\\/, '/')
+						  , path.relative("projects", dir).replace(/\\/, '/')
 						  , path.basename(f, ".sqlite")
 						);
-						dbFile = projectDir + "/" + f;					
+						dbFile = dir + "/" + f;					
 						log.info("Serving " + f + " @ " + restBase);
 						var model = new mm.Model(dbFile);
 						var controller = new cc.Controller(app, restBase, model);
@@ -44,30 +56,25 @@ function serveProjects(projectDir) {
 							controller.init(); 
 						});
 
-						dataBases.push(restBase);
+						dbUrls.push(restBase);
 					}
 				});
+				routeBaseUrl();
 			});
 		}); 
-
-		app.get("/rest", function(req, res) {
-			log.info(req.method + " " + req.url);
-			res.send(dataBases);
-		});
-
-		log.info(projects);
+		log.info(subDirs);
 	});
 }
 
-serveProjects("projects");
-
+log.info("Listening on port 3000");
 app.listen(3000);
+
 app.use(express.json());
 
 app.use(function(err, req, res, next){
-  //console.error(err.stack);
 	log.error(err);
 	res.send(500, err.stack);
 });
 
-log.info("Listening on port 3000");
+loadDirectoryTree(REST_ROOTDIR);
+

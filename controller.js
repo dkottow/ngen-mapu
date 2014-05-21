@@ -7,6 +7,8 @@ function Controller(app, restBase, model)
 	this.app = app;
 	this.base = restBase;
 	this.model = model;
+	//this.seed = Math.random();
+	//console.log("created Controller " + this.seed);
 
 	this.init = function() {
 		var me = this;
@@ -18,6 +20,7 @@ function Controller(app, restBase, model)
 			_.each(defs, function(t) {
 				t['url'] = me.base + "/" + t['name'];
 			});
+			//log.info(" served by " + me.seed);
 			res.send(defs);
 		}
 		this.app.get(me.base, defsHandler);

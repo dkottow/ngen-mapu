@@ -42,6 +42,7 @@ if (global.log) {
  *
  */
 function buildTableTree(tables) {
+	log.debug("Building table tree. Got " + tables.length + " tables.");
 
 	_.each(tables, function(table) {
 
@@ -258,7 +259,7 @@ function Model(dbFile)
 	}
 
 	this.init = function(cbAfter) {
-		var db = new sqlite3.cached.Database( this.dbFile
+		var db = new sqlite3.Database( this.dbFile
 							, sqlite3.OPEN_READWRITE
 							, function(err) {
 			if (err) {
@@ -303,6 +304,7 @@ function Model(dbFile)
 
 
 			if (t["supertype"]) {
+				//describe virtual <supertype>_sid field
 
 				var sid_order = t["fields"]["id"]["order"] + 1;
 				_.each(t["fields"], function(f) {
@@ -320,8 +322,6 @@ function Model(dbFile)
 					"pk": 0
 				};
 			}
-
-			//t['fields'] = JSON.stringify(t['fields']);
 
 			return t;
 		});

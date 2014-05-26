@@ -14,9 +14,9 @@ global.log = bunyan.createLogger({
 	'level': 'info'
 });
 
-var mm = require('./model.js');
-var cc = require('./controller.js');
-var xdata = require('./xdata-upload.js');
+var mm = require('./rest/model.js');
+var cc = require('./rest/controller.js');
+var xdata = require('./xdata/controller.js');
 
 var app = express();
 
@@ -46,22 +46,22 @@ function loadDirectoryTree(rootDir) {
 				log.info("Scanning " + dir);
 				files.forEach( function(f) {
 					if (path.extname(f) == ".sqlite") {
-						restBase = util.format("/rest/%s/%s" 
+						dbPath = util.format("/%s/%s" 
 						  , path.relative("projects", dir).replace(/\\/, '/')
 						  , path.basename(f, ".sqlite")
 						);
 						dbFile = dir + "/" + f;					
-						log.info("Serving " + f + " @ " + restBase);
 						var model = new mm.Model(dbFile);
-						var controller = new cc.Controller(app, restBase, model);
-						var xDocController = new xdata.XDocController(app, restBase, model);
+						log.info("Serving " + model.dbFile);
+						var restController = new cc.Controller(app, "/rest" + dbPath, model);
+						var xDocController = new xdata.Controller(app, "/xdata" + dbPath, model);
 
 						model.init(function() { 
-							controller.init(); 
+							restController.init(); 
 							xDocController.init();
 						});
 
-						dbUrls.push(restBase);
+						dbUrls.push(dbPath);
 					}
 				});
 				routeBaseUrl();

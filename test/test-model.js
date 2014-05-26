@@ -4,7 +4,7 @@
 var assert = require('assert')
 	, _ = require('underscore')
 	, sqlite3 = require('sqlite3').verbose()
-	, Model = require('../model').Model;
+	, Model = require('../app/rest/model').Model;
 
 
 describe('Model', function() {

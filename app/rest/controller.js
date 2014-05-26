@@ -9,6 +9,7 @@ function Controller(app, restBase, model)
 	this.model = model;
 	//this.seed = Math.random();
 	//console.log("created Controller " + this.seed);
+	log.info("Rest controller @ " + restBase);
 
 	this.init = function() {
 		var me = this;

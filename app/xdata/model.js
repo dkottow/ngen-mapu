@@ -1,7 +1,7 @@
 
 //stuff to handle xml files
 var xpath = require('xpath')
-  , dom = require('xmldom').DOMParser
+  , dom = require('xmldom')
   , fs = require('fs')
   , path = require('path')
   , _ = require('underscore')
@@ -45,12 +45,20 @@ function mapTemplate(xDoc, dbFile)
 					  , "Person_logging" : "Responsable_logueado" 
 				    }
 			  	  }
+			  , "MetaPerforacion"
+				: { "MetaBorehole"
+				  : {   "Coord_collar" : "Coord_collar"
+					  , "Datum" : "Datum" 
+					  , "Azimuth" : "Azimut" 
+				    }
+			  	  }
+				  
 			  , "Descripcion_geologica"  
 				: { "Material"
 				  : {   
 						"from" : null
 					  ,	"to" : null	
-					  ,	"type" : "Tipo_material"
+					  ,	"Material" : "Tipo_material"
 					  , "Bad_interval" : "Tramo_Malo"	
 					}					
 				  , "Rock" 
@@ -66,17 +74,18 @@ function mapTemplate(xDoc, dbFile)
   					  , "Type_rock" : "Tipo_roca"
 					  , "Other_rock" : "Otro_roca"
 					  , "Rock_Name" : "Nombre_roca"
-					  , "Other_Name" : ""
-					  , "Secondary_Name" : ""
-					  , "Other_secondary_name" : ""
-					  , "Formation_Name" : ""
-					  , "Formation_Age" : ""
-					  , "Geologic_Period" : ""
+
+					  , "Other_Name" : "Otro_Nombre"
+					  , "Secondary_Name" : "Nombre_Secondario"
+					  , "Other_secondary_name" : "Otro_secondario"
+					  , "Formation_Name" : "Nombre_formacion"
+					  , "Formation_Age" : "Edad_formacion"
+					  , "Geologic_Period" : "Periodo_Geologico"
 					  , "Texture" : "Textura"
-					  , "Other_texture" : ""
-					  , "Notes_texture" : ""
-					  , "Angularity" : ""
-					  , "Notes_angularity" : ""
+					  , "Other_texture" : "Otra_textura"
+					  , "Notes_texture" : "Notas_textura"
+					  , "Angularity" : "Angularidad"
+					  , "Notes_angularity" : "Notas_angularidad"
 					  , "Shape_clasts" : ""
 					  , "Notes_clasts" : ""
 					  , "Structures" : ""
@@ -87,52 +96,52 @@ function mapTemplate(xDoc, dbFile)
 					  , "Bedding_inclination" : ""
 					  , "Notes_bedding" : ""
 					  , "Notes_stratification" : ""
-					  , "Reaction_HCL_rock" : ""
-					  , "Minerals" : ""
-					  , "Other_minerals" : ""
-					  , "Percent_Quartz" : ""
-					  , "Acid_rock" : ""
-					  , "Percent_Biotite" : ""
-					  , "Percent_Hornblende" : ""
-					  , "Percent_Plagioclase" : ""
-					  , "Percent_Feldespar_alkaline" : ""
-					  , "Percent_Spar" : ""
-					  , "Percent_Mica" : ""
-					  , "Percent_Moscovite" : ""
-					  , "Percent_Pyroxenes" : ""
-					  , "Percent_Olivine" : ""
-					  , "Percent_Mafics" : ""
-					  , "Minerals_Mafics" : ""
-					  , "Feldspar" : ""
-					  , "Other_feldspar" : ""
-					  , "Type_Mica" : ""
-					  , "Others_micas" : ""
-					  , "Type_pyroxenes" : ""
-					  , "Other_pyroxenes" : ""
-					  , "Notes_minerals" : ""
-					  , "Minerals_accessory" : ""
-					  , "Others_accessory" : ""
-					  , "Notes_accessory" : ""
-					  , "Type_frag" : ""
-					  , "Other_frag" : ""
-					  , "Notes_frag" : ""
-					  , "Minerals_dark" : ""
-					  , "Particle_size" : ""
-					  , "Other_particles" : ""
-					  , "Texture_Pyroclastics" : ""
-					  , "Notes_pyro_texture" : ""
+					  , "Reaction_HCL_rock" : "Reaccion_HCL_roca"
+					  , "Minerals" : "Minerales"
+					  , "Other_minerals" : "Otros_minerales"
+					  , "Percent_Quartz" : "Porc_Cuarzo"
+					  , "Acid_rock" : "Acidez_roca"
+					  , "Percent_Biotite" : "Porc_Biotita"
+					  , "Percent_Hornblende" : "Porc_Hornblenda"
+					  , "Percent_Plagioclase" : "Porc_Plagioclasa"
+					  , "Percent_Feldespar_alkaline" : "Porc_Feldespato_alcalino"
+					  , "Percent_Spar" : "Porc_Spar"
+					  , "Percent_Mica" : "Porc_Mica"
+					  , "Percent_Moscovite" : "Porc_Moscovita"
+					  , "Percent_Pyroxenes" : "Porc_Piroxenos"
+					  , "Percent_Olivine" : "Porc_Olivina"
+					  , "Percent_Mafics" : "Porc_Maficos"
+					  , "Minerals_Mafics" : "Minerales_Maficos"
+					  , "Feldspar" : "Feldespatos"
+					  , "Other_feldspar" : "Otro_feldespato"
+					  , "Type_Mica" : "Tipo_Mica"
+					  , "Others_micas" : "Otros_micas"
+					  , "Type_pyroxenes" : "Tipo_piroxenos"
+					  , "Other_pyroxenes" : "Otro_piroxenos"
+					  , "Notes_minerals" : "Notas_minerales"
+					  , "Minerals_accessory" : "Minerales_accesorios"
+					  , "Others_accessory" : "Otros_accesorios"
+					  , "Notes_accessory" : "Notas_accesorios"
+					  , "Type_frag" : "Tipo_frag"
+					  , "Other_frag" : "Otro_frag"
+					  , "Notes_frag" : "Notas_frag"
+					  , "Minerals_dark" : "Minerales_oscuros"
+					  , "Particle_size" : "Tamano_particula"
+					  , "Other_particles" : "Otro_tipo_part"
+					  , "Texture_Pyroclastics" : "Textura_Piro"
+					  , "Notes_pyro_texture" : "Notas_text_piro"
 					  , "Depositional_Setting" : ""
-					  , "Others_deposits" : ""
-					  , "Continental" : ""
-					  , "Other_continental" : ""
-					  , "Transitional" : ""
-					  , "Marine" : ""
-					  , "Other_marine" : ""
-					  , "Fracturing" : ""
-					  , "Other_fract" : ""
-					  , "Porosity" : ""
-					  , "Notes_porosity" : ""
-					  , "Notes_rocks" : ""
+					  , "Others_deposits" : "Otros_depositos"
+					  , "Continental" : "Continental"
+					  , "Other_continental" : "Otros_continentales"
+					  , "Transitional" : "Transicional"
+					  , "Marine" : "Marino"
+					  , "Other_marine" : "Otro_marino"
+					  , "Fracturing" : "Fracturamiento"
+					  , "Other_fract" : "Otro_fract"
+					  , "Porosity" : "Porosidad"
+					  , "Notes_porosity" : "Notas_poro"
+					  , "Notes_rocks" : "Notas_rocas"
 									
 				    }	
 				  , "Soil" 
@@ -173,23 +182,42 @@ function XDocument(docFile)
 	function parse(file) {
 		var xml = fs.readFileSync(file, {"encoding": "utf-8"});
 		//console.log(xml);
-		me.doc = new dom().parseFromString(xml);		
+		me.doc = new dom.DOMParser().parseFromString(xml);		
 	}
 
 	parse(docFile);
 
-	function readMetaTopics(entity, mapping) {
+	function convert(value, field) {
+		if (value == null) return value;
+		if (field.type == "INTEGER") {
+			return parseInt(value);
+		} else if (field.type.indexOf("NUMERIC") == 0 
+				|| field.type == "FLOAT") {
+			return parseFloat(value);
+		} else if (field.type == "DATETIME") {
+			return value;
+			//return Date.parse(value); ??
+		}
+		return value;
+	}
+
+	function readMetaTopics(entity, db, mapping) {
 		var metaRows = {};
 		var et = entity.getAttribute("type");
 		_.each(xpath.select("topic[@register='meta']", entity)
 			, function(topic) {
 
 			var tt = topic.getAttribute("table");
+
+
 			if (mapping[et][tt]) {
 
 				var support = xpath.select("support", topic)[0];
 
-				_.each(mapping[et][tt], function(fields, table) {
+				_.each(mapping[et][tt], function(fields, tableName) {
+
+					var tableDef = db.tableMap()[tableName];
+
 					var row = {};
 
 					row[FIELD_USER] = xpath.select("userName/text()"
@@ -198,12 +226,20 @@ function XDocument(docFile)
 										, support).toString();
 
 					_.map(fields, function(xField, tField) {
-						row[tField] = xpath.select("register/field[@name='"
+
+						var xText = xpath.select("register/field[@name='"
 										+ xField + "']/text()"
 										, support).toString();
+
+						row[tField] = convert(xText, tableDef.fields[tField]);
+
+						if (tableDef.supertype) {
+							row[tableDef.supertype.name + "_sid"] = 0;
+						}
+
 					});
 
-					metaRows[table] = row;
+					metaRows[tableName] = row;
 				});
 			}
 		});
@@ -211,61 +247,96 @@ function XDocument(docFile)
 		return metaRows;
 	}
 
-	function readSingleTopics(entity, mapping) {
+	function readSingleTopics(entity, db, mapping) {
 		var singleRows = [];
 		var et = entity.getAttribute("type");
 		_.each(xpath.select("topic[@register='single']", entity)
 			, function(topic) {
 			
 			var tt = topic.getAttribute("table");
+			var fieldNodeMap = null;
+
 			if (mapping[et][tt]) {
 
-				_.each(xpath.select("support", topic), function(support) {
+				_.each(xpath.select("support", topic), function(srcSupport) {
 
-					var stype = support.getAttribute("type");
+					var stype = srcSupport.getAttribute("type");
 					if (stype == "interval") {
 						var pos = xpath.select("position/text()"
-									, support)
+									, srcSupport)
 									.toString().split("|");
 						console.log(pos);
 					}
+					
+					var reg = xpath.select("register", srcSupport)[0];
+
+					if ( ! fieldNodeMap) {
+						//build a field node map from first xml register
+						fieldNodeMap = {};
+						for(var i=0;i < reg.childNodes.length; ++i) {
+							var node = reg.childNodes[i];
+							if (node.nodeType == 1) {
+								fieldNodeMap[node.getAttribute("name")] = i;
+							}
+						}
+						//console.log(fieldNodeMap);
+					}
+
 
 					var rowGroup = {};
-					_.each(mapping[et][tt], function(fields, table) {
-						var reg = xpath.select("register", support)[0];
+					_.each(mapping[et][tt], function(mapFields, tableName) {
+
+						var tableDef = db.tableMap()[tableName];
 
 						var writeRow = true;
-						if (_.has(fields, "FUNC_FILTER")) {
-							writeRow = fields["FUNC_FILTER"](reg);
+						if (_.has(mapFields, "FUNC_FILTER")) {
+							writeRow = mapFields["FUNC_FILTER"](reg);
 						}
 						if (writeRow) {
 							var row = {};
 
 							row[FIELD_USER] 
 								= xpath.select("userName/text()"
-									, support).toString();
+									, srcSupport).toString();
 							row[FIELD_DATE] 
 								= xpath.select("logDate/text()"
-									, support).toString();
+									, srcSupport).toString();
 
-							if (_.has(fields, FIELD_FROM)) {
+							if (_.has(mapFields, FIELD_FROM)) {
 								row[FIELD_FROM] = pos[0]; 
 							}
-							if (_.has(fields, FIELD_TO)) {
+							if (_.has(mapFields, FIELD_TO)) {
 								row[FIELD_TO] = pos[1]; 
 							}
 
-							//TODO expensive...
-							_.map(fields, function(xField, tField) {
+							_.map(mapFields, function(xField, tField) {
 								if (_.isString(xField)) {
+/*
 									row[tField] 
 										= xpath.select("register/field[@name='"
-											+ xField + "']/text()", support)
+											+ xField + "']/text()", srcSupport)
 											.toString();
+*/
+
+									//field node map provides instant access
+									var node = reg.childNodes[fieldNodeMap[xField]];
+									if (node && node.firstChild) {
+										var xValue = node.firstChild.nodeValue;
+										row[tField] = convert(xValue, tableDef.fields[tField]);
+									} else {
+										row[tField] = null;
+									}
 								}
 							});
+
+							if (tableDef.parent) {
+								row[tableDef.parent.name + "_pid"] = 0;
+							}
+							if (tableDef.supertype) {
+								row[tableDef.supertype.name + "_sid"] = 0;
+							}
 							//console.log(row);
-							rowGroup[table] = row;
+							rowGroup[tableName] = row;
 						}
 					});
 					singleRows.push(rowGroup);
@@ -274,12 +345,11 @@ function XDocument(docFile)
 			
 		});
 
-		console.log(util.inspect(singleRows, { depth : 3}));
+		//console.log(util.inspect(singleRows, { depth : 3}));
 		return singleRows;	
 	}
 
-
-	this.post = function(db) {
+	this.post = function(db, cbDone) {
 		//console.log(template + " - " + db.dbFile);
 		var mapping = mapTemplate(this.doc, db.dbFile);
 
@@ -288,12 +358,30 @@ function XDocument(docFile)
 		_.each(xpath.select("//xData/entityList/entity", this.doc)
 			, function(entity) {
 
-			var rows = {"meta" : {}, "single" : [] };
+			var metaRows = readMetaTopics(entity, db, mapping);
 
-			rows["meta"] = readMetaTopics(entity, mapping);
-			rows["single"] = readSingleTopics(entity, mapping);
+			var rootTables = _.filter(_.keys(metaRows), function(tableName) {
+				return _.every(metaRows[tableName], function(v, k) {
+					return k.lastIndexOf("_sid") != (k.length - "_sid".length);
+				});
+			});
+			//console.log(rootTables);
 
+			_.each(rootTables, function(t) {
+				db.insert(db.tableMap()[t], [metaRows[t]], function(err, ids) {
+					
+					console.log("Insert " + t + " id " + ids[0]);
+					metaRows[t]['id'] = ids[0];
 
+//TODO wer are not done yet...
+cbDone(err, ids);
+				});
+			});
+			//console.log(util.inspect(metaRows, { depth : 3}));
+/*
+			var singleRows = readSingleTopics(entity, db, mapping);
+			console.log(util.inspect(singleRows, { depth : 3}));
+*/
 
 		}); //each entity
 

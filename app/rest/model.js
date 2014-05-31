@@ -175,7 +175,7 @@ function Model(dbFile)
 							if (r['custom']) {
 								tableDef = _.extend(tableDef, JSON.parse(r['custom']))
 							}
-							return  tableDef;
+							return tableDef;
 						});	
 						me.tables = _.object(_.pluck(tables, 'name'), tables);
 					}

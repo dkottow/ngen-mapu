@@ -19,6 +19,7 @@ describe('XDoc', function() {
 
 	describe('post()', function() {
 		it('post', function(done) {
+			this.timeout(30000); //1min
 			xdoc.post(model, done);
 		});
 	});

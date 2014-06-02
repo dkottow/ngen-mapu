@@ -394,6 +394,7 @@ function Model(dbFile)
 
 		if (table["supertype"]) {
 			//exception do insert with id = supertype.id when rows are subtype
+			fieldNames.push('id');
 			_.each(rows, function(r) {
 				r['id'] = r[table["supertype"]["name"] + "_sid"];
 			});
@@ -422,7 +423,7 @@ function Model(dbFile)
 			_.each(rows, function(r) {
 				if (err == null) {					
 					var params = _.map(fieldNames, function(fn) { return r[fn]; });
-					//console.log(params);
+					console.log(params);
 					stmt.run(params, function(e) { 
 						err = e;
 						ids.push(this.lastID);

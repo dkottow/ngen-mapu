@@ -18,16 +18,6 @@ if (global.log) {
 		});
 }
 
-function mapTemplate(xDoc, dbFile)
-{
-	var template = xpath.select("//xData", xDoc)[0].getAttribute("template");
-	var dbKey = path.basename(dbFile).split(".")[0];
-	var mapKey = template + " > " + dbKey;
-
-
-	return mapping[mapKey];
-} 
-
 function XDocument(docFile)
 {
 
@@ -40,24 +30,18 @@ function XDocument(docFile)
 
 	this.post = function(db, cbDone) {
 		//console.log(template + " - " + db.dbFile);
-		var mapping = mapTemplate(this.doc, db.dbFile);
+		var map = mapping.get(this.doc, db.dbFile);
 
-		//console.log(mapping);
+		//console.log(map);
 
 		_.each(xpath.select("//xData/entityList/entity", this.doc)
 			, function(entity) {
 
-			var metaRows = [ readMetaTopics(entity, db, mapping) ];
-			var singleRows = readSingleTopics(entity, db, mapping);
+			var metaRows = [ readMetaTopics(entity, db, map) ];
+			var singleRows = readSingleTopics(entity, db, map);
 
 			var allRows = metaRows.concat(singleRows);
-			console.log(util.inspect(allRows, { depth : 4}));
-
-			var rootTables = _.filter(db.tableMap(), function(t) {
-				return t.parent == null && t.supertype == null;
-			});
-
-			var tables = rootTables;
+			//console.log(util.inspect(allRows, { depth : 4}));
 
 			var processTables = function(tables, cbNext) {
 
@@ -66,15 +50,29 @@ function XDocument(docFile)
 					var doNext = _.after(tables.length, cbNext);	
 
 					_.each(tables, function(table) {
-						var rows = _.filter(allRows, function(r) {
+						var rowGroups = _.filter(allRows, function(r) {
 							return _.contains(_.keys(r), table.name);
 						});
-						//console.log("rows " + util.inspect(rows, { depth : 3 }));
+						//console.log("rowGroups " + util.inspect(rowGroups, { depth : 3 }));
+						if (table.parent) {
+							var parentRow = _.find(metaRows[0], function(r, t) {
+								return t == table.parent.name;
+							});
+							var tableRows = _.map(rowGroups, function(rg) {
+								return rg[table.name];
+							});
+							console.log("adding parent to " + table.name);
+							_.each(tableRows, function(r) {
+								r[table.parent.name + "_pid"] = parentRow['id'];
+								console.log(r);
+							});
+						}
 
-						insertRows(db, table, rows, doNext, tables);
+						insertRows(db, table, rowGroups, doNext, tables);
 					});
+
 				} else {
-					cbDone();
+					cbDone(); //TODO wait until *all* entities are done.
 				}
 			}
 
@@ -91,12 +89,15 @@ function XDocument(docFile)
 								|| (t.supertype && t.supertype.name == pt.name);
 						});
 					});
-
 					processTables(nextTables, doTables);
 				}
 			}
 
-			processTables(tables, doTables);
+			var rootTables = _.filter(db.tableMap(), function(t) {
+				return t.parent == null && t.supertype == null;
+			});
+
+			processTables(rootTables, doTables);
 
 		}); //each entity
 

@@ -1,4 +1,5 @@
-var xpath = require('xpath');
+var xpath = require('xpath')
+  , path = require('path');
 
 var mapping = {
 	/* 	{ XEntityType : 
@@ -52,7 +53,7 @@ var mapping = {
 			  , "Rock_moisture" : "Humedad_Roca"
 			  , "Type_rock" : "Tipo_roca"
 			  , "Other_rock" : "Otro_roca"
-			  , "Rock_Name" : "Nombre_roca"
+			  , "Rock_Name" : "Nombre_Roca"
 
 			  , "Other_Name" : "Otro_Nombre"
 			  , "Secondary_Name" : "Nombre_Secondario"
@@ -70,7 +71,7 @@ var mapping = {
 			  , "Structures" : ""
 			  , "Sed_structure" : ""
 			  , "Notes_structure" : ""
-			  , "Micro_defects" : ""
+			  , "Micro_defects" : "Micro_defectos"
 			  , "Bedding_Size" : ""
 			  , "Bedding_inclination" : ""
 			  , "Notes_bedding" : ""
@@ -123,6 +124,7 @@ var mapping = {
 			  , "Notes_rocks" : "Notas_rocas"
 							
 			}	
+/*
 		  , "Soil" 
 		  : {
 				"FUNC_FILTER" : function(reg) { 
@@ -142,12 +144,25 @@ var mapping = {
 			  , "Percent_Fines" : "Porc_Fino"
 			  ,	"Grading" : "Gradacion"
 			  ,	"Dilatancy" : "Dilatancia"
+			  ,	"Plasticity_rolled" : "Plasticidad_rosca"
 
 				
 			}	
+*/
 		  }	
 	  }
   }
 };
 
-module.exports = mapping;
+function getMapping(xDoc, dbFile)
+{
+	var template = xpath.select("//xData", xDoc)[0].getAttribute("template");
+	var dbKey = path.basename(dbFile).split(".")[0];
+	var mapKey = template + " > " + dbKey;
+
+
+	return mapping[mapKey];
+} 
+
+
+exports.get = getMapping;

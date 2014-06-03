@@ -15,7 +15,7 @@ if (global.log) {
 } else {
 	//e.g when testing 
 	var log = require('bunyan').createLogger({
-				'name': 'g6.model.js', 'level': 'info'
+				'name': 'g6.model.js', 'level': 'debug'
 		});
 }
 
@@ -435,6 +435,7 @@ function Model(dbFile)
 				if (err == null) {
 					db.run("COMMIT TRANSACTION");
 				} else {
+					log.debug(err);
 					log.warn("Model.insert() failed. Rollback.");
 					db.run("ROLLBACK TRANSACTION");
 				}

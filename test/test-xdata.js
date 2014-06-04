@@ -8,6 +8,7 @@ var assert = require('assert')
 
 
 describe('XDoc', function() {
+	//var dbFile = <dbschema>.<instance>.sqlite
 	var dbFile = "test/gaslink.test.sqlite";
 	var xmlFile = "test/DK_BH01A.XML";
 	var xdoc = new xdata.XDocument(xmlFile);
@@ -19,8 +20,15 @@ describe('XDoc', function() {
 
 	describe('post()', function() {
 		it('post', function(done) {
-			this.timeout(30000); //1min
-			xdoc.post(model, done);
+			this.timeout(10000); //10secs
+			xdoc.post(model, function(err) { 
+				if (err) {
+					console.log("FAILED. ");
+					console.log(err);
+				}
+				console.log("done.");
+				done(); 
+			});
 		});
 	});
 	

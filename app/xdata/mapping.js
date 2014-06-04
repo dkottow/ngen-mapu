@@ -124,7 +124,7 @@ var mapping = {
 			  , "Notes_rocks" : "Notas_rocas"
 							
 			}	
-/*
+
 		  , "Soil" 
 		  : {
 				"FUNC_FILTER" : function(reg) { 
@@ -145,10 +145,19 @@ var mapping = {
 			  ,	"Grading" : "Gradacion"
 			  ,	"Dilatancy" : "Dilatancia"
 			  ,	"Plasticity_rolled" : "Plasticidad_rosca"
-
+			  ,	"Plasticity_Fines" : "Finos_plasticidad"
+			  ,	"Compactness" : "Densidad_fricionante"
+			  ,	"Consistency" : "Consistencia_Cohesivo"
+			  ,	"Soil_moisture" : "Humedad_Suelo"
+			  ,	"Soil_structure" : "Estructura_suelo"
+			  ,	"Cementation" : "Cementacion"
+			  ,	"Odor" : "Olor"
+			  ,	"Roots" : "Raices"
+			  ,	"Geologic_Origin" : "Origen_Geologico"
+			  ,	"Reaction_HCL_soil" : "Reaccion_HCL_suelo"
 				
 			}	
-*/
+
 		  }	
 	  }
   }
@@ -157,8 +166,8 @@ var mapping = {
 function getMapping(xDoc, dbFile)
 {
 	var template = xpath.select("//xData", xDoc)[0].getAttribute("template");
-	var dbKey = path.basename(dbFile).split(".")[0];
-	var mapKey = template + " > " + dbKey;
+	var dbName = path.basename(dbFile).split(".")[0];
+	var mapKey = template + " > " + dbName;
 
 
 	return mapping[mapKey];

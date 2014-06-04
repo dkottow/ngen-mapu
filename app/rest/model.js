@@ -384,7 +384,10 @@ function Model(dbFile)
 
 	this.insert = function(table, rows, cbDone) {
 
-		if (rows.length == 0) return;
+		if (rows.length == 0) {
+			cbDone(null, []);
+			return;
+		}
 
 		var fieldNames = _.filter(_.keys(rows[0]) 
 							, function(fn) { 
@@ -399,7 +402,6 @@ function Model(dbFile)
 				r['id'] = r[table["supertype"]["name"] + "_sid"];
 			});
 		}
-
 
 		var fieldParams = _.times(fieldNames.length, function(fn) { return "?"; });
 
@@ -423,7 +425,7 @@ function Model(dbFile)
 			_.each(rows, function(r) {
 				if (err == null) {					
 					var params = _.map(fieldNames, function(fn) { return r[fn]; });
-					console.log(params);
+					//console.log(params);
 					stmt.run(params, function(e) { 
 						err = e;
 						ids.push(this.lastID);
@@ -448,7 +450,10 @@ function Model(dbFile)
 
 	this.update = function(table, rows, cbDone) {
 
-		if (rows.length == 0) return;
+		if (rows.length == 0) {
+			cbDone(null, []);
+			return;
+		}
 
 		var fieldNames = _.filter(_.keys(rows[0]) 
 							, function(fn) { 
@@ -516,7 +521,10 @@ function Model(dbFile)
 
 	this.delete = function(table, rows, cbDone) {
 
-		if (rows.length == 0) return;
+		if (rows.length == 0) {
+			cbDone(null, []);
+			return;
+		}
 
 		var idParams = _.times(rows.length, function(fn) { return "?"; });
 

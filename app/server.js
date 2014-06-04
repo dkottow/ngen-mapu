@@ -54,7 +54,7 @@ function loadDirectoryTree(rootDir) {
 						var model = new mm.Model(dbFile);
 						log.info("Serving " + model.dbFile);
 						var restController = new cc.Controller(app, "/rest" + dbPath, model);
-						var xDocController = new xdata.Controller(app, "/xdata" + dbPath, model);
+						var xDocController = new xdata.Controller(app, "/xdata" + dbPath, dbFile);
 
 						model.init(function() { 
 							restController.init(); 

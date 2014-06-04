@@ -44,12 +44,13 @@ function XDocument(docFile)
 			//console.log(util.inspect(allRows, { depth : 4}));
 
 			var processTables = function(tables, cbNext) {
-
+				console.log("processTables " + tables.length);
 				if (tables.length > 0) {
 
-					var doNext = _.after(tables.length, cbNext);	
+					var cbAfterTables = _.after(tables.length, cbNext);	
 
 					_.each(tables, function(table) {
+						console.log("collecting rows of " + table.name);
 						var rowGroups = _.filter(allRows, function(r) {
 							return _.contains(_.keys(r), table.name);
 						});
@@ -61,14 +62,14 @@ function XDocument(docFile)
 							var tableRows = _.map(rowGroups, function(rg) {
 								return rg[table.name];
 							});
-							console.log("adding parent to " + table.name);
+							//console.log("adding parent to " + table.name);
 							_.each(tableRows, function(r) {
 								r[table.parent.name + "_pid"] = parentRow['id'];
-								console.log(r);
+								//console.log(r);
 							});
 						}
 
-						insertRows(db, table, rowGroups, doNext, tables);
+						insertRows(db, table, rowGroups, cbAfterTables, tables);
 					});
 
 				} else {
@@ -77,11 +78,8 @@ function XDocument(docFile)
 			}
 
 			var doTables = function(err, tables) {
-				if (err) {
-					log.error("doTables failed.");
-					log.error(err);
-
-				} else { 
+				//console.log("doTables " + tables);
+				if ( ! err) {
 
 					var nextTables = _.filter(db.tableMap(), function(t) {
 						return _.some(tables, function(pt) {
@@ -89,7 +87,11 @@ function XDocument(docFile)
 								|| (t.supertype && t.supertype.name == pt.name);
 						});
 					});
+					//console.log("nextTables " + nextTables);
 					processTables(nextTables, doTables);
+
+				} else {
+					cbDone(err);
 				}
 			}
 
@@ -109,15 +111,11 @@ function XDocument(docFile)
 		});
 		console.log("Inserting into " + table.name); 
 		console.log(tableRows.length + " rows.");
-
+		
 		db.insert(table, tableRows, function(err, ids) {
 
 			if ( ! err) {
 				//assign ids
-/* TODO
-	single topic parent ids don't get assigned  (subtypes are ok)
-   because single rows are not grouped with their meta parents...
-*/
 				var subRowGroups = _.map(rowGroups, function(rg) {
 					var subRows = _.filter(rg, function(r) {					
 						return _.has(r, table.name + "_sid");
@@ -129,11 +127,6 @@ function XDocument(docFile)
 						if (_.has(row, table.name + "_sid")) {
 							row[table.name + "_sid"] = rg[1];
 						} 
-/* TODO doesnt work
-						else if (_.has(row, table.name + "_pid")) {
-							row[table.name + "_pid"] = rg[1];
-						}
-*/
 					});
 				});
 				//console.log(subRowGroups);

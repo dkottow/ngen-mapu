@@ -427,7 +427,7 @@ function Model(dbFile)
 					var params = _.map(fieldNames, function(fn) { return r[fn]; });
 					//console.log(params);
 					stmt.run(params, function(e) { 
-						err = e;
+						if (e) err = e;
 						ids.push(this.lastID);
 					});
 				}
@@ -494,7 +494,7 @@ function Model(dbFile)
 					//console.log(params);
 
 					stmt.run(params, function(e) {
-						err = e;
+						if (e) err = e;
 						modCount += this.changes;
 					});
 				}

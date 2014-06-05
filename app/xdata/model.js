@@ -111,7 +111,7 @@ function XDocument(docFile)
 		});
 		console.log("Inserting into " + table.name); 
 		console.log(tableRows.length + " rows.");
-		
+
 		db.insert(table, tableRows, function(err, ids) {
 
 			if ( ! err) {

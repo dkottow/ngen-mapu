@@ -35,6 +35,8 @@ console.log(process.cwd);
 				res.send(400, err.message);
 			}
 		});
+
+		//TODO get status of upload xdocs from files
 	}
 }
 

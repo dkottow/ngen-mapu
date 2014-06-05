@@ -17,7 +17,7 @@ describe('Model', function() {
 
 	after(function(done) {
 		var db = new sqlite3.Database(dbFile);
-		db.run("DELETE FROM borehole WHERE id > 2", done);
+		db.run("DELETE FROM borehole WHERE name like 'test%'", done);
 		db.close();
 	});
 
@@ -96,6 +96,17 @@ describe('Model', function() {
 			model.insert(table, rows, function(err, result) { 
 				assert(err == null, err);
 				done(); 
+			});
+		});
+
+		it('fail on 2nd row', function(done) {
+			var table = model.tableMap()['borehole'];
+			var rows = [{'name': 't2', 'user': 'mocha', 'date': '2000-01-01', 'lat': 123.45, 'lon': 67.890, 'desc': 'a unit-test pit' }, {'name': 't3', 'user': null, 'date': '2000-01-01', 'lat': 123.45, 'lon': 67.890, 'desc': 'a unit-test pit' }];
+			model.insert(table, rows, function(err, result) { 
+				console.log(err);
+				console.log(result);
+				assert(err instanceof Error, 'sqlite null constraint holds on 2nd row');
+				done();
 			});
 		});
 

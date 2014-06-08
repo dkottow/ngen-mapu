@@ -27,9 +27,11 @@ function XDocument(docFile)
 	var FIELD_TO		= "to";
 
 	this.doc = null;
+	var statusFile = docFile + ".post";
 
 	this.post = function(db, cbDone) {
-		//console.log(template + " - " + db.dbFile);
+		fs.writeFileSync(statusFile, "Posting to " + db.dbFile)
+		//console.log(docFile + " - " + db.dbFile);
 		var map = mapping.get(this.doc, db.dbFile);
 
 		//console.log(map);
@@ -43,97 +45,100 @@ function XDocument(docFile)
 			var allRows = metaRows.concat(singleRows);
 			//console.log(util.inspect(allRows, { depth : 4}));
 
-			var processTables = function(tables, cbNext) {
-				console.log("processTables " + tables.length);
-				if (tables.length > 0) {
-
-					var cbAfterTables = _.after(tables.length, cbNext);	
-
-					_.each(tables, function(table) {
-						console.log("collecting rows of " + table.name);
-						var rowGroups = _.filter(allRows, function(r) {
-							return _.contains(_.keys(r), table.name);
-						});
-						//console.log("rowGroups " + util.inspect(rowGroups, { depth : 3 }));
-						if (table.parent) {
-							var parentRow = _.find(metaRows[0], function(r, t) {
-								return t == table.parent.name;
-							});
-							var tableRows = _.map(rowGroups, function(rg) {
-								return rg[table.name];
-							});
-							//console.log("adding parent to " + table.name);
-							_.each(tableRows, function(r) {
-								r[table.parent.name + "_pid"] = parentRow['id'];
-								//console.log(r);
-							});
-						}
-
-						insertRows(db, table, rowGroups, cbAfterTables, tables);
-					});
-
-				} else {
-					cbDone(); //TODO wait until *all* entities are done.
-				}
-			}
-
-			var doTables = function(err, tables) {
+			var doTables = function(tables) {
 				//console.log("doTables " + tables);
-				if ( ! err) {
 
-					var nextTables = _.filter(db.tableMap(), function(t) {
-						return _.some(tables, function(pt) {
-							return (t.parent && t.parent.name == pt.name)
-								|| (t.supertype && t.supertype.name == pt.name);
-						});
+				var nextTables = _.filter(db.tableMap(), function(t) {
+					return _.some(tables, function(pt) {
+						return (t.parent && t.parent.name == pt.name)
+							|| (t.supertype && t.supertype.name == pt.name);
 					});
-					//console.log("nextTables " + nextTables);
-					processTables(nextTables, doTables);
+				});
+				//console.log("nextTables " + nextTables);
+				insertRows(db, allRows, nextTables, doTables, cbDone);
 
-				} else {
-					cbDone(err);
-				}
+				return nextTables;
 			}
 
 			var rootTables = _.filter(db.tableMap(), function(t) {
 				return t.parent == null && t.supertype == null;
 			});
 
-			processTables(rootTables, doTables);
+			insertRows(db, allRows, rootTables, doTables, cbDone);
 
 		}); //each entity
 
 	}
 
-	function insertRows(db, table, rowGroups, doNext, doArgs) {
-		var tableRows = _.map(rowGroups, function(rg) {
-			return rg[table.name];
-		});
-		console.log("Inserting into " + table.name); 
-		console.log(tableRows.length + " rows.");
 
-		db.insert(table, tableRows, function(err, ids) {
+	function insertRows(db, srcRows, dstTables, cbNext, cbDone) {
+		//console.log("insertRows " + dstTables.length);
 
-			if ( ! err) {
-				//assign ids
-				var subRowGroups = _.map(rowGroups, function(rg) {
-					var subRows = _.filter(rg, function(r) {					
-						return _.has(r, table.name + "_sid");
-					});
-					return subRows;
+		var cbAfterTables = _.after(dstTables.length, cbNext);	
+
+		_.each(dstTables, function(table) {
+			console.log("collecting rows of " + table.name);
+			var rowGroups = _.filter(srcRows, function(r) {
+				return _.contains(_.keys(r), table.name);
+			});
+			//console.log("rowGroups " + util.inspect(rowGroups, { depth : 3 }));
+			if (table.parent) {
+				var parentRow = _.find(srcRows[0], function(r, t) {
+					return t == table.parent.name;
 				});
-				_.each(_.zip(subRowGroups, ids), function(rg) {
-					_.each(rg[0], function(row) {
-						if (_.has(row, table.name + "_sid")) {
-							row[table.name + "_sid"] = rg[1];
-						} 
-					});
+				var tableRows = _.map(rowGroups, function(rg) {
+					return rg[table.name];
 				});
-				//console.log(subRowGroups);
+				//console.log("adding parent to " + table.name);
+				_.each(tableRows, function(r) {
+					r[table.parent.name + "_pid"] = parentRow['id'];
+					//console.log(r);
+				});
 			}
 
-			//next
-			doNext(err, doArgs);
+			var tableRows = _.map(rowGroups, function(rg) {
+
+				return rg[table.name];
+			});
+			
+			//log into .post logfile
+			fs.appendFileSync(statusFile, "\nInserting into " + table.name + ". "); 
+			fs.appendFileSync(statusFile, tableRows.length + " rows.");
+
+			db.insert(table, tableRows, function(err, ids) {
+
+				if ( ! err) {
+					//assign ids
+					var subRowGroups = _.map(rowGroups, function(rg) {
+						var subRows = _.filter(rg, function(r) {					
+							return _.has(r, table.name + "_sid");
+						});
+						return subRows;
+					});
+					_.each(_.zip(subRowGroups, ids), function(rg) {
+						_.each(rg[0], function(row) {
+							if (_.has(row, table.name + "_sid")) {
+								row[table.name + "_sid"] = rg[1];
+							} 
+						});
+					});
+					
+					var nextTables = cbAfterTables(dstTables);
+					//console.log("nextTables " + nextTables);
+					if (nextTables && nextTables.length == 0) {
+						//nextTables is undefined when dstTables.length > 1
+						fs.appendFileSync(statusFile, "\n200 OK");
+						cbDone();
+					}
+
+					//console.log(subRowGroups);
+				} else {
+					fs.appendFileSync(statusFile, "\n400 " + err.message);
+					cbDone(err);	
+				}
+				
+			});
+
 		});
 	}
 

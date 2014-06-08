@@ -21,7 +21,6 @@ function Controller(app, url, dbFile)
 			log.info(req.method + " " + req.url);
 			if (req.files["xdoc"]) {
 				var xmlFile = req.files["xdoc"].path;
-console.log(process.cwd);
 				fork('./app/xdata/post', [xmlFile, me.dbFile]);
 				
 				/*

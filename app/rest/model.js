@@ -19,135 +19,6 @@ if (global.log) {
 		});
 }
 
-/*
- * buildTableTree constructs a description of tables in memory 
- *
- * input: tables array that describe each table as JSON
- * output: none, the same tables array is
- *		   modified having a doubly-linked tree structure
- *
- * a table can have one parent table
- *
- * the parent can have a one-to-many relationship 
- * between a parent row and the table's rows (parent-children)
- * in that case the table will have a FK to the parent
- * using a field named <parent>_pid 
- *
- * or the parent can be in a one-to-one relationship
- * between a parent row and a matching table row (supertype-subtype)
- * in that case the table will have a FK to the parent (supertype) 
- * on its own id field. That is, subtype and supertype rows share common ids.
- *
- * in memory we add "forward pointers" to the children as well
- *
- */
-function buildTableTree(tables) {
-	log.debug("Building table tree. Got " + tables.length + " tables.");
-
-	_.each(tables, function(table) {
-
-		var parentName = table['parent'];
-		if (parentName != null) {
-
-			if (_.contains(_.keys(table['fields']), parentName + "_pid")) {
-				//parent-child relationship
-				table['parent'] = _.find(tables, function(t) {
-					return t['name'] == parentName;
-				});
-
-			} else {
-				//supertype-subtype relationship
-				table['supertype'] = _.find(tables, function(t) {
-					return t['name'] == parentName;
-				});
-				delete(table['parent']);
-			}
-		}
-
-	});
-
-	_.each(tables, function(table) {
-
-		table['children'] = _.filter(tables, function(t) {
-			return t['parent'] && t['parent']['name'] == table['name'];
-		});
-
-		table['subtypes'] = _.filter(tables, function(t) {
-			return t['supertype'] && t['supertype']['name'] == table['name'];
-		});
-	});
-
-}
-
-function buildSelectSql(filterFields, filterAncestor, table, fields) {
-
-	assert(_.isObject(filterFields), "arg 'filterFields' is object");
-	assert(_.isObject(filterAncestor), "arg 'filterAncestor' is object");
-	assert(_.isObject(table), "arg 'table' is object");
-
-	if (fields == '*') {
-		fields = _.map(table['fields'], function(f) {
-			return util.format('%s."%s"', table['name'], f['name']);
-		});
-	}
-
-	assert(_.isObject(fields), "arg 'fields' is object");
-
-	var sql = "SELECT " + fields.join(",") + " FROM " + table['name'];
-
-	var joins = ""
-	  , where = " WHERE 1=1"
-	  , sql_params = [];
-
-	if (_.keys(filterAncestor).length > 0) {
-		var ancestorTable = _.keys(filterAncestor)[0];
-		var ancestorId = filterAncestor[ancestorTable];
-		var hasAncestor = false;
-
-		var t = table;
-		while(t['parent'] || t['supertype']) {
-			var pt;
-
-			if (t['parent']) {
-				pt = t['parent'];
-				var pid_name = pt['name'] + "_pid";
-				joins = joins + util.format(" INNER JOIN %s ON %s.%s = %s.id", 
-											pt['name'], t['name'], 
-											pid_name, pt['name']);
-
-			} else if (t['supertype']) {
-				pt = t['supertype'];
-				joins = joins + util.format(" INNER JOIN %s ON %s.id = %s.id", 
-											pt['name'], t['name'], pt['name']);
-
-			}
-	
-			if (pt['name'] == ancestorTable) {
-				where = where + " AND " + ancestorTable + ".id = ?";
-				sql_params.push(ancestorId);
-				hasAncestor = true;
-				break;
-			}
-		
-			//console.log(joins, where);
-			t = pt;
-		}
-		if ( ! hasAncestor) {
-			//no ancestor found - don't join tables
-			joins = "";
-		}
-	}
-
-	_.each(filterFields, function(v,k) {
-		where = where + ' AND ' + k + ' = ?';
-		sql_params.push(v);	
-	});
-
-	sql = sql + joins + where;
-	//console.log(sql, sql_params);
-	return {'query': sql, 'params': sql_params};
-}
-
 function Model(dbFile) 
 {
 	this.dbFile = dbFile;
@@ -156,107 +27,6 @@ function Model(dbFile)
 	this.tableMap = function() { return this.tables; }
 	
 	var me = this;
-	function initTableDefs(db, err, cbAfter) {
-		if (err == null) {
-			//get table and field attributes from table _defs_
-			db.all("SELECT name, parent, custom FROM _tabledef_ WHERE name IN (SELECT name FROM sqlite_master WHERE type = 'table')"
-				, function(err ,rows) {
-					if (err) { 
-						log.error("Get table defs failed.");
-
-					} else {
-					//console.log(rows);
-
-						var tables = _.map(rows, function(r) {
-							var tableDef = { 
-								  "name": r['name']
-								, "parent": r['parent'] 
-							};
-							if (r['custom']) {
-								tableDef = _.extend(tableDef, JSON.parse(r['custom']))
-							}
-							return tableDef;
-						});	
-						me.tables = _.object(_.pluck(tables, 'name'), tables);
-					}
-					cbAfter(err);
-			});			
-		} else {
-			cbAfter(err);
-		}
-	}
-
-	function initFieldDefs(db, err, cbAfter) {
-		if (err) {
-			cbAfter(err);
-
-		} else {
-			db.all("SELECT name, table_name, ordering, domain FROM _fielddef_ WHERE table_name IN (SELECT name FROM sqlite_master WHERE type = 'table')"
-				, function(err ,rows) {
-					if (err) { 
-						log.error("Get field defs failed.");
-						cbAfter(err);
-
-					} else {
-						//console.log(rows);
-
-						var tableNames = _.uniq(_.pluck(rows, 'table_name'));
-
-						_.each(tableNames, function(tn) {
-							me.tables[tn]['fields'] = {};
-						});
-
-						_.each(rows, function(r) {
-							var fieldDef = {
-							  'order' : r['ordering']					
-							};
-							if (r['domain']) {
-								fieldDef['domain'] = JSON.parse(r['domain']);	
-							}
-							if (r['custom']) {
-								fieldDef = _.extend(fieldDef, JSON.parse(r['custom']))
-							}
-							me.tables[r['table_name']]['fields'][r['name']] = fieldDef;
-						});
-						//console.dir(me.tables);
-
-						var doAfter = _.after(tableNames.length, function() {
-							cbAfter();
-						});
-
-						_.each(tableNames, function(tn) {
-							var sql = util.format("PRAGMA table_info(%s)", tn);
-							//console.log(sql);
-							db.all(sql, function(err, rows) {
-								if (err) {
-									log.error(sql + ' failed.');
-									cbAfter(err);
-									return;
-
-								} else {
-									_.each(rows, function(r) {
-										//console.log(r);
-										var fn = r['name'];
-										var fieldDef = me.tables[tn]['fields'][fn];
-										if ( ! fieldDef) {
-											var err = new Error("G6_MODEL_ERROR: "
-														+ tn + '.' + fn + ' not found.');
-											cbAfter(err);
-											return;	
-											 
-										} else {
-											fieldDef = _.extend(fieldDef, r);
-											//console.log(fieldDef);
-										}
-									});
-									doAfter();
-								}
-							});
-						});
-					}
-			});
-		}
-	}
 
 	this.init = function(cbAfter) {
 		var db = new sqlite3.Database( this.dbFile
@@ -572,6 +342,237 @@ function Model(dbFile)
 	}
 
 
+	function initTableDefs(db, err, cbAfter) {
+		if (err == null) {
+			//get table and field attributes from table _defs_
+			db.all("SELECT name, parent, custom FROM _tabledef_ WHERE name IN (SELECT name FROM sqlite_master WHERE type = 'table')"
+				, function(err ,rows) {
+					if (err) { 
+						log.error("Get table defs failed.");
+
+					} else {
+					//console.log(rows);
+
+						var tables = _.map(rows, function(r) {
+							var tableDef = { 
+								  "name": r['name']
+								, "parent": r['parent'] 
+							};
+							if (r['custom']) {
+								tableDef = _.extend(tableDef, JSON.parse(r['custom']))
+							}
+							return tableDef;
+						});	
+						me.tables = _.object(_.pluck(tables, 'name'), tables);
+					}
+					cbAfter(err);
+			});			
+		} else {
+			cbAfter(err);
+		}
+	}
+
+	function initFieldDefs(db, err, cbAfter) {
+		if (err) {
+			cbAfter(err);
+
+		} else {
+			db.all("SELECT name, table_name, ordering, domain FROM _fielddef_ WHERE table_name IN (SELECT name FROM sqlite_master WHERE type = 'table')"
+				, function(err ,rows) {
+					if (err) { 
+						log.error("Get field defs failed.");
+						cbAfter(err);
+
+					} else {
+						//console.log(rows);
+
+						var tableNames = _.uniq(_.pluck(rows, 'table_name'));
+
+						_.each(tableNames, function(tn) {
+							me.tables[tn]['fields'] = {};
+						});
+
+						_.each(rows, function(r) {
+							var fieldDef = {
+							  'order' : r['ordering']					
+							};
+							if (r['domain']) {
+								fieldDef['domain'] = JSON.parse(r['domain']);	
+							}
+							if (r['custom']) {
+								fieldDef = _.extend(fieldDef, JSON.parse(r['custom']))
+							}
+							me.tables[r['table_name']]['fields'][r['name']] = fieldDef;
+						});
+						//console.dir(me.tables);
+
+						var doAfter = _.after(tableNames.length, function() {
+							cbAfter();
+						});
+
+						_.each(tableNames, function(tn) {
+							var sql = util.format("PRAGMA table_info(%s)", tn);
+							//console.log(sql);
+							db.all(sql, function(err, rows) {
+								if (err) {
+									log.error(sql + ' failed.');
+									cbAfter(err);
+									return;
+
+								} else {
+									_.each(rows, function(r) {
+										//console.log(r);
+										var fn = r['name'];
+										var fieldDef = me.tables[tn]['fields'][fn];
+										if ( ! fieldDef) {
+											var err = new Error("G6_MODEL_ERROR: "
+														+ tn + '.' + fn + ' not found.');
+											cbAfter(err);
+											return;	
+											 
+										} else {
+											fieldDef = _.extend(fieldDef, r);
+											//console.log(fieldDef);
+										}
+									});
+									doAfter();
+								}
+							});
+						});
+					}
+			});
+		}
+	}
+
+}
+
+/*
+ * buildTableTree constructs a description of tables in memory 
+ *
+ * input: tables array that describe each table as JSON
+ * output: none, the same tables array is
+ *		   modified having a doubly-linked tree structure
+ *
+ * a table can have one parent table
+ *
+ * the parent can have a one-to-many relationship 
+ * between a parent row and the table's rows (parent-children)
+ * in that case the table will have a FK to the parent
+ * using a field named <parent>_pid 
+ *
+ * or the parent can be in a one-to-one relationship
+ * between a parent row and a matching table row (supertype-subtype)
+ * in that case the table will have a FK to the parent (supertype) 
+ * on its own id field. That is, subtype and supertype rows share common ids.
+ *
+ * in memory we add "forward pointers" to the children as well
+ *
+ */
+function buildTableTree(tables) {
+	log.debug("Building table tree. Got " + tables.length + " tables.");
+
+	_.each(tables, function(table) {
+
+		var parentName = table['parent'];
+		if (parentName != null) {
+
+			if (_.contains(_.keys(table['fields']), parentName + "_pid")) {
+				//parent-child relationship
+				table['parent'] = _.find(tables, function(t) {
+					return t['name'] == parentName;
+				});
+
+			} else {
+				//supertype-subtype relationship
+				table['supertype'] = _.find(tables, function(t) {
+					return t['name'] == parentName;
+				});
+				delete(table['parent']);
+			}
+		}
+
+	});
+
+	_.each(tables, function(table) {
+
+		table['children'] = _.filter(tables, function(t) {
+			return t['parent'] && t['parent']['name'] == table['name'];
+		});
+
+		table['subtypes'] = _.filter(tables, function(t) {
+			return t['supertype'] && t['supertype']['name'] == table['name'];
+		});
+	});
+
+}
+
+function buildSelectSql(filterFields, filterAncestor, table, fields) {
+
+	assert(_.isObject(filterFields), "arg 'filterFields' is object");
+	assert(_.isObject(filterAncestor), "arg 'filterAncestor' is object");
+	assert(_.isObject(table), "arg 'table' is object");
+
+	if (fields == '*') {
+		fields = _.map(table['fields'], function(f) {
+			return util.format('%s."%s"', table['name'], f['name']);
+		});
+	}
+
+	assert(_.isObject(fields), "arg 'fields' is object");
+
+	var sql = "SELECT " + fields.join(",") + " FROM " + table['name'];
+
+	var joins = ""
+	  , where = " WHERE 1=1"
+	  , sql_params = [];
+
+	if (_.keys(filterAncestor).length > 0) {
+		var ancestorTable = _.keys(filterAncestor)[0];
+		var ancestorId = filterAncestor[ancestorTable];
+		var hasAncestor = false;
+
+		var t = table;
+		while(t['parent'] || t['supertype']) {
+			var pt;
+
+			if (t['parent']) {
+				pt = t['parent'];
+				var pid_name = pt['name'] + "_pid";
+				joins = joins + util.format(" INNER JOIN %s ON %s.%s = %s.id", 
+											pt['name'], t['name'], 
+											pid_name, pt['name']);
+
+			} else if (t['supertype']) {
+				pt = t['supertype'];
+				joins = joins + util.format(" INNER JOIN %s ON %s.id = %s.id", 
+											pt['name'], t['name'], pt['name']);
+
+			}
+	
+			if (pt['name'] == ancestorTable) {
+				where = where + " AND " + ancestorTable + ".id = ?";
+				sql_params.push(ancestorId);
+				hasAncestor = true;
+				break;
+			}
+		
+			//console.log(joins, where);
+			t = pt;
+		}
+		if ( ! hasAncestor) {
+			//no ancestor found - don't join tables
+			joins = "";
+		}
+	}
+
+	_.each(filterFields, function(v,k) {
+		where = where + ' AND ' + k + ' = ?';
+		sql_params.push(v);	
+	});
+
+	sql = sql + joins + where;
+	//console.log(sql, sql_params);
+	return {'query': sql, 'params': sql_params};
 }
 
 exports.Model = Model;

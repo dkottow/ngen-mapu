@@ -1,5 +1,4 @@
 
-var fs = require('fs');
 var bunyan = require('bunyan');
 
 global.log = bunyan.createLogger({
@@ -17,7 +16,6 @@ if (process.argv.length < 4) {
 
 var xmlFile = process.argv[2];
 var dbFile = process.argv[3];
-var statusFile = xmlFile + ".post";
 
 console.log("xmlFile " + xmlFile);
 console.log("dbFile " + dbFile);
@@ -25,14 +23,9 @@ var xdoc = new xdata.XDocument(xmlFile);
 var model = new g6.Model(dbFile);
 
 model.init(function() {
-	fs.writeFileSync(statusFile, "");
 	xdoc.post(model, function(err) {
-		if (err) {
-			fs.writeFileSync(statusFile, "400 " + err.message);
-		} else {
-			fs.writeFileSync(statusFile, "200 OK");
-		}
 		console.log("done. " + err);
 	});
 });
+
 

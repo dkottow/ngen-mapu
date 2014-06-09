@@ -17,12 +17,20 @@ function Controller(app, restBase, model)
 		//describe database 
 		var defsHandler = function(req, res) {
 			log.info(req.method + " " + req.url);
-			var defs = me.model.defs();
-			_.each(defs, function(t) {
-				t['url'] = me.base + "/" + t['name'];
+			me.model.defs(function(err, result) {
+				if (err) {
+					log.warn(err);
+					res.send(400, err.message);
+				} else {
+					_.each(result, function(t) {
+						t['url'] = me.base + "/" + t['name'];
+					});
+					log.debug(result);
+					res.send(result); 
+				}
 			});
 			//log.info(" served by " + me.seed);
-			res.send(defs);
+			//res.send(defs);
 		}
 		this.app.get(me.base, defsHandler);
 		this.app.get(me.base + ".db", defsHandler);

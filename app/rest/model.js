@@ -50,7 +50,7 @@ function Model(dbFile)
 	}
 
 
-	this.defs = function() {
+	this.defs = function(cbResult) {
 		assert(_.isObject(this.tables)); 
 		var tableDefs = _.map(this.tables, function(table) {
 			//replace parent, subtypes table refs with table names
@@ -96,11 +96,30 @@ function Model(dbFile)
 			return t;
 		});
 
-		//TODO do SELECT count(*) UNION ALL foreach table 
-		//to add row counts.
+		tableDefs = _.object(_.pluck(tableDefs, 'name'), tableDefs);
 
-		//console.dir(tableDefs);
-		return _.object(_.pluck(tableDefs, 'name'), tableDefs);
+		//add row counts
+		var sql = _.reduce(_.keys(this.tables), function(str, tn) {
+			return str + 'SELECT ' + "'" + tn + "'" + ' AS table_name' 
+					+ ', COUNT(*) AS count'
+					+ ' FROM "' + tn + '" UNION ALL ';
+		}, "");
+
+
+		sql = sql.substring(0, sql.length - 'UNION ALL '.length);
+		//console.dir(sql);
+
+		var db = new sqlite3.cached.Database(this.dbFile);
+		db.all(sql, function(err, rows) {
+			if (err) {
+				log.warn("model.defs() failed.");	
+			}
+			_.each(rows, function(r) {
+				tableDefs[r.table_name].count = r.count;
+			});
+			
+			cbResult(err, tableDefs);
+		});
 	}
 
 	this.all = function(filterFields, filterAncestor, table, fields, cbResult) {
@@ -272,7 +291,7 @@ function Model(dbFile)
 
 			stmt.finalize(function() { 
 				if (err == null && modCount != rows.length) {
-					err = new Error("G6_MODEL_ERROR: update row count mismatch");
+					err = new Error("G6_MODEL_ERROR: update row count mismatch. Expected " + rows.length + " got " + modCount);
 				}
 
 				if (err == null) {

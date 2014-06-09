@@ -27,7 +27,7 @@ function XDocument(docFile)
 	var FIELD_TO		= "to";
 
 	this.doc = null;
-	var statusFile = docFile + ".post";
+	var statusFile = docFile + ".txt";
 
 	this.post = function(db, cbDone) {
 		fs.writeFileSync(statusFile, "Posting to " + db.dbFile)

@@ -16,13 +16,12 @@ global.log = bunyan.createLogger({
 
 var mm = require('./rest/model.js');
 var cc = require('./rest/controller.js');
-var xdata = require('./xdata/controller.js');
 
 var app = express();
 
 var log = global.log.child({'mod': 'g6.server.js'});
 
-var REST_ROOTDIR = 'projects';
+var PROJECT_ROOTDIR = 'projects';
 
 
 function routeBaseUrl(dbUrls) {
@@ -30,7 +29,7 @@ function routeBaseUrl(dbUrls) {
 	var baseDirs = _.uniq(_.map(dbUrls, function(url) {
 		return url.substring(0, url.indexOf('/', 1));
 	}));
-	app.get('/rest', function(req, res) {
+	app.get('/', function(req, res) {
 		log.info(req.method + ' ' + req.url);
 		res.send({
 			'databases': dbUrls,
@@ -63,12 +62,10 @@ function loadDirectoryTree(rootDir) {
 						dbFile = dir + '/' + f;					
 						var model = new mm.Model(dbFile);
 						log.info('Serving ' + model.dbFile);
-						var restController = new cc.Controller(app, '/rest' + dbPath, model);
-						var xDocController = new xdata.Controller(app, '/upload' + dbPath, dbFile);
+						var restController = new cc.Controller(app, dbPath, model);
 
 						model.init(function() { 
 							restController.init(); 
-							xDocController.init();
 						});
 
 						dbUrls.push(dbPath);
@@ -86,7 +83,7 @@ app.listen(3000);
 
 app.use(bodyParser()); //json parsing 
 
-loadDirectoryTree(REST_ROOTDIR);
+loadDirectoryTree(PROJECT_ROOTDIR);
 
 app.use(function(err, req, res, next){
 	log.error(err);

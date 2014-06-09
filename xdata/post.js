@@ -6,7 +6,7 @@ global.log = bunyan.createLogger({
 	'level': 'info'
 });
 
-var g6 = require('../rest/model');
+var g6 = require('../app/rest/model');
 var xdata = require('./model');
  
 if (process.argv.length < 4) {

@@ -16,8 +16,9 @@ describe('Model', function() {
 	});	
 
 	after(function(done) {
+		//console.log("DELETING ALL ROWS id > 2");
 		var db = new sqlite3.Database(dbFile);
-		db.run("DELETE FROM borehole WHERE name like 'test%'", done);
+		db.run("DELETE FROM borehole WHERE id > 1", done);
 		db.close();
 	});
 
@@ -35,9 +36,11 @@ describe('Model', function() {
 
 		var defs;
 		before(function(done) {
-			defs = model.defs();
+			defs = model.defs(function(err, result) {
+				defs = result;
+				done();
+			});
 			//console.log(defs);
-			done();
 		});
 
 		it('test.sqlite has 6 tables', function() {
@@ -86,7 +89,7 @@ describe('Model', function() {
 			var rows = [];
 			var row = {'name': 'test', 'user': 'mocha', 'date': '2000-01-01', 'lat': 123.45, 'lon': 67.890, 'desc': 'a unit-test pit' };
 
-			for(var i = 3;i < 100; ++i) {
+			for(var i = 1;i < 100; ++i) {
 				var r = _.clone(row);
 				if ( i < 10)  r['name'] = 'test00' + i;
 				else r['name'] = 'test0' + i;

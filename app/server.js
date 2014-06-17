@@ -23,12 +23,16 @@ var log = global.log.child({'mod': 'g6.server.js'});
 
 var PROJECT_ROOTDIR = 'projects';
 
+var dbUrls;
+var restControllers;
 
-function routeBaseUrl(dbUrls) {
-	//serve the dbUrls found.
+function routeBaseUrl() {
+
+	//list all dbUrls found.
 	var baseDirs = _.uniq(_.map(dbUrls, function(url) {
 		return url.substring(0, url.indexOf('/', 1));
 	}));
+
 	app.get('/', function(req, res) {
 		log.info(req.method + ' ' + req.url);
 		res.send({
@@ -36,18 +40,49 @@ function routeBaseUrl(dbUrls) {
 			'dirs': baseDirs	
 		});
 	});
+
+	_.each(baseDirs, function(dir) {
+		var dirUrls = _.filter(dbUrls, function(dbUrl) {
+			return dbUrl.indexOf(dir) == 0;
+		});
+
+		var getDirHandler = function(req, res) {
+			log.info(req.method + " " + req.url);
+
+			var dirDefs = {};
+
+			_.each(dirUrls, function(url) {
+				var c = restControllers[url];
+				c.model.defs(function(err, tableDefs) {
+					_.each(tableDefs, function(t) {
+						delete t.fields;
+					});
+					dirDefs[url] = tableDefs;
+					if (_.keys(dirDefs).length == dirUrls.length) {
+						res.send(dirDefs);
+					}
+				});
+			});
+		}
+		
+		app.get(dir, getDirHandler);	
+		app.get(dir + '.dir', getDirHandler);	
+
+	});
+
 }
 
 function loadDirectoryTree(rootDir) {
 	log.info('Loading directory tree. Root dir ./' + rootDir);
 
-	var dbUrls = [];
+	dbUrls = [];
+	restControllers = {};
 
 	dir.subdirs(rootDir, function(err, subDirs) {
 		log.info('found ' + subDirs.length + ' subdirs.');
 
 		var afterScanDirs = _.after(subDirs.length, function() {
-			routeBaseUrl(dbUrls);
+			routeBaseUrl();
 		});
 
 		subDirs.forEach( function(dir) {
@@ -62,13 +97,14 @@ function loadDirectoryTree(rootDir) {
 						dbFile = dir + '/' + f;					
 						var model = new mm.Model(dbFile);
 						log.info('Serving ' + model.dbFile);
-						var restController = new cc.Controller(app, dbPath, model);
+						var controller = new cc.Controller(app, dbPath, model);
 
 						model.init(function() { 
-							restController.init(); 
+							controller.init(); 
 						});
 
 						dbUrls.push(dbPath);
+						restControllers[dbPath] = controller;
 					}
 				});
 				afterScanDirs();

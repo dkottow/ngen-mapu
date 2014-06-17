@@ -36,8 +36,12 @@ function XDocument(docFile)
 
 		//console.log(map);
 
+		//TODO will currently only process the first entity
 		_.each(xpath.select("//xData/entityList/entity", this.doc)
 			, function(entity) {
+
+			fs.appendFileSync(statusFile, "\nReading entity " 
+							+ entity.getAttribute("name")); 
 
 			var metaRows = [ readMetaTopics(entity, db, map) ];
 			var singleRows = readSingleTopics(entity, db, map);
@@ -77,7 +81,7 @@ function XDocument(docFile)
 		var cbAfterTables = _.after(dstTables.length, cbNext);	
 
 		_.each(dstTables, function(table) {
-			console.log("collecting rows of " + table.name);
+			//console.log("collecting rows of " + table.name);
 			var rowGroups = _.filter(srcRows, function(r) {
 				return _.contains(_.keys(r), table.name);
 			});
@@ -102,8 +106,8 @@ function XDocument(docFile)
 			});
 			
 			//log into .post logfile
-			fs.appendFileSync(statusFile, "\nInserting into " + table.name + ". "); 
-			fs.appendFileSync(statusFile, tableRows.length + " rows.");
+			fs.appendFileSync(statusFile, "\nInserting into " + table.name
+										+ " " + tableRows.length + " rows.");
 
 			db.insert(table, tableRows, function(err, ids) {
 
@@ -197,7 +201,7 @@ function XDocument(docFile)
 				});
 			}
 		});
-		console.log(util.inspect(metaRows, { depth : 3}));
+		//console.log(util.inspect(metaRows, { depth : 3}));
 		return metaRows;
 	}
 
@@ -208,8 +212,9 @@ function XDocument(docFile)
 			, function(topic) {
 			
 			var tt = topic.getAttribute("table");
-			var fieldNodeMap = null;
+			fs.appendFileSync(statusFile, "\nReading topic " + tt); 
 
+			var fieldNodeMap = null;
 			if (mapping[et][tt]) {
 
 				_.each(xpath.select("support", topic), function(srcSupport) {
@@ -219,7 +224,7 @@ function XDocument(docFile)
 						var pos = xpath.select("position/text()"
 									, srcSupport)
 									.toString().split("|");
-						console.log(pos);
+						//console.log(pos);
 					}
 					
 					var reg = xpath.select("register", srcSupport)[0];

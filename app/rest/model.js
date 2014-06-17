@@ -55,33 +55,43 @@ function Model(dbFile)
 		var tableDefs = _.map(this.tables, function(table) {
 			//replace parent, subtypes table refs with table names
 			var t = _.clone(table);
-			t["fields"] = _.clone(t["fields"]);
 			if (t['parent']) t['parent'] = t['parent']['name'];
 			if (t['supertype']) t['supertype'] = t['supertype']['name'];
-			if (t['subtypes']) {
-				var subtypes = t['subtypes'];
-				t['subtypes'] = []
-				_.each(subtypes, function(ct) {
-					t['subtypes'].push(ct['name']);
-				});
-			}
+
+			var subtypes = t.subtypes;
+			if (t.subtypes && t.subtypes.length > 0) t.subtypes = [];
+			else delete(t.subtypes);
+			_.each(subtypes, function(ct) {
+				t.subtypes.push(ct.name);
+			});
 			
-			var children = t['children'];
-			t['children'] = [];
+			var children = t.children;
+			if (t.children && t.children.length > 0) t.children = [];
+			else delete(t.children);
 			_.each(children, function(ct) {
-				t['children'].push(ct['name']);
+				t.children.push(ct.name);
 			});
 
+
+			t["fields"] = _.clone(t["fields"]);
 
 			if (t["supertype"]) {
 				//describe virtual <supertype>_sid field
 
 				var sid_order = t["fields"]["id"]["order"] + 1;
-				_.each(t["fields"], function(f) {
-					if (f["order"] >= sid_order) {
-						f["order"] = f["order"] + 1;
-					}
+
+				var occup = _.find(t["fields"], function(f) {
+					return f["order"] == sid_order;
 				});
+
+				if (occup) {
+					//sid field place is taken, make space.
+					_.each(t["fields"], function(f) {
+						if (f["order"] >= sid_order) {
+							f["order"] = f["order"] + 1;
+						}
+					});
+				}
 
 				var sid = t["supertype"] + "_sid";
 				t["fields"][sid] = { 
@@ -99,20 +109,18 @@ function Model(dbFile)
 		tableDefs = _.object(_.pluck(tableDefs, 'name'), tableDefs);
 
 		//add row counts
-		var sql = _.reduce(_.keys(this.tables), function(str, tn) {
-			return str + 'SELECT ' + "'" + tn + "'" + ' AS table_name' 
+		var sql = _.map(_.keys(this.tables), function(tn) {
+			return 'SELECT ' + "'" + tn + "'" + ' AS table_name' 
 					+ ', COUNT(*) AS count'
-					+ ' FROM "' + tn + '" UNION ALL ';
-		}, "");
-
-
-		sql = sql.substring(0, sql.length - 'UNION ALL '.length);
+					+ ' FROM "' + tn + '"';
+		});
+		sql = sql.join(' UNION ALL ');
 		//console.dir(sql);
 
 		var db = new sqlite3.cached.Database(this.dbFile);
 		db.all(sql, function(err, rows) {
 			if (err) {
-				log.warn("model.defs() failed.");	
+				log.warn("model.defs() failed. " + err);	
 			}
 			_.each(rows, function(r) {
 				tableDefs[r.table_name].count = r.count;
@@ -129,7 +137,7 @@ function Model(dbFile)
 
 		db.all(sql['query'], sql['params'], function(err, rows) {
 			if (err) {
-				log.warn("model.all() failed.");	
+				log.warn("model.all() failed. " + err);	
 			}
 			//console.dir(rows);
 			if (table["supertype"]) {
@@ -149,7 +157,7 @@ function Model(dbFile)
 
 		db.get(sql['query'], sql['params'], function(err, row) {
 			if (err) {
-				log.warn("model.get() failed.");	
+				log.warn("model.get() failed. " + err);	
 			}
 
 			if (table["supertype"]) {
@@ -185,7 +193,7 @@ function Model(dbFile)
 		});
 
 		if (table["supertype"]) {
-			//exception do insert with id = supertype.id when rows are subtype
+			//exception do insert with id = supertype.id when rows are a subtype
 			fieldNames.push('id');
 			_.each(rows, function(r) {
 				r['id'] = r[table["supertype"]["name"] + "_sid"];
@@ -226,8 +234,7 @@ function Model(dbFile)
 				if (err == null) {
 					db.run("COMMIT TRANSACTION");
 				} else {
-					log.debug(err);
-					log.warn("Model.insert() failed. Rollback.");
+					log.warn("Model.insert() failed. Rollback. " + err);
 					db.run("ROLLBACK TRANSACTION");
 				}
 				cbDone(err, ids); 
@@ -298,7 +305,7 @@ function Model(dbFile)
 					db.run("COMMIT TRANSACTION");
 
 				} else {
-					log.warn("Model.update() failed. Rollback.");
+					log.warn("Model.update() failed. Rollback. " + err);
 					db.run("ROLLBACK TRANSACTION");
 				}
 				cbDone(err, modCount); 
@@ -350,7 +357,7 @@ function Model(dbFile)
 				if (err == null) {
 					db.run("COMMIT TRANSACTION");
 				} else {
-					log.warn("Model.delete() failed. Rollback.");
+					log.warn("Model.delete() failed. Rollback. " + err);
 					db.run("ROLLBACK TRANSACTION");
 				}
 				cbDone(err, delCount); 
@@ -367,7 +374,7 @@ function Model(dbFile)
 			db.all("SELECT name, parent, custom FROM _tabledef_ WHERE name IN (SELECT name FROM sqlite_master WHERE type = 'table')"
 				, function(err ,rows) {
 					if (err) { 
-						log.error("Get table defs failed.");
+						log.error("Get table defs failed. " + err);
 
 					} else {
 					//console.log(rows);
@@ -399,7 +406,7 @@ function Model(dbFile)
 			db.all("SELECT name, table_name, ordering, domain FROM _fielddef_ WHERE table_name IN (SELECT name FROM sqlite_master WHERE type = 'table')"
 				, function(err ,rows) {
 					if (err) { 
-						log.error("Get field defs failed.");
+						log.error("Get field defs failed. " + err);
 						cbAfter(err);
 
 					} else {
@@ -469,7 +476,7 @@ function Model(dbFile)
  * buildTableTree constructs a description of tables in memory 
  *
  * input: tables array that describe each table as JSON
- * output: none, the same tables array is
+ * output: the same tables array is
  *		   modified having a doubly-linked tree structure
  *
  * a table can have one parent table
@@ -522,7 +529,7 @@ function buildTableTree(tables) {
 			return t['supertype'] && t['supertype']['name'] == table['name'];
 		});
 	});
-
+	return tables;
 }
 
 function buildSelectSql(filterFields, filterAncestor, table, fields) {

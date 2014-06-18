@@ -66,7 +66,7 @@ function routeBaseUrl() {
 		}
 		
 		app.get(dir, getDirHandler);	
-		app.get(dir + '.dir', getDirHandler);	
+		app.get(dir + '.prj', getDirHandler);	
 
 	});
 

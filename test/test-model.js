@@ -3,8 +3,11 @@
 */
 var assert = require('assert')
 	, _ = require('underscore')
+	, util = require('util')
 	, sqlite3 = require('sqlite3').verbose()
 	, Model = require('../app/rest/model').Model;
+	
+var isDescendant = require('../app/rest/model').isDescendant;
 
 
 describe('Model', function() {
@@ -57,6 +60,31 @@ describe('Model', function() {
 		});
 
 	});
+
+  	describe('isDescendant()', function() {		
+		it('descendant from borehole', function() {
+			var d = model.tableMap()['fracture'];
+			var t = model.tableMap()['borehole'];
+			var result = isDescendant(d, t, 5);
+console.log("Descendant " + d.name + " from " + t.name + " is " + result);	
+		});
+	});
+
+  	describe('getDeep()', function() {		
+		it('get borehole deep', function(done) {
+			model.getDeep(2, {'id': 1}, model.tableMap()['borehole'], '*'
+							, function(err, result) {
+
+console.log("******* done deep... *******")
+console.log(util.inspect(result, {depth: 5}));				
+console.log("******* ...done deep *******")
+
+done();
+			});
+		});
+	});
+
+
 
   	describe('all()', function() {		
 

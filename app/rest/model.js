@@ -80,11 +80,11 @@ function Model(dbFile)
 
 				var sid_order = t["fields"]["id"]["order"] + 1;
 
-				var occup = _.find(t["fields"], function(f) {
+				var sid_order_taken = _.find(t["fields"], function(f) {
 					return f["order"] == sid_order;
 				});
 
-				if (occup) {
+				if (sid_order_taken) {
 					//sid field place is taken, make space.
 					_.each(t["fields"], function(f) {
 						if (f["order"] >= sid_order) {
@@ -130,8 +130,10 @@ function Model(dbFile)
 		});
 	}
 
-	this.all = function(filterFields, filterAncestor, table, fields, cbResult) {
-		var sql = buildSelectSql(filterFields, filterAncestor, table, fields);
+	this.all = function(filterFields, filterAncestor, table, resultFields, cbResult) {
+		log.debug(resultFields + " from " + table.name);
+		log.debug("filtered by " + util.inspect(filterAncestor));
+		var sql = buildSelectSql(filterFields, filterAncestor, table, resultFields);
 
 		var db = new sqlite3.cached.Database(this.dbFile);
 
@@ -150,8 +152,8 @@ function Model(dbFile)
 		
 	}
 
-	this.get = function(filterFields, filterAncestor, table, fields, cbResult) {
-		var sql = buildSelectSql(filterFields, filterAncestor, table, fields);
+	this.get = function(filterFields, filterAncestor, table, resultFields, cbResult) {
+		var sql = buildSelectSql(filterFields, filterAncestor, table, resultFields);
 
 		var db = new sqlite3.cached.Database(this.dbFile);
 
@@ -169,14 +171,72 @@ function Model(dbFile)
 		});
 	}
 
-	this.getDeep = function(depth, filterFields, table, fields, cbResult) {
+	this.getDeep = function(depth, filterFields, table, resultFields, cbResult) {
 		
-				//get top-level row	
-				this.get(filterFields, {}, table, fields, 
-							function(err, result) { 
+		if (resultFields != '*' &&  ! _.contains('id', resultFields)) {
+			resultFields.push('id');
+		}	
+
+		var result = {};
+	
+		var tables = _.filter(me.tables, function(t) {
+			return isDescendant(t, table, depth);
+		});
+
+		//get top-level row	
+		this.get(filterFields, {}, table, resultFields, 
+					function(err, row) { 
+
+			result[table.name] = [row];
+
+			if (tables.length > 0) {
+
+				var filterAncestor = {};
+				filterAncestor[table.name] = row.id;
+
+				var allDone = _.after(tables.length, function(err, result) {
+					buildRowTree(table, result);
+					cbResult(err, result[table.name]);
 				});
-				//TODO work recursively into children until depth
-				while (depth--) {}
+
+				_.each(tables, function(t) {
+					me.all({}, filterAncestor, t, '*', function(err, rows) {
+						result[t.name] = rows;
+						allDone(err, result);
+					});
+				});
+			}
+
+		});
+
+	}
+
+	function buildRowTree(rootTable, rowsTables) {
+		_.each(rowsTables, function(rows, tn) {
+			var into, fld; 
+			if (me.tables[tn].parent) {
+				into = me.tables[tn].parent.name;
+				fld = "_pid";
+			} else if (me.tables[tn].supertype) {
+				into = me.tables[tn].supertype.name;
+				fld = "_sid";
+			}
+			//console.log(tn + " -> " + into + fld);
+			if (into && rootTable.name != tn) {				
+				_.each(rows, function(row) {
+					var parentRow = _.find(rowsTables[into], function(pr) {
+						return pr.id == row[into + fld];
+					});					
+					//console.log(row + " parent " + util.inspect(parentRow));					
+					if (me.tables[tn].parent) {
+						parentRow[tn] = parentRow[tn] || [];
+						parentRow[tn].push(row);
+					} else if (me.tables[tn].supertype) {
+						parentRow[tn] = row;
+					}
+				});
+			}
+		});
 	}
 
 	this.insert = function(table, rows, cbDone) {
@@ -544,7 +604,7 @@ function buildSelectSql(filterFields, filterAncestor, table, fields) {
 		});
 	}
 
-	assert(_.isObject(fields), "arg 'fields' is object");
+	assert(_.isArray(fields), "arg 'fields' is array");
 
 	var sql = "SELECT " + fields.join(",") + " FROM " + table['name'];
 
@@ -601,5 +661,28 @@ function buildSelectSql(filterFields, filterAncestor, table, fields) {
 	return {'query': sql, 'params': sql_params};
 }
 
-exports.Model = Model;
+function isDescendant(table, parentTable, depth) {
 
+	if (depth > 0) {
+
+		if ( _.contains(parentTable.children, table)
+		  || _.contains(parentTable.subtypes, table)) 
+		{
+			return true;
+		}
+		for(var i = 0;i < parentTable.children.length; ++i) {
+			if (isDescendant(table, parentTable.children[i], depth - 1))
+				return true;
+		}
+		for(var i = 0;i < parentTable.subtypes.length; ++i) {
+			if (isDescendant(table, parentTable.subtypes[i], depth - 1))
+				return true;
+		}
+	}
+	
+	return false;
+}
+
+
+exports.Model = Model;
+exports.isDescendant = isDescendant;

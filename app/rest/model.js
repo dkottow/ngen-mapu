@@ -196,7 +196,9 @@ function Model(dbFile)
 
 				var allDone = _.after(tables.length, function(err, result) {
 					buildRowTree(table, result);
-					cbResult(err, result[table.name]);
+					var obj = {};
+					obj[table.name] = result[table.name][0]; 
+					cbResult(err, obj);
 				});
 
 				_.each(tables, function(t) {

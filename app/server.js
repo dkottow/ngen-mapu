@@ -14,8 +14,8 @@ global.log = bunyan.createLogger({
 	'level': 'info'
 });
 
-var mm = require('./rest/model.js');
-var cc = require('./rest/controller.js');
+var mm = require('./model.js');
+var cc = require('./controller.js');
 
 var app = express();
 

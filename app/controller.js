@@ -70,6 +70,27 @@ function Controller(app, restBase, model)
 			me.app.get(url, getRowsHandler);	
 			me.app.get(url + rowsExt, getRowsHandler);	
 
+			//select one specific 'root' row
+			//and include recursively all children / supertypes 
+			//upto depth levels  
+			var getDeepHandler = function(req, res) {
+				log.info(req.method + " " + req.url);
+				var id = req.param('id');
+				var depth = req.query['depth'] || 3;
+				me.model.getDeep(depth, {'id': id}, table, '*'
+								, function(err, result) { 
+					if (err) {
+						log.warn(err);
+						res.send(400, err.message);
+					} else {
+						log.debug(result);
+						res.send(result); 
+					}
+				});
+			}		
+			me.app.get(url + "/:id", getDeepHandler);
+			me.app.get(url + rowsExt + "/:id", getDeepHandler);
+
 			//insert a row into table
 			var postRowHandler = function(req, res) {
 				log.info(req.method + " " + req.url);

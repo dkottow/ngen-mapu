@@ -189,7 +189,7 @@ function Model(dbFile)
 
 			result[table.name] = [row];
 
-			if (tables.length > 0) {
+			if (tables.length > 0 && !err) {
 
 				var filterAncestor = {};
 				filterAncestor[table.name] = row.id;
@@ -207,6 +207,8 @@ function Model(dbFile)
 						allDone(err, result);
 					});
 				});
+			} else {
+				cbResult(err, result);
 			}
 
 		});

@@ -83,6 +83,9 @@ function Controller(app, restBase, model)
 						log.warn(err);
 						res.send(400, err.message);
 					} else {
+						if (req.query['pretty']) {
+							result = JSON.stringify(result, null, '\t');
+						}
 						log.debug(result);
 						res.send(result); 
 					}

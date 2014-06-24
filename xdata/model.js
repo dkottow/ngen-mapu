@@ -23,6 +23,7 @@ function XDocument(docFile)
 
 	var FIELD_USER		= "user";
 	var FIELD_DATE		= "date";
+	var FIELD_NAME		= "name";
 	var FIELD_FROM		= "from";
 	var FIELD_TO		= "to";
 
@@ -156,7 +157,9 @@ function XDocument(docFile)
 		} else if (field.type == "DATETIME") {
 			return value;
 			//return Date.parse(value); ??
-		}
+		} else if (field.domain && field.domain['multichoice']) {
+			return JSON.stringify(value.split(','));
+		} 
 		return value;
 	}
 
@@ -172,7 +175,7 @@ function XDocument(docFile)
 
 				var support = xpath.select("support", topic)[0];
 
-				_.each(mapping[et][tt], function(fields, tableName) {
+				_.each(mapping[et][tt], function(mapFields, tableName) {
 
 					var tableDef = db.tableMap()[tableName];
 
@@ -183,18 +186,23 @@ function XDocument(docFile)
 					row[FIELD_DATE] = xpath.select("logDate/text()"
 										, support).toString();
 
-					_.map(fields, function(xField, tField) {
+					if (mapFields[FIELD_NAME] === null) {
+						row[FIELD_NAME] = entity.getAttribute("name"); 
+					}
 
-						var xText = xpath.select("register/field[@name='"
-										+ xField + "']/text()"
-										, support).toString();
+					_.map(mapFields, function(xField, tField) {
+						if (_.isString(xField)) {
 
-						row[tField] = convert(xText, tableDef.fields[tField]);
+							var xText = xpath.select("register/field[@name='"
+											+ xField + "']/text()"
+											, support).toString();
+	
+							row[tField] = convert(xText, tableDef.fields[tField]);
 
-						if (tableDef.supertype) {
-							row[tableDef.supertype.name + "_sid"] = 0;
+							if (tableDef.supertype) {
+								row[tableDef.supertype.name + "_sid"] = 0;
+							}
 						}
-
 					});
 
 					metaRows[tableName] = row;
@@ -261,11 +269,13 @@ function XDocument(docFile)
 								= xpath.select("logDate/text()"
 									, srcSupport).toString();
 
-							if (_.has(mapFields, FIELD_FROM)) {
+							//if (_.has(mapFields, FIELD_FROM)) {
+							if (mapFields[FIELD_FROM] === null) {
 								row[FIELD_FROM] = convert(pos[0]
 												, tableDef.fields[FIELD_FROM]); 
 							}
-							if (_.has(mapFields, FIELD_TO)) {
+							//if (_.has(mapFields, FIELD_TO)) {
+							if (mapFields[FIELD_TO] === null) {
 								row[FIELD_TO] = parseFloat(pos[1]
 												, tableDef.fields[FIELD_TO]); 
 							}

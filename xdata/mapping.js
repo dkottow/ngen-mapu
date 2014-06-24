@@ -21,7 +21,8 @@ var mapping = {
 		  }
 	  , "MetaPerforacion"
 		: { "MetaBorehole"
-		  : {   "Coord_collar" : "Coord_collar"
+		  : {   "name": null //will be taken from entity name 
+			  ,	"Coord_collar" : "Coord_collar"
 			  , "Datum" : "Datum" 
 			  , "Azimuth" : "Azimut" 
 			  , "Inclination" : "Inclinacion" 
@@ -36,7 +37,7 @@ var mapping = {
 	  , "Descripcion_geologica"  
 		: { "Material"
 		  : {   
-				"from" : null
+				"from" : null //will be taken from support position
 			  ,	"to" : null	
 			  ,	"Material" : "Tipo_material"
 			  , "Bad_interval" : "Tramo_Malo"	

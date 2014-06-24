@@ -5,9 +5,9 @@ var assert = require('assert')
 	, _ = require('underscore')
 	, util = require('util')
 	, sqlite3 = require('sqlite3').verbose()
-	, Model = require('../app/rest/model').Model;
+	, Model = require('../app/model').Model;
 	
-var isDescendant = require('../app/rest/model').isDescendant;
+var isDescendant = require('../app/model').isDescendant;
 
 
 describe('Model', function() {

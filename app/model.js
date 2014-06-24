@@ -147,6 +147,15 @@ function Model(dbFile)
 					r[table["supertype"]["name"] + "_sid"] = r['id'];
 				});
 			}
+			//handle mutlichoice json array
+			var mcFields = _.filter(table["fields"], function(f) {
+				return f["domain"] && f["domain"]["multichoice"];
+			});
+			_.each(mcFields, function(f) {
+				_.each(rows, function(r) {
+					r[f.name] = JSON.parse(r[f.name]);
+				});
+			});
 			cbResult(err, rows);
 		});
 		
@@ -165,6 +174,13 @@ function Model(dbFile)
 			if (table["supertype"]) {
 				row[table["supertype"]["name"] + "_sid"] = row['id'];
 			}
+			//handle mutlichoice json array
+			var mcFields = _.filter(table["fields"], function(f) {
+				return f["domain"] && f["domain"]["multichoice"];
+			});
+			_.each(mcFields, function(f) {
+				row[f.name] = JSON.parse(row[f.name]);
+			});
 
 			//console.dir(row);
 			cbResult(err, row);

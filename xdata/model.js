@@ -31,7 +31,7 @@ function XDocument(docFile)
 	var statusFile = docFile + ".txt";
 
 	this.post = function(db, cbDone) {
-		fs.writeFileSync(statusFile, "Posting to " + db.dbFile)
+		fs.appendFileSync(statusFile, "\nPosting to " + db.dbFile)
 		//console.log(docFile + " - " + db.dbFile);
 		var map = mapping.get(this.doc, db.dbFile);
 

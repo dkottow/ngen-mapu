@@ -147,7 +147,8 @@ function Model(dbFile)
 					r[table["supertype"]["name"] + "_sid"] = r['id'];
 				});
 			}
-			//handle mutlichoice json array
+
+			//handle multichoice json array
 			var mcFields = _.filter(table["fields"], function(f) {
 				return f["domain"] && f["domain"]["multichoice"];
 			});
@@ -156,6 +157,7 @@ function Model(dbFile)
 					r[f.name] = JSON.parse(r[f.name]);
 				});
 			});
+
 			cbResult(err, rows);
 		});
 		
@@ -174,6 +176,7 @@ function Model(dbFile)
 			if (table["supertype"]) {
 				row[table["supertype"]["name"] + "_sid"] = row['id'];
 			}
+
 			//handle mutlichoice json array
 			var mcFields = _.filter(table["fields"], function(f) {
 				return f["domain"] && f["domain"]["multichoice"];
@@ -272,6 +275,7 @@ function Model(dbFile)
 				return _.has(table['fields'], fn) && fn != 'id'; 
 		});
 
+
 		if (table["supertype"]) {
 			//exception do insert with id = supertype.id when rows are a subtype
 			fieldNames.push('id');
@@ -279,6 +283,11 @@ function Model(dbFile)
 				r['id'] = r[table["supertype"]["name"] + "_sid"];
 			});
 		}
+
+		//handle multichoice json array
+		var mcFieldNames = _.filter(fieldNames, function(fn) {
+			return table.fields[fn]["domain"] && table.fields[fn]["domain"]["multichoice"];
+		});
 
 		var fieldParams = _.times(fieldNames.length, function(fn) { return "?"; });
 
@@ -301,6 +310,12 @@ function Model(dbFile)
 
 			_.each(rows, function(r) {
 				if (err == null) {					
+
+					//handle multichoice json array
+					_.each(mcFieldNames, function(fn) {
+						r[fn] = JSON.stringify(r[fn]);
+					});
+
 					var params = _.map(fieldNames, function(fn) { return r[fn]; });
 					//console.log(params);
 					stmt.run(params, function(e) { 
@@ -344,6 +359,9 @@ function Model(dbFile)
 			});
 		}
 
+		var mcFieldNames = _.filter(fieldNames, function(fn) {
+			return table.fields[fn]["domain"] && table.fields[fn]["domain"]["multichoice"];
+		});
 
 		var sql = "UPDATE " + table['name'] 
 			+ ' SET "' + fieldNames.join('" = ?, "') + '" = ?'
@@ -363,6 +381,11 @@ function Model(dbFile)
 			});
 
 			_.each(rows, function(r) {
+
+				//handle multichoice json array
+				_.each(mcFieldNames, function(fn) {
+					r[fn] = JSON.stringify(r[fn]);
+				});
 
 				if (err == null) {					
 					var params = _.map(fieldNames, function(fn) { return r[fn]; });

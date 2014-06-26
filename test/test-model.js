@@ -74,12 +74,13 @@ console.log("Descendant " + d.name + " from " + t.name + " is " + result);
 		it('get borehole deep', function(done) {
 			model.getDeep(2, {'id': 1}, model.tableMap()['borehole'], '*'
 							, function(err, result) {
+				console.log("deep rc " + err);
 
-console.log("******* done deep... *******")
-console.log(util.inspect(result, {depth: 5}));				
-console.log("******* ...done deep *******")
+//console.log("******* done deep... *******")
+//console.log(util.inspect(result, {depth: 5}));				
+//console.log("******* ...done deep *******")
 
-done();
+				done();
 			});
 		});
 	});

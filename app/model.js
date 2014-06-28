@@ -137,6 +137,11 @@ function Model(dbFile)
 
 		var db = new sqlite3.cached.Database(this.dbFile);
 
+		//handle multichoice json array
+		var mcFields = _.filter(table["fields"], function(f) {
+			return f["domain"] && f["domain"]["multichoice"];
+		});
+
 		db.all(sql['query'], sql['params'], function(err, rows) {
 			if (err) {
 				log.warn("model.all() failed. " + err);	
@@ -149,14 +154,15 @@ function Model(dbFile)
 			}
 
 			//handle multichoice json array
-			var mcFields = _.filter(table["fields"], function(f) {
-				return f["domain"] && f["domain"]["multichoice"];
-			});
-			_.each(mcFields, function(f) {
-				_.each(rows, function(r) {
-					r[f.name] = JSON.parse(r[f.name]);
+			try {
+				_.each(mcFields, function(f) {
+					_.each(rows, function(r) {
+						r[f.name] = JSON.parse(r[f.name]);
+					});
 				});
-			});
+			} catch(e) {
+				err = new Error("G6_MODEL_ERROR: all() failed. Error parsing JSON. " + e);
+			}
 
 			cbResult(err, rows);
 		});
@@ -181,9 +187,15 @@ function Model(dbFile)
 			var mcFields = _.filter(table["fields"], function(f) {
 				return f["domain"] && f["domain"]["multichoice"];
 			});
-			_.each(mcFields, function(f) {
-				row[f.name] = JSON.parse(row[f.name]);
-			});
+
+			try {
+				_.each(mcFields, function(f) {
+					row[f.name] = JSON.parse(row[f.name]);
+				});
+			} catch(e) {
+				err = new Error("G6_MODEL_ERROR: get() failed. Error parsing JSON. " + e);
+			}
+
 
 			//console.dir(row);
 			cbResult(err, row);

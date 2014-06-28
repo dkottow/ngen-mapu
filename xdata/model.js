@@ -158,7 +158,7 @@ function XDocument(docFile)
 			return value;
 			//return Date.parse(value); ??
 		} else if (field.domain && field.domain['multichoice']) {
-			return JSON.stringify(value.split(','));
+			return value.split(',');
 		} 
 		return value;
 	}

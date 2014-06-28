@@ -286,7 +286,8 @@ function Model(dbFile)
 
 		//handle multichoice json array
 		var mcFieldNames = _.filter(fieldNames, function(fn) {
-			return table.fields[fn]["domain"] && table.fields[fn]["domain"]["multichoice"];
+			return table.fields[fn]["domain"] 
+				&& table.fields[fn]["domain"]["multichoice"];
 		});
 
 		var fieldParams = _.times(fieldNames.length, function(fn) { return "?"; });
@@ -360,7 +361,8 @@ function Model(dbFile)
 		}
 
 		var mcFieldNames = _.filter(fieldNames, function(fn) {
-			return table.fields[fn]["domain"] && table.fields[fn]["domain"]["multichoice"];
+			return table.fields[fn]["domain"] 
+				&& table.fields[fn]["domain"]["multichoice"];
 		});
 
 		var sql = "UPDATE " + table['name'] 
@@ -469,7 +471,6 @@ function Model(dbFile)
 		});
 		db.close();
 	}
-
 
 	function initTableDefs(db, err, cbAfter) {
 		if (err == null) {

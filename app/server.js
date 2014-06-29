@@ -26,14 +26,14 @@ var PROJECT_ROOTDIR = 'projects';
 var dbUrls;
 var restControllers;
 
-function routeBaseUrl() {
+function routeBaseUrl(router) {
 
 	//list all dbUrls found.
 	var baseDirs = _.uniq(_.map(dbUrls, function(url) {
 		return url.substring(0, url.indexOf('/', 1));
 	}));
 
-	app.get('/', function(req, res) {
+	router.get('/', function(req, res) {
 		log.info(req.method + ' ' + req.url);
 		res.send({
 			'databases': dbUrls,
@@ -65,24 +65,26 @@ function routeBaseUrl() {
 			});
 		}
 		
-		app.get(dir, getDirHandler);	
-		app.get(dir + '.prj', getDirHandler);	
+		router.get(dir, getDirHandler);	
+		router.get(dir + '.prj', getDirHandler);	
 
 	});
 
 }
 
-function loadDirectoryTree(rootDir) {
+function serveDirectoryTree(rootDir) {
 	log.info('Loading directory tree. Root dir ./' + rootDir);
 
 	dbUrls = [];
 	restControllers = {};
+	var router = new express.Router();
 
 	dir.subdirs(rootDir, function(err, subDirs) {
 		log.info('found ' + subDirs.length + ' subdirs.');
 
 		var afterScanDirs = _.after(subDirs.length, function() {
-			routeBaseUrl();
+			routeBaseUrl(router);
+			app.use('/', router);
 		});
 
 		subDirs.forEach( function(dir) {
@@ -97,7 +99,7 @@ function loadDirectoryTree(rootDir) {
 						dbFile = dir + '/' + f;					
 						var model = new mm.Model(dbFile);
 						log.info('Serving ' + model.dbFile);
-						var controller = new cc.Controller(app, dbPath, model);
+						var controller = new cc.Controller(router, dbPath, model);
 
 						model.init(function() { 
 							controller.init(); 
@@ -119,7 +121,20 @@ app.listen(3000);
 
 app.use(bodyParser()); //json parsing 
 
-loadDirectoryTree(PROJECT_ROOTDIR);
+serveDirectoryTree(PROJECT_ROOTDIR);
+
+app.get('/admin/reset', function(req, res) {
+
+	for(var i = 0;i < app._router.stack.length; ++i) {
+		var route = app._router.stack[i];
+		if (route.handle.name == 'router') {
+			app._router.stack.splice(i, 1);
+			serveDirectoryTree(PROJECT_ROOTDIR);
+			break;
+		}
+	}
+	res.send('done.');
+});
 
 app.use(function(err, req, res, next){
 	log.error(err);

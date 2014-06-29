@@ -2,9 +2,9 @@ var _ = require('underscore');
 
 var log = global.log.child({'mod': 'g6.controller.js'});
 
-function Controller(app, restBase, model)
+function Controller(router, restBase, model)
 {	
-	this.app = app;
+	this.router = router;
 	this.base = restBase;
 	this.model = model;
 	//this.seed = Math.random();
@@ -32,8 +32,8 @@ function Controller(app, restBase, model)
 			//log.info(" served by " + me.seed);
 			//res.send(defs);
 		}
-		this.app.get(me.base, defsHandler);
-		this.app.get(me.base + ".db", defsHandler);
+		this.router.get(me.base, defsHandler);
+		this.router.get(me.base + ".db", defsHandler);
 		
 		var rowsExt = ".rows";
 		_.each(me.model.tables, function(table) {
@@ -67,8 +67,8 @@ function Controller(app, restBase, model)
 				});
 			}		
 
-			me.app.get(url, getRowsHandler);	
-			me.app.get(url + rowsExt, getRowsHandler);	
+			me.router.get(url, getRowsHandler);	
+			me.router.get(url + rowsExt, getRowsHandler);	
 
 			//select one specific 'root' row
 			//and include recursively all children / supertypes 
@@ -91,8 +91,8 @@ function Controller(app, restBase, model)
 					}
 				});
 			}		
-			me.app.get(url + "/:id", getDeepHandler);
-			me.app.get(url + rowsExt + "/:id", getDeepHandler);
+			me.router.get(url + "/:id", getDeepHandler);
+			me.router.get(url + rowsExt + "/:id", getDeepHandler);
 
 			//insert a row into table
 			var postRowHandler = function(req, res) {
@@ -110,8 +110,8 @@ function Controller(app, restBase, model)
 					}
 				});
 			}
-			me.app.post(url, postRowHandler);
-			me.app.post(url + rowsExt, postRowHandler);
+			me.router.post(url, postRowHandler);
+			me.router.post(url + rowsExt, postRowHandler);
 
 			//update row in table
 			var putRowHandler = function(req, res) {
@@ -130,8 +130,8 @@ function Controller(app, restBase, model)
 					}
 				});
 			}
-			me.app.put(url + "/:id", putRowHandler);
-			me.app.put(url + rowsExt + "/:id", putRowHandler);
+			me.router.put(url + "/:id", putRowHandler);
+			me.router.put(url + rowsExt + "/:id", putRowHandler);
 
 			//delete row in table
 			var deleteRowHandler = function(req, res) {
@@ -147,8 +147,8 @@ function Controller(app, restBase, model)
 					}
 				});
 			}
-			me.app.delete(url + "/:id", deleteRowHandler);
-			me.app.delete(url + rowsExt + "/:id", deleteRowHandler);
+			me.router.delete(url + "/:id", deleteRowHandler);
+			me.router.delete(url + rowsExt + "/:id", deleteRowHandler);
 
 		});
 	}

@@ -17,7 +17,7 @@ function Controller(router, restBase, model)
 		//describe database 
 		var defsHandler = function(req, res) {
 			log.info(req.method + " " + req.url);
-			me.model.defs(function(err, result) {
+			me.model.getSchema(function(err, result) {
 				if (err) {
 					log.warn(err);
 					res.send(400, err.message);

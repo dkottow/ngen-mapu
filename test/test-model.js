@@ -35,11 +35,11 @@ describe('Model', function() {
 		});
 	});
 	
-  	describe('defs()', function() {		
+  	describe('getSchema()', function() {		
 
 		var defs;
 		before(function(done) {
-			defs = model.defs(function(err, result) {
+			defs = model.getSchema(function(err, result) {
 				defs = result;
 				done();
 			});

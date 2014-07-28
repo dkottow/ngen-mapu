@@ -10,6 +10,8 @@ var util = require('util');
 
 var assert = require('assert');
 
+var schema = require('./schema.js');
+
 if (global.log) {
 	var log = global.log.child({'mod': 'g6.model.js'});
 } else {
@@ -49,8 +51,7 @@ function Model(dbFile)
 		});
 	}
 
-
-	this.defs = function(cbResult) {
+	this.getSchema = function(cbResult) {
 		assert(_.isObject(this.tables)); 
 		var tableDefs = _.map(this.tables, function(table) {
 			//replace parent, subtypes table refs with table names
@@ -120,13 +121,48 @@ function Model(dbFile)
 		var db = new sqlite3.cached.Database(this.dbFile);
 		db.all(sql, function(err, rows) {
 			if (err) {
-				log.warn("model.defs() failed. " + err);	
+				log.warn("model.getSchema() failed. " + err);	
 			}
 			_.each(rows, function(r) {
 				tableDefs[r.table_name].count = r.count;
 			});
 			
 			cbResult(err, tableDefs);
+		});
+	}
+
+	this.setSchema = function(tableDefs, cbResult) {
+		var dbDef = new schema.Database(tableDefs);
+		dbDef.init(function(err) {
+			if ( ! err) {
+				var sql = dbDef.createSQL();	
+				var db = new sqlite3.Database(":memory:");
+console.log("0");
+				db.exec(sql, function(err) {
+					db.close();
+					if ( ! err) {
+						//really create DB on file
+						fs.unlink(me.dbFile, function() {
+							//dont check if unlink succeeded
+							db = new sqlite3.Database(me.dbFile 
+								, sqlite3.OPEN_READWRITE 
+								| sqlite3.OPEN_CREATE, function(err) {
+
+								db.exec(sql, function(err) {
+									db.close();
+									cbResult(err);
+								});
+							});
+						});
+					} else {
+						log.warn("setSchema() failed. " + err);
+						cbResult(err);
+					}
+				});
+			} else {
+				log.warn("setSchema() failed. " + err);
+				cbResult(err);
+			} 
 		});
 	}
 
@@ -145,25 +181,25 @@ function Model(dbFile)
 		db.all(sql['query'], sql['params'], function(err, rows) {
 			if (err) {
 				log.warn("model.all() failed. " + err);	
-			}
-			//console.dir(rows);
-			if (table["supertype"]) {
-				_.each(rows, function(r) {
-					r[table["supertype"]["name"] + "_sid"] = r['id'];
-				});
-			}
-
-			//handle multichoice json array
-			try {
-				_.each(mcFields, function(f) {
+			} else {
+				//console.dir(rows);
+				if (table["supertype"]) {
 					_.each(rows, function(r) {
-						r[f.name] = JSON.parse(r[f.name]);
+						r[table["supertype"]["name"] + "_sid"] = r['id'];
 					});
-				});
-			} catch(e) {
-				err = new Error("G6_MODEL_ERROR: all() failed. Error parsing JSON. " + e);
-			}
+				}
 
+				//handle multichoice json array
+				try {
+					_.each(mcFields, function(f) {
+						_.each(rows, function(r) {
+							r[f.name] = JSON.parse(r[f.name]);
+						});
+					});
+				} catch(e) {
+					err = new Error("G6_MODEL_ERROR: all() failed. Error parsing JSON. " + e);
+				}
+			}
 			cbResult(err, rows);
 		});
 		
@@ -179,23 +215,24 @@ function Model(dbFile)
 				log.warn("model.get() failed. " + err);	
 			}
 
-			if (table["supertype"]) {
-				row[table["supertype"]["name"] + "_sid"] = row['id'];
-			}
+			if (row) {
+				if (table["supertype"]) {
+					row[table["supertype"]["name"] + "_sid"] = row['id'];
+				}
 
-			//handle mutlichoice json array
-			var mcFields = _.filter(table["fields"], function(f) {
-				return f["domain"] && f["domain"]["multichoice"];
-			});
-
-			try {
-				_.each(mcFields, function(f) {
-					row[f.name] = JSON.parse(row[f.name]);
+				//handle mutlichoice json array
+				var mcFields = _.filter(table["fields"], function(f) {
+					return f["domain"] && f["domain"]["multichoice"];
 				});
-			} catch(e) {
-				err = new Error("G6_MODEL_ERROR: get() failed. Error parsing JSON. " + e);
+	
+				try {
+					_.each(mcFields, function(f) {
+						row[f.name] = JSON.parse(row[f.name]);
+					});
+				} catch(e) {
+					err = new Error("G6_MODEL_ERROR: get() failed. Error parsing JSON. " + e);
+				}
 			}
-
 
 			//console.dir(row);
 			cbResult(err, row);
@@ -218,9 +255,8 @@ function Model(dbFile)
 		this.get(filterFields, {}, table, resultFields, 
 					function(err, row) { 
 
-			result[table.name] = [row];
-
-			if (tables.length > 0 && !err) {
+			if (tables.length > 0 && !err && row) {
+				result[table.name] = [row];
 
 				var filterAncestor = {};
 				filterAncestor[table.name] = row.id;
@@ -604,10 +640,10 @@ function Model(dbFile)
  *
  * or the parent can be in a one-to-one relationship
  * between a parent row and a matching table row (supertype-subtype)
- * in that case the table will have a FK to the parent (supertype) 
- * on its own id field. That is, subtype and supertype rows share common ids.
+ * in that case the table's own id field will be a FK to the parent (supertype) 
+ * That is, subtype and supertype rows share common ids.
  *
- * in memory we add "forward pointers" to the children as well
+ * in memory we add "forward pointers" to the children / subtypes as well
  *
  */
 function buildTableTree(tables) {

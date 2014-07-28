@@ -26,7 +26,7 @@ var PROJECT_ROOTDIR = 'projects';
 var dbUrls;
 var restControllers;
 
-function routeBaseUrl(router) {
+function routeDirListings(router) {
 
 	//list all dbUrls found.
 	var baseDirs = _.uniq(_.map(dbUrls, function(url) {
@@ -53,7 +53,7 @@ function routeBaseUrl(router) {
 
 			_.each(dirUrls, function(url) {
 				var c = restControllers[url];
-				c.model.defs(function(err, tableDefs) {
+				c.model.getSchema(function(err, tableDefs) {
 					_.each(tableDefs, function(t) {
 						delete t.fields;
 					});
@@ -83,7 +83,7 @@ function serveDirectoryTree(rootDir) {
 		log.info('found ' + subDirs.length + ' subdirs.');
 
 		var afterScanDirs = _.after(subDirs.length, function() {
-			routeBaseUrl(router);
+			routeDirListings(router);
 			app.use('/', router);
 		});
 
@@ -124,7 +124,7 @@ app.use(bodyParser()); //json parsing
 serveDirectoryTree(PROJECT_ROOTDIR);
 
 app.get('/admin/reset', function(req, res) {
-
+	//replace our express router by a new one calling serveDirectoryTree
 	for(var i = 0;i < app._router.stack.length; ++i) {
 		var route = app._router.stack[i];
 		if (route.handle.name == 'router') {

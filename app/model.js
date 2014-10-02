@@ -255,7 +255,14 @@ console.log("0");
 		this.get(filterFields, {}, table, resultFields, 
 					function(err, row) { 
 
-			if (tables.length > 0 && !err && row) {
+			if (err) {
+				cbResult(err, result);
+
+			} else if (depth == 0) {
+				result = row;
+				cbResult(err, result);
+
+			} else if (tables.length > 0 && !err && row) {
 				result[table.name] = [row];
 
 				var filterAncestor = {};
@@ -264,7 +271,7 @@ console.log("0");
 				var allDone = _.after(tables.length, function(err, result) {
 					buildRowTree(table, result);
 					var obj = {};
-					obj[table.name] = result[table.name][0]; 
+					obj = result[table.name][0]; 
 					cbResult(err, obj);
 				});
 
@@ -274,8 +281,6 @@ console.log("0");
 						allDone(err, result);
 					});
 				});
-			} else {
-				cbResult(err, result);
 			}
 
 		});

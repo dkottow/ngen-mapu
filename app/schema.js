@@ -209,13 +209,13 @@ var schema = {};
 
 		if (this.supertype) {
 			sql += ",\n FOREIGN KEY(id) REFERENCES " 
-				+ this.supertype;
+				+ this.supertype + " (id)";
 
 		} 
 		if (this.parent) {
 			sql += ",\n FOREIGN KEY(" 
 				+ this.parent + '_pid' 
-				+ ") REFERENCES " + this.parent;
+				+ ") REFERENCES " + this.parent + " (id)";
 		}
 		sql += "\n);";
 		return sql;

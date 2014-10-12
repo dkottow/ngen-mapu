@@ -577,7 +577,8 @@ console.log("0");
 
 						_.each(rows, function(r) {
 							var fieldDef = {
-							  'order' : r['ordering']					
+							  'order' : r['ordering'],
+							  'fk' : 0	
 							};
 							if (r['domain']) {
 								fieldDef['domain'] = JSON.parse(r['domain']);	
@@ -589,7 +590,8 @@ console.log("0");
 						});
 						//console.dir(me.tables);
 
-						var doAfter = _.after(tableNames.length, function() {
+						var doAfter = _.after(2*tableNames.length, function() {
+							//after executing two SQL statements per table
 							cbAfter();
 						});
 
@@ -616,6 +618,34 @@ console.log("0");
 										} else {
 											fieldDef = _.extend(fieldDef, r);
 											//console.log(fieldDef);
+										}
+									});
+									doAfter();
+								}
+							});
+						});
+						_.each(tableNames, function(tn) {
+							var sql = util.format("PRAGMA foreign_key_list(%s)", tn);
+							db.all(sql, function(err, rows) {
+								if (err) {
+									log.error(sql + ' failed.');
+									cbAfter(err);
+									return;
+								} else {
+									_.each(rows, function(r) {
+										console.log(r);
+										var fk = r['from'];
+										var fieldDef = me.tables[tn]['fields'][fk];
+										if ( ! fieldDef) {
+											var err = new Error("G6_MODEL_ERROR: "
+														+ tn + '.' + fn + ' not found.');
+											cbAfter(err);
+											return;	
+											 
+										} else {
+											fieldDef['fk'] = 1;
+											fieldDef['fk_table'] = r['table'];
+											fieldDef['fk_field'] = r['to'];
 										}
 									});
 									doAfter();

@@ -44,12 +44,16 @@ var schema = {};
 	schema.Field.prototype.defSQL = function(table) {
 		var custom = "";
 		var domain = "";
+		var row_name = 0;
 		if (this.domain) domain = JSON.stringify(this.domain);
+		if (this.row_name) row_name = this.row_name;
+
 		var sql = "INSERT INTO " + FIELDDEF_NAME
-			    + " (name, table_name, ordering, domain, custom) VALUES("
+			    + " (name, table_name, ordering, row_name, domain, custom) VALUES("
 				+ "'" + this.name + "', "
 				+ "'" + table.name + "', "
 				+ this.order + ", "
+				+ row_name + ", "
 				+ "'" + domain + "', "
 				+ "'" + custom + "');";
 		return sql;
@@ -258,6 +262,7 @@ var schema = {};
 			+ " name VARCHAR NOT NULL, "
 			+ " table_name VARCHAR NOT NULL, "
 			+ " ordering INTEGER NOT NULL, "
+			+ " row_name INTEGER NOT NULL, "
 			+ " domain VARCHAR, "
 			+ " custom VARCHAR, "
 			+ " PRIMARY KEY (name, table_name) "

@@ -100,7 +100,11 @@ function Model(dbFile)
 					"name": sid,
 					"type": "INTEGER",
 					"notnull": 1,
-					"pk": 0
+					"pk": 0,
+					"fk": 1,
+					"fk_table": t["supertype"],
+					"fk_field": "id",
+					"row_name": 0
 				};
 			}
 
@@ -137,7 +141,6 @@ function Model(dbFile)
 			if ( ! err) {
 				var sql = dbDef.createSQL();	
 				var db = new sqlite3.Database(":memory:");
-console.log("0");
 				db.exec(sql, function(err) {
 					db.close();
 					if ( ! err) {
@@ -560,7 +563,7 @@ console.log("0");
 			cbAfter(err);
 
 		} else {
-			db.all("SELECT name, table_name, ordering, domain FROM _fielddef_ WHERE table_name IN (SELECT name FROM sqlite_master WHERE type = 'table')"
+			db.all("SELECT name, table_name, ordering, row_name, domain FROM _fielddef_ WHERE table_name IN (SELECT name FROM sqlite_master WHERE type = 'table')"
 				, function(err ,rows) {
 					if (err) { 
 						log.error("Get field defs failed. " + err);
@@ -578,6 +581,7 @@ console.log("0");
 						_.each(rows, function(r) {
 							var fieldDef = {
 							  'order' : r['ordering'],
+							  'row_name' : r['row_name'],
 							  'fk' : 0	
 							};
 							if (r['domain']) {
@@ -633,7 +637,7 @@ console.log("0");
 									return;
 								} else {
 									_.each(rows, function(r) {
-										console.log(r);
+										//console.log(r);
 										var fk = r['from'];
 										var fieldDef = me.tables[tn]['fields'][fk];
 										if ( ! fieldDef) {
@@ -642,7 +646,7 @@ console.log("0");
 											cbAfter(err);
 											return;	
 											 
-										} else {
+										} else if (fk != 'id') {
 											fieldDef['fk'] = 1;
 											fieldDef['fk_table'] = r['table'];
 											fieldDef['fk_field'] = r['to'];

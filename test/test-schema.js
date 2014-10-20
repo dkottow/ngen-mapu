@@ -20,6 +20,7 @@ describe('Schema', function() {
 					  "name": "name"
 					, "type": "VARCHAR"
 					, "order": 2
+					, "natural_key": 1
 				}
 				, "user": {
 					  "name": "user"

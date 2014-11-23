@@ -11,8 +11,12 @@ var bunyan = require('bunyan');
 
 global.log = bunyan.createLogger({
 	'name': 'g6.server',
-	'level': 'info'
+	'level': 'info',
+	'src': true
 });
+
+//mnax number of rows queried by any SELECT
+global.row_max_count = 1000;
 
 var mm = require('./model.js');
 var cc = require('./controller.js');

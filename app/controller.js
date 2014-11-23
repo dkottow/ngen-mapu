@@ -56,7 +56,38 @@ function Controller(router, restBase, model)
 
 			var getRowsHandler = function(req, res) {
 				log.info(req.method + " " + req.url);
-				me.model.all({}, req.query, table, '*', function(err, result) { 
+				
+				var filterClause = {};
+				var filterAncestor = {};
+				if (req.query['ff'] && req.query['fv']) {
+					if (req.query['ff'].indexOf(".") > 0) {
+						filterAncestor[ req.query['ff'].split('.')[0] ] 
+							= req.query['fv'];
+
+					} else {
+						filterClause['field'] = req.query['ff'];
+						filterClause['value'] = req.query['fv'];
+						if (req.query['fop']) {	
+							filterClause['op'] = req.query['fop'];
+						} else {
+							filterClause['op'] = 'equal';
+						}
+					}
+				}
+
+				var order = {};
+				if (req.query['oasc']) {
+					order[ req.query['oasc'] ] = 'asc';
+				} else if (req.query['odesc']) {
+					order[ req.query['odesc'] ] = 'desc';
+				}
+
+				var limit = global.row_max_count;
+				if (req.query['off']) {
+					limit = req.query['off'] + "," + limit;
+				}
+
+				me.model.all(filterClause, filterAncestor, table, '*', order, limit, function(err, result) { 
 					if (err) {
 						log.warn(err);
 						res.send(400, err.message);
@@ -75,9 +106,12 @@ function Controller(router, restBase, model)
 			//upto depth levels  
 			var getDeepHandler = function(req, res) {
 				log.info(req.method + " " + req.url);
-				var id = req.param('id');
+				var filter = { 'field': 'id', 
+							   'op': 'equal', 
+							   'value' : req.param('id')
+					};
 				var depth = req.query['depth'] || 3;
-				me.model.getDeep(depth, {'id': id}, table, '*'
+				me.model.getDeep(depth, filter, table, '*'
 								, function(err, result) { 
 					if (err) {
 						log.warn(err);

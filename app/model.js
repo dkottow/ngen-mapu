@@ -21,6 +21,7 @@ if (global.log) {
 		});
 }
 
+
 function Model(dbFile) 
 {
 	this.dbFile = dbFile;
@@ -169,10 +170,10 @@ function Model(dbFile)
 		});
 	}
 
-	this.all = function(filterFields, filterAncestor, table, resultFields, cbResult) {
+	this.all = function(filterClause, filterAncestor, table, resultFields, order, limit, cbResult) {
 		log.debug(resultFields + " from " + table.name);
 		log.debug("filtered by " + util.inspect(filterAncestor));
-		var sql = buildSelectSql(filterFields, filterAncestor, table, resultFields);
+		var sql = buildSelectSql(filterClause, filterAncestor, table, resultFields, order, limit);
 
 		var db = new sqlite3.cached.Database(this.dbFile);
 
@@ -208,8 +209,8 @@ function Model(dbFile)
 		
 	}
 
-	this.get = function(filterFields, filterAncestor, table, resultFields, cbResult) {
-		var sql = buildSelectSql(filterFields, filterAncestor, table, resultFields);
+	this.get = function(filterClause, filterAncestor, table, resultFields, cbResult) {
+		var sql = buildSelectSql(filterClause, filterAncestor, table, resultFields, {}, 1);
 
 		var db = new sqlite3.cached.Database(this.dbFile);
 
@@ -242,7 +243,7 @@ function Model(dbFile)
 		});
 	}
 
-	this.getDeep = function(depth, filterFields, table, resultFields, cbResult) {
+	this.getDeep = function(depth, filterClause, table, resultFields, cbResult) {
 		
 		if (resultFields != '*' &&  ! _.contains('id', resultFields)) {
 			resultFields.push('id');
@@ -255,7 +256,7 @@ function Model(dbFile)
 		});
 
 		//get top-level row	
-		this.get(filterFields, {}, table, resultFields, 
+		this.get(filterClause, {}, table, resultFields, 
 					function(err, row) { 
 
 			if (err) {
@@ -279,7 +280,7 @@ function Model(dbFile)
 				});
 
 				_.each(tables, function(t) {
-					me.all({}, filterAncestor, t, '*', function(err, rows) {
+					me.all({}, filterAncestor, t, '*', {}, global.row_max_count, function(err, rows) {
 						result[t.name] = rows;
 						allDone(err, result);
 					});
@@ -723,9 +724,9 @@ function buildTableTree(tables) {
 	return tables;
 }
 
-function buildSelectSql(filterFields, filterAncestor, table, fields) {
+function buildSelectSql(filterClause, filterAncestor, table, fields, order, limit) {
 
-	assert(_.isObject(filterFields), "arg 'filterFields' is object");
+	assert(_.isObject(filterClause), "arg 'filterClause' is object");
 	assert(_.isObject(filterAncestor), "arg 'filterAncestor' is object");
 	assert(_.isObject(table), "arg 'table' is object");
 
@@ -782,13 +783,68 @@ function buildSelectSql(filterFields, filterAncestor, table, fields) {
 		}
 	}
 
+	if ( ! _.isEmpty(filterClause)) {
+
+		assert(_.contains(_.pluck(table['fields'], 'name'), 
+							filterClause['field']), 
+			  util.format("filter field '%s' unknown", filterClause['field']));
+
+		var scalarClauses = {'equal' : '=', 
+							 'greater': '>', 
+							 'lesser': '<', 
+							 'like': 'LIKE' };
+
+		if (_.has(scalarClauses, filterClause['op'])) {
+			where = where + util.format(" AND %s %s ?", 
+					filterClause['field'], 
+					scalarClauses[filterClause['op']]);
+			
+			var p = filterClause['value'];
+
+			if (filterClause['op'] == 'like') {
+				p = filterClause['value'].replace(/\*/g, '%');
+			}
+
+			sql_params.push(p);
+		}
+		//TODO - IN operator
+	}
+
+	var orderSQL;
+	if ( ! _.isEmpty(order)) {	
+		orderField = _.keys(order)[0];
+		orderDir = 'ASC';
+		if (_.values(order)[0] == 'desc') orderDir = 'DESC';
+
+		assert(_.contains(_.pluck(table['fields'], 'name'), orderField),
+			  util.format("order field '%s' unknown", orderField));
+
+		orderSQL = util.format(' ORDER BY %s."%s" %s', table['name'], orderField, orderDir);
+	} else {
+		orderSQL = " ORDER BY " + table['name'] + ".id ASC";
+	}
+
+
+	var limitSQL;
+	if (_.isNumber(limit)) {
+		limitSQL = util.format(" LIMIT %d", Math.min(limit, global.row_max_count));
+
+	} else if (limit.length > 0) {
+		offsetLimit = limit.split(",");
+		limitSQL = util.format(" LIMIT %d, %d", parseInt(offsetLimit[0]), 
+								  Math.min(parseInt(offsetLimit[1]), global.row_max_count));
+	} else {
+		limitSQL = util.format(" LIMIT %d", global.row_max_count);
+	}	
+/*
 	_.each(filterFields, function(v,k) {
 		where = where + ' AND ' + k + ' = ?';
 		sql_params.push(v);	
 	});
+*/
 
-	sql = sql + joins + where;
-	//console.log(sql, sql_params);
+	sql = sql + joins + where + orderSQL + limitSQL;
+	console.log(sql, sql_params);
 	return {'query': sql, 'params': sql_params};
 }
 

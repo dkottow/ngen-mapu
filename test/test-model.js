@@ -261,10 +261,10 @@ console.log("Descendant " + d.name + " from " + t.name + " is " + result);
 				return t.parent != null && t.parent.name == 'borehole';
 			});
 
-			model.get({'name': 'test'}, {}, child.parent, ['borehole.id', 'borehole."user"'], function(err, result) {
+			model.get({'field': 'id', 'op': 'lesser', 'value': 100}, {}, child.parent, ['borehole.id', 'borehole."user"'], function(err, result) {
 				var pids = {};
 				pids[child.parent.name + "_pid"] = result.id;
-				model.all({}, pids, child, '*', function(err, result) {
+				model.all({}, pids, child, '*', {}, "", function(err, result) {
 					assert(result.length > 10, 'got more than 10 ' + child.name);
 					assert(result[10].from > 20, child.name + ' #10 is deeper than 20 mts');
 					done();
@@ -277,7 +277,7 @@ console.log("Descendant " + d.name + " from " + t.name + " is " + result);
 				return t['name'] == 'fracture';
 			});
 			
-			model.all({}, {'borehole' : 1}, table, '*', function(err, result) {
+			model.all({}, {'borehole' : 1}, table, '*', {'distance': 'asc'}, '5, 100', function(err, result) {
 				assert(result.length > 10, 'got more than 10 fractures');
 				done();
 			});
@@ -288,7 +288,7 @@ console.log("Descendant " + d.name + " from " + t.name + " is " + result);
 				return t['name'] == 'fracture';
 			});
 			
-			model.all({}, {'rock' : 1}, table, '*', function(err, result) {
+			model.all({}, {'rock' : 1}, table, '*', {}, "", function(err, result) {
 				assert(1 <= result.length && result.length < 10, 'got between 1 and 10 fractures');
 				done();
 			});
@@ -299,7 +299,7 @@ console.log("Descendant " + d.name + " from " + t.name + " is " + result);
 				return t['name'] == 'ground_soil';
 			});
 			
-			model.all({}, {'borehole' : 2}, table, '*', function(err, result) {
+			model.all({}, {'borehole' : 2}, table, '*', {}, 100, function(err, result) {
 				assert(result.length > 5, 'got more than 5 soils');
 				done();
 			});

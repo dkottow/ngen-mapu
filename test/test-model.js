@@ -41,6 +41,7 @@ describe('Model', function() {
 		before(function(done) {
 			defs = model.getSchema(function(err, result) {
 				defs = result;
+				console.log(defs);
 				done();
 			});
 			//console.log(defs);
@@ -97,7 +98,8 @@ console.log("Descendant " + d.name + " from " + t.name + " is " + result);
 			var allDone = _.after(roots.length, done);			
 
 			_.each(roots, function(t) {
-				model.all({}, {}, t, '*', function(err, result) {
+				var tn = t.name;
+				model.all({}, {}, t, '*', {tn: 'asc'}, 1000, function(err, result) {
 					assert(err == null);
 					console.log('got ' + result.length + " " + t.name);
 					assert(result.length > 0, 'got some ' + t.name);
@@ -258,7 +260,9 @@ console.log("Descendant " + d.name + " from " + t.name + " is " + result);
 
 
 			var child = _.find(model.tables, function(t) {
-				return t.parent != null && t.parent.name == 'borehole';
+				return _.contains(t.parents, function(pt) {
+					pt.name == 'borehole';
+				});
 			});
 
 			model.get({'field': 'id', 'op': 'lesser', 'value': 100}, {}, child.parent, ['borehole.id', 'borehole."user"'], function(err, result) {

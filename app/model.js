@@ -14,12 +14,15 @@ var schema = require('./schema.js');
 
 if (global.log) {
 	var log = global.log.child({'mod': 'g6.model.js'});
+	var row_max_count = global.row_max_count;
 } else {
 	//e.g when testing 
 	var log = require('bunyan').createLogger({
 				'name': 'g6.model.js', 'level': 'debug'
 		});
+	var row_max_count = 1000;
 }
+
 
 
 function Model(dbFile) 
@@ -43,7 +46,8 @@ function Model(dbFile)
 				initTableDefs(db, err, function(err) { 
 					initFieldDefs(db, err, function(err) {
 						if (err == null) {
-							buildTableTree(_.values(me.tables));
+							//buildTableTree(_.values(me.tables));
+							buildTableGraph(_.values(me.tables));
 						}
 						cbAfter(err);
 					});
@@ -57,8 +61,14 @@ function Model(dbFile)
 		var tableDefs = _.map(this.tables, function(table) {
 			//replace parent, subtypes table refs with table names
 			var t = _.clone(table);
-			if (t['parent']) t['parent'] = t['parent']['name'];
-			if (t['supertype']) t['supertype'] = t['supertype']['name'];
+			if (t.supertype) t.supertype = t.supertype.name;
+
+			var parents = t.parents;
+			if (t.parents && t.parents.length > 0) t.parents = [];
+			else delete(t.parents);
+			_.each(parents, function(ct) {
+				t.parents.push(ct.name);
+			});
 
 			var subtypes = t.subtypes;
 			if (t.subtypes && t.subtypes.length > 0) t.subtypes = [];
@@ -73,7 +83,6 @@ function Model(dbFile)
 			_.each(children, function(ct) {
 				t.children.push(ct.name);
 			});
-
 
 			t["fields"] = _.clone(t["fields"]);
 
@@ -273,14 +282,14 @@ function Model(dbFile)
 				filterAncestor[table.name] = row.id;
 
 				var allDone = _.after(tables.length, function(err, result) {
-					buildRowTree(table, result);
+					buildRowTree(table, result, depth);
 					var obj = {};
 					obj = result[table.name][0]; 
 					cbResult(err, obj);
 				});
 
 				_.each(tables, function(t) {
-					me.all({}, filterAncestor, t, '*', {}, global.row_max_count, function(err, rows) {
+					me.all({}, filterAncestor, t, '*', {}, row_max_count, function(err, rows) {
 						result[t.name] = rows;
 						allDone(err, result);
 					});
@@ -291,33 +300,32 @@ function Model(dbFile)
 
 	}
 
-	function buildRowTree(rootTable, rowsTables) {
-		_.each(rowsTables, function(rows, tn) {
-			var into, fld; 
-			if (me.tables[tn].parent) {
-				into = me.tables[tn].parent.name;
-				fld = "_pid";
-			} else if (me.tables[tn].supertype) {
-				into = me.tables[tn].supertype.name;
-				fld = "_sid";
-			}
-			//console.log(tn + " -> " + into + fld);
-			if (into && rootTable.name != tn) {				
+	function buildRowTree(rootTable, tableRows, depth) {
+
+		_.each(tableRows, function(rows, tn) {
+			if (tn != rootTable.name) {
+				var fks = _.filter(me.tables[tn].fields, function(f) { 
+					return f.fk > 0; 
+				});
 				_.each(rows, function(row) {
-					var parentRow = _.find(rowsTables[into], function(pr) {
-						return pr.id == row[into + fld];
-					});					
-					//console.log(row + " parent " + util.inspect(parentRow));					
-					if (me.tables[tn].parent) {
-						parentRow[tn] = parentRow[tn] || [];
-						parentRow[tn].push(row);
-					} else if (me.tables[tn].supertype) {
-						parentRow[tn] = row;
-					}
+	//console.log(row);
+					_.each(fks, function(f) {
+						var parentRow = _.find(tableRows[f.fk_table], 
+							function(pr) {
+								return pr.id == row[f.name];
+							});					
+						if (f.name == 'id') {
+							//supertype
+							parentRow[tn] = row;	
+						} else {
+							parentRow[tn] = parentRow[tn] || [];
+							parentRow[tn].push(row);
+						}	
+					});
 				});
 			}
 		});
-	}
+	}	
 
 	this.insert = function(table, rows, cbDone) {
 
@@ -532,7 +540,7 @@ function Model(dbFile)
 	function initTableDefs(db, err, cbAfter) {
 		if (err == null) {
 			//get table and field attributes from table _defs_
-			db.all("SELECT name, parent, custom FROM _tabledef_ WHERE name IN (SELECT name FROM sqlite_master WHERE type = 'table')"
+			db.all("SELECT name, custom FROM _tabledef_ WHERE name IN (SELECT name FROM sqlite_master WHERE type = 'table')"
 				, function(err ,rows) {
 					if (err) { 
 						log.error("Get table defs failed. " + err);
@@ -543,7 +551,6 @@ function Model(dbFile)
 						var tables = _.map(rows, function(r) {
 							var tableDef = { 
 								  "name": r['name']
-								, "parent": r['parent'] 
 							};
 							if (r['custom']) {
 								tableDef = _.extend(tableDef, JSON.parse(r['custom']))
@@ -614,15 +621,15 @@ function Model(dbFile)
 										//console.log(r);
 										var fn = r['name'];
 										var fieldDef = me.tables[tn]['fields'][fn];
-										if ( ! fieldDef) {
+										if (fieldDef) {
+											fieldDef = _.extend(fieldDef, r);
+											//console.log(fieldDef);
+											 
+										} else {
 											var err = new Error("G6_MODEL_ERROR: "
 														+ tn + '.' + fn + ' not found.');
 											cbAfter(err);
 											return;	
-											 
-										} else {
-											fieldDef = _.extend(fieldDef, r);
-											//console.log(fieldDef);
 										}
 									});
 									doAfter();
@@ -641,16 +648,15 @@ function Model(dbFile)
 										//console.log(r);
 										var fk = r['from'];
 										var fieldDef = me.tables[tn]['fields'][fk];
-										if ( ! fieldDef) {
+										if (fieldDef) {
+											fieldDef['fk'] = 1;
+											fieldDef['fk_table'] = r['table'];
+											fieldDef['fk_field'] = r['to'];
+										} else {
 											var err = new Error("G6_MODEL_ERROR: "
 														+ tn + '.' + fn + ' not found.');
 											cbAfter(err);
 											return;	
-											 
-										} else if (fk != 'id') {
-											fieldDef['fk'] = 1;
-											fieldDef['fk_table'] = r['table'];
-											fieldDef['fk_field'] = r['to'];
 										}
 									});
 									doAfter();
@@ -662,6 +668,153 @@ function Model(dbFile)
 		}
 	}
 
+	function buildSelectSql(filterClause, filterAncestor, table, fields, order, limit) 
+	{
+		assert(_.isObject(filterClause), "arg 'filterClause' is object");
+		assert(_.isObject(filterAncestor), "arg 'filterAncestor' is object");
+		assert(_.isObject(table), "arg 'table' is object");
+		assert(_.isObject(order), "arg 'order' is object");
+
+		if (fields == '*') {
+			fields = _.map(table['fields'], function(f) {
+				return util.format('%s."%s"', table['name'], f['name']);
+			});
+		}
+
+		assert(_.isArray(fields), "arg 'fields' is array");
+		
+		if (_.isNumber(limit)) limit = limit.toString();
+		assert(_.isString(limit), "arg 'limit' is string");
+
+		var sql = "SELECT " + fields.join(",") + " FROM " + table['name'];
+
+		var joins = ""
+		  , where = " WHERE 1=1"
+		  , sql_params = [];
+
+		if ( ! _.isEmpty(filterAncestor)) {
+
+			var ancestorTable = _.keys(filterAncestor)[0];
+			var ancestorId = filterAncestor[ancestorTable];
+
+			var path = bfsPath(table, me.tables[ancestorTable], me.tables);
+			//console.log(path);
+
+			for(var i = 0;i < path.length - 1; ++i) {
+				var t = path[i];
+				var pt = path[i+1];
+				if (t.supertype == pt.name) {
+					joins = joins 
+						  + util.format(" INNER JOIN %s ON %s.id = %s.id", 
+										pt['name'], t['name'], pt['name']);
+				} else {
+					var fk = _.find(t.fields, function(f) {
+						return f.fk_table == pt.name;
+					});
+					joins = joins 
+						  + util.format(" INNER JOIN %s ON %s.%s = %s.id", 
+										pt['name'], t['name'], 
+										fk.name, pt['name']);
+				}
+				//console.log(joins);
+			}
+			if (path.length > 0) {
+				where = where + " AND " + ancestorTable + ".id = ?";
+				sql_params.push(ancestorId);
+			}
+		}
+
+
+		if ( ! _.isEmpty(filterClause)) {
+
+			assert(_.contains(_.pluck(table['fields'], 'name'), 
+								filterClause['field']), 
+				  util.format("filter field '%s' unknown", filterClause['field']));
+
+			var scalarClauses = {'equal' : '=', 
+								 'greater': '>', 
+								 'lesser': '<', 
+								 'like': 'LIKE' };
+
+			if (_.has(scalarClauses, filterClause['op'])) {
+				where = where + util.format(" AND %s %s ?", 
+						filterClause['field'], 
+						scalarClauses[filterClause['op']]);
+				
+				var p = filterClause['value'];
+
+				if (filterClause['op'] == 'like') {
+					p = filterClause['value'].replace(/\*/g, '%');
+				}
+
+				sql_params.push(p);
+			}
+			//TODO - IN operator
+		}
+
+		var orderSQL;
+		if ( ! _.isEmpty(order)) {	
+			var orderField = _.keys(order)[0];
+			var orderDir = 'ASC';
+			if (_.values(order)[0] == 'desc') orderDir = 'DESC';
+
+			assert(_.contains(_.pluck(table['fields'], 'name'), orderField),
+				  util.format("order field '%s' unknown", orderField));
+
+			orderSQL = util.format(' ORDER BY %s."%s" %s', 
+							table['name'], orderField, orderDir);
+		} else {
+			//most recently created first
+			orderSQL = " ORDER BY " + table['name'] + ".id DESC";
+		}
+
+
+		var limitSQL = " LIMIT " + row_max_count;
+		if (limit.indexOf(',') > 0) {
+			var ab = limit.split(",");
+			var a = parseInt(ab[0]);
+			var b = parseInt(ab[1]);
+			if ( !_.isNaN(a) && !_.isNaN(b)) {
+				limitSQL = util.format(" LIMIT %d, %d", a, b);
+			}
+		} else {
+			var a = parseInt(limit);
+			if (!_.isNaN(a)) {
+				limitSQL = util.format(" LIMIT %d", a);
+			}
+		}
+
+		sql = sql + joins + where + orderSQL + limitSQL;
+		console.log(sql, sql_params);
+		return {'query': sql, 'params': sql_params};
+	}
+
+
+}
+
+
+
+function bfsPath(table, ancestor, tables)
+{
+	var queue = []
+	queue.push([table]);
+	while ( ! _.isEmpty(queue)) {
+		path = queue.shift();
+		var t = _.last(path);
+		if (t == ancestor) {
+			return path;
+		}		
+
+		var pts = t.parents;
+		if (t.supertype) pts.push(t.supertype);
+
+		_.each(pts, function(pt) {
+			var np = path.slice(0); //copy path
+			np.push(pt);
+			queue.push(np);
+		});
+	}
+	return []; //not found
 }
 
 /*
@@ -686,6 +839,9 @@ function Model(dbFile)
  * in memory we add "forward pointers" to the children / subtypes as well
  *
  */
+
+
+/*
 function buildTableTree(tables) {
 	log.debug("Building table tree. Got " + tables.length + " tables.");
 
@@ -723,129 +879,41 @@ function buildTableTree(tables) {
 	});
 	return tables;
 }
-
-function buildSelectSql(filterClause, filterAncestor, table, fields, order, limit) {
-
-	assert(_.isObject(filterClause), "arg 'filterClause' is object");
-	assert(_.isObject(filterAncestor), "arg 'filterAncestor' is object");
-	assert(_.isObject(table), "arg 'table' is object");
-
-	if (fields == '*') {
-		fields = _.map(table['fields'], function(f) {
-			return util.format('%s."%s"', table['name'], f['name']);
-		});
-	}
-
-	assert(_.isArray(fields), "arg 'fields' is array");
-
-	var sql = "SELECT " + fields.join(",") + " FROM " + table['name'];
-
-	var joins = ""
-	  , where = " WHERE 1=1"
-	  , sql_params = [];
-
-	if (_.keys(filterAncestor).length > 0) {
-		var ancestorTable = _.keys(filterAncestor)[0];
-		var ancestorId = filterAncestor[ancestorTable];
-		var hasAncestor = false;
-
-		var t = table;
-		while(t['parent'] || t['supertype']) {
-			var pt;
-
-			if (t['parent']) {
-				pt = t['parent'];
-				var pid_name = pt['name'] + "_pid";
-				joins = joins + util.format(" INNER JOIN %s ON %s.%s = %s.id", 
-											pt['name'], t['name'], 
-											pid_name, pt['name']);
-
-			} else if (t['supertype']) {
-				pt = t['supertype'];
-				joins = joins + util.format(" INNER JOIN %s ON %s.id = %s.id", 
-											pt['name'], t['name'], pt['name']);
-
-			}
-	
-			if (pt['name'] == ancestorTable) {
-				where = where + " AND " + ancestorTable + ".id = ?";
-				sql_params.push(ancestorId);
-				hasAncestor = true;
-				break;
-			}
-		
-			//console.log(joins, where);
-			t = pt;
-		}
-		if ( ! hasAncestor) {
-			//no ancestor found - don't join tables
-			joins = "";
-		}
-	}
-
-	if ( ! _.isEmpty(filterClause)) {
-
-		assert(_.contains(_.pluck(table['fields'], 'name'), 
-							filterClause['field']), 
-			  util.format("filter field '%s' unknown", filterClause['field']));
-
-		var scalarClauses = {'equal' : '=', 
-							 'greater': '>', 
-							 'lesser': '<', 
-							 'like': 'LIKE' };
-
-		if (_.has(scalarClauses, filterClause['op'])) {
-			where = where + util.format(" AND %s %s ?", 
-					filterClause['field'], 
-					scalarClauses[filterClause['op']]);
-			
-			var p = filterClause['value'];
-
-			if (filterClause['op'] == 'like') {
-				p = filterClause['value'].replace(/\*/g, '%');
-			}
-
-			sql_params.push(p);
-		}
-		//TODO - IN operator
-	}
-
-	var orderSQL;
-	if ( ! _.isEmpty(order)) {	
-		orderField = _.keys(order)[0];
-		orderDir = 'ASC';
-		if (_.values(order)[0] == 'desc') orderDir = 'DESC';
-
-		assert(_.contains(_.pluck(table['fields'], 'name'), orderField),
-			  util.format("order field '%s' unknown", orderField));
-
-		orderSQL = util.format(' ORDER BY %s."%s" %s', table['name'], orderField, orderDir);
-	} else {
-		orderSQL = " ORDER BY " + table['name'] + ".id ASC";
-	}
-
-
-	var limitSQL;
-	if (_.isNumber(limit)) {
-		limitSQL = util.format(" LIMIT %d", Math.min(limit, global.row_max_count));
-
-	} else if (limit.length > 0) {
-		offsetLimit = limit.split(",");
-		limitSQL = util.format(" LIMIT %d, %d", parseInt(offsetLimit[0]), 
-								  Math.min(parseInt(offsetLimit[1]), global.row_max_count));
-	} else {
-		limitSQL = util.format(" LIMIT %d", global.row_max_count);
-	}	
-/*
-	_.each(filterFields, function(v,k) {
-		where = where + ' AND ' + k + ' = ?';
-		sql_params.push(v);	
-	});
 */
 
-	sql = sql + joins + where + orderSQL + limitSQL;
-	console.log(sql, sql_params);
-	return {'query': sql, 'params': sql_params};
+function buildTableGraph(tables) {
+	log.debug("Building table graph. Got " + tables.length + " tables.");
+
+	_.each(tables, function(table) {
+
+		var fks = _.filter(table.fields, function(f) {
+			return f.fk == 1 && f.name != 'id';
+		});
+
+		table.parents = _.filter(tables, function(t) {
+			return _.contains(_.pluck(fks, 'fk_table'), t.name);
+		});
+
+		if (table.fields['id'].fk == 1) {
+			table.supertype = _.find(tables, function(t) {
+				return table.fields['id'].fk_table == t.name;
+			});
+			//unmark id as fk
+			table.fields['id'].fk = 0;
+		}
+		//log.debug(table);
+	});
+	_.each(tables, function(table) {
+
+		table.children = _.filter(tables, function(t) {
+			return _.contains(_.pluck(t.parents, 'name'), table.name);
+		});
+
+		table.subtypes = _.filter(tables, function(t) {
+			return t.supertype && t.supertype.name == table.name;
+		});
+	});
+	return tables;
 }
 
 function isDescendant(table, parentTable, depth) {

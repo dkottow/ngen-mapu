@@ -12,6 +12,7 @@ var bunyan = require('bunyan');
 global.log = bunyan.createLogger({
 	'name': 'g6.server',
 	'level': 'info',
+	//'level': 'debug',
 	'src': true
 });
 

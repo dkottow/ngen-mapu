@@ -67,8 +67,8 @@ function Controller(router, restBase, model)
 					} else {
 						filterClause['field'] = req.query['ff'];
 						filterClause['value'] = req.query['fv'];
-						if (req.query['fop']) {	
-							filterClause['op'] = req.query['fop'];
+						if (req.query['fo']) {	
+							filterClause['op'] = req.query['fo'];
 						} else {
 							filterClause['op'] = 'equal';
 						}
@@ -78,8 +78,8 @@ function Controller(router, restBase, model)
 				var order = {};
 				if (req.query['oasc']) {
 					order[ req.query['oasc'] ] = 'asc';
-				} else if (req.query['odesc']) {
-					order[ req.query['odesc'] ] = 'desc';
+				} else if (req.query['odsc']) {
+					order[ req.query['odsc'] ] = 'desc';
 				}
 
 				var limit = global.row_max_count;

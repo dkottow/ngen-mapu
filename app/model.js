@@ -116,6 +116,9 @@ function Model(dbFile)
 					"fk_field": "id",
 					"row_name": 0
 				};
+
+				//mark id field as non-fk
+				t.fields.id.fk = 0;
 			}
 
 			return t;
@@ -703,19 +706,17 @@ function Model(dbFile)
 			for(var i = 0;i < path.length - 1; ++i) {
 				var t = path[i];
 				var pt = path[i+1];
-				if (t.supertype == pt.name) {
-					joins = joins 
-						  + util.format(" INNER JOIN %s ON %s.id = %s.id", 
-										pt['name'], t['name'], pt['name']);
-				} else {
-					var fk = _.find(t.fields, function(f) {
-						return f.fk_table == pt.name;
-					});
-					joins = joins 
-						  + util.format(" INNER JOIN %s ON %s.%s = %s.id", 
-										pt['name'], t['name'], 
-										fk.name, pt['name']);
-				}
+
+				//this finds supertypes as well
+				var fk = _.find(t.fields, function(f) {
+					return f.fk_table == pt.name;
+				});
+			
+				joins = joins + util.format(" INNER JOIN %s ON %s.%s = %s.id", 
+									pt['name'], t['name'], 
+									fk.name, pt['name']);
+
+
 				//console.log(joins);
 			}
 			if (path.length > 0) {
@@ -899,7 +900,7 @@ function buildTableGraph(tables) {
 				return table.fields['id'].fk_table == t.name;
 			});
 			//unmark id as fk
-			table.fields['id'].fk = 0;
+			//table.fields['id'].fk = 0;
 		}
 		//log.debug(table);
 	});

@@ -58,36 +58,33 @@ function Controller(router, restBase, model)
 				log.info(req.method + " " + req.url);
 				
 				var filterClause = {};
-				var filterAncestor = {};
-				if (req.query['ff'] && req.query['fv']) {
-					if (req.query['ff'].indexOf(".") > 0) {
-						filterAncestor[ req.query['ff'].split('.')[0] ] 
-							= req.query['fv'];
-
+				console.dir(req.query['$filter']);
+				if (req.query['$filter']) {
+					var filter = req.query['$filter'].split(' ');
+					if (filter[0].indexOf(".") > 0) {
+						filterClause.table = filter[0].split('.')[0];
+						filterClause.field = filter[0].split('.')[1];
 					} else {
-						filterClause['field'] = req.query['ff'];
-						filterClause['value'] = req.query['fv'];
-						if (req.query['fo']) {	
-							filterClause['op'] = req.query['fo'];
-						} else {
-							filterClause['op'] = 'equal';
-						}
+						filterClause.field = filter[0];
 					}
-				}
-
-				var order = {};
-				if (req.query['oasc']) {
-					order[ req.query['oasc'] ] = 'asc';
-				} else if (req.query['odsc']) {
-					order[ req.query['odsc'] ] = 'desc';
+					filterClause.operator = filter[1];
+					filterClause.value = filter[2];
+				}				
+	
+				var order = [];
+				if (req.query['$orderby']) {
+					order = req.query['$orderby'].split(' ');
 				}
 
 				var limit = global.row_max_count;
-				if (req.query['off']) {
-					limit = req.query['off'] + "," + limit;
+				if (req.query['$top']) {
+					limit = req.query['$top'];
+				}
+				if (req.query['$skip']) {
+					limit = req.query['$skip'] + "," + limit;
 				}
 
-				me.model.all(filterClause, filterAncestor, table, '*', order, limit, function(err, result) { 
+				me.model.all(table, filterClause, '*', order, limit, function(err, result) { 
 					if (err) {
 						log.warn(err);
 						res.send(400, err.message);
@@ -107,11 +104,11 @@ function Controller(router, restBase, model)
 			var getDeepHandler = function(req, res) {
 				log.info(req.method + " " + req.url);
 				var filter = { 'field': 'id', 
-							   'op': 'equal', 
+							   'operator': 'eq', 
 							   'value' : req.param('id')
 					};
 				var depth = req.query['depth'] || 3;
-				me.model.getDeep(depth, filter, table, '*'
+				me.model.getDeep(table, filter, '*', depth
 								, function(err, result) { 
 					if (err) {
 						log.warn(err);

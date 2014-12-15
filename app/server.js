@@ -26,7 +26,15 @@ var app = express();
 
 var log = global.log.child({'mod': 'g6.server.js'});
 
-var PROJECT_ROOTDIR = 'projects';
+var config = {
+	"ip"	: process.env.OPENSHIFT_NODEJS_IP || "127.0.0.1",
+	"port"	: process.env.OPENSHIFT_NODEJS_PORT || 3000, 
+	"root"  : 'projects'
+}
+
+if (process.env.OPENSHIFT_DATA_DIR) {
+	config.root = process.env.OPENSHIFT_DATA_DIR + config.root;
+}
 
 var dbUrls;
 var restControllers;
@@ -98,7 +106,7 @@ function serveDirectoryTree(rootDir) {
 				files.forEach( function(f) {
 					if (path.extname(f) == '.sqlite') {
 						dbPath = util.format('/%s/%s' 
-						  , path.relative('projects', dir).replace(/\\/, '/')
+						  , path.relative(rootDir, dir).replace(/\\/, '/')
 						  , path.basename(f, '.sqlite')
 						);
 						dbFile = dir + '/' + f;					
@@ -121,12 +129,13 @@ function serveDirectoryTree(rootDir) {
 	});
 }
 
-log.info('Listening on port 3000');
-app.listen(3000);
+app.listen(config.port, config.ip, function() {
+	log.info('Started server on ' + config.ip + ":" + config.port);
+});
 
-app.use(bodyParser()); //json parsing 
+app.use(bodyParser.json()); //json parsing 
 
-serveDirectoryTree(PROJECT_ROOTDIR);
+serveDirectoryTree(config.root);
 
 app.get('/admin/reset', function(req, res) {
 	//replace our express router by a new one calling serveDirectoryTree
@@ -134,7 +143,7 @@ app.get('/admin/reset', function(req, res) {
 		var route = app._router.stack[i];
 		if (route.handle.name == 'router') {
 			app._router.stack.splice(i, 1);
-			serveDirectoryTree(PROJECT_ROOTDIR);
+			serveDirectoryTree(config.root);
 			break;
 		}
 	}

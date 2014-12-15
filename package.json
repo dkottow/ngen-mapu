@@ -7,13 +7,10 @@
   , "dependencies": {
     "express": "4.x"
     , "body-parser": "*"
-	, "sqlite3": "2.1.x"
+	, "sqlite3": "*"
 	, "node-dir": "*"
 	, "underscore": "*"
 	, "bunyan": "*"
-	, "jade": ""
-	, "xmldom": "*"
-	, "xpath": "*"
   }
 }
 

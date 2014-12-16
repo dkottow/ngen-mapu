@@ -185,8 +185,12 @@ function Model(dbFile)
 	this.all = function(table, filterClause, resultFields, order, limit, cbResult) {
 		log.debug(resultFields + " from " + table.name);
 		log.debug("filtered by " + util.inspect(filterClause));
-		var sql = buildSelectSql(table, filterClause, resultFields, order, limit);
-
+		try {
+			var sql = buildSelectSql(table, filterClause, resultFields, order, limit);
+		} catch(e) {
+			err = new Error("G6_MODEL_ERROR: model.all() failed. " + e);
+			cbResult(err, []);
+		}
 		var db = new sqlite3.cached.Database(this.dbFile);
 
 		//handle multichoice json array
@@ -213,7 +217,7 @@ function Model(dbFile)
 						});
 					});
 				} catch(e) {
-					err = new Error("G6_MODEL_ERROR: all() failed. Error parsing JSON. " + e);
+					err = new Error("G6_MODEL_ERROR: model.all() failed. Error parsing JSON. " + e);
 				}
 			}
 			cbResult(err, rows);
@@ -222,7 +226,12 @@ function Model(dbFile)
 	}
 
 	this.get = function(table, filterClause, resultFields, cbResult) {
-		var sql = buildSelectSql(table, filterClause, resultFields, [], 1);
+		try {
+			var sql = buildSelectSql(table, filterClause, resultFields, [], 1);
+		} catch(e) {
+			err = new Error("G6_MODEL_ERROR: model.get() failed. " + e);
+			cbResult(err, []);
+		}
 
 		var db = new sqlite3.cached.Database(this.dbFile);
 
@@ -246,7 +255,7 @@ function Model(dbFile)
 						row[f.name] = JSON.parse(row[f.name]);
 					});
 				} catch(e) {
-					err = new Error("G6_MODEL_ERROR: get() failed. Error parsing JSON. " + e);
+					err = new Error("G6_MODEL_ERROR: model.get() failed. Error parsing JSON. " + e);
 				}
 			}
 

@@ -22,7 +22,7 @@ function Controller(router, restBase, model)
 					log.warn(err);
 					res.send(400, err.message);
 				} else {
-					_.each(result, function(t) {
+					_.each(result.tables, function(t) {
 						t['url'] = me.base + "/" + t['name'];
 					});
 					log.debug(result);
@@ -40,7 +40,6 @@ function Controller(router, restBase, model)
 			var url = me.base + "/" + table['name'];
 
 			//select all table rows 
-//TODO add filter by field value 
 			//	can be filtered by some *ancestor* table id 
 			//	given in query string. 
 			//
@@ -58,7 +57,7 @@ function Controller(router, restBase, model)
 				log.info(req.method + " " + req.url);
 				
 				var filterClause = {};
-				console.dir(req.query['$filter']);
+				//console.dir(req.query['$filter']);
 				if (req.query['$filter']) {
 					var filter = req.query['$filter'].split(' ');
 					if (filter[0].indexOf(".") > 0) {

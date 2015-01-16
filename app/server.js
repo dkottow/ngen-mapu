@@ -27,7 +27,7 @@ var app = express();
 var log = global.log.child({'mod': 'g6.server.js'});
 
 var config = {
-	"ip"	: process.env.OPENSHIFT_NODEJS_IP || "127.0.0.1",
+	"ip"	: process.env.OPENSHIFT_NODEJS_IP || null,
 	"port"	: process.env.OPENSHIFT_NODEJS_PORT || 3000, 
 	"root"  : 'projects'
 }
@@ -129,9 +129,14 @@ function serveDirectoryTree(rootDir) {
 	});
 }
 
-app.listen(config.port, config.ip, function() {
-	log.info('Started server on ' + config.ip + ":" + config.port);
-});
+if (config.ip) {
+	app.listen(config.port, config.ip, function() {
+		log.info("Started server on " + config.ip + ":" + config.port);
+	});
+} else {
+	app.listen(config.port);
+	log.info("Started server on localhost:" + config.port);
+}
 
 app.use(bodyParser.json()); //json parsing 
 

@@ -27,6 +27,8 @@ var schema = {};
 			me.name = fieldDef.name;
 			me.type = fieldDef.type;
 			me.order = fieldDef.order;
+			me.fk_table = fieldDef.fk_table;
+			if (me.fk_table) me.fk_field = "id";
 		}
 	}
 
@@ -44,16 +46,13 @@ var schema = {};
 	schema.Field.prototype.defSQL = function(table) {
 		var custom = "";
 		var domain = "";
-		var row_name = 0;
 		if (this.domain) domain = JSON.stringify(this.domain);
-		if (this.row_name) row_name = this.row_name;
 
 		var sql = "INSERT INTO " + FIELDDEF_NAME
-			    + " (name, table_name, ordering, row_name, domain, custom) VALUES("
+			    + " (name, table_name, ordering, domain, custom) VALUES("
 				+ "'" + this.name + "', "
 				+ "'" + table.name + "', "
 				+ this.order + ", "
-				+ row_name + ", "
 				+ "'" + domain + "', "
 				+ "'" + custom + "');";
 		return sql;
@@ -125,7 +124,7 @@ var schema = {};
 			return new schema.IntegerField(fieldDef);
 		} else if (fieldDef.type.indexOf("NUMERIC") == 0) {
 			return new schema.NumericField(fieldDef);
-		} else if (fieldDef.type == "DATETIME") {
+		} else if (fieldDef.type == "DATETIME" || fieldDef.type == "DATE") {
 			return new schema.DatetimeField(fieldDef);
 		}
 
@@ -154,15 +153,10 @@ var schema = {};
 			});
 
 			me.name = tableDef.name;
-			if (tableDef.parent) me.parent = tableDef.parent;
-			if (tableDef.supertype) me.supertype = tableDef.supertype;
+			me.row_name = tableDef.row_name;
 
 			if( ! _.has(tableDef.fields, "id")) {
 				throw new Error(errMsg + " Id field missing.");
-			}
-			var pid = tableDef.parent + "_pid";
-			if (tableDef.parent && ! _.has(tableDef.fields, pid)) {
-				throw new Error(errMsg + pid + " parent field missing.");
 			}
 			if( ! _.has(tableDef.fields, "user")) {
 				throw new Error(errMsg + " User field missing.");
@@ -176,19 +170,20 @@ var schema = {};
 
 	function insertTableDefSQL(table) {
 
-		var pt = null;
-		if (table.parent) pt = "'" + table.parent + "'";
-		else if (table.supertype) pt = "'" + table.supertype + "'";
+		var row_name = "";
+		if (table.row_name) {
+			row_name += JSON.stringify(table.row_name);
+		}		
 
 		var custom = "";
 		if (table.custom) {
 			custom += JSON.stringify(table.custom);
-		}
+		}		
 
 		var sql = "INSERT INTO " + TABLEDEF_NAME
-			    + " (name, parent, custom) VALUES("
+			    + " (name, row_name, custom) VALUES("
 				+ "'" + table.name + "', "
-				+ pt + ", "
+				+ "'" + row_name + "', "
 				+ "'" + custom + "');";
 
 		return sql;
@@ -211,17 +206,17 @@ var schema = {};
 		});
 		sql += "\n PRIMARY KEY (id)";
 
-		if (this.supertype) {
-			sql += ",\n FOREIGN KEY(id) REFERENCES " 
-				+ this.supertype + " (id)";
+		var fks = _.select(this.fields, function(f) { 
+			return ! _.isEmpty(f.fk_table); 
+		});
 
-		} 
-		if (this.parent) {
-			sql += ",\n FOREIGN KEY(" 
-				+ this.parent + '_pid' 
-				+ ") REFERENCES " + this.parent + " (id)";
-		}
+		_.each(fks, function(fk) {
+			sql += ",\n FOREIGN KEY(" + fk.name + ") REFERENCES " 
+				+ fk.fk_table + " (id)";
+		});
+
 		sql += "\n);";
+console.log(sql);
 		return sql;
 	}
 
@@ -253,7 +248,7 @@ var schema = {};
 		var sql = "";
 		sql += "CREATE TABLE " + TABLEDEF_NAME + " ("
 			+ " name VARCHAR NOT NULL, "
-			+ " parent VARCHAR, "
+			+ " row_name VARCHAR, "
 			+ "	custom VARCHAR, "
 			+ "	PRIMARY KEY (name) "
 			+ ");\n\n";
@@ -262,7 +257,6 @@ var schema = {};
 			+ " name VARCHAR NOT NULL, "
 			+ " table_name VARCHAR NOT NULL, "
 			+ " ordering INTEGER NOT NULL, "
-			+ " row_name INTEGER NOT NULL, "
 			+ " domain VARCHAR, "
 			+ " custom VARCHAR, "
 			+ " PRIMARY KEY (name, table_name) "

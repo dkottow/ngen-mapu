@@ -56,18 +56,24 @@ function Controller(router, restBase, model)
 			var getRowsHandler = function(req, res) {
 				log.info(req.method + " " + req.url);
 				
-				var filterClause = {};
+				var filterClauses = [];
 				//console.dir(req.query['$filter']);
 				if (req.query['$filter']) {
-					var filter = req.query['$filter'].split(' ');
-					if (filter[0].indexOf(".") > 0) {
-						filterClause.table = filter[0].split('.')[0];
-						filterClause.field = filter[0].split('.')[1];
-					} else {
-						filterClause.field = filter[0];
-					}
-					filterClause.operator = filter[1];
-					filterClause.value = filter[2];
+					var clauses = req.query['$filter'].split('and');
+					_.each(clauses, function(clause) {
+						var filter = {};
+						var fq = clause.trim().split(' ');
+						if (fq[0].indexOf(".") > 0) {
+							filter.table = fq[0].split('.')[0];
+							filter.field = fq[0].split('.')[1];
+						} else {
+							filter.field = fq[0];
+						}
+						filter.operator = fq[1];
+						filter.value = fq[2];
+
+						filterClauses.push(filter);
+					});
 				}				
 	
 				var order = [];
@@ -83,7 +89,7 @@ function Controller(router, restBase, model)
 					limit = req.query['$skip'] + "," + limit;
 				}
 
-				me.model.all(table, filterClause, '*', order, limit, function(err, result) { 
+				me.model.all(table, filterClauses, '*', order, limit, function(err, result) { 
 					if (err) {
 						log.warn(err);
 						res.send(400, err.message);
@@ -107,7 +113,7 @@ function Controller(router, restBase, model)
 							   'value' : req.param('id')
 					};
 				var depth = req.query['depth'] || 3;
-				me.model.getDeep(table, filter, '*', depth
+				me.model.getDeep(table, [filter], '*', depth
 								, function(err, result) { 
 					if (err) {
 						log.warn(err);

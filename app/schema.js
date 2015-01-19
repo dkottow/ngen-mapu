@@ -158,13 +158,14 @@ var schema = {};
 			if( ! _.has(tableDef.fields, "id")) {
 				throw new Error(errMsg + " Id field missing.");
 			}
+/* TODO?
 			if( ! _.has(tableDef.fields, "user")) {
 				throw new Error(errMsg + " User field missing.");
 			}
 			if( ! _.has(tableDef.fields, "date")) {
 				throw new Error(errMsg + " Date field missing.");
 			}
-
+*/
 		}
 	}
 

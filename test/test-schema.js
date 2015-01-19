@@ -27,13 +27,13 @@ describe('Schema', function() {
 					, "type": "VARCHAR(256)"
 					, "order": 2
 				}
-				, "user": {
-					  "name": "user"
+				, "modified_by": {
+					  "name": "modified_by"
 					, "type": "VARCHAR(64)"
 					, "order": 91
 				}
-				, "date": {
-					  "name": "date"
+				, "modified_on": {
+					  "name": "modified_on"
 					, "type": "DATETIME"
 					, "order": 92
 				}
@@ -57,13 +57,13 @@ describe('Schema', function() {
 					, "type": "NUMERIC(8,2)"
 					, "order": 2
 				}
-				, "user": {
-					  "name": "user"
+				, "modified_by": {
+					  "name": "modified_by"
 					, "type": "VARCHAR(64)"
 					, "order": 3
 				}
-				, "date": {
-					  "name": "date"
+				, "modified_on": {
+					  "name": "modified_on"
 					, "type": "DATETIME"
 					, "order": 4
 				}
@@ -93,13 +93,13 @@ describe('Schema', function() {
 					, "type": "NUMERIC(8,2)"
 					, "order": 3
 				}
-				, "user": {
-					  "name": "user"
+				, "modified_by": {
+					  "name": "modified_by"
 					, "type": "VARCHAR(256)"
 					, "order": 91
 				}
-				, "date": {
-					  "name": "date"
+				, "modified_on": {
+					  "name": "modified_on"
 					, "type": "DATETIME"
 					, "order": 92
 				}
@@ -134,13 +134,13 @@ describe('Schema', function() {
 					, "type": "INTEGER"
 					, "order": 4
 				}
-				, "user": {
-					  "name": "user"
+				, "modified_by": {
+					  "name": "modified_by"
 					, "type": "VARCHAR(256)"
 					, "order": 91
 				}
-				, "date": {
-					  "name": "date"
+				, "modified_on": {
+					  "name": "modified_on"
 					, "type": "DATETIME"
 					, "order": 92
 				}

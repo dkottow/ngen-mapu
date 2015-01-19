@@ -188,11 +188,11 @@ function Model(dbFile)
 		});
 	}
 
-	this.all = function(table, filterClause, resultFields, order, limit, cbResult) {
+	this.all = function(table, filterClauses, resultFields, order, limit, cbResult) {
 		log.debug(resultFields + " from " + table.name 
-				+ "filtered by " + util.inspect(filterClause));
+				+ "filtered by " + util.inspect(filterClauses));
 		try {
-			var sql = buildSelectSql(table, filterClause, resultFields, order, limit);
+			var sql = buildSelectSql(table, filterClauses, resultFields, order, limit);
 		} catch(e) {
 			err = new Error("G6_MODEL_ERROR: model.all() failed. " + e);
 			cbResult(err, []);
@@ -214,9 +214,9 @@ function Model(dbFile)
 		});
 	}
 
-	this.get = function(table, filterClause, resultFields, cbResult) {
+	this.get = function(table, filterClauses, resultFields, cbResult) {
 		try {
-			var sql = buildSelectSql(table, filterClause, resultFields, [], 1);
+			var sql = buildSelectSql(table, filterClauses, resultFields, [], 1);
 		} catch(e) {
 			err = new Error("G6_MODEL_ERROR: model.get() failed. " + e);
 			cbResult(err, []);
@@ -240,7 +240,7 @@ function Model(dbFile)
 		});
 	}
 
-	this.getDeep = function(table, filterClause, resultFields, depth, cbResult) {
+	this.getDeep = function(table, filterClauses, resultFields, depth, cbResult) {
 		
 		if (resultFields != '*' &&  ! _.contains('id', resultFields)) {
 			resultFields.push('id');
@@ -253,7 +253,7 @@ function Model(dbFile)
 		});
 
 		//get top-level row	
-		this.get(table, filterClause, resultFields, 
+		this.get(table, filterClauses, resultFields, 
 					function(err, row) { 
 
 			if (err) {
@@ -281,7 +281,7 @@ function Model(dbFile)
 				});
 
 				_.each(tables, function(t) {
-					me.all(t, joinClause, '*', [], row_max_count, function(err, rows) {
+					me.all(t, [joinClause], '*', [], row_max_count, function(err, rows) {
 						result[t.name] = rows;
 						allDone(err, result);
 					});
@@ -729,9 +729,9 @@ function Model(dbFile)
 
 
 
-	function buildSelectSql(table, filterClause, fields, order, limit) 
+	function buildSelectSql(table, filterClauses, fields, order, limit) 
 	{
-		assert(_.isObject(filterClause), "arg 'filterClause' is object");
+		assert(_.isArray(filterClauses), "arg 'filterClauses' is array");
 		assert(_.isObject(table), "arg 'table' is object");
 		assert(_.isArray(order), "arg 'order' is array");
 
@@ -782,71 +782,30 @@ function Model(dbFile)
 		var distinct = false;
 		var sql_params = [];
 
-		if ( ! _.isEmpty(filterClause)) {
+		_.each(filterClauses, function(filter) {
 
-			if ( ! filterClause.table) {
-				filterClause.table = table.name;
+			if ( ! filter.table) {
+				filter.table = table.name;
 			}
 
 			assert(_.contains(_.pluck(
-					me.tables[filterClause.table].fields, 'name'), 
-						filterClause.field), 
+					me.tables[filter.table].fields, 'name'), 
+						filter.field), 
 				util.format("filter field %s.%s unknown", 
-					filterClause.table, filterClause.field));
+					filter.table, filter.field));
 
-			if (filterClause.table != table.name) {
+			if (filter.table != table.name) {
 
-				var path = bfsPath(table, me.tables[filterClause.table], me.tables);
+				var path = bfsPath(table, me.tables[filter.table], me.tables);
 				var j = joinTablePath(path, joinTables);
 				joinSQL = joinSQL + j.sql;
-				distinct = j.distinct;
-
-				//console.log(_.pluck(path, 'name'));
-/*
-				for(var i = 0;i < path.length - 1; ++i) {
-					var t = path[i];
-					var pt = path[i+1];
-
-					//this finds supertypes as well
-					var fk = _.find(t.fields, function(f) {
-						return f.fk_table == pt.name;
-					});
-
-					if (fk) {
-						// pt is parent or supertype			
-						joinSQL = joinSQL 
-							  + util.format(" INNER JOIN %s ON %s.%s = %s.id", 
-											pt['name'], 
-											t['name'], fk.name, 
-											pt['name']);
-
-					} else {
-						// pt is child or subtype			
-						var pfk = _.find(pt.fields, function(pf) {
-							return pf.fk_table == t.name;
-						});
-
-						joinSQL = joinSQL 
-							  + util.format(" INNER JOIN %s ON %s.%s = %s.id", 
-											pt['name'], 
-											pt['name'], pfk.name, 
-											t['name']);
-						distinct = true;
-					}
-						
-					console.log(joinSQL);
+				distinct = distinct || j.distinct;
+				for(var i = 1; i < path.length; ++i) {
+					joinTables[path[i].name] = path[i];
 				}
-*/
-
-/*
-			if (path.length > 0) {
-				whereSQL = whereSQL + " AND " + joinTableName + ".id = ?";
-				sql_params.push(joinId);
-			}
-*/
 			}
 
-			if (filterClause.operator && filterClause.value) {
+			if (filter.operator && filter.value) {
 
 				var scalarClauses = {'eq' : '=', 
 									 'ge': '>=', 
@@ -856,17 +815,17 @@ function Model(dbFile)
 				
 				//TODO - IN operator?
 
-				assert(_.has(scalarClauses, filterClause.operator),
+				assert(_.has(scalarClauses, filter.operator),
 					util.format("filter clause %s unknown",  
-						filterClause.operator));
+						filter.operator));
 
 				whereSQL = whereSQL + util.format(" AND %s.%s %s ?", 
-						filterClause.table, filterClause.field, 
-						scalarClauses[filterClause.operator]);
+						filter.table, filter.field, 
+						scalarClauses[filter.operator]);
 					
-				sql_params.push(filterClause.value);
+				sql_params.push(filter.value);
 			}
-		}
+		});
 
 		var orderSQL;
 		if ( ! _.isEmpty(order)) {	
@@ -883,7 +842,7 @@ function Model(dbFile)
 							table['name'], orderField, orderDir);
 		} else {
 			//most recently modified first
-			orderSQL = " ORDER BY " + table['name'] + ".date DESC";
+			orderSQL = " ORDER BY " + table['name'] + ".id DESC";
 		}
 
 

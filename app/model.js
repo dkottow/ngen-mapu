@@ -57,9 +57,38 @@ function Model(dbFile)
 		});
 	}
 
+	this.getSchemaAndStats = function(cbResult) {
+		var result = getSchema();
+		
+		//add row counts
+		var sql = _.map(_.keys(me.tables), function(tn) {
+			return 'SELECT ' + "'" + tn + "'" + ' AS table_name' 
+					+ ', COUNT(*) AS count'
+					+ ' FROM "' + tn + '"';
+		});
+		sql = sql.join(' UNION ALL ');
+		//console.dir(sql);
+
+		var db = new sqlite3.cached.Database(me.dbFile);
+		db.all(sql, function(err, rows) {
+			if (err) {
+				log.warn("model.getSchema() failed. " + err);	
+			}
+			_.each(rows, function(r) {
+				result.tables[r.table_name].count = r.count;
+			});
+			
+			cbResult(err, result);
+		});
+	}
 	this.getSchema = function(cbResult) {
-		assert(_.isObject(this.tables)); 
-		var tableDefs = _.map(this.tables, function(table) {
+		var result = getSchema();
+		cbResult(null, result);
+	}
+
+	function getSchema() {
+		assert(_.isObject(me.tables)); 
+		var tableDefs = _.map(me.tables, function(table) {
 			//replace parent, subtypes table refs with table names
 			var t = _.clone(table);
 			if (t.supertype) t.supertype = t.supertype.name;
@@ -126,34 +155,26 @@ function Model(dbFile)
 		});
 
 		tableDefs = _.object(_.pluck(tableDefs, 'name'), tableDefs);
-	
-		var result = {'tables': tableDefs,
+		return {
+			'name': path.basename(me.dbFile, global.sqlite_ext), 
+			'tables': tableDefs,
 			'joins': me.linkedTableLists
 		};		
-
-		//add row counts
-		var sql = _.map(_.keys(me.tables), function(tn) {
-			return 'SELECT ' + "'" + tn + "'" + ' AS table_name' 
-					+ ', COUNT(*) AS count'
-					+ ' FROM "' + tn + '"';
-		});
-		sql = sql.join(' UNION ALL ');
-		//console.dir(sql);
-
-		var db = new sqlite3.cached.Database(me.dbFile);
-		db.all(sql, function(err, rows) {
-			if (err) {
-				log.warn("model.getSchema() failed. " + err);	
-			}
-			_.each(rows, function(r) {
-				tableDefs[r.table_name].count = r.count;
-			});
-			
-			cbResult(err, result);
-		});
 	}
 
 	this.setSchema = function(tableDefs, cbResult) {
+		//TODO check its empty?
+		fs.unlink(me.dbFile, function(err) {
+			if ( ! err) {
+				me.createSchema(tableDefs, cbResult);
+			} else {
+				log.warn("setSchema() failed. " + err);
+				cbResult(err);
+			}
+		});
+	}
+
+	this.createSchema = function(tableDefs, cbResult) {
 		var dbDef = new schema.Database(tableDefs);
 		dbDef.init(function(err) {
 			if ( ! err) {
@@ -164,25 +185,23 @@ function Model(dbFile)
 					db.close();
 					if ( ! err) {
 						//really create DB on file
-						fs.unlink(me.dbFile, function() {
-							//dont check if unlink succeeded
-							db = new sqlite3.Database(me.dbFile 
-								, sqlite3.OPEN_READWRITE 
-								| sqlite3.OPEN_CREATE, function(err) {
+						log.info("creating " + me.dbFile);
+						db = new sqlite3.Database(me.dbFile 
+								, sqlite3.OPEN_READWRITE | sqlite3.OPEN_CREATE
+								, function(err) {
 
-								db.exec(sql, function(err) {
-									db.close();
-									cbResult(err);
-								});
+							db.exec(sql, function(err) {
+								db.close();
+								cbResult(err);
 							});
 						});
 					} else {
-						log.warn("setSchema() failed. " + err);
+						log.warn("createSchema() failed. " + err);
 						cbResult(err);
 					}
 				});
 			} else {
-				log.warn("setSchema() failed. " + err);
+				log.warn("createSchema() failed. " + err);
 				cbResult(err);
 			} 
 		});
@@ -892,7 +911,7 @@ function bfsPath(table, joinTable, tables)
 	queue.push([table]);
 	visited[table.name] = true;
 	while ( ! _.isEmpty(queue)) {
-		path = queue.shift();
+		var path = queue.shift();
 		var t = _.last(path);
 		if (t == joinTable) {
 			return path;

@@ -1,23 +1,23 @@
 var _ = require('underscore');
 
-var log = global.log.child({'mod': 'g6.controller.js'});
+var log = global.log.child({'mod': 'g6.DatabaseController.js'});
 
-function Controller(router, restBase, model)
+function DatabaseController(router, restBase, model)
 {	
 	this.router = router;
 	this.base = restBase;
 	this.model = model;
 	//this.seed = Math.random();
-	//console.log("created Controller " + this.seed);
+	//console.log("created DatabaseController " + this.seed);
 	log.info("Rest controller @ " + restBase);
 
-	this.init = function() {
+	this.init = function(cbAfter) {
 		var me = this;
 
-		//describe database 
+		//describe model 
 		var defsHandler = function(req, res) {
 			log.info(req.method + " " + req.url);
-			me.model.getSchema(function(err, result) {
+			me.model.getSchemaAndStats(function(err, result) {
 				if (err) {
 					log.warn(err);
 					res.send(400, err.message);
@@ -187,8 +187,9 @@ function Controller(router, restBase, model)
 			me.router.delete(url + rowsExt + "/:id", deleteRowHandler);
 
 		});
+		if (cbAfter) cbAfter();
 	}
 }
 
-exports.Controller = Controller;
+exports.DatabaseController = DatabaseController;
 

@@ -11,6 +11,9 @@
 	, "node-dir": "*"
 	, "underscore": "*"
 	, "bunyan": "*"
+	, "express-session": "*"
+	, "passport": "*"
+	, "passport-oauth2": "*"
   }
 }
 

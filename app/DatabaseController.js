@@ -9,7 +9,7 @@ function DatabaseController(router, restBase, model)
 	this.model = model;
 	//this.seed = Math.random();
 	//console.log("created DatabaseController " + this.seed);
-	log.info("Rest controller @ " + restBase);
+	log.info("new DatabaseController @ " + restBase);
 
 	this.init = function(cbAfter) {
 		var me = this;

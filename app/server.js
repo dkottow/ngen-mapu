@@ -1,6 +1,5 @@
 var express = require('express');
 var bodyParser = require('body-parser');
-var dir = require('node-dir');
 var _ = require('underscore');
 
 var fs = require('fs');
@@ -12,8 +11,8 @@ var bunyan = require('bunyan');
 
 global.log = bunyan.createLogger({
 	'name': 'g6.server',
-	'level': 'info',
-	//'level': 'debug',
+	//'level': 'info',
+	'level': 'debug',
 	'src': true
 });
 

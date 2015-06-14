@@ -3,6 +3,7 @@ var  fs = require('fs')
   	, util = require('util')
 	, assert = require('assert');
 
+var sqlite3 = require('sqlite3').verbose();
 //const
 var TABLEDEF_NAME = "_tabledef_";
 var FIELDDEF_NAME = "_fielddef_";
@@ -216,7 +217,7 @@ var schema = {};
 		});
 
 		sql += "\n);";
-console.log(sql);
+//console.log(sql);
 		return sql;
 	}
 
@@ -279,5 +280,60 @@ console.log(sql);
 		return sql;
 	}
 
-exports.Database = schema.Database;
+	schema.Database.prototype._generateDatabase = function(dbFile, cbResult) {
+		var sql = this.createSQL();
+
+		var execSQL = function(err, db) {
+			if ( ! err) {
+				db.exec(sql, function(err) {
+					db.close();
+					cbResult(err);
+				});							
+			} else {
+				cbResult(err);
+			}
+		}
+
+		if (dbFile) {
+			var db = new sqlite3.Database(dbFile 
+				, sqlite3.OPEN_READWRITE | sqlite3.OPEN_CREATE
+				, function(err) {
+					execSQL(err, db);
+			});
+		} else {
+			var db = new sqlite3.Database(":memory:");
+			execSQL(null, db);
+		}
+
+	}
+
+	schema.Database.prototype.save = function(dbFile, cbResult) {
+		var me = this;
+		me._generateDatabase(null, function(err) {
+			if ( ! err) {
+				me._generateDatabase(dbFile, function(err) {
+					if (err) {
+						log.warn("save() failed. " + err);			
+					}
+					cbResult(err);
+				});		
+			} else {
+				log.warn("save() failed. " + err);			
+				cbResult(err);
+			}
+		});
+	}
+
+	schema.Database.remove = function(dbFile, cbResult) {
+		fs.unlink(dbFile, function(err) {
+			if (err) {
+				log.warn("remove() failed. " + err);			
+			}
+			cbResult(err);
+		});
+	}
+
+
+
+exports.Schema = schema.Database;
 

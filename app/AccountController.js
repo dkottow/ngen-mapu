@@ -3,9 +3,9 @@ var _ = require('underscore');
 var fs = require('fs');
 var path = require('path');
 var util = require('util');
-var url = require('url');
 
-var Model = require('./model.js').Model;
+var Schema = require('./Schema.js').Schema;
+var Database = require('./Database.js').Database;
 var DatabaseController = require('./DatabaseController.js').DatabaseController;
 
 var log = global.log.child({'mod': 'g6.AccountController.js'});
@@ -15,14 +15,12 @@ function AccountController(router, baseUrl, baseDir) {
 	this.name = path.basename(baseDir);
 	this.url = baseUrl;
 	this.databaseControllers = {};
-
-	console.log("url " + baseUrl);
-	console.log("dir " + baseDir);
+	log.info("new AccountController @ " + this.url);
 
 	this.init = function(cbAfter) {
 		var me = this;
 
-		//serve all databases
+		//serve each database
 		fs.readdir(baseDir, function(err, files) {
 			log.info('Scanning ' + baseDir);
 
@@ -38,7 +36,7 @@ function AccountController(router, baseUrl, baseDir) {
 				  , path.basename(file, global.sqlite_ext)
 				);
 				var dbFile = path.join(me.baseDir, file);					
-				var model = new Model(dbFile);
+				var model = new Database(dbFile);
 				log.info('Serving ' + model.dbFile);
 				var controller = new DatabaseController(router, dbUrl, model);
 
@@ -60,8 +58,8 @@ function AccountController(router, baseUrl, baseDir) {
 			_.each(me.databaseControllers, function(c) {
 				c.model.getSchema(function(err, tableDefs) {
 					dirDefs[c.base] = tableDefs;
-					if (_.keys(dirDefs).length == 
-						_.keys(me.databaseControllers).length) {
+					if (_.keys(dirDefs).length
+						== _.keys(me.databaseControllers).length) {
 							res.send(dirDefs);
 					}
 				});
@@ -77,38 +75,167 @@ function AccountController(router, baseUrl, baseDir) {
 			log.info({'req.body': req.body});
 
 			var schema = req.body;
-			var parsedUrl = url.parse(req.url);
-			var dbUrl = util.format('%s/%s'
-						, me.url
-						, schema.name
-				);
+
 			var dbFile = util.format('%s/%s' 
 						, me.baseDir
 						, schema.name + global.sqlite_ext
 				);
 
-			var model = new mm.Model(dbFile);
-			model.createSchema(schema.tables, function(err) {
+			var db = new Schema(schema.tables);
+			db.init(function(err) {
 				if (err) {
 					log.warn(req.method + " " + req.url + " failed.");
 					res.send(400, err.message);
 				} else {
-					log.info(req.method + " " + req.url + " OK.");
-					var controller = new cc.Controller(router, dbUrl, model);
-					model.init(function() { 
-						controller.init(function() {
-							res.send("1"); //sends 1
-						}); 
-					});
+					db.save(dbFile, function(err) {
+						if (err) {
+							log.warn(req.method + " " + req.url + " failed.");
+							res.send(400, err.message);
+						} else {
+							log.info(req.method + " " + req.url + " OK.");
+							var dbUrl = util.format('%s/%s'
+										, me.url
+										, schema.name
+							);
 
-					me.databaseControllers[dbUrl] = controller;
-				}
+							var model = new Database(dbFile);
+							var controller = new DatabaseController(router, dbUrl, model);
+							model.init(function() { 
+								controller.init(function() {
+									res.send("1"); //sends 1
+								}); 
+							});
+
+							me.databaseControllers[dbUrl] = controller;
+						}
+					});
+				} 				
 			});
 		}
 
 		router.post(this.url, postSchemaHandler);	
 		router.post(this.url + '.prj', postSchemaHandler);	
 
+		//serve put database
+		var putSchemaHandler = function(req, res) {
+			log.info(req.method + " " + req.url);
+			log.info({'req.body': req.body});
+
+			var schema = req.body;
+
+			var controller = me.databaseControllers[req.url];
+			if ( ! controller) {
+				log.warn("schema " + req.url + " not found.");
+				res.send(404, "schema " + req.url + " not found.");
+			} else {
+				
+				controller.model.getStats(function(err, result) {
+					if (err) {
+						log.warn(req.method + " " + req.url + " failed.");
+						res.send(400, err.message);
+						
+					} else {
+						var totalRowCount = _.reduce(result, 
+							function(memo, rows) { 
+								return memo + rows; 
+							}, 
+						0);
+						log.debug("total rows " + totalRowCount);
+					
+						if (totalRowCount > 0) {
+							log.warn(req.method + " " + req.url + " failed.");
+							err = new Error("Database " 
+								+ req.url + " not empty.");	
+							res.send(400, err.message);
+						} else {
+							var dbFile = controller.model.dbFile;	
+							var db = new Schema(schema.tables);
+							db.init(function(err) {
+								if (err) {
+									log.warn(req.method + " " 
+											+ req.url + " failed.");
+									res.send(400, err.message);
+								} else {
+									Schema.remove(dbFile, function(err) {
+										db.save(dbFile, function(err) {
+											if (err) {
+												log.warn(req.method + " " 
+														+ req.url + " failed.");
+												res.send(400, err.message);
+											} else {
+												log.info(req.method + " " 
+														+ req.url + " OK.");
+
+												var model = new Database(dbFile);
+												controller.model = model;
+												model.init(function() { 
+													controller.init( function() {
+														res.send("1"); //sends 1
+													});
+												});
+											}
+										});
+									});
+								}
+							});
+						}
+					}
+				});
+			}
+		}
+
+		router.put(this.url + "/:schema", putSchemaHandler);	
+		router.put(this.url + '"/:schema.prj', putSchemaHandler);	
+
+
+		//serve delete database
+		var deleteSchemaHandler = function(req, res) {
+			log.info(req.method + " " + req.url);
+
+			var controller = me.databaseControllers[req.url];
+			if ( ! controller) {
+				log.warn("schema " + req.url + " not found.");
+				res.send(404, "schema " + req.url + " not found.");
+			} else {
+
+				controller.model.getStats(function(err, result) {
+					if (err) {
+						log.warn(req.method + " " + req.url + " failed.");
+						res.send(400, err.message);
+						
+					} else {
+						var totalRowCount = _.reduce(result, 
+							function(memo, rows) { 
+								return memo + rows; 
+							}, 
+						0);
+						log.debug("total rows " + totalRowCount);
+					
+						if (totalRowCount > 0) {
+							log.warn(req.method + " " + req.url + " failed.");
+							err = new Error("Database " 
+								+ req.url + " not empty.");	
+							res.send(400, err.message);
+						} else {
+							var dbFile = controller.model.dbFile;	
+							Schema.remove(dbFile, function(err) {
+								if (err) {
+									log.warn(req.method + " " + req.url + " failed.");
+									res.send(400, err.message);
+								} else {
+									log.info(req.method + " " + req.url + " OK.");
+									delete me.databaseControllers[req.url];
+									res.send("1");
+								}
+							});
+						}
+					}
+				});
+			}
+		}
+
+		router.delete(this.url + "/:schema", deleteSchemaHandler);	
+		router.delete(this.url + '"/:schema.prj', deleteSchemaHandler);	
 	}
 }
 

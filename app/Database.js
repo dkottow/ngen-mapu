@@ -26,8 +26,8 @@ if (global.log) {
 
 function Database(dbFile) 
 {
-
 	log.debug('ctor ' + dbFile);
+
 	//destroy cached DBs with this name
 	delete sqlite3.cached.objects[path.resolve(dbFile)];
 
@@ -48,16 +48,20 @@ function Database(dbFile)
 				log.error("Database.init() failed. Could not open '" 
 					+ me.dbFile + "'");
 				cbAfter(err);
-			} else {
-				initTableDefs(db, err, function(err) { 
-					initFieldDefs(db, err, function(err) {
-						if (err == null) {
-							buildTableGraph(_.values(me.tables));
-						}
-						cbAfter(err);
-					});
-				});
+				return;
 			}
+			initTableDefs(db, err, function(err) { 
+				if (_.size(me.tables) == 0) {
+					cbAfter(err);
+					return;
+				}
+				initFieldDefs(db, err, function(err) {
+					if (err == null) {
+						buildTableGraph(_.values(me.tables));
+					}
+					cbAfter(err);
+				});
+			});
 		});
 	}
 
@@ -72,18 +76,22 @@ function Database(dbFile)
 		//console.dir(sql);
 
 		var result = {};
+		if (_.size(me.tables) == 0) {
+			cbResult(null, result);
+			return;
+		}
 
 		var db = new sqlite3.cached.Database(me.dbFile);
 		db.all(sql, function(err, rows) {
 			if (err) {
 				log.warn("model.getStats() failed. " + err);	
-			} else {
-				_.each(rows, function(r) {
-					result[r.table_name] = r.count;
-				});
+				cbResult(err, null);
+				return;
 			}
-			
-			cbResult(err, result);
+			_.each(rows, function(r) {
+				result[r.table_name] = r.count;
+			});
+			cbResult(null, result);
 		});
 	}
 
@@ -93,25 +101,12 @@ function Database(dbFile)
 
 	this.getSchemaAndStats = function(cbResult) {
 		var result = getSchema();
-		
-		//add row counts
-		var sql = _.map(_.keys(me.tables), function(tn) {
-			return 'SELECT ' + "'" + tn + "'" + ' AS table_name' 
-					+ ', COUNT(*) AS count'
-					+ ' FROM "' + tn + '"';
-		});
-		sql = sql.join(' UNION ALL ');
-		//console.dir(sql);
-
-		var db = new sqlite3.cached.Database(me.dbFile);
-		db.all(sql, function(err, rows) {
-			if (err) {
-				log.warn("model.getSchema() failed. " + err);	
+		getStats(function(err, stats) {
+			if ( ! err) {
+				_.each(stats, function(c, tn) {
+					result.tables[tn].count = c;
+				});
 			}
-			_.each(rows, function(r) {
-				result.tables[r.table_name].count = r.count;
-			});
-			
 			cbResult(err, result);
 		});
 	}
@@ -196,107 +191,6 @@ function Database(dbFile)
 			'joins': me.linkedTableLists
 		};		
 	}
-
-/*
-	function writeSchema(tableDefs, writeOnDisk, cbResult) {
-		var dbDef = new schema.Database(tableDefs);
-		dbDef.init(function(err) {
-			if ( ! err) {
-				var sql = dbDef.createSQL();	
-				//console.log(sql);
-
-				var execSQL = function(db) {
-					db.exec(sql, function(err) {
-						db.close();
-						cbResult(err);
-					});							
-				}
-
-				if (writeOnDisk) {
-					var db = new sqlite3.Database(me.dbFile 
-						, sqlite3.OPEN_READWRITE | sqlite3.OPEN_CREATE
-						, function(err) {
-						if ( ! err) {
-							execSQL(db);
-						} else {
-							cbResult(err);
-						}
-					});
-				} else {
-					var db = new sqlite3.Database(":memory:");
-					execSQL(db);
-				}
-
-			} else {
-				log.warn("trySchema() failed. " + err);
-				cbResult(err);
-			} 
-		});
-	}
-
-	function deleteSchema(cbResult) {
-		getStats(function(err, result) {
-			if ( ! err) {
-
-				var totalRows = _.reduce(result, function(memo, rows) { 
-					return memo + rows; 
-				}, 0);
-
-				if (totalRows > 0) {
-					log.warn("deleteSchema() database not empty.");
-					err = new Error("G6_MODEL_ERROR: database not empty. ");
-
-				} else {
-					fs.unlink(me.dbFile, function(err) {
-						if ( ! err) {
-							cbResult(err);
-						}
-					});
-				}
-			} 
-			if (err) {
-				log.warn("deleteSchema() failed. " + err);			
-				cbResult(err);
-			}
-		});
-	}
-
-	this.setSchema = function(tableDefs, cbResult) {
-
-		writeSchema(tableDefs, false, function(err) {
-			if (! err) {
-				deleteSchema(function(err) {
-					if ( ! err) {
-						writeSchema(tableDefs, true, cbResult);
-					} else {
-						log.warn("setSchema() failed. " + err);
-						cbResult(err);
-					}
-				});
-			} else {
-				log.warn("setSchema() failed. " + err);
-				cbResult(err);
-			}
-		});
-	}
-
-	this.createSchema = function(tableDefs, cbResult) {
-
-		writeSchema(tableDefs, false, function(err) {
-			if (! err) {
-				writeSchema(tableDefs, true, cbResult);
-			} else {
-				log.warn("setSchema() failed. " + err);
-				cbResult(err);
-			}
-		});
-	}
-
-	this.deleteSchema = function(cbResult) {
-
-		deleteSchema(cbResult);
-	}
-*/
 
 	this.all = function(table, filterClauses, resultFields, order, limit, cbResult) {
 		log.debug(resultFields + " from " + table.name 
@@ -655,6 +549,7 @@ function Database(dbFile)
 	}
 
 	function initFieldDefs(db, err, cbAfter) {
+		log.debug("initFieldDefs " + me.dbFile);
 		if (err) {
 			cbAfter(err);
 
@@ -783,7 +678,7 @@ function Database(dbFile)
 
 		var tables = _.values(me.tables);
 
-		log.debug("Building table graph. Got " + tables.length + " tables.");
+		log.debug("Building table graph for " + me.dbFile + ". Got " + tables.length + " tables.");
 
 		_.each(tables, function(table) {
 

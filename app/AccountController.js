@@ -54,13 +54,16 @@ function AccountController(router, baseUrl, baseDir) {
 		var getSchemaListHandler = function(req, res) {
 			log.info(req.method + " " + req.url);
 
-			var dirDefs = {};
+			var schemaDefs = {};
 			_.each(me.databaseControllers, function(c) {
-				c.model.getSchema(function(err, tableDefs) {
-					dirDefs[c.base] = tableDefs;
-					if (_.keys(dirDefs).length
+				c.model.getSchema(function(err, schemaDef) {
+					_.each(schemaDef.tables, function(t) { 
+						delete t.fields; 
+					});
+					schemaDefs[c.base] = schemaDef;
+					if (_.keys(schemaDefs).length
 						== _.keys(me.databaseControllers).length) {
-							res.send(dirDefs);
+							res.send(schemaDefs);
 					}
 				});
 			});
@@ -86,30 +89,30 @@ function AccountController(router, baseUrl, baseDir) {
 				if (err) {
 					log.warn(req.method + " " + req.url + " failed.");
 					res.send(400, err.message);
-				} else {
-					db.save(dbFile, function(err) {
-						if (err) {
-							log.warn(req.method + " " + req.url + " failed.");
-							res.send(400, err.message);
-						} else {
-							log.info(req.method + " " + req.url + " OK.");
-							var dbUrl = util.format('%s/%s'
-										, me.url
-										, schema.name
-							);
+					return;
+				}
+				db.save(dbFile, function(err) {
+					if (err) {
+						log.warn(req.method + " " + req.url + " failed.");
+						res.send(400, err.message);
+						return;
+					}
+					log.info(req.method + " " + req.url + " OK.");
+					var dbUrl = util.format('%s/%s'
+								, me.url
+								, schema.name
+					);
 
-							var model = new Database(dbFile);
-							var controller = new DatabaseController(router, dbUrl, model);
-							model.init(function() { 
-								controller.init(function() {
-									res.send("1"); //sends 1
-								}); 
-							});
-
-							me.databaseControllers[dbUrl] = controller;
-						}
+					var model = new Database(dbFile);
+					var controller = new DatabaseController(router, dbUrl, model);
+					model.init(function() { 
+						controller.init(function() {
+							res.send("1"); //sends 1
+						}); 
 					});
-				} 				
+
+					me.databaseControllers[dbUrl] = controller;
+				});
 			});
 		}
 
@@ -127,61 +130,60 @@ function AccountController(router, baseUrl, baseDir) {
 			if ( ! controller) {
 				log.warn("schema " + req.url + " not found.");
 				res.send(404, "schema " + req.url + " not found.");
-			} else {
-				
-				controller.model.getStats(function(err, result) {
+				return;
+			}
+			controller.model.getStats(function(err, result) {
+				if (err) {
+					log.warn(req.method + " " + req.url + " failed.");
+					res.send(400, err.message);
+					return;					
+				}
+				var totalRowCount = _.reduce(result, 
+					function(memo, rows) { 
+						return memo + rows; 
+					}, 
+				0);
+				log.debug("total rows " + totalRowCount);
+				if (totalRowCount > 0) {
+					log.warn(req.method + " " + req.url + " failed.");
+					err = new Error("Database " + req.url + " not empty.");	
+					res.send(400, err.message);
+					return;
+				}
+				var dbFile = controller.model.dbFile;	
+				var db = new Schema(schema.tables);
+				db.init(function(err) {
 					if (err) {
 						log.warn(req.method + " " + req.url + " failed.");
 						res.send(400, err.message);
-						
-					} else {
-						var totalRowCount = _.reduce(result, 
-							function(memo, rows) { 
-								return memo + rows; 
-							}, 
-						0);
-						log.debug("total rows " + totalRowCount);
-					
-						if (totalRowCount > 0) {
-							log.warn(req.method + " " + req.url + " failed.");
-							err = new Error("Database " 
-								+ req.url + " not empty.");	
-							res.send(400, err.message);
-						} else {
-							var dbFile = controller.model.dbFile;	
-							var db = new Schema(schema.tables);
-							db.init(function(err) {
-								if (err) {
-									log.warn(req.method + " " 
-											+ req.url + " failed.");
-									res.send(400, err.message);
-								} else {
-									Schema.remove(dbFile, function(err) {
-										db.save(dbFile, function(err) {
-											if (err) {
-												log.warn(req.method + " " 
-														+ req.url + " failed.");
-												res.send(400, err.message);
-											} else {
-												log.info(req.method + " " 
-														+ req.url + " OK.");
-
-												var model = new Database(dbFile);
-												controller.model = model;
-												model.init(function() { 
-													controller.init( function() {
-														res.send("1"); //sends 1
-													});
-												});
-											}
-										});
-									});
-								}
-							});
-						}
+						return;	
 					}
+					Schema.remove(dbFile, function(err) {
+						if (err) {
+							log.warn(req.method + " " + req.url + " failed.");
+							res.send(400, err.message);
+							return;	
+						}
+						db.save(dbFile, function(err) {
+							if (err) {
+								log.warn(req.method + " " 
+										+ req.url + " failed.");
+								res.send(400, err.message);
+								return;
+							}
+
+							log.info(req.method + " " + req.url + " OK.");
+							var model = new Database(dbFile);
+							controller.model = model;
+							model.init(function() { 
+								controller.init( function() {
+									res.send("1"); //sends 1
+								});
+							});
+						});
+					});
 				});
-			}
+			});
 		}
 
 		router.put(this.url + "/:schema", putSchemaHandler);	
@@ -196,42 +198,41 @@ function AccountController(router, baseUrl, baseDir) {
 			if ( ! controller) {
 				log.warn("schema " + req.url + " not found.");
 				res.send(404, "schema " + req.url + " not found.");
-			} else {
+				return;
+			}
 
-				controller.model.getStats(function(err, result) {
+			controller.model.getStats(function(err, result) {
+				if (err) {
+					log.warn(req.method + " " + req.url + " failed.");
+					res.send(400, err.message);
+					return;
+					
+				}
+				var totalRowCount = _.reduce(result, 
+					function(memo, rows) { 
+						return memo + rows; 
+					}, 
+				0);
+				log.debug("total rows " + totalRowCount);
+			
+				if (totalRowCount > 0) {
+					log.warn(req.method + " " + req.url + " failed.");
+					err = new Error("Database " + req.url + " not empty.");	
+					res.send(400, err.message);
+					return;
+				}
+				var dbFile = controller.model.dbFile;	
+				Schema.remove(dbFile, function(err) {
 					if (err) {
 						log.warn(req.method + " " + req.url + " failed.");
 						res.send(400, err.message);
-						
-					} else {
-						var totalRowCount = _.reduce(result, 
-							function(memo, rows) { 
-								return memo + rows; 
-							}, 
-						0);
-						log.debug("total rows " + totalRowCount);
-					
-						if (totalRowCount > 0) {
-							log.warn(req.method + " " + req.url + " failed.");
-							err = new Error("Database " 
-								+ req.url + " not empty.");	
-							res.send(400, err.message);
-						} else {
-							var dbFile = controller.model.dbFile;	
-							Schema.remove(dbFile, function(err) {
-								if (err) {
-									log.warn(req.method + " " + req.url + " failed.");
-									res.send(400, err.message);
-								} else {
-									log.info(req.method + " " + req.url + " OK.");
-									delete me.databaseControllers[req.url];
-									res.send("1");
-								}
-							});
-						}
+						return;
 					}
+					log.info(req.method + " " + req.url + " OK.");
+					delete me.databaseControllers[req.url];
+					res.send("1");
 				});
-			}
+			});
 		}
 
 		router.delete(this.url + "/:schema", deleteSchemaHandler);	

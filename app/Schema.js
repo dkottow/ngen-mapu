@@ -26,6 +26,16 @@ var schema = {};
 			assert(_.has(fieldDef, "order"), errMsg + " Order attr missing.");
 
 			me.name = fieldDef.name;
+
+			if ( ! /^\w+$/.test(fieldDef.name)) {
+				throw new Error(errMsg 
+						+ " Field names can only have word-type characters.");
+			}
+
+			if ( ! _.isNumber(fieldDef.order)) {
+				throw new Error(errMsg + " Field order must be an integer");
+			}
+
 			me.type = fieldDef.type;
 			me.order = fieldDef.order;
 			me.fk_table = fieldDef.fk_table;
@@ -156,15 +166,20 @@ var schema = {};
 			me.name = tableDef.name;
 			me.row_name = tableDef.row_name;
 
-			if( ! _.has(tableDef.fields, "id")) {
-				throw new Error(errMsg + " Id field missing.");
+			if ( ! /^\w+$/.test(tableDef.name)) {
+				throw new Error(errMsg 
+						+ " Table names can only have word-type characters.");
 			}
-//TODO?
+
+			if( ! _.has(tableDef.fields, "id")) {
+				throw new Error(errMsg + " id field missing.");
+			}
+
 			if( ! _.has(tableDef.fields, "modified_by")) {
-				throw new Error(errMsg + " Modified_by field missing.");
+				throw new Error(errMsg + " modified_by field missing.");
 			}
 			if( ! _.has(tableDef.fields, "modified_on")) {
-				throw new Error(errMsg + " Modified_on field missing.");
+				throw new Error(errMsg + " modified_on field missing.");
 			}
 		}
 	}

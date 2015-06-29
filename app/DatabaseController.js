@@ -21,13 +21,13 @@ function DatabaseController(router, restBase, model)
 				if (err) {
 					log.warn(err);
 					res.send(400, err.message);
-				} else {
-					_.each(result.tables, function(t) {
-						t['url'] = me.base + "/" + t['name'];
-					});
-					log.debug(result);
-					res.send(result); 
+					return;
 				}
+				_.each(result.tables, function(t) {
+					t['url'] = me.base + "/" + t['name'];
+				});
+				log.debug(result);
+				res.send(result); 
 			});
 			//log.info(" served by " + me.seed);
 			//res.send(defs);
@@ -89,14 +89,15 @@ function DatabaseController(router, restBase, model)
 					limit = req.query['$skip'] + "," + limit;
 				}
 
-				me.model.all(table, filterClauses, '*', order, limit, function(err, result) { 
+				me.model.all(table, filterClauses, '*', 
+							 order, limit, function(err, result) { 
 					if (err) {
 						log.warn(err);
 						res.send(400, err.message);
-					} else {
-						log.debug(result);
-						res.send(result); 
+						return;
 					}
+					log.debug(result);
+					res.send(result); 
 				});
 			}		
 
@@ -118,13 +119,13 @@ function DatabaseController(router, restBase, model)
 					if (err) {
 						log.warn(err);
 						res.send(400, err.message);
-					} else {
-						if (req.query['pretty']) {
-							result = JSON.stringify(result, null, '\t');
-						}
-						log.debug(result);
-						res.send(result); 
+						return;
 					}
+					if (req.query['pretty']) {
+						result = JSON.stringify(result, null, '\t');
+					}
+					log.debug(result);
+					res.send(result); 
 				});
 			}		
 			me.router.get(url + "/:id", getDeepHandler);
@@ -139,11 +140,11 @@ function DatabaseController(router, restBase, model)
 					if (err) {
 						log.warn(req.method + " " + req.url + " failed.");
 						res.send(400, err.message);
-					} else {
-						log.info({'res.body': result});
-						log.info(req.method + " " + req.url + " OK.");
-						res.send(result[0].toString()); //sends row id
+						return;
 					}
+					log.info({'res.body': result});
+					log.info(req.method + " " + req.url + " OK.");
+					res.send(result[0].toString()); //sends row id
 				});
 			}
 			me.router.post(url, postRowHandler);
@@ -159,11 +160,11 @@ function DatabaseController(router, restBase, model)
 					if (err) {
 						log.warn(req.method + " " + req.url + " failed.");
 						res.send(400, err.message);
-					} else {
-						log.info({'res.body': result});
-						log.info(req.method + " " + req.url + " OK.");
-						res.send(result.toString()); //sends 1
+						return;
 					}
+					log.info({'res.body': result});
+					log.info(req.method + " " + req.url + " OK.");
+					res.send(result.toString()); //sends 1
 				});
 			}
 			me.router.put(url + "/:id", putRowHandler);
@@ -177,10 +178,10 @@ function DatabaseController(router, restBase, model)
 					if (err) {
 						log.warn(req.method + " " + req.url + " failed.");
 						res.send(400, err.message);
-					} else {
-						log.info(req.method + " " + req.url + " OK.");
-						res.send(result.toString()); //sends 1
+						return;
 					}
+					log.info(req.method + " " + req.url + " OK.");
+					res.send(result.toString()); //sends 1
 				});
 			}
 			me.router.delete(url + "/:id", deleteRowHandler);

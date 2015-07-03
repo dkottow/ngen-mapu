@@ -96,6 +96,7 @@ function DatabaseController(router, restBase, model)
 						res.send(400, err.message);
 						return;
 					}
+					result = {'data': result};
 					log.debug(result);
 					res.send(result); 
 				});

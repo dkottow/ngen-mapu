@@ -12,12 +12,12 @@ var assert = require('assert');
 
 
 if (global.log) {
-	var log = global.log.child({'mod': 'g6.model.js'});
+	var log = global.log.child({'mod': 'g6.Database.js'});
 	var row_max_count = global.row_max_count;
 } else {
 	//e.g when testing 
 	var log = require('bunyan').createLogger({
-				'name': 'g6.model.js', 'level': 'debug'
+				'name': 'g6.Database.js', 'level': 'warn'
 		});
 	var row_max_count = 1000;
 }

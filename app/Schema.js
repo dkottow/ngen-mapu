@@ -4,6 +4,16 @@ var  fs = require('fs')
 	, assert = require('assert');
 
 var sqlite3 = require('sqlite3').verbose();
+
+if (global.log) {
+	var log = global.log.child({'mod': 'g6.schema.js'});
+} else {
+	//e.g when testing 
+	var log = require('bunyan').createLogger({
+				'name': 'g6.schema.js', 'level': 'debug'
+		});
+}
+
 //const
 var TABLEDEF_NAME = "_tabledef_";
 var FIELDDEF_NAME = "_fielddef_";
@@ -245,7 +255,7 @@ var schema = {};
 	schema.Database.prototype.init = function(cbAfter) {
 		try {
 			var me = this;
-			console.log(util.inspect(me.tableDefs));
+			//console.log(util.inspect(me.tableDefs));
 			_.each(me.tableDefs, function(tableDef) {
 				var table = new schema.Table(tableDef);
 				me.tables[table.name] = table;			
@@ -323,10 +333,13 @@ var schema = {};
 	}
 
 	schema.Database.prototype.save = function(dbFile, cbResult) {
+		console.log("schema.Database.save " + dbFile)
 		var me = this;
 		me._generateDatabase(null, function(err) {
+			console.log('asdasd');
 			if ( ! err) {
 				me._generateDatabase(dbFile, function(err) {
+					log.info("saving db to " + dbFile)
 					if (err) {
 						log.warn("save() failed. " + err);			
 					}

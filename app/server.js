@@ -27,13 +27,21 @@ var app = express();
 var log = global.log.child({'mod': 'g6.server.js'});
 
 var config = {
-	"ip"	: process.env.OPENSHIFT_NODEJS_IP || null,
+	"ip"	:  null,
 	"port"	: process.env.OPENSHIFT_NODEJS_PORT || 3000, 
 	"root"  : 'projects'
 }
 
+config.ip = process.env.IP;
+config.port = process.env.PORT;
+
 if (process.env.OPENSHIFT_DATA_DIR) {
 	config.root = process.env.OPENSHIFT_DATA_DIR + config.root;
+	config.ip = process.env.OPENSHIFT_NODEJS_IP;
+	config.port = process.env.OPENSHIFT_NODEJS_PORT;
+} else if (process.env.C9_USER) {
+	config.ip = process.env.IP;
+	config.port = process.env.PORT;
 }
 
 var accountControllers = {};

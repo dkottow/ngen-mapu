@@ -3,8 +3,8 @@ var assert = require('assert')
 	, _ = require('underscore')
 	, util = require('util')
 	, sqlite3 = require('sqlite3').verbose()
-	, schema = require('../app/schema')
-	, Model = require('../app/model').Model;
+	, schema = require('../app/Schema')
+	, Model = require('../app/Database').Database;
 	
 describe('Schema', function() {
 
@@ -150,7 +150,7 @@ describe('Schema', function() {
 
 	describe('init()', function() {
 		it('ctor guards tableDef', function() {
-			var db = new schema.Database([
+			var db = new schema.Schema([
 					 {"name": "table_foo"
 				}
 			]);
@@ -160,7 +160,7 @@ describe('Schema', function() {
 			});
 		});
 		it('ctor guards fieldDef', function() {
-			var db = new schema.Database([
+			var db = new schema.Schema([
 					 { "name": "test"
 					 , "fields": {
 							"id": {
@@ -176,7 +176,7 @@ describe('Schema', function() {
 			});
 		});
 		it('ctor guards opbligatory fields', function() {
-			var db = new schema.Database([
+			var db = new schema.Schema([
 					 { "name": "test"
 					 , "fields": {
 							  "id": {
@@ -198,33 +198,35 @@ describe('Schema', function() {
 			});
 		});
 	});
+	
 	describe('Database.createSQL()', function() {
 		it('createSQL example', function() {
-			var db = new schema.Database(testSchema);
+			var db = new schema.Schema(testSchema);
 			db.init(function(err) {
 				if (err) {
 					console.log(err);
 				} else {
 					var sql = db.createSQL();
-					//console.log(sql);
+					console.log(sql);
 				}
 			});
 		});
-	});
-	describe('Model.setSchema()', function() {
-		var dbFile = "test/test-create.sqlite";
-		var model = new Model(dbFile);
 
-		before(function(done) {
-			//model.init(done);
-			done();
-		});
-
-		it('createSQL example', function(done) {
-			model.setSchema(testSchema, function(err) {
-				console.log(err);
-				done();
+		it('save example', function(done) {
+			var dbFile = "test/test-create.sqlite";
+	
+			var db = new schema.Schema(testSchema);
+			db.init(function(err) {
+				if (err) {
+					console.log(err);
+				} else {
+					db.save(dbFile, function(err) {
+						console.log(err);
+						done();	
+					});
+				}
 			});
+
 		});
 	});
 

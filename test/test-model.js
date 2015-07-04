@@ -5,14 +5,14 @@ var assert = require('assert')
 	, _ = require('underscore')
 	, util = require('util')
 	, sqlite3 = require('sqlite3').verbose()
-	, Model = require('../app/model').Model;
+	, Database = require('../app/Database').Database;
 	
-var isDescendant = require('../app/model').isDescendant;
+var isDescendant = require('../app/Database').isDescendant;
 
 
 describe('Model', function() {
-	var dbFile = "test/test.sqlite";
-	var model = new Model(dbFile);
+	var dbFile = "test/sales.sqlite";
+	var model = new Database(dbFile);
 
 	before(function(done) {
 		model.init(done);
@@ -21,13 +21,13 @@ describe('Model', function() {
 	after(function(done) {
 		//console.log("DELETING ALL ROWS id > 2");
 		var db = new sqlite3.Database(dbFile);
-		db.run("DELETE FROM borehole WHERE id > 1", done);
+		db.run("DELETE FROM orders WHERE id > 10", done);
 		db.close();
 	});
 
 	describe('init()', function() {
 		it('guards file not found', function(done) {
-			var m = new Model("file-not-found.sqlite");
+			var m = new Database("file-not-found.sqlite");
 			m.init(function(err) {
 				assert(err instanceof Error);
 				done();	
@@ -38,45 +38,45 @@ describe('Model', function() {
   	describe('getSchema()', function() {		
 
 		var defs;
+		
 		before(function(done) {
-			defs = model.getSchema(function(err, result) {
+			model.getSchema(function(err, result) {
 				defs = result;
-				console.log(defs);
+				//console.log(defs);
 				done();
 			});
 			//console.log(defs);
 		});
 
-		it('test.sqlite has 6 tables', function() {
-			assert.equal(_.values(defs).length, 6);
+		it('sales.sqlite has 4 tables', function() {
+			//console.log(_.values(defs.tables));
+			assert.equal(_.values(defs.tables).length, 4);
 		});
 
-		it('test.sqlite borehole root table', function() {
-			var borehole = _.find(defs, function(t) {
-				return t.name == 'borehole';
-			});
-			assert(borehole, 'table exists');
-			assert.equal(borehole.parent, null, 'parent is null');
-			assert.equal(borehole.support, 'text', 'support is text');
+		it('sales.sqlite products table', function() {
+			var products = defs.tables["products"];
+			assert(products, 'table exists');
+			assert.equal(products.children.length, 1, 'one child');
 		});
 
 	});
 
   	describe('isDescendant()', function() {		
 		it('descendant from borehole', function() {
-			var d = model.tableMap()['fracture'];
-			var t = model.tableMap()['borehole'];
+			var d = model.tables.products_in_orders;
+			var t = model.tables.products;
 			var result = isDescendant(d, t, 5);
-console.log("Descendant " + d.name + " from " + t.name + " is " + result);	
+			//console.log("Descendant " + d.name + " from " + t.name + " is " + result);	
+			assert(result, d.name + " descends from " + t.name);
 		});
 	});
 
   	describe('getDeep()', function() {		
-		it('get borehole deep', function(done) {
-			model.getDeep(model.tableMap()['borehole']
-						  	,{'field' : 'id', 'value' : 1}
-						  	,'*', 2
-							, function(err, result) {
+		it('get customer deep', function(done) {
+			model.getDeep(model.tables.customers, 
+						  	{'field' : 'id', 'value' : 1},
+						  	'*', 2,
+							function(err, result) {
 				console.log("deep rc " + err);
 
 //console.log("******* done deep... *******")

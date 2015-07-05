@@ -53,16 +53,17 @@ describe('Model', function() {
 			assert.equal(_.values(defs.tables).length, 4);
 		});
 
-		it('sales.sqlite products table', function() {
+		it('sales.sqlite has products table with some fields', function() {
 			var products = defs.tables["products"];
 			assert(products, 'table exists');
+			assert(_.values(products.fields).length > 3, 'fields exists');
 			assert.equal(products.children.length, 1, 'one child');
 		});
 
 	});
 
   	describe('isDescendant()', function() {		
-		it('descendant from borehole', function() {
+		it('products_in_orders descendant from products', function() {
 			var d = model.tables.products_in_orders;
 			var t = model.tables.products;
 			var result = isDescendant(d, t, 5);
@@ -74,15 +75,15 @@ describe('Model', function() {
   	describe('getDeep()', function() {		
 		it('get customer deep', function(done) {
 			model.getDeep(model.tables.customers, 
-						  	{'field' : 'id', 'value' : 1},
+						  	[{'field' : 'id', 'value' : 1}],
 						  	'*', 2,
 							function(err, result) {
-				console.log("deep rc " + err);
-
-//console.log("******* done deep... *******")
-//console.log(util.inspect(result, {depth: 5}));				
-//console.log("******* ...done deep *******")
-
+								assert(err == null, 'getDeep failed ' + err)
+/*
+		console.log("******* done deep... *******")
+		console.log(util.inspect(result, {depth: 5}));				
+		console.log("******* ...done deep *******")
+*/
 				done();
 			});
 		});
@@ -92,17 +93,15 @@ describe('Model', function() {
 
   	describe('all()', function() {		
 
-		it('all root tables', function(done) {
-			var roots = _.filter(model.tables, function(t) {
-				return t.parents == null && t.supertype == null;
-			});
+		it('get all customers/products', function(done) {
+			var tables = [model.tables.products, model.tables.customers];
 
-			var allDone = _.after(roots.length, done);			
+			var allDone = _.after(tables.length, done);			
 
-			_.each(roots, function(t) {
-				var order = {'name': 'asc'};
-				model.all(t, {}, '*', order, 1000, function(err, result) {
-					assert(err == null);
+			_.each(tables, function(t) {
+				var order = [{'name': 'asc'}];
+				model.all(t, [], '*', order, 1000, function(err, result) {
+					assert(err == null, err);
 					console.log('got ' + result.length + " " + t.name);
 					assert(result.length > 0, 'got some ' + t.name);
 					allDone();
@@ -110,22 +109,49 @@ describe('Model', function() {
 			});
 
 		});
+
+		it('all orders filtered by customer and limited amount', function(done) {
+
+			var table = model.tables.orders;
+
+			var filters = [
+				{'table': 'customers', 'field': 'name', 'operator': 'eq', 'value': 'Daniel'},
+				{'field': 'total_amount', 'operator': 'le', 'value': 100},
+			];
+			model.all(table, filters, '*', [], 10, function(err, result) {
+				assert(err == null, err);
+				console.log('got ' + result.length + " " + table.name);
+				assert(result.length > 0, 'got some ' + table.name);
+				done();
+			});
+
+		});
 	});
 
-
   	describe('insert()', function() {		
+
+		var table;
+		before(function() {
+			table = model.tables.orders;
+		});	
+
 		it('100 rows', function(done) {
+
 			this.timeout(10000); //10secs
 
-			var table = model.tableMap()['borehole'];
-
 			var rows = [];
-			var row = {'name': 'test', 'user': 'mocha', 'date': '2000-01-01', 'lat': 123.45, 'lon': 67.890, 'desc': 'a unit-test pit' };
+			var row = {
+				'order_date': '2015-01-01', 
+				'customer_id': 1,
+				'total_amount': 10.50,
+				'modified_by': 'mocha', 
+				'modified_on': '2000-01-01' 
+			};
 
 			for(var i = 1;i < 100; ++i) {
 				var r = _.clone(row);
-				if ( i < 10)  r['name'] = 'test00' + i;
-				else r['name'] = 'test0' + i;
+				r.customer_id = _.sample([1,2]);
+				r.total_amount = Math.round(1000*Math.random(), 2);
 				rows.push(r);
 			}
 
@@ -136,8 +162,21 @@ describe('Model', function() {
 		});
 
 		it('fail on 2nd row', function(done) {
-			var table = model.tableMap()['borehole'];
-			var rows = [{'name': 't2', 'user': 'mocha', 'date': '2000-01-01', 'lat': 123.45, 'lon': 67.890, 'desc': 'a unit-test pit' }, {'name': 't3', 'user': null, 'date': '2000-01-01', 'lat': 123.45, 'lon': 67.890, 'desc': 'a unit-test pit' }];
+			var rows = [
+				{
+					'order_date': '2015-01-01', 
+					'customer_id': 1,
+					'total_amount': 10.50,
+					'modified_by': 'mocha', 
+					'modified_by': '2000-01-01' 
+				},
+				{
+					'order_date': '2015-01-01', 
+					'customer_id': 2,
+					'total_amount': 9.50,
+					'modified_on': '2000-01-01' 
+				}
+			];				
 			model.insert(table, rows, function(err, result) { 
 				console.log(err);
 				console.log(result);
@@ -146,19 +185,14 @@ describe('Model', function() {
 			});
 		});
 
-		it('non-null field missing', function(done) {
-			var table = model.tableMap()['borehole'];
-			var row = {'name': null, 'user': 'mocha', 'date': '2000-01-01', 'lat': 123.45, 'lon': 67.890, 'desc': 'a unit-test pit' };
-			model.insert(table, [row], function(err, result) { 
-				console.log(err);
-				assert(err instanceof Error, 'sqlite null constraint holds');
-				done();
-			});
-		});
-
 		it('field type mismatch (date)', function(done) {
-			var table = model.tableMap()['borehole'];
-			var row = {'name': 'test', 'user': 'mocha', 'date': '2000-41-01', 'lat': 123.45, 'lon': 67.890, 'desc': 'a unit-test pit' };
+			var row = {
+				'order_date': 'foo', 
+				'customer_id': 1,
+				'total_amount': 10.50,
+				'modified_by': 'mocha', 
+				'modified_on': '2000-01-01' 
+			};
 			model.insert(table, [row], function(err, result) { 
 				console.log(err);
 				assert(err instanceof Error, 'sqlite check constraint holds');
@@ -168,19 +202,28 @@ describe('Model', function() {
 	});
 
   	describe('update()', function() {		
+
+		var table;
+		before(function() {
+			table = model.tables.orders;
+		});	
+
 		it('some rows', function(done) {
-			var table = model.tableMap()['borehole'];
 
 			var rows = [];
-			var row = {'id': 1, 'name': 'test', 'user': 'mucha', 'date': '2000-01-01', 'lat': 123.45, 'lon': 67.890, 'desc': 'a unit-test pit' };
-
-			rows.push(row);
+			var row = {
+				'id': 0,
+				'order_date': '2015-01-02', 
+				'customer_id': 1,
+				'total_amount': 2.00,
+				'modified_by': 'mocha', 
+				'modified_on': '2001-01-01' 
+			};
 
 			for(var i = 5; i < 20; ++i) {
 				var r = _.clone(row);
-				r['id'] = i;
-				if ( i < 10)  r['name'] = 'upd00' + i;
-				else r['name'] = 'upd0' + i;
+				r.id = i;
+				r.total_amount = i*10 + 0.5;
 				rows.push(r);
 			}
 
@@ -191,9 +234,15 @@ describe('Model', function() {
 		});
 
 		it('row does not exist', function(done) {
-			var table = model.tableMap()['borehole'];
 
-			var row = {'id': 666, 'name': 'test', 'user': 'mucha', 'date': '2000-01-01', 'lat': 123.45, 'lon': 67.890, 'desc': 'a unit-test pit' };
+			var row = {
+				'id': 666,
+				'order_date': '2015-01-02', 
+				'customer_id': 1,
+				'total_amount': 2.00,
+				'modified_by': 'mocha', 
+				'modified_on': '2001-01-01' 
+			};
 
 			model.update(table, [row], function(err, result) { 
 				console.log(err);
@@ -203,9 +252,15 @@ describe('Model', function() {
 		});
 
 		it('field type mismatch (numeric)', function(done) {
-			var table = model.tableMap()['rock'];
 
-			var row = {'id': 1, 'from': 'foo', 'to': 100, 'user': 'mocha', 'date': '2000-01-01', 'borehole_pid': 1 };
+			var row = {
+				'id': 666,
+				'order_date': '2015-01-02', 
+				'customer_id': 1,
+				'total_amount': 'foo',
+				'modified_by': 'mocha', 
+				'modified_on': '2001-01-01' 
+			};
 
 			model.update(table, [row], function(err, result) { 
 				console.log(err);
@@ -216,9 +271,15 @@ describe('Model', function() {
 
 
 		it('unknown foreign key', function(done) {
-			var table = model.tableMap()['rock'];
 
-			var row = {'id': 1, 'from': 50, 'to': 100, 'user': 'mocha', 'date': '2000-01-01', 'borehole_pid': 666 };
+			var row = {
+				'id': 5,
+				'order_date': '2015-01-02', 
+				'customer_id': 666,
+				'total_amount': 2.00,
+				'modified_by': 'mocha', 
+				'modified_on': '2001-01-01' 
+			};
 
 			model.update(table, [row], function(err, result) { 
 				console.log(err);
@@ -229,17 +290,22 @@ describe('Model', function() {
 	});
 
   	describe('delete()', function() {		
-		it('delete some fracture rows', function(done) {
-			var table = model.tableMap()['borehole'];
 
-			model.delete(table, [10, 11, 12], function(err, result) {
-				console.log(err);
+		var table;
+		before(function() {
+			table = model.tables.orders;
+		});	
+
+		it('delete some rows', function(done) {
+
+			model.delete(table, [11, 12, 15], function(err, result) {
 				assert(err == null, 'deleted some rows');
 				done(); 
 			});
 		});
 	});
 
+/*
   	describe('all() and get()', function() {		
 
 		it('all root tables', function(done) {
@@ -309,7 +375,7 @@ describe('Model', function() {
 			});
 		});
 	});
-
+*/
 
 
 });

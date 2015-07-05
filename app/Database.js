@@ -222,7 +222,7 @@ function Database(dbFile)
 		try {
 			var sql = buildSelectSql(table, filterClauses, resultFields, [], 1);
 		} catch(e) {
-			err = new Error("G6_MODEL_ERROR: model.get() failed. " + e);
+			var err = new Error("G6_MODEL_ERROR: model.get() failed. " + e);
 			cbResult(err, []);
 		}
 
@@ -243,6 +243,27 @@ function Database(dbFile)
 			cbResult(err, row);
 		});
 	}
+
+	this.count = function(table, filterClauses, cbResult) {
+		try {
+			var sql = buildCountSql(table, filterClauses);
+		} catch(e) {
+			var err = new Error("G6_MODEL_ERROR: model.count() failed. " + e);
+			cbResult(err, []);
+		}
+
+		var db = new sqlite3.cached.Database(this.dbFile);
+
+		db.all(sql['query'], sql['params'], function(err, rows) {
+			if (err) {
+				log.warn("model.get() failed. " + err);	
+			}
+			
+			console.dir(rows);
+			cbResult(err, rows);
+		});
+	}
+
 
 	this.getDeep = function(table, filterClauses, resultFields, depth, cbResult) {
 		
@@ -734,11 +755,11 @@ function Database(dbFile)
 
 
 
-	function buildSelectSql(table, filterClauses, fields, order, limit) 
+	function buildSelectSql(table, filterClauses, fields, orderClauses, limit) 
 	{
 		assert(_.isArray(filterClauses), "arg 'filterClauses' is array");
 		assert(_.isObject(table), "arg 'table' is object");
-		assert(_.isArray(order), "arg 'order' is array");
+		assert(_.isArray(orderClauses), "arg 'orderClauses' is array");
 
 		if (fields == '*') {
 			fields = _.map(table.fields, function(f) {
@@ -833,18 +854,25 @@ function Database(dbFile)
 		});
 
 		var orderSQL;
-		if ( ! _.isEmpty(order)) {	
-			var orderField = order[0];
-			var orderDir = 'ASC';
-			if (order.length > 1 && order[1].toLowerCase() == 'desc') {
-				orderDir = 'DESC';
-			}
+		if ( ! _.isEmpty(orderClauses)) {	
+			
+			var orderSQL = _.reduce(orderClauses, function(memo, order, idx) {
+				var orderField = _.keys(order)[0];
+				var orderDir = _.values(order)[0].toUpperCase();
+				
+				assert(_.contains(_.pluck(table['fields'], 'name'), orderField),
+					  util.format("order field '%s' unknown", orderField));
 
-			assert(_.contains(_.pluck(table['fields'], 'name'), orderField),
-				  util.format("order field '%s' unknown", orderField));
-
-			orderSQL = util.format(' ORDER BY %s."%s" %s', 
-							table['name'], orderField, orderDir);
+				assert(_.contains(['ASC', 'DESC'], orderDir),
+					  util.format("order dir '%s' invalid", orderDir));
+				
+				var result = memo + util.format('%s."%s" %s', 
+								table['name'], orderField, orderDir);
+				if (idx < orderClauses.length-1) result = result + ',';
+				return result;
+				
+			}, ' ORDER BY ');
+			
 		} else {
 			//most recently modified first
 			orderSQL = " ORDER BY " + table['name'] + ".id DESC";
@@ -871,7 +899,7 @@ function Database(dbFile)
 		sql = sql + fieldSQL + " FROM " + table.name 
 				+ " " + joinSQL + whereSQL + orderSQL + limitSQL;
 
-		console.log(sql, sql_params);
+		log.debug(sql, sql_params);
 		return {'query': sql, 'params': sql_params};
 	}
 

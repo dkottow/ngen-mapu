@@ -76,9 +76,16 @@ function DatabaseController(router, restBase, model)
 					});
 				}				
 	
-				var order = [];
+				var orderClauses = [];
 				if (req.query['$orderby']) {
-					order = req.query['$orderby'].split(' ');
+					var orderBy = req.query['$orderby'].split(' ');
+					var order = {};
+					var fld = orderBy[0];
+					order[fld] = 'ASC';
+					if (orderBy.length > 1) {
+						order[fld] = orderBy[1];
+					}
+					orderClauses.push(order);
 				}
 
 				var limit = global.row_max_count;
@@ -90,7 +97,7 @@ function DatabaseController(router, restBase, model)
 				}
 
 				me.model.all(table, filterClauses, '*', 
-							 order, limit, function(err, result) { 
+							 orderClauses, limit, function(err, result) { 
 					if (err) {
 						log.warn(err);
 						res.send(400, err.message);

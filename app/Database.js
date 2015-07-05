@@ -139,18 +139,34 @@ function Database(dbFile)
 		}
 		var db = new sqlite3.cached.Database(this.dbFile);
 
-		db.all(sql['query'], sql['params'], function(err, rows) {
+		db.all(sql.query, sql.params, function(err, rows) {
 			if (err) {
 				log.warn("model.all() failed. " + err);	
+				cbResult(err, null);
 			} else {
 				//console.dir(rows);
-				if (table["supertype"]) {
+				if (table.supertype) {
 					_.each(rows, function(r) {
-						r[table["supertype"]["name"] + "_sid"] = r['id'];
+						r[table.supertype.name + "_sid"] = r.id;
 					});
 				}
+				
+				var countSql = sql.countSql 
+					+ ' UNION ALL SELECT COUNT(id) as count FROM ' + table.name; 
+				
+				db.all(countSql, sql.params, function(err, countRows) {
+					if (err) {
+						cbResult(err, null);
+					} else {
+						var result = { 
+							rows: rows, 
+							count: countRows[0].count,
+							totalCount: countRows[1].count
+						}
+						cbResult(null, result);
+					}
+				});
 			}
-			cbResult(err, rows);
 		});
 	}
 
@@ -242,8 +258,8 @@ function Database(dbFile)
 				});
 
 				_.each(tables, function(t) {
-					me.all(t, [joinClause], '*', [], row_max_count, function(err, rows) {
-						result[t.name] = rows;
+					me.all(t, [joinClause], '*', [], row_max_count, function(err, res) {
+						result[t.name] = res.rows;
 						allDone(err, result);
 					});
 				});

@@ -83,8 +83,8 @@ describe('Model', function() {
 				var order = [{'name': 'asc'}];
 				model.all(t, [], '*', order, 1000, function(err, result) {
 					assert(err == null, err);
-					console.log('got ' + result.length + " " + t.name);
-					assert(result.length > 0, 'got some ' + t.name);
+					console.log('got ' + result.rows.length + " of " + result.count + " " + t.name);
+					assert(result.count > 0, 'got some ' + t.name);
 					allDone();
 				});
 			});
@@ -101,8 +101,8 @@ describe('Model', function() {
 			];
 			model.all(table, filters, '*', [], 10, function(err, result) {
 				assert(err == null, err);
-				console.log('got ' + result.length + " " + table.name);
-				assert(result.length > 0, 'got some ' + table.name);
+				console.log('got ' + result.count + " " + table.name);
+				assert(result.count > 0, 'got some ' + table.name);
 				done();
 			});
 
@@ -112,15 +112,15 @@ describe('Model', function() {
   	describe('getDeep()', function() {		
 		it('get customer deep', function(done) {
 			model.getDeep(model.tables().customers, 
-						  	[{'field' : 'id', 'value' : 1}],
+						  	[{'field' : 'id', 'operator': 'eq', 'value' : 1}],
 						  	'*', 2,
 							function(err, result) {
 								assert(err == null, 'getDeep failed ' + err)
-/*
+
 		console.log("******* done deep... *******")
 		console.log(util.inspect(result, {depth: 5}));				
 		console.log("******* ...done deep *******")
-*/
+
 				done();
 			});
 		});

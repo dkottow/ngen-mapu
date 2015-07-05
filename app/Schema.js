@@ -49,6 +49,8 @@ var schema = {};
 
 			me.type = fieldDef.type;
 			me.order = fieldDef.order;
+			me.notnull = fieldDef.notnull;
+			me.fk = 0;
 			me.fk_table = fieldDef.fk_table;
 			if (me.fk_table) {
 				me.fk = 1;
@@ -185,13 +187,6 @@ var schema = {};
 			assert(_.has(tableDef, "fields"), errMsg);
 			assert(_.isObject(tableDef.fields), errMsg);
 
-			_.each(tableDef.fields, function(f) {
-				me.fields[f.name] = createField(f);
-			});
-
-			me.name = tableDef.name;
-			me.row_name = tableDef.row_name;
-
 			if ( ! /^\w+$/.test(tableDef.name)) {
 				throw new Error(errMsg 
 						+ " Table names can only have word-type characters.");
@@ -207,6 +202,14 @@ var schema = {};
 			if( ! _.has(tableDef.fields, "modified_on")) {
 				throw new Error(errMsg + " modified_on field missing.");
 			}
+
+			_.each(tableDef.fields, function(f) {
+				me.fields[f.name] = createField(f);
+			});
+
+			me.name = tableDef.name;
+			me.row_name = tableDef.row_name;
+
 		}
 	}
 
@@ -674,7 +677,13 @@ var schema = {};
 				+ " " + joinSQL + whereSQL + orderSQL + limitSQL;
 
 		log.debug(sql, sql_params);
-		return {'query': sql, 'params': sql_params};
+
+		var countSQL = "SELECT COUNT("
+		if (distinct) countSQL = countSQL + "DISTINCT ";
+		countSQL = countSQL + table.name + ".id) as count FROM " + table.name 
+				+ " " + joinSQL + whereSQL;
+
+		return {'query': sql, 'params': sql_params, 'countSql': countSQL};
 	}
 
 	schema.Database.prototype.save = function(dbFile, cbResult) {

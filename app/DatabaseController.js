@@ -103,7 +103,11 @@ function DatabaseController(router, restBase, model)
 						res.send(400, err.message);
 						return;
 					}
-					result = {'data': result};
+					result = {
+						data: result.rows, 
+						count: result.count, 
+						totalCount: result.totalCount
+					};
 					log.debug(result);
 					res.send(result); 
 				});

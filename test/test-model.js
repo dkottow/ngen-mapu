@@ -64,37 +64,18 @@ describe('Model', function() {
 
   	describe('isDescendant()', function() {		
 		it('products_in_orders descendant from products', function() {
-			var d = model.tables.products_in_orders;
-			var t = model.tables.products;
+			var d = model.tables().products_in_orders;
+			var t = model.tables().products;
 			var result = isDescendant(d, t, 5);
 			//console.log("Descendant " + d.name + " from " + t.name + " is " + result);	
 			assert(result, d.name + " descends from " + t.name);
 		});
 	});
 
-  	describe('getDeep()', function() {		
-		it('get customer deep', function(done) {
-			model.getDeep(model.tables.customers, 
-						  	[{'field' : 'id', 'value' : 1}],
-						  	'*', 2,
-							function(err, result) {
-								assert(err == null, 'getDeep failed ' + err)
-/*
-		console.log("******* done deep... *******")
-		console.log(util.inspect(result, {depth: 5}));				
-		console.log("******* ...done deep *******")
-*/
-				done();
-			});
-		});
-	});
-
-
-
   	describe('all()', function() {		
 
 		it('get all customers/products', function(done) {
-			var tables = [model.tables.products, model.tables.customers];
+			var tables = [model.tables().products, model.tables().customers];
 
 			var allDone = _.after(tables.length, done);			
 
@@ -112,7 +93,7 @@ describe('Model', function() {
 
 		it('all orders filtered by customer and limited amount', function(done) {
 
-			var table = model.tables.orders;
+			var table = model.tables().orders;
 
 			var filters = [
 				{'table': 'customers', 'field': 'name', 'operator': 'eq', 'value': 'Daniel'},
@@ -128,11 +109,28 @@ describe('Model', function() {
 		});
 	});
 
+  	describe('getDeep()', function() {		
+		it('get customer deep', function(done) {
+			model.getDeep(model.tables().customers, 
+						  	[{'field' : 'id', 'value' : 1}],
+						  	'*', 2,
+							function(err, result) {
+								assert(err == null, 'getDeep failed ' + err)
+/*
+		console.log("******* done deep... *******")
+		console.log(util.inspect(result, {depth: 5}));				
+		console.log("******* ...done deep *******")
+*/
+				done();
+			});
+		});
+	});
+
   	describe('insert()', function() {		
 
 		var table;
 		before(function() {
-			table = model.tables.orders;
+			table = model.tables().orders;
 		});	
 
 		it('100 rows', function(done) {
@@ -205,7 +203,7 @@ describe('Model', function() {
 
 		var table;
 		before(function() {
-			table = model.tables.orders;
+			table = model.tables().orders;
 		});	
 
 		it('some rows', function(done) {
@@ -293,7 +291,7 @@ describe('Model', function() {
 
 		var table;
 		before(function() {
-			table = model.tables.orders;
+			table = model.tables().orders;
 		});	
 
 		it('delete some rows', function(done) {

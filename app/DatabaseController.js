@@ -36,7 +36,7 @@ function DatabaseController(router, restBase, model)
 		this.router.get(me.base + ".db", defsHandler);
 		
 		var rowsExt = ".rows";
-		_.each(me.model.tables, function(table) {
+		_.each(me.model.tables(), function(table) {
 			var url = me.base + "/" + table['name'];
 
 			//select all table rows 

@@ -45,7 +45,7 @@ function DatabaseController(router, restBase, model)
 				var filterClauses = [];
 				//console.dir(req.query['$filter']);
 				if (req.query['$filter']) {
-					var clauses = req.query['$filter'].toUpperCase().split('AND');
+					var clauses = req.query['$filter'].split('and');
 					_.each(clauses, function(clause) {
 						var filter = {};
 						var fq = clause.trim().split(' ');

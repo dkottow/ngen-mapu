@@ -207,6 +207,7 @@ describe('Schema', function() {
 					console.log(err);
 				} else {
 					var sql = db.createSQL();
+					var sql = db.viewSQL(db.tables.products_in_orders);
 					console.log(sql);
 				}
 			});

@@ -244,6 +244,12 @@ var schema = {};
 		return sql;
 	}
 
+	schema.Table.prototype.foreignKeys = function() {
+		return _.select(this.fields, function(f) { 
+			return ! _.isEmpty(f.fk_table); 
+		});
+	}
+
 	schema.Table.prototype.toSQL = function() {
 		var sql = "CREATE TABLE " + this.name + "(";
 		_.each(this.fields, function(f) {
@@ -251,11 +257,8 @@ var schema = {};
 		});
 		sql += "\n PRIMARY KEY (id)";
 
-		var fks = _.select(this.fields, function(f) { 
-			return ! _.isEmpty(f.fk_table); 
-		});
 
-		_.each(fks, function(fk) {
+		_.each(this.foreignKeys(), function(fk) {
 			sql += ",\n FOREIGN KEY(" + fk.name + ") REFERENCES " 
 				+ fk.fk_table + " (id)";
 		});
@@ -488,6 +491,60 @@ var schema = {};
 		return sql;
 	}
 
+	schema.Database.prototype.viewSQL = function(table) {
+		var me = this;
+		
+		var joinTables = {};
+		var joinSQL = '';
+		var distinct = false;
+		var fk_fields = [];
+		_.each(table.foreignKeys(), function(fk) {
+				
+			var fk_table = me.tables[fk.fk_table];
+			var nkValue = _.reduce(fk_table.row_name, function(memo, nk) {
+				var result;
+				
+				if (nk.indexOf('.') < 0) {
+					result = util.format('%s."%s"', fk_table.name, nk);
+					var path = table.bfsPath(fk_table);
+					var j = joinTablePath(path, joinTables);
+					joinSQL = joinSQL + j.sql;
+					for(var i = 1; i < path.length; ++i) {
+						joinTables[path[i].name] = path[i];
+					}
+				} else {
+					var nkTable = nk.split('.')[0]; 	
+					var nkField = nk.split('.')[1]; 	
+					result = util.format('%s."%s"', nkTable, nkField);
+	
+					var path = table.bfsPath(me.tables[nkTable]);
+					var j = joinTablePath(path, joinTables);
+					joinSQL = joinSQL + j.sql;
+					for(var i = 1; i < path.length; ++i) {
+						joinTables[path[i].name] = path[i];
+					}
+				}	
+				if ( ! _.isEmpty(memo)) {
+					result = memo + " || ' ' || " + result;
+				}
+				return result;
+			}, '');
+
+			fk_fields.push(nkValue + ' AS _' + fk_table.name +'_');
+				
+		});
+
+		var fieldSQL = _.map(table.fields, function(f) {
+			return util.format('%s.%s', table.name, f.name);
+		}).join(',')
+			+ ','
+			+ fk_fields.join(',');
+		
+		return 'CREATE VIEW v_' + table.name + ' AS '
+			+  ' SELECT ' + fieldSQL + ' FROM ' + table.name 
+			+ joinSQL;
+	}
+
 	schema.Database.prototype._generateDatabase = function(dbFile, cbResult) {
 		var sql = this.createSQL();
 
@@ -547,7 +604,7 @@ var schema = {};
 		assert(_.isString(limit), "arg 'limit' is string");
 
 		var joinTables = {};
-		var joinSQL = "";
+		var joinSQL = '';
 
 		var me = this;
 

@@ -107,6 +107,22 @@ describe('Model', function() {
 			});
 
 		});
+
+		it('all products ordered filtered by customer', function(done) {
+
+			var table = model.tables().products;
+
+			var filters = [
+				{'table': 'customers', 'field': 'name', 'operator': 'eq', 'value': 'Daniel'}
+			];
+			model.all(table, filters, '*', [], 10, function(err, result) {
+				assert(err == null, err);
+				console.log('got ' + result.count + " " + table.name);
+				assert(result.count > 0, 'got some ' + table.name);
+				done();
+			});
+
+		});
 	});
 
   	describe('getDeep()', function() {		
@@ -116,11 +132,11 @@ describe('Model', function() {
 						  	'*', 2,
 							function(err, result) {
 								assert(err == null, 'getDeep failed ' + err)
-
+/*
 		console.log("******* done deep... *******")
 		console.log(util.inspect(result, {depth: 5}));				
 		console.log("******* ...done deep *******")
-
+*/
 				done();
 			});
 		});

@@ -39,27 +39,13 @@ function DatabaseController(router, restBase, model)
 		_.each(me.model.tables(), function(table) {
 			var url = me.base + "/" + table['name'];
 
-			//select all table rows 
-			//	can be filtered by some *ancestor* table id 
-			//	given in query string. 
-			//
-			//		e.g. 
-			//			given table tree: borehole > rock > fracture
-			//
-			//			/[base]/fracture?borehole=1 
-			//			 will give you all fractures (of all rocks) 
-			//			 belonging to borehole.id=1	
-			//
-			//  while	/[base]/fracture?rock=3
-			//			will give you all fractures of rock.id=3
-
 			var getRowsHandler = function(req, res) {
 				log.info(req.method + " " + req.url);
 				
 				var filterClauses = [];
 				//console.dir(req.query['$filter']);
 				if (req.query['$filter']) {
-					var clauses = req.query['$filter'].split('and');
+					var clauses = req.query['$filter'].toUpperCase().split('AND');
 					_.each(clauses, function(clause) {
 						var filter = {};
 						var fq = clause.trim().split(' ');

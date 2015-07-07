@@ -10,7 +10,7 @@ describe('Schema', function() {
 
 	var testSchema = [
 		 { "name": "customers"
-		 , "row_name": ["email"]
+		 , "row_name": ["name", "email"]
 		 , "fields": {
 				  "id": {
 					  "name": "id"
@@ -200,6 +200,13 @@ describe('Schema', function() {
 	});
 	
 	describe('Database.createSQL()', function() {
+		var dbFile = "test/test-create.sqlite";
+		
+		before(function(done) {
+			var db = new schema.Schema(testSchema);
+			db.remove(dbFile, done);
+		});	
+
 		it('createSQL example', function() {
 			var db = new schema.Schema(testSchema);
 			db.init(function(err) {
@@ -207,14 +214,12 @@ describe('Schema', function() {
 					console.log(err);
 				} else {
 					var sql = db.createSQL();
-					var sql = db.viewSQL(db.tables.products_in_orders);
 					console.log(sql);
 				}
 			});
 		});
 
 		it('save example', function(done) {
-			var dbFile = "test/test-create.sqlite";
 	
 			var db = new schema.Schema(testSchema);
 			db.init(function(err) {

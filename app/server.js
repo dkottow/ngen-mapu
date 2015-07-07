@@ -9,10 +9,11 @@ var url = require('url');
 
 var bunyan = require('bunyan');
 
+var logLevel = 'info';
+//var logLevel = 'debug';
 global.log = bunyan.createLogger({
 	'name': 'g6.server',
-	'level': 'info',
-	//'level': 'debug',
+	'level': logLevel,
 	'src': true
 });
 
@@ -28,12 +29,9 @@ var log = global.log.child({'mod': 'g6.server.js'});
 
 var config = {
 	"ip"	:  null,
-	"port"	: process.env.OPENSHIFT_NODEJS_PORT || 3000, 
+	"port"	: 3000, 
 	"root"  : 'projects'
 }
-
-config.ip = process.env.IP;
-config.port = process.env.PORT;
 
 if (process.env.OPENSHIFT_DATA_DIR) {
 	config.root = process.env.OPENSHIFT_DATA_DIR + config.root;
@@ -73,7 +71,7 @@ function serveAccounts(rootDir) {
 					});
 
 					app.use('/', router);
-					console.log('done.');
+					log.info('done.');
 				}
 			});
 			accountControllers[controller.name] = controller;

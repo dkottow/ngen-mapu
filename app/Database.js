@@ -300,6 +300,28 @@ function Database(dbFile)
 		});
 	}	
 
+
+/* 
+
+consider using triggers instead - and revert to git c2252fa23788270004b816a7ca8f009d71cf3949 
+
+CREATE TRIGGER logs_bu BEFORE UPDATE ON logs BEGIN
+  DELETE FROM logs_fts WHERE docid=old.rowid;
+END;
+CREATE TRIGGER logs_bd BEFORE DELETE ON logs BEGIN
+  DELETE FROM logs_fts WHERE docid=old.rowid;
+END;
+
+CREATE TRIGGER logs_au AFTER UPDATE ON logs BEGIN
+  INSERT INTO logs_fts(docid, b, c) VALUES(new.rowid, new.b, new.c);
+END;
+CREATE TRIGGER logs_ai AFTER INSERT ON logs BEGIN
+  INSERT INTO logs_fts(docid, b, c) VALUES(new.rowid, new.b, new.c);
+END;
+
+INSERT INTO logs_fts(logs_fts) VALUES('rebuild');
+*/
+
 	this.insert = function(table, rows, cbDone) {
 
 		if (rows.length == 0) {
@@ -310,24 +332,28 @@ function Database(dbFile)
 		var fieldNames = _.filter(_.keys(rows[0]) 
 							, function(fn) { 
 				//filter out id and any non-field key
-				return _.has(table['fields'], fn) && fn != 'id'; 
+				return _.has(table.fields, fn) && fn != 'id'; 
 		});
 
 
-		if (table["supertype"]) {
+		if (table.supertype) {
 			//exception do insert with id = supertype.id when rows are a subtype
 			fieldNames.push('id');
 			_.each(rows, function(r) {
-				r['id'] = r[table["supertype"]["name"] + "_sid"];
+				r.id = r[table.supertype.name + "_sid"];
 			});
 		}
 
 		var fieldParams = _.times(fieldNames.length, function(fn) { return "?"; });
 
-		var sql = "INSERT INTO " + table['name'] 
+		var sql = "INSERT INTO " + table.name 
 				+ '("' + fieldNames.join('", "') + '")'
-				+ " VALUES (" + fieldParams.join(', ') + ")";
+				+ " VALUES (" + fieldParams.join(', ') + ");"
+
 		//console.log(sql);
+		var ftsSQL = "INSERT INTO " + table.ftsName()
+				+ "(docid,content) VALUES (?,?);";
+
 
 		var err = null;
 		var ids = [];
@@ -338,29 +364,42 @@ function Database(dbFile)
 			db.run("BEGIN TRANSACTION");
 
 			var stmt = db.prepare(sql, function(e) {
-				err = e;
+				err = err || e;
+			});
+
+			var ftsStatement = db.prepare(ftsSQL, function(e) {
+				err = err || e;
 			});
 
 			_.each(rows, function(r) {
 				if (err == null) {					
 
-					var params = _.map(fieldNames, function(fn) { return r[fn]; });
+					var params = _.map(fieldNames, function(fn) { 
+										return r[fn]; });
 					//console.log(params);
 					stmt.run(params, function(e) { 
-						if (e) err = e;
+						err = err || e;
 						ids.push(this.lastID);
+						var ftsParams = [this.lastID, _.values(r).join(' ')];
+						ftsStatement.run(ftsParams, function(e) {
+							err = err || e;
+						});
 					});
+				
+
 				}
 			});
 
 			stmt.finalize(function() { 
-				if (err == null) {
-					db.run("COMMIT TRANSACTION");
-				} else {
-					log.warn("Database.insert() failed. Rollback. " + err);
-					db.run("ROLLBACK TRANSACTION");
-				}
-				cbDone(err, ids); 
+				ftsStatement.finalize(function() {
+					if (err == null) {
+						db.run("COMMIT TRANSACTION");
+					} else {
+						log.warn("Database.insert() failed. Rollback. " + err);
+						db.run("ROLLBACK TRANSACTION");
+					}
+					cbDone(err, ids); 
+				})
 			});	
 
 		});
@@ -376,21 +415,24 @@ function Database(dbFile)
 
 		var fieldNames = _.filter(_.keys(rows[0]) 
 							, function(fn) { 
-				return _.has(table['fields'], fn) && fn != 'id'; 
+				return _.has(table.fields, fn) && fn != 'id'; 
 		});
 
-		if (table["supertype"]) {
+		if (table.supertype) {
 			fieldNames.push('id');
 			//update id according to <supertype>_sid
 			_.each(rows, function(r) {
-				r['id'] = r[table["supertype"]["name"] + "_sid"];
+				r.id = r[table.supertype.name + "_sid"];
 			});
 		}
 
-		var sql = "UPDATE " + table['name'] 
-			+ ' SET "' + fieldNames.join('" = ?, "') + '" = ?'
-			+ " WHERE id = ?"; 
+		var sql = "UPDATE " + table.name
+				+ ' SET "' + fieldNames.join('" = ?, "') + '" = ?'
+				+ " WHERE id = ?"; 
 		//console.log(sql);
+
+		var ftsSQL = "UPDATE " + table.ftsName()
+				+ " SET content = ? WHERE docid = ?";
 
 		var err = null;
 		var modCount = 0;	
@@ -401,36 +443,46 @@ function Database(dbFile)
 			db.run("BEGIN TRANSACTION");
 
 			var stmt = db.prepare(sql, function(e) {
-				err = e;
+				err = err || e;
+			});
+
+			var ftsStatement = db.prepare(ftsSQL, function(e) {
+				err = err || e;
 			});
 
 			_.each(rows, function(r) {
 
 				if (err == null) {					
 					var params = _.map(fieldNames, function(fn) { return r[fn]; });
-					params.push(r['id']);
+					params.push(r.id);
 					//console.log(params);
 
 					stmt.run(params, function(e) {
-						if (e) err = e;
+						err = err || e;
 						modCount += this.changes;
+						var ftsParams = [r.id, _.values(r).join(' ')];
+						ftsStatement.run(ftsParams, function(e) {
+							err = err || e;
+						});
 					});
 				}
 			});
 
 			stmt.finalize(function() { 
-				if (err == null && modCount != rows.length) {
-					err = new Error("G6_MODEL_ERROR: update row count mismatch. Expected " + rows.length + " got " + modCount);
-				}
+				ftsStatement.finalize(function() {
+					if (err == null && modCount != rows.length) {
+						err = new Error("G6_MODEL_ERROR: update row count mismatch. Expected " + rows.length + " got " + modCount);
+					}
 
-				if (err == null) {
-					db.run("COMMIT TRANSACTION");
+					if (err == null) {
+						db.run("COMMIT TRANSACTION");
 
-				} else {
-					log.warn("Database.update() failed. Rollback. " + err);
-					db.run("ROLLBACK TRANSACTION");
-				}
-				cbDone(err, modCount); 
+					} else {
+						log.warn("Database.update() failed. Rollback. " + err);
+						db.run("ROLLBACK TRANSACTION");
+					}
+					cbDone(err, modCount); 
+				});	
 			});	
 
 		});
@@ -449,6 +501,9 @@ function Database(dbFile)
 		var sql = "DELETE FROM " + table['name'] 
 				+ " WHERE id IN (" + idParams.join(', ') + ")";
 		//console.log(sql);
+		var ftsSQL = "DELETE FROM " + table.ftsName()
+				+ " WHERE docid IN (" + idParams.join(', ') + ")";
+;
 
 		var err = null;
 		var delCount = 0;
@@ -459,30 +514,39 @@ function Database(dbFile)
 			db.run("BEGIN TRANSACTION");
 
 			var stmt = db.prepare(sql, function(e) {
-				err = e;
+				err = err || e;
+			});
+
+			var ftsStatement = db.prepare(ftsSQL, function(e) {
+				err = err || e;
 			});
 
 			if (err == null) 
 			{
 				stmt.run(rows, function(e) { 
-					err = e;
+					err = err || e;
 					delCount = this.changes;
+					ftsStatement.run(rows, function(e) {
+						err = err || e;
+					});
 				});
 			}
 
 			stmt.finalize(function() { 
-				if (err == null && delCount != rows.length) {
-					//console.log(delCount + " <> " + rows.length);
-					err = new Error("G6_MODEL_ERROR: delete row count mismatch");
-				}
+				ftsStatement.finalize(function() {
+					if (err == null && delCount != rows.length) {
+						//console.log(delCount + " <> " + rows.length);
+						err = new Error("G6_MODEL_ERROR: delete row count mismatch");
+					}
 
-				if (err == null) {
-					db.run("COMMIT TRANSACTION");
-				} else {
-					log.warn("Database.delete() failed. Rollback. " + err);
-					db.run("ROLLBACK TRANSACTION");
-				}
-				cbDone(err, delCount); 
+					if (err == null) {
+						db.run("COMMIT TRANSACTION");
+					} else {
+						log.warn("Database.delete() failed. Rollback. " + err);
+						db.run("ROLLBACK TRANSACTION");
+					}
+					cbDone(err, delCount); 
+				});	
 			});	
 
 		});

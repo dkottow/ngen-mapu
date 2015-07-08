@@ -90,7 +90,6 @@ schema.Field.prototype.toJSON = function() {
 		name: this.name,
 		type: this.type,
 		order: this.order,
-		pk: this.pk,
 		fk: this.fk
 	};
 	if (result.fk == 1) {
@@ -255,6 +254,7 @@ schema.Table.prototype.foreignKeys = function() {
 }
 
 schema.Table.prototype.viewName = function() { return 'v_' + this.name; }
+schema.Table.prototype.ftsName = function() { return 'fts_' + this.name; }
 
 schema.Table.prototype.toSQL = function() {
 	var sql = "CREATE TABLE " + this.name + "(";
@@ -270,9 +270,13 @@ schema.Table.prototype.toSQL = function() {
 	});
 
 	sql += "\n);";
-//console.log(sql);
-	return sql;
+	log.debug(sql);
+
+	var ftsSQL = 'CREATE VIRTUAL TABLE  ' + this.ftsName() + ' USING fts4();';
+	return sql + '\n\n' + ftsSQL;
 }
+
+
 
 schema.Table.prototype.toJSON = function() {
 
@@ -483,19 +487,6 @@ function createDefTables() {
 	return sql;
 }
 
-schema.Database.prototype.createSQL = function() {
-	var me = this;
-	var sql = createDefTables();
-
-	_.each(this.tables, function(t) {
-		sql += t.toSQL() + "\n\n";
-		sql += me.viewSQL(t) + "\n\n";
-		sql += t.insertDefSQL() + "\n\n";
-	});
-
-	return sql;
-}
-
 schema.Database.prototype.viewSQL = function(table) {
 	var me = this;
 	
@@ -549,6 +540,19 @@ schema.Database.prototype.viewSQL = function(table) {
 	return 'CREATE VIEW ' + table.viewName() 
 		+  ' AS SELECT ' + fieldSQL + ' FROM ' + table.name 
 		+ joinSQL + ';';
+}
+
+schema.Database.prototype.createSQL = function() {
+	var me = this;
+	var sql = createDefTables();
+
+	_.each(this.tables, function(t) {
+		sql += t.toSQL() + '\n\n';
+		sql += me.viewSQL(t) + '\n\n';
+		sql += t.insertDefSQL() + '\n\n';
+	});
+
+	return sql;
 }
 
 schema.Database.prototype._generateDatabase = function(dbFile, cbResult) {
@@ -608,7 +612,6 @@ schema.Database.prototype.selectSQL = function(table, filterClauses, fields, ord
 					return fk.refName();
 			}) : [])
 		;
-console.log(tableFieldNames);
 
 	if (fields == '*') {
 		fields = _.map(table.fields, function(f) {
@@ -634,49 +637,25 @@ console.log(tableFieldNames);
 	var me = this;
 
 	var fieldSQL = fields.join(",");
-
-/*
-	var nkValue = _.reduce(table.row_name, function(memo, nk) {
-		var result;
-		
-		if (nk.indexOf('.') < 0) {
-			result = util.format('%s."%s"', table.name, nk);
-		} else {
-			var nkTable = nk.split('.')[0]; 	
-			var nkField = nk.split('.')[1]; 	
-			result = util.format('%s."%s"', nkTable, nkField);
-
-			var path = table.bfsPath(me.tables[nkTable]);
-			var j = joinTablePath(path, joinTables);
-			joinSQL = joinSQL + j.sql;
-			for(var i = 1; i < path.length; ++i) {
-				joinTables[path[i].name] = path[i];
-			}
-		}	
-		if ( ! _.isEmpty(memo)) {
-			result = memo + " || ' ' || " + result;
-		}
-		return result;
-	}, '');
-
-	if (! _.isEmpty(nkValue)) {
-		fieldSQL = fieldSQL + ", " + nkValue + " AS row_name";
-	}
-*/
-
 	var whereSQL = " WHERE 1=1";
 	var distinct = false;
 	var sql_params = [];
 
 	_.each(filterClauses, function(filter) {
 
-		if ( ! filter.table) {
-			filter.table = table.name;
+		
+		filter.table = filter.table || table.name;
+
+		var allowedFilterFieldNames;
+
+		if (filter.table == table.name) {
+			allowedFilterFieldNames = tableFieldNames;
+		} else {
+			allowedFilterFieldNames = 
+				_.pluck(me.tables[filter.table].fields, 'name');
 		}
 
-		assert(_.contains(_.pluck(
-				me.tables[filter.table].fields, 'name'), 
-					filter.field), 
+		assert(_.contains(allowedFilterFieldNames, filter.field), 
 			util.format("filter field %s.%s unknown", 
 				filter.table, filter.field));
 

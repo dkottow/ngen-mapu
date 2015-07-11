@@ -180,14 +180,14 @@ function Database(dbFile)
 
 		var db = new sqlite3.cached.Database(this.dbFile);
 
-		db.get(sql['query'], sql['params'], function(err, row) {
+		db.get(sql.query, sql.params, function(err, row) {
 			if (err) {
 				log.warn("model.get() failed. " + err);	
 			}
 
 			if (row) {
-				if (table["supertype"]) {
-					row[table["supertype"]["name"] + "_sid"] = row['id'];
+				if (table.supertype) {
+					row[table.supertype.name + "_sid"] = row.id;
 				}
 			}
 
@@ -206,7 +206,7 @@ function Database(dbFile)
 
 		var db = new sqlite3.cached.Database(this.dbFile);
 
-		db.all(sql['query'], sql['params'], function(err, rows) {
+		db.all(sql.query, sql.params, function(err, rows) {
 			if (err) {
 				log.warn("model.get() failed. " + err);	
 			}
@@ -300,31 +300,6 @@ function Database(dbFile)
 		});
 	}	
 
-
-/* 
-
-use triggers to populate https://github.com/coolaj86/sqlite-fts-demo
-
-sqlite> create trigger orders_ai after insert on orders begin    
-...>    insert into fts_orders (docid,content) select id as docid, customers_ || ' yes' as content from v_orders where id = new.id; 
-...>end;
-
-CREATE TRIGGER logs_bu BEFORE UPDATE ON logs BEGIN
-  DELETE FROM logs_fts WHERE docid=old.rowid;
-END;
-CREATE TRIGGER logs_bd BEFORE DELETE ON logs BEGIN
-  DELETE FROM logs_fts WHERE docid=old.rowid;
-END;
-
-CREATE TRIGGER logs_au AFTER UPDATE ON logs BEGIN
-  INSERT INTO logs_fts(docid, b, c) VALUES(new.rowid, new.b, new.c);
-END;
-CREATE TRIGGER logs_ai AFTER INSERT ON logs BEGIN
-  INSERT INTO logs_fts(docid, b, c) VALUES(new.rowid, new.b, new.c);
-END;
-
-INSERT INTO logs_fts(logs_fts) VALUES('rebuild');
-*/
 
 	this.insert = function(table, rows, cbDone) {
 

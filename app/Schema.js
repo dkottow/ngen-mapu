@@ -282,36 +282,44 @@ schema.Table.prototype.toSQL = function() {
 	return sql;
 }
 
+/* 
+
+use triggers to populate https://github.com/coolaj86/sqlite-fts-demo
+
+sqlite> create trigger orders_ai after insert on orders begin    
+...>    insert into fts_orders (docid,content) select id as docid, customers_ || ' yes' as content from v_orders where id = new.id; 
+...>end;
+
+*/
+
 schema.Table.prototype.createSearchSQL = function()
 {
 	var viewFields = _.pluck(_.values(this.fields), 'name')
 					.concat(this.virtualFields());
 
-	var searchValue = _.reduce(viewFields, function(memo, vf) {
-			//TODO only ifnull for nullable fields. also, modified_by / modified_on are included. should they?
-			result = util.format("IFNULL(%s,'')", vf);	
-			if ( ! _.isEmpty(memo)) {
-				result = memo + " || ' ' || " + result;
-			}
-			return result;
-	}, '');
-
-	var sql = 'CREATE VIRTUAL TABLE  ' + this.ftsName() + ' USING fts4();\n\n';
+	var sql = 'CREATE VIRTUAL TABLE  ' + this.ftsName() 
+			+ ' USING fts4(' +  viewFields.join(',') + ');\n\n';
 
 	sql += 'CREATE TRIGGER tgr_' + this.name + '_ai'
 		+ ' AFTER INSERT ON ' + this.name
-		+ ' BEGIN\n INSERT INTO ' + this.ftsName() + ' (docid, content) '
-		+ ' SELECT id AS docid, ' + searchValue
-		+ ' AS content '
+		+ ' BEGIN\n INSERT INTO ' + this.ftsName() 
+		+ ' (docid, ' + viewFields.join(',') + ') '
+		+ ' SELECT id AS docid, ' + viewFields.join(',')
 		+ ' FROM ' + this.viewName() + ' WHERE id = new.id;'
 		+ '\nEND;\n\n';
 
-	sql += 'CREATE TRIGGER tgr_' + this.name + '_au '
+	sql += 'CREATE TRIGGER tgr_' + this.name + '_bu '
+		+ ' BEFORE UPDATE ON ' + this.name
+		+ ' BEGIN\n DELETE FROM ' + this.ftsName() 
+		+ ' WHERE docid = old.id;'
+		+ '\nEND;\n\n';
+
+	sql += 'CREATE TRIGGER tgr_' + this.name + '_au'
 		+ ' AFTER UPDATE ON ' + this.name
-		+ ' BEGIN\n UPDATE ' + this.ftsName() + ' SET content = ('
-		+ ' SELECT ' + searchValue
-		+ ' FROM ' + this.viewName() + ' WHERE id = new.id)'
-		+ ' WHERE docid = new.id;'
+		+ ' BEGIN\n INSERT INTO ' + this.ftsName() 
+		+ ' (docid, ' + viewFields.join(',') + ') '
+		+ ' SELECT id AS docid, ' + viewFields.join(',')
+		+ ' FROM ' + this.viewName() + ' WHERE id = new.id;'
 		+ '\nEND;\n\n';
 
 	sql += 'CREATE TRIGGER tgr_' + this.name + '_bd '
@@ -698,9 +706,11 @@ schema.Database.prototype.selectSQL = function(table, filterClauses, fields, ord
 
 		if (filter.table == table.name) {
 			allowedFilterFieldNames = tableFieldNames;
+			allowedFilterFieldNames.push(table.name);
 		} else {
 			allowedFilterFieldNames = 
 				_.pluck(me.tables[filter.table].fields, 'name');
+			allowedFilterFieldNames.push(filter.table);
 		}
 
 		assert(_.contains(allowedFilterFieldNames, filter.field), 
@@ -725,13 +735,25 @@ schema.Database.prototype.selectSQL = function(table, filterClauses, fields, ord
 			}
 		}
 
+		if (filter.operator == 'search') {
+			var filterTable = (filter.table == table.name && useView) ?
+								table.viewName() : filter.table;
+
+			joinSQL = joinSQL + ' INNER JOIN ' 
+					+ me.tables[filter.table].ftsName()
+					+ ' ON ' + util.format('%s.docid = %s.id', 
+									me.tables[filter.table].ftsName(),
+									filterTable);
+		}
+
 		if (filter.operator && filter.value) {
 
-			var scalarClauses = {'eq' : '=', 
-								 'ge': '>=', 
-								 'gt': '>', 
-								 'le': '<=', 
-								 'lt': '<'  };
+			var scalarClauses = { 'eq' : '=', 
+								  'ge': '>=', 
+								  'gt': '>', 
+								  'le': '<=', 
+								  'lt': '<',
+								  'search': 'MATCH' };
 			
 			//TODO - IN operator?
 
@@ -739,11 +761,20 @@ schema.Database.prototype.selectSQL = function(table, filterClauses, fields, ord
 				util.format("filter clause %s unknown",  
 					filter.operator));
 
-			var filterTable = useView && (filter.table == table.name)
-							? table.viewName() : filter.table;
+			var filterTable;
+			var filterField = filter.field;
+
+			if (filter.operator == 'search') {
+				filterTable = me.tables[filter.table].ftsName();
+				if (filterField == filter.table) filterField = filterTable;
+			} else if (filter.table == table.name && useView) {
+				filterTable = table.viewName()
+			} else {
+				filterTable = filter.table;
+			}
 
 			whereSQL = whereSQL + util.format(" AND %s.%s %s ?", 
-					filterTable, filter.field, 
+					filterTable, filterField, 
 					scalarClauses[filter.operator]);
 				
 			sql_params.push(filter.value);

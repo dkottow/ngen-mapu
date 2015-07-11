@@ -303,7 +303,11 @@ function Database(dbFile)
 
 /* 
 
-consider using triggers instead - and revert to git c2252fa23788270004b816a7ca8f009d71cf3949 
+use triggers to populate https://github.com/coolaj86/sqlite-fts-demo
+
+sqlite> create trigger orders_ai after insert on orders begin    
+...>    insert into fts_orders (docid,content) select id as docid, customers_ || ' yes' as content from v_orders where id = new.id; 
+...>end;
 
 CREATE TRIGGER logs_bu BEFORE UPDATE ON logs BEGIN
   DELETE FROM logs_fts WHERE docid=old.rowid;
@@ -351,9 +355,6 @@ INSERT INTO logs_fts(logs_fts) VALUES('rebuild');
 				+ " VALUES (" + fieldParams.join(', ') + ");"
 
 		//console.log(sql);
-		var ftsSQL = "INSERT INTO " + table.ftsName()
-				+ "(docid,content) VALUES (?,?);";
-
 
 		var err = null;
 		var ids = [];
@@ -367,10 +368,6 @@ INSERT INTO logs_fts(logs_fts) VALUES('rebuild');
 				err = err || e;
 			});
 
-			var ftsStatement = db.prepare(ftsSQL, function(e) {
-				err = err || e;
-			});
-
 			_.each(rows, function(r) {
 				if (err == null) {					
 
@@ -380,10 +377,6 @@ INSERT INTO logs_fts(logs_fts) VALUES('rebuild');
 					stmt.run(params, function(e) { 
 						err = err || e;
 						ids.push(this.lastID);
-						var ftsParams = [this.lastID, _.values(r).join(' ')];
-						ftsStatement.run(ftsParams, function(e) {
-							err = err || e;
-						});
 					});
 				
 
@@ -391,15 +384,13 @@ INSERT INTO logs_fts(logs_fts) VALUES('rebuild');
 			});
 
 			stmt.finalize(function() { 
-				ftsStatement.finalize(function() {
-					if (err == null) {
-						db.run("COMMIT TRANSACTION");
-					} else {
-						log.warn("Database.insert() failed. Rollback. " + err);
-						db.run("ROLLBACK TRANSACTION");
-					}
-					cbDone(err, ids); 
-				})
+				if (err == null) {
+					db.run("COMMIT TRANSACTION");
+				} else {
+					log.warn("Database.insert() failed. Rollback. " + err);
+					db.run("ROLLBACK TRANSACTION");
+				}
+				cbDone(err, ids); 
 			});	
 
 		});
@@ -431,9 +422,6 @@ INSERT INTO logs_fts(logs_fts) VALUES('rebuild');
 				+ " WHERE id = ?"; 
 		//console.log(sql);
 
-		var ftsSQL = "UPDATE " + table.ftsName()
-				+ " SET content = ? WHERE docid = ?";
-
 		var err = null;
 		var modCount = 0;	
 		var db = new sqlite3.Database(this.dbFile);
@@ -443,10 +431,6 @@ INSERT INTO logs_fts(logs_fts) VALUES('rebuild');
 			db.run("BEGIN TRANSACTION");
 
 			var stmt = db.prepare(sql, function(e) {
-				err = err || e;
-			});
-
-			var ftsStatement = db.prepare(ftsSQL, function(e) {
 				err = err || e;
 			});
 
@@ -460,29 +444,23 @@ INSERT INTO logs_fts(logs_fts) VALUES('rebuild');
 					stmt.run(params, function(e) {
 						err = err || e;
 						modCount += this.changes;
-						var ftsParams = [r.id, _.values(r).join(' ')];
-						ftsStatement.run(ftsParams, function(e) {
-							err = err || e;
-						});
 					});
 				}
 			});
 
 			stmt.finalize(function() { 
-				ftsStatement.finalize(function() {
-					if (err == null && modCount != rows.length) {
-						err = new Error("G6_MODEL_ERROR: update row count mismatch. Expected " + rows.length + " got " + modCount);
-					}
+				if (err == null && modCount != rows.length) {
+					err = new Error("G6_MODEL_ERROR: update row count mismatch. Expected " + rows.length + " got " + modCount);
+				}
 
-					if (err == null) {
-						db.run("COMMIT TRANSACTION");
+				if (err == null) {
+					db.run("COMMIT TRANSACTION");
 
-					} else {
-						log.warn("Database.update() failed. Rollback. " + err);
-						db.run("ROLLBACK TRANSACTION");
-					}
-					cbDone(err, modCount); 
-				});	
+				} else {
+					log.warn("Database.update() failed. Rollback. " + err);
+					db.run("ROLLBACK TRANSACTION");
+				}
+				cbDone(err, modCount); 
 			});	
 
 		});
@@ -501,9 +479,6 @@ INSERT INTO logs_fts(logs_fts) VALUES('rebuild');
 		var sql = "DELETE FROM " + table['name'] 
 				+ " WHERE id IN (" + idParams.join(', ') + ")";
 		//console.log(sql);
-		var ftsSQL = "DELETE FROM " + table.ftsName()
-				+ " WHERE docid IN (" + idParams.join(', ') + ")";
-;
 
 		var err = null;
 		var delCount = 0;
@@ -517,36 +492,27 @@ INSERT INTO logs_fts(logs_fts) VALUES('rebuild');
 				err = err || e;
 			});
 
-			var ftsStatement = db.prepare(ftsSQL, function(e) {
-				err = err || e;
-			});
-
 			if (err == null) 
 			{
 				stmt.run(rows, function(e) { 
 					err = err || e;
 					delCount = this.changes;
-					ftsStatement.run(rows, function(e) {
-						err = err || e;
-					});
 				});
 			}
 
 			stmt.finalize(function() { 
-				ftsStatement.finalize(function() {
-					if (err == null && delCount != rows.length) {
-						//console.log(delCount + " <> " + rows.length);
-						err = new Error("G6_MODEL_ERROR: delete row count mismatch");
-					}
+				if (err == null && delCount != rows.length) {
+					//console.log(delCount + " <> " + rows.length);
+					err = new Error("G6_MODEL_ERROR: delete row count mismatch");
+				}
 
-					if (err == null) {
-						db.run("COMMIT TRANSACTION");
-					} else {
-						log.warn("Database.delete() failed. Rollback. " + err);
-						db.run("ROLLBACK TRANSACTION");
-					}
-					cbDone(err, delCount); 
-				});	
+				if (err == null) {
+					db.run("COMMIT TRANSACTION");
+				} else {
+					log.warn("Database.delete() failed. Rollback. " + err);
+					db.run("ROLLBACK TRANSACTION");
+				}
+				cbDone(err, delCount); 
 			});	
 
 		});

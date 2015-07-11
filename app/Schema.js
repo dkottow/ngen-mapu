@@ -249,12 +249,19 @@ schema.Table.prototype.insertDefSQL = function() {
 
 schema.Table.prototype.foreignKeys = function() {
 	return _.select(this.fields, function(f) { 
-		return ! _.isEmpty(f.fk_table); 
+		return f.fk == 1; 
 	});
 }
 
 schema.Table.prototype.viewName = function() { return 'v_' + this.name; }
 schema.Table.prototype.ftsName = function() { return 'fts_' + this.name; }
+
+schema.Table.prototype.virtualFields = function() {
+
+	return _.map(this.foreignKeys(), function(f) { 
+		return f.refName();
+	});
+}
 
 schema.Table.prototype.toSQL = function() {
 	var sql = "CREATE TABLE " + this.name + "(";
@@ -272,8 +279,48 @@ schema.Table.prototype.toSQL = function() {
 	sql += "\n);";
 	log.debug(sql);
 
-	var ftsSQL = 'CREATE VIRTUAL TABLE  ' + this.ftsName() + ' USING fts4();';
-	return sql + '\n\n' + ftsSQL;
+	return sql;
+}
+
+schema.Table.prototype.createSearchSQL = function()
+{
+	var viewFields = _.pluck(_.values(this.fields), 'name')
+					.concat(this.virtualFields());
+
+	var searchValue = _.reduce(viewFields, function(memo, vf) {
+			//TODO only ifnull for nullable fields. also, modified_by / modified_on are included. should they?
+			result = util.format("IFNULL(%s,'')", vf);	
+			if ( ! _.isEmpty(memo)) {
+				result = memo + " || ' ' || " + result;
+			}
+			return result;
+	}, '');
+
+	var sql = 'CREATE VIRTUAL TABLE  ' + this.ftsName() + ' USING fts4();\n\n';
+
+	sql += 'CREATE TRIGGER tgr_' + this.name + '_ai'
+		+ ' AFTER INSERT ON ' + this.name
+		+ ' BEGIN\n INSERT INTO ' + this.ftsName() + ' (docid, content) '
+		+ ' SELECT id AS docid, ' + searchValue
+		+ ' AS content '
+		+ ' FROM ' + this.viewName() + ' WHERE id = new.id;'
+		+ '\nEND;\n\n';
+
+	sql += 'CREATE TRIGGER tgr_' + this.name + '_au '
+		+ ' AFTER UPDATE ON ' + this.name
+		+ ' BEGIN\n UPDATE ' + this.ftsName() + ' SET content = ('
+		+ ' SELECT ' + searchValue
+		+ ' FROM ' + this.viewName() + ' WHERE id = new.id)'
+		+ ' WHERE docid = new.id;'
+		+ '\nEND;\n\n';
+
+	sql += 'CREATE TRIGGER tgr_' + this.name + '_bd '
+		+ ' BEFORE DELETE ON ' + this.name
+		+ ' BEGIN\n DELETE FROM ' + this.ftsName() 
+		+ ' WHERE id = old.id;'
+		+ '\nEND;\n\n';
+
+	return sql;
 }
 
 
@@ -549,6 +596,7 @@ schema.Database.prototype.createSQL = function() {
 	_.each(this.tables, function(t) {
 		sql += t.toSQL() + '\n\n';
 		sql += me.viewSQL(t) + '\n\n';
+		sql += t.createSearchSQL() + '\n\n';
 		sql += t.insertDefSQL() + '\n\n';
 	});
 

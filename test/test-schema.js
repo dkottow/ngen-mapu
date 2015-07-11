@@ -204,7 +204,8 @@ describe('Schema', function() {
 		
 		before(function(done) {
 			var db = new schema.Schema(testSchema);
-			db.remove(dbFile, done);
+			done();
+			//db.remove(dbFile, done);
 		});	
 
 		it('createSQL example', function() {

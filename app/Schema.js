@@ -99,7 +99,7 @@ schema.Field.prototype.toJSON = function() {
 }
 
 schema.Field.prototype.refName = function() {
-	return this.fk_table +'_';
+	return this.fk_table +'_ref';
 }
 
 schema.TextField = function(fieldDef) {
@@ -317,7 +317,7 @@ schema.Table.prototype.createSearchSQL = function()
 	sql += 'CREATE TRIGGER tgr_' + this.name + '_bd '
 		+ ' BEFORE DELETE ON ' + this.name
 		+ ' BEGIN\n DELETE FROM ' + this.ftsName() 
-		+ ' WHERE id = old.id;'
+		+ ' WHERE docid = old.id;'
 		+ '\nEND;\n\n';
 
 	return sql;

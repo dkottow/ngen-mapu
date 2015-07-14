@@ -237,6 +237,56 @@ describe('Schema', function() {
 		});
 	});
 
+	describe('Database.selfReferential()', function() {
+
+		var selfRefSchema = [
+			 { "name": "employees"
+			 , "row_name": ["name"]
+			 , "fields": {
+					  "id": {
+						  "name": "id"
+						, "type": "INTEGER"
+						, "order": 0
+					}
+					, "name": {
+						  "name": "name"
+						, "type": "VARCHAR"
+						, "order": 1
+					}
+					, "supervisor_id": {
+						  "name": "supervisor_id"
+						, "type": "INTEGER"
+						, "fk_table": "employees"
+						, "order": 2
+					}
+					, "modified_by": {
+						  "name": "modified_by"
+						, "type": "VARCHAR(64)"
+						, "order": 91
+					}
+					, "modified_on": {
+						  "name": "modified_on"
+						, "type": "DATETIME"
+						, "order": 92
+					}
+				}		
+			 }];
+
+		it('self ref example', function(done) {
+			var db = new schema.Schema(selfRefSchema);
+
+			db.init(function(err) {
+				if (err) {
+					console.log(err);
+				} else {
+					var sql = db.createSQL();
+					console.log(sql);
+				}
+				done();
+			});
+		});
+	});
+
 });
 
 

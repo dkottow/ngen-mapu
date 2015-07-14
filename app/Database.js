@@ -130,7 +130,7 @@ function Database(dbFile)
 
 	this.all = function(table, filterClauses, resultFields, order, limit, cbResult) {
 		log.debug(resultFields + " from " + table.name 
-				+ "filtered by " + util.inspect(filterClauses));
+				+ " filtered by " + util.inspect(filterClauses));
 		try {
 			var sql = this.schema.selectSQL(table, filterClauses, resultFields, order, limit);
 		} catch(e) {

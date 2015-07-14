@@ -281,8 +281,13 @@ describe('Schema', function() {
 				} else {
 					var sql = db.createSQL();
 					console.log(sql);
+
+					db.save('selfref.sqlite', function(err) {
+						console.log(err);
+						done();	
+					});
+
 				}
-				done();
 			});
 		});
 	});

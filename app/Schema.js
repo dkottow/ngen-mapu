@@ -406,6 +406,8 @@ schema.Table.prototype.toJSON = function() {
 schema.Table.prototype.bfsPath = function(joinTable) {
 	//console.log(table.name);
 	//console.log(joinTable.name);
+
+	if (this == joinTable) return [this, this];
 	var visited = {};
 	var queue = [];
 	queue.push([this]);
@@ -542,6 +544,15 @@ function createDefTables() {
 	return sql;
 }
 
+
+function tableAlias(name) {
+	return name + '_';
+}
+
+schema.Table.prototype.alias = function() {
+	return tableAlias(this.name);
+}
+
 schema.Database.prototype.viewSQL = function(table) {
 	var me = this;
 	
@@ -556,7 +567,10 @@ schema.Database.prototype.viewSQL = function(table) {
 			var result;
 			
 			if (nk.indexOf('.') < 0) {
-				result = util.format('%s."%s"', fk_table.name, nk);
+				var fkTableName = (table == fk_table) ?
+									table.alias() : fk_table.name;
+				
+				result = util.format('%s."%s"', fkTableName, nk);
 				var path = table.bfsPath(fk_table);
 				var j = joinTablePath(path, joinTables);
 				joinSQL = joinSQL + j.sql;
@@ -681,7 +695,7 @@ schema.Database.prototype.selectSQL = function(table, filterClauses, fields, ord
 			fields = fields.concat(fk_fields);
 		}
 	}		
-
+	//log.debug(fields);
 	assert(_.isArray(fields), "arg 'fields' is array");
 	
 	if (_.isNumber(limit)) limit = limit.toString();
@@ -882,11 +896,20 @@ function joinTablePath(tables, exclude) {
 
 		if (fk) {
 			// pt is parent or supertype			
-			joinClause = joinClause 
-				  + util.format(" INNER JOIN %s ON %s.%s = %s.id", 
-								pt['name'], 
+			var ptName = pt.name;
+			if (t == pt) {
+				joinClause = joinClause 
+				  + util.format(" INNER JOIN %s as %s ON %s.%s = %s.id", 
+								pt.name, tableAlias(pt.name),
 								t['name'], fk.name, 
-								pt['name']);
+								tableAlias(pt.name));
+			} else {
+				joinClause = joinClause 
+				  + util.format(" INNER JOIN %s ON %s.%s = %s.id", 
+								pt.name, 
+								t['name'], fk.name, 
+								pt.name);
+			}
 
 		} else {
 			// pt is child or subtype			

@@ -99,7 +99,7 @@ schema.Field.prototype.toJSON = function() {
 }
 
 schema.Field.prototype.refName = function() {
-	return this.fk_table +'_ref';
+	return this.name.replace('_id', '') + '_ref';
 }
 
 schema.TextField = function(fieldDef) {
@@ -545,12 +545,12 @@ function createDefTables() {
 }
 
 
-function tableAlias(name) {
-	return name + '_';
+function tableAlias(name, idx) {
+	return name + '_' + idx;
 }
 
-schema.Table.prototype.alias = function() {
-	return tableAlias(this.name);
+schema.Table.prototype.alias = function(idx) {
+	return tableAlias(this.name, idx);
 }
 
 schema.Database.prototype.viewSQL = function(table) {
@@ -560,6 +560,7 @@ schema.Database.prototype.viewSQL = function(table) {
 	var joinSQL = '';
 	var distinct = false;
 	var fk_fields = [];
+	var aliasCount = 0;
 	_.each(table.foreignKeys(), function(fk) {
 			
 		var fk_table = me.tables[fk.fk_table];
@@ -568,7 +569,7 @@ schema.Database.prototype.viewSQL = function(table) {
 			
 			if (nk.indexOf('.') < 0) {
 				var fkTableName = (table == fk_table) ?
-									table.alias() : fk_table.name;
+									table.alias(++aliasCount) : fk_table.name;
 				
 				result = util.format('%s."%s"', fkTableName, nk);
 				var path = table.bfsPath(fk_table);
@@ -900,9 +901,9 @@ function joinTablePath(tables, exclude) {
 			if (t == pt) {
 				joinClause = joinClause 
 				  + util.format(" INNER JOIN %s as %s ON %s.%s = %s.id", 
-								pt.name, tableAlias(pt.name),
+								pt.name, tableAlias(pt.name, 1),
 								t['name'], fk.name, 
-								tableAlias(pt.name));
+								tableAlias(pt.name, 1));
 			} else {
 				joinClause = joinClause 
 				  + util.format(" INNER JOIN %s ON %s.%s = %s.id", 

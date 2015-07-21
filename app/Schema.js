@@ -263,6 +263,11 @@ schema.Table.prototype.virtualFields = function() {
 	});
 }
 
+schema.Table.prototype.viewFields = function() {
+	return _.pluck(_.values(this.fields), 'name')
+			.concat(this.virtualFields());
+}
+
 schema.Table.prototype.toSQL = function() {
 	var sql = "CREATE TABLE " + this.name + "(";
 	_.each(this.fields, function(f) {
@@ -294,8 +299,7 @@ sqlite> create trigger orders_ai after insert on orders begin
 
 schema.Table.prototype.createSearchSQL = function()
 {
-	var viewFields = _.pluck(_.values(this.fields), 'name')
-					.concat(this.virtualFields());
+	var viewFields = this.viewFields();
 
 	var sql = 'CREATE VIRTUAL TABLE  ' + this.ftsName() 
 			+ ' USING fts4(' +  viewFields.join(',') + ');\n\n';
@@ -871,7 +875,7 @@ schema.Database.prototype.save = function(dbFile, cbResult) {
 	});
 }
 
-schema.Database.prototype.remove = function(dbFile, cbResult) {
+schema.Database.remove = function(dbFile, cbResult) {
 	fs.unlink(dbFile, function(err) {
 		if (err) {
 			log.warn("remove() failed. " + err);			

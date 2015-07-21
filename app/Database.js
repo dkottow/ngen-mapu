@@ -71,7 +71,14 @@ function Database(dbFile)
 		});
 	}
 
-	function getStats(cbResult) {
+	this.getSchema = function(cbResult) {
+		var result = me.schema.get();
+		result.name = path.basename(me.dbFile, global.sqlite_ext);
+		cbResult(null, result);
+	}
+
+
+	this.getCounts = function(cbResult) {
 		//add row counts
 		var sql = _.map(_.keys(me.tables()), function(tn) {
 			return 'SELECT ' + "'" + tn + "'" + ' AS table_name' 
@@ -101,32 +108,40 @@ function Database(dbFile)
 		});
 	}
 
-	this.getStats = function(cbResult) {
-		getStats(cbResult);
+	this.getStats = function(table, cbResult) {
+
+		var sql = _.reduce(table.viewFields(), function(memo, fieldName) {
+
+			var s = util.format("SELECT '%s' as field, "
+						+ "min(%s) as min, max(%s) as max, "
+						+ "count(DISTINCT %s) as count FROM %s", 
+							fieldName, fieldName, fieldName, 
+							fieldName, table.viewName());
+
+			return (memo.length == 0) ?  s : memo + ' UNION ALL ' + s;
+		}, '');
+
+		//console.log(sql);
+		var db = new sqlite3.cached.Database(this.dbFile);
+		db.all(sql, function(err, rows) {
+			if (err) {
+				log.warn("model.getStats() failed. " + err);	
+				cbResult(err, null);
+				return;
+			}
+			var result = {};
+			_.each(rows, function(r) {
+				result[r.field] = { 
+					field: r.field,
+					min: r.min,
+					max: r.max,
+					distinct: r.count
+				};
+			});
+			cbResult(null, result);
+		});
 	}	
 
-	this.getSchemaAndStats = function(cbResult) {
-		var result = getSchema();
-		getStats(function(err, stats) {
-			if ( ! err) {
-				_.each(stats, function(c, tn) {
-					result.tables[tn].count = c;
-				});
-			}
-			cbResult(err, result);
-		});
-	}
-
-	this.getSchema = function(cbResult) {
-		var result = getSchema();
-		cbResult(null, result);
-	}
-
-	function getSchema() {
-		var result = me.schema.get();
-		result.name = path.basename(me.dbFile, global.sqlite_ext);
-		return result;
-	}
 
 	this.all = function(table, filterClauses, resultFields, order, limit, cbResult) {
 		log.debug(resultFields + " from " + table.name 
@@ -152,7 +167,7 @@ function Database(dbFile)
 				}
 				
 				var countSql = sql.countSql 
-					+ ' UNION ALL SELECT COUNT(id) as count FROM ' + table.name; 
+					+ ' UNION ALL SELECT COUNT(*) as count FROM ' + table.name; 
 				
 				db.all(countSql, sql.params, function(err, countRows) {
 					if (err) {
@@ -196,27 +211,6 @@ function Database(dbFile)
 		});
 	}
 
-	this.count = function(table, filterClauses, cbResult) {
-		try {
-			var sql = buildCountSql(table, filterClauses);
-		} catch(e) {
-			var err = new Error("G6_MODEL_ERROR: model.count() failed. " + e);
-			cbResult(err, []);
-		}
-
-		var db = new sqlite3.cached.Database(this.dbFile);
-
-		db.all(sql.query, sql.params, function(err, rows) {
-			if (err) {
-				log.warn("model.get() failed. " + err);	
-			}
-			
-			console.dir(rows);
-			cbResult(err, rows);
-		});
-	}
-
-
 	this.getDeep = function(table, filterClauses, resultFields, depth, cbResult) {
 		
 		if (resultFields != '*' &&  ! _.contains('id', resultFields)) {
@@ -233,14 +227,19 @@ function Database(dbFile)
 		this.get(table, filterClauses, resultFields, 
 					function(err, row) { 
 
+			log.debug('get err "' + err + '" row "' + row + '"'); 
+			
 			if (err) {
-				cbResult(err, result);
+				cbResult(err, null);
 
-			} else if (depth == 0) {
+			} else if (! row) {
+				cbResult(null, result);
+
+			} else if (depth == 0 || tables.length == 0) {
 				result = row;
 				cbResult(err, result);
 
-			} else if (tables.length > 0 && !err && row) {
+			} else /* (tables.length > 0 && !err && row) */ {
 				result[table.name] = [row];
 
 				var joinClause = {

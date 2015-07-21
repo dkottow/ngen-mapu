@@ -17,7 +17,7 @@ function DatabaseController(router, restBase, model)
 		//describe model 
 		var defsHandler = function(req, res) {
 			log.info(req.method + " " + req.url);
-			me.model.getSchemaAndStats(function(err, result) {
+			me.model.getSchema(function(err, result) {
 				if (err) {
 					log.warn(err);
 					res.send(400, err.message);
@@ -97,6 +97,22 @@ function DatabaseController(router, restBase, model)
 			me.router.get(url, getRowsHandler);	
 			me.router.get(url + rowsExt, getRowsHandler);	
 
+			var statsExt = ".stats";
+			me.router.get(url + statsExt, function(req, res) {
+
+				me.model.getStats(table, function(err, result) {
+					if (err) {
+						log.warn(err);
+						res.send(400, err.message);
+						return;
+					}
+					log.debug(result);
+					res.send(result); 
+				});
+
+			});	
+
+
 			//select one specific 'root' row
 			//and include recursively all children / supertypes 
 			//upto depth levels  
@@ -123,6 +139,13 @@ function DatabaseController(router, restBase, model)
 			}		
 			me.router.get(url + "/:id", getDeepHandler);
 			me.router.get(url + rowsExt + "/:id", getDeepHandler);
+
+
+/*
+			var distinctExt = ".uniq";
+			me.router.get(url + distinctExt + "/:field", function(req, res) {
+			});
+*/
 
 			//insert a row into table
 			var postRowHandler = function(req, res) {

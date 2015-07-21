@@ -73,6 +73,15 @@ describe('Model', function() {
 		});
 	});
 
+  	describe('getStats()', function() {		
+		it('getStats from orders', function(done) {
+			model.getStats(model.tables().orders, function(err, result) {
+				console.log(result);
+				done();
+			});
+		});
+	});
+
   	describe('all()', function() {		
 
 		it('get all customers/products', function(done) {

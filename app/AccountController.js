@@ -132,7 +132,7 @@ function AccountController(router, baseUrl, baseDir) {
 				res.send(404, "schema " + req.url + " not found.");
 				return;
 			}
-			controller.model.getStats(function(err, result) {
+			controller.model.getCounts(function(err, result) {
 				if (err) {
 					log.warn(req.method + " " + req.url + " failed.");
 					res.send(400, err.message);

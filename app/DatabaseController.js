@@ -11,6 +11,29 @@ function DatabaseController(router, restBase, model)
 	//console.log("created DatabaseController " + this.seed);
 	log.info("new DatabaseController @ " + restBase);
 
+	this.getFilterClauses = function(req) {
+		var filterClauses = [];
+		//console.dir(req.query['$filter']);
+		if (req.query['$filter']) {
+			var clauses = req.query['$filter'].split('and');
+			_.each(clauses, function(clause) {
+				var filter = {};
+				var fq = clause.trim().split(' ');
+				if (fq[0].indexOf(".") > 0) {
+					filter.table = fq[0].split('.')[0];
+					filter.field = fq[0].split('.')[1];
+				} else {
+					filter.field = fq[0];
+				}
+				filter.operator = fq[1];
+				filter.value = fq[2];
+
+				filterClauses.push(filter);
+			});
+		}				
+		return filterClauses;
+	}
+
 	this.init = function(cbAfter) {
 		var me = this;
 
@@ -42,26 +65,8 @@ function DatabaseController(router, restBase, model)
 			var getRowsHandler = function(req, res) {
 				log.info(req.method + " " + req.url);
 				
-				var filterClauses = [];
-				//console.dir(req.query['$filter']);
-				if (req.query['$filter']) {
-					var clauses = req.query['$filter'].split('and');
-					_.each(clauses, function(clause) {
-						var filter = {};
-						var fq = clause.trim().split(' ');
-						if (fq[0].indexOf(".") > 0) {
-							filter.table = fq[0].split('.')[0];
-							filter.field = fq[0].split('.')[1];
-						} else {
-							filter.field = fq[0];
-						}
-						filter.operator = fq[1];
-						filter.value = fq[2];
+				var filterClauses = me.getFilterClauses(req);
 
-						filterClauses.push(filter);
-					});
-				}				
-	
 				var orderClauses = [];
 				if (req.query['$orderby']) {
 					var orderBy = req.query['$orderby'].split(' ');
@@ -100,7 +105,9 @@ function DatabaseController(router, restBase, model)
 			var statsExt = ".stats";
 			me.router.get(url + statsExt, function(req, res) {
 
-				me.model.getStats(table, function(err, result) {
+				var filterClauses = me.getFilterClauses(req);
+
+				me.model.getStats(table, filterClauses, function(err, result) {
 					if (err) {
 						log.warn(err);
 						res.send(400, err.message);

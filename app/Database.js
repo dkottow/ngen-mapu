@@ -108,22 +108,35 @@ function Database(dbFile)
 		});
 	}
 
-	this.getStats = function(table, cbResult) {
+	this.getStats = function(table, filterClauses, cbResult) {
 
-		var sql = _.reduce(table.viewFields(), function(memo, fieldName) {
+		var filterSQL = this.schema.filterSQL(table, filterClauses);
+
+		var sql_params = [];
+		_.each(table.viewFields(), function() {
+			sql_params = sql_params.concat(filterSQL.params);
+		});
+
+		var sql_query = _.reduce(table.viewFields(), function(memo, fieldName) {
 
 			var s = util.format("SELECT '%s' as field, "
-						+ "min(%s) as min, max(%s) as max, "
-						+ "count(DISTINCT %s) as count FROM %s", 
-							fieldName, fieldName, fieldName, 
-							fieldName, table.viewName());
+						+ "min(%s.%s) as min, max(%s.%s) as max, "
+						+ "count(DISTINCT %s.%s) as count FROM %s", 
+							fieldName, 
+							table.viewName(), fieldName, 
+							table.viewName(), fieldName, 
+							table.viewName(), fieldName, 
+							table.viewName());
+
+			s += filterSQL.join + filterSQL.where;
 
 			return (memo.length == 0) ?  s : memo + ' UNION ALL ' + s;
 		}, '');
 
-		//console.log(sql);
+		log.debug(sql_query);
+		log.debug(sql_params);
 		var db = new sqlite3.cached.Database(this.dbFile);
-		db.all(sql, function(err, rows) {
+		db.all(sql_query, sql_params, function(err, rows) {
 			if (err) {
 				log.warn("model.getStats() failed. " + err);	
 				cbResult(err, null);

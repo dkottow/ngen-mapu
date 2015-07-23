@@ -671,65 +671,27 @@ schema.Database.prototype.get = function() {
 	};		
 }
 
-schema.Database.prototype.selectSQL = function(table, filterClauses, fields, orderClauses, limit) {
-	assert(_.isArray(filterClauses), "arg 'filterClauses' is array");
-	assert(_.isObject(table), "arg 'table' is object");
-	assert(_.isArray(orderClauses), "arg 'orderClauses' is array");
-	
+schema.Database.prototype.filterSQL = function(table, filterClauses) {
+
 	var useView = true;
-	var tableName = useView ? table.viewName() : table.name;
-	var tableFieldNames = 			
-			_.map(table.fields, function (f) {
-				return f.name;
-			}).concat(
-				useView ? _.map(table.foreignKeys(), function(fk) {
-					return fk.refName();
-			}) : [])
-		;
-
-	if (fields == '*') {
-		fields = _.map(table.fields, function(f) {
-			return util.format('%s."%s" as %s', tableName, f.name, f.name);
-		});
-		if (useView) {
-			var fk_fields =_.map(table.foreignKeys(), function(f) {
-				return util.format('%s."%s" as %s', 
-							tableName, f.refName(), f.refName());
-			});
-			fields = fields.concat(fk_fields);
-		}
-	}		
-	//log.debug(fields);
-	assert(_.isArray(fields), "arg 'fields' is array");
-	
-	if (_.isNumber(limit)) limit = limit.toString();
-	assert(_.isString(limit), "arg 'limit' is string");
-
 	var joinTables = {};
 	var joinSQL = '';
 
 	var me = this;
 
-	var fieldSQL = fields.join(",");
 	var whereSQL = " WHERE 1=1";
 	var distinct = false;
 	var sql_params = [];
 
 	_.each(filterClauses, function(filter) {
 
-		
 		filter.table = filter.table || table.name;
 
-		var allowedFilterFieldNames;
-
-		if (filter.table == table.name) {
-			allowedFilterFieldNames = tableFieldNames;
-			allowedFilterFieldNames.push(table.name);
-		} else {
-			allowedFilterFieldNames = 
+		var allowedFilterFieldNames = (filter.table == table.name) ? 
+				table.viewFields() : 
 				_.pluck(me.tables[filter.table].fields, 'name');
-			allowedFilterFieldNames.push(filter.table);
-		}
+
+		allowedFilterFieldNames.push(filter.table);
 
 		assert(_.contains(allowedFilterFieldNames, filter.field), 
 			util.format("filter field %s.%s unknown", 
@@ -786,7 +748,7 @@ schema.Database.prototype.selectSQL = function(table, filterClauses, fields, ord
 				filterTable = me.tables[filter.table].ftsName();
 				if (filterField == filter.table) filterField = filterTable;
 			} else if (filter.table == table.name && useView) {
-				filterTable = table.viewName()
+				filterTable = table.viewName();
 			} else {
 				filterTable = filter.table;
 			}
@@ -799,6 +761,42 @@ schema.Database.prototype.selectSQL = function(table, filterClauses, fields, ord
 		}
 	});
 
+	return { 
+		join: joinSQL,
+		where: whereSQL,
+		distinct: distinct,
+		params: sql_params
+	};
+}
+
+schema.Database.prototype.selectSQL = function(table, filterClauses, fields, orderClauses, limit) {
+	assert(_.isArray(filterClauses), "arg 'filterClauses' is array");
+	assert(_.isObject(table), "arg 'table' is object");
+	assert(_.isArray(orderClauses), "arg 'orderClauses' is array");
+	
+	var useView = true;
+	var tableName = useView ? table.viewName() : table.name;
+
+	if (fields == '*') {
+		fields = _.map(table.fields, function(f) {
+			return util.format('%s."%s" as %s', tableName, f.name, f.name);
+		});
+		if (useView) {
+			var fk_fields =_.map(table.foreignKeys(), function(f) {
+				return util.format('%s."%s" as %s', 
+							tableName, f.refName(), f.refName());
+			});
+			fields = fields.concat(fk_fields);
+		}
+	}		
+	//log.debug(fields);
+	assert(_.isArray(fields), "arg 'fields' is array");
+	
+	if (_.isNumber(limit)) limit = limit.toString();
+	assert(_.isString(limit), "arg 'limit' is string");
+
+	var filterSQL = this.filterSQL(table ,filterClauses);
+
 	var orderSQL;
 	if ( ! _.isEmpty(orderClauses)) {	
 		
@@ -806,7 +804,7 @@ schema.Database.prototype.selectSQL = function(table, filterClauses, fields, ord
 			var orderField = _.keys(order)[0];
 			var orderDir = _.values(order)[0].toUpperCase();
 			
-			assert(_.contains(tableFieldNames, orderField),
+			assert(_.contains(table.viewFields(), orderField),
 				  util.format("order field '%s' unknown", orderField));
 
 			assert(_.contains(['ASC', 'DESC'], orderDir),
@@ -841,19 +839,21 @@ schema.Database.prototype.selectSQL = function(table, filterClauses, fields, ord
 		}
 	}
 
-	var sql = "SELECT ";
-	if (distinct) sql = sql + "DISTINCT ";
-	sql = sql + fieldSQL + " FROM " + tableName 
-			+ " " + joinSQL + whereSQL + orderSQL + limitSQL;
+	var fieldSQL = fields.join(",");
 
-	log.debug(sql, sql_params);
+	var sql = "SELECT ";
+	if (filterSQL.distinct) sql = sql + "DISTINCT ";
+	sql = sql + fieldSQL + " FROM " + tableName 
+			+ " " + filterSQL.join + filterSQL.where + orderSQL + limitSQL;
+
+	log.debug(sql, filterSQL.params);
 
 	var countSQL = "SELECT COUNT("
-	if (distinct) countSQL = countSQL + "DISTINCT ";
+	if (filterSQL.distinct) countSQL = countSQL + "DISTINCT ";
 	countSQL = countSQL + tableName + ".id) as count FROM " + tableName 
-			+ " " + joinSQL + whereSQL;
+			+ " " + filterSQL.join + filterSQL.where;
 
-	return {'query': sql, 'params': sql_params, 'countSql': countSQL};
+	return {'query': sql, 'params': filterSQL.params, 'countSql': countSQL};
 }
 
 schema.Database.prototype.save = function(dbFile, cbResult) {

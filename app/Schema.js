@@ -99,7 +99,7 @@ schema.Field.prototype.toJSON = function() {
 }
 
 schema.Field.prototype.refName = function() {
-	return this.name.replace('_id', '') + '_ref';
+	return this.fk_table +'_ref';
 }
 
 schema.TextField = function(fieldDef) {

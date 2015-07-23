@@ -259,6 +259,14 @@ describe('Schema', function() {
 						, "fk_table": "employees"
 						, "order": 2
 					}
+/*					
+					, "councellor_id": {
+						  "name": "councellor_id"
+						, "type": "INTEGER"
+						, "fk_table": "employees"
+						, "order": 2
+					}
+*/					
 					, "modified_by": {
 						  "name": "modified_by"
 						, "type": "VARCHAR(64)"

@@ -672,9 +672,9 @@ schema.Database.prototype.get = function() {
 	};		
 }
 
-schema.Database.prototype.filterSQL = function(table, filterClauses) {
+schema.Database.prototype.filterSQL = function(table, filterClauses, useView) {
 
-	var useView = true;
+	useView = useView == undefined ? true : useView;
 	var joinTables = {};
 	var joinSQL = '';
 

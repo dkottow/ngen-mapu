@@ -110,23 +110,23 @@ function Database(dbFile)
 
 	this.getStats = function(table, filterClauses, cbResult) {
 
-		var filterSQL = this.schema.filterSQL(table, filterClauses);
+		var filterSQL = this.schema.filterSQL(table, filterClauses, false);
 
 		var sql_params = [];
-		_.each(table.viewFields(), function() {
+		_.each(table.fields, function() {
 			sql_params = sql_params.concat(filterSQL.params);
 		});
 
-		var sql_query = _.reduce(table.viewFields(), function(memo, fieldName) {
+		var sql_query = _.reduce(table.fields, function(memo, field) {
 
 			var s = util.format("SELECT '%s' as field, "
 						+ "min(%s.%s) as min, max(%s.%s) as max, "
 						+ "count(DISTINCT %s.%s) as count FROM %s", 
-							fieldName, 
-							table.viewName(), fieldName, 
-							table.viewName(), fieldName, 
-							table.viewName(), fieldName, 
-							table.viewName());
+							field.name, 
+							table.name, field.name, 
+							table.name, field.name, 
+							table.name, field.name, 
+							table.name);
 
 			s += filterSQL.join + filterSQL.where;
 

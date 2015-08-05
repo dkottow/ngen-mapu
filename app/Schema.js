@@ -672,9 +672,9 @@ schema.Database.prototype.get = function() {
 	};		
 }
 
-schema.Database.prototype.filterSQL = function(table, filterClauses, useView) {
+schema.Database.prototype.filterSQL = function(table, filterClauses) {
 
-	useView = useView == undefined ? true : useView;
+	var useView = true;
 	var joinTables = {};
 	var joinSQL = '';
 
@@ -770,11 +770,17 @@ schema.Database.prototype.filterSQL = function(table, filterClauses, useView) {
 	};
 }
 
-schema.Database.prototype.selectSQL = function(table, filterClauses, fields, orderClauses, limit) {
-	assert(_.isArray(filterClauses), "arg 'filterClauses' is array");
-	assert(_.isObject(table), "arg 'table' is object");
-	assert(_.isArray(orderClauses), "arg 'orderClauses' is array");
-	
+schema.Database.prototype.checkFields = function(table, fieldNames) {
+	//TODO make sure all field names exist in table
+	_.each(fieldNames, function(f) {
+		if ( ! _.contains(table.viewFields(), f)) {
+			throw new Error("unknown field '" + f + "'");
+		}			
+	});		
+}
+
+
+schema.Database.prototype.fieldSQL = function(table, fields) {
 	var useView = true;
 	var tableName = useView ? table.viewName() : table.name;
 
@@ -789,10 +795,24 @@ schema.Database.prototype.selectSQL = function(table, filterClauses, fields, ord
 			});
 			fields = fields.concat(fk_fields);
 		}
+	} else {
+		this.checkFields(fields);
+		fields = _.map(fields, function(f) {
+			return util.format('%s."%s" as %s', tableName, f, f);
+		});	
 	}		
-	//log.debug(fields);
-	assert(_.isArray(fields), "arg 'fields' is array");
+
+	return fields.join(",");
+}
+
+schema.Database.prototype.selectSQL = function(table, filterClauses, fields, orderClauses, limit, distinct) {
+	assert(_.isArray(filterClauses), "arg 'filterClauses' is array");
+	assert(_.isObject(table), "arg 'table' is object");
+	assert(_.isArray(orderClauses), "arg 'orderClauses' is array");
 	
+	var useView = true;
+	var tableName = useView ? table.viewName() : table.name;
+
 	if (_.isNumber(limit)) limit = limit.toString();
 	assert(_.isString(limit), "arg 'limit' is string");
 
@@ -840,19 +860,19 @@ schema.Database.prototype.selectSQL = function(table, filterClauses, fields, ord
 		}
 	}
 
-	var fieldSQL = fields.join(",");
+	var fieldSQL = this.fieldSQL(table, fields);
+	var distinctSQL = (filterSQL.distinct || distinct) ? ' DISTINCT ' : ' ';
 
-	var sql = "SELECT ";
-	if (filterSQL.distinct) sql = sql + "DISTINCT ";
-	sql = sql + fieldSQL + " FROM " + tableName 
-			+ " " + filterSQL.join + filterSQL.where + orderSQL + limitSQL;
+	var sql = 'SELECT' + distinctSQL + fieldSQL + ' FROM ' + tableName 
+			+ ' ' + filterSQL.join + filterSQL.where + orderSQL + limitSQL;
 
 	log.debug(sql, filterSQL.params);
 
-	var countSQL = "SELECT COUNT("
-	if (filterSQL.distinct) countSQL = countSQL + "DISTINCT ";
-	countSQL = countSQL + tableName + ".id) as count FROM " + tableName 
-			+ " " + filterSQL.join + filterSQL.where;
+	var countSQL = 'SELECT COUNT(*) as count FROM ('
+				+ 'SELECT' + distinctSQL + fieldSQL + ' FROM ' + tableName 
+				+ ' ' + filterSQL.join + filterSQL.where + ')';
+
+	log.debug(countSQL);
 
 	return {'query': sql, 'params': filterSQL.params, 'countSql': countSQL};
 }

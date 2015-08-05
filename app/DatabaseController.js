@@ -34,6 +34,14 @@ function DatabaseController(router, restBase, model)
 		return filterClauses;
 	}
 
+	this.getFields = function(req) {
+		var resultFields = '*';
+		if (req.query['$fields']) {
+			resultFields = req.query['$fields'].split(',');
+		} 
+		return resultFields;
+	}
+
 	this.init = function(cbAfter) {
 		var me = this;
 
@@ -66,6 +74,7 @@ function DatabaseController(router, restBase, model)
 				log.info(req.method + " " + req.url);
 				
 				var filterClauses = me.getFilterClauses(req);
+				var fields = me.getFields(req);
 
 				var orderClauses = [];
 				if (req.query['$orderby']) {
@@ -87,8 +96,13 @@ function DatabaseController(router, restBase, model)
 					limit = req.query['$skip'] + "," + limit;
 				}
 
-				me.model.all(table, filterClauses, '*', 
-							 orderClauses, limit, function(err, result) { 
+				var distinct = false;
+				if (req.query['$distinct']) {
+					distinct = req.query['$distinct'] > 0;
+				}
+
+				me.model.all(table, filterClauses, fields, 
+							 orderClauses, limit, distinct, function(err, result) { 
 					if (err) {
 						log.warn(err);
 						res.send(400, err.message);
@@ -106,8 +120,9 @@ function DatabaseController(router, restBase, model)
 			me.router.get(url + statsExt, function(req, res) {
 
 				var filterClauses = me.getFilterClauses(req);
+				var fields = me.getFields(req);
 
-				me.model.getStats(table, filterClauses, function(err, result) {
+				me.model.getStats(table, filterClauses, fields, function(err, result) {
 					if (err) {
 						log.warn(err);
 						res.send(400, err.message);

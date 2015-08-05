@@ -108,30 +108,38 @@ function Database(dbFile)
 		});
 	}
 
-	this.getStats = function(table, filterClauses, cbResult) {
+	this.getStats = function(table, filterClauses, resultFields, cbResult) {
 
-		var filterSQL = this.schema.filterSQL(table, filterClauses, false);
+		var filterSQL = this.schema.filterSQL(table, filterClauses);
 
-		var sql_params = [];
-		_.each(table.fields, function() {
-			sql_params = sql_params.concat(filterSQL.params);
-		});
+		if (resultFields == '*') {
+			resultFields = table.viewFields();
+		} else {
+			this.schema.checkFields(resultFields);
+		}
 
-		var sql_query = _.reduce(table.fields, function(memo, field) {
+		var useView = true;
+		var tableName = useView ? table.viewName() : table.name;
+
+		var sql_query = _.reduce(resultFields, function(memo, f) {
 
 			var s = util.format("SELECT '%s' as field, "
-						+ "min(%s.%s) as min, max(%s.%s) as max, "
-						+ "count(DISTINCT %s.%s) as count FROM %s", 
-							field.name, 
-							table.name, field.name, 
-							table.name, field.name, 
-							table.name, field.name, 
-							table.name);
+						+ "min(%s.%s) as min, max(%s.%s) as max "
+						+ " FROM %s", 
+							f, 
+							tableName, f, 
+							tableName, f, 
+							tableName);
 
 			s += filterSQL.join + filterSQL.where;
 
 			return (memo.length == 0) ?  s : memo + ' UNION ALL ' + s;
 		}, '');
+
+		var sql_params = [];
+		_.each(resultFields, function() {
+			sql_params = sql_params.concat(filterSQL.params);
+		});
 
 		log.debug(sql_query);
 		log.debug(sql_params);
@@ -156,11 +164,11 @@ function Database(dbFile)
 	}	
 
 
-	this.all = function(table, filterClauses, resultFields, order, limit, cbResult) {
+	this.all = function(table, filterClauses, resultFields, order, limit, distinct, cbResult) {
 		log.debug(resultFields + " from " + table.name 
 				+ " filtered by " + util.inspect(filterClauses));
 		try {
-			var sql = this.schema.selectSQL(table, filterClauses, resultFields, order, limit);
+			var sql = this.schema.selectSQL(table, filterClauses, resultFields, order, limit, distinct);
 		} catch(e) {
 			var err = new Error("G6_MODEL_ERROR: model.all() failed. " + e);
 			cbResult(err, []);
@@ -200,7 +208,7 @@ function Database(dbFile)
 
 	this.get = function(table, filterClauses, resultFields, cbResult) {
 		try {
-			var sql = this.schema.selectSQL(table, filterClauses, resultFields, [], 1);
+			var sql = this.schema.selectSQL(table, filterClauses, resultFields, [], 1, false);
 		} catch(e) {
 			var err = new Error("G6_MODEL_ERROR: model.get() failed. " + e);
 			cbResult(err, []);
@@ -270,7 +278,7 @@ function Database(dbFile)
 				});
 
 				_.each(tables, function(t) {
-					me.all(t, [joinClause], '*', [], row_max_count, function(err, res) {
+					me.all(t, [joinClause], '*', [], row_max_count, false, function(err, res) {
 						result[t.name] = res.rows;
 						allDone(err, result);
 					});

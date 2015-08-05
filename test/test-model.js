@@ -75,7 +75,13 @@ describe('Model', function() {
 
   	describe('getStats()', function() {		
 		it('getStats from orders', function(done) {
-			model.getStats(model.tables().orders, [], function(err, result) {
+			model.getStats(model.tables().orders, [], '*', function(err, result) {
+				console.log(result);
+				done();
+			});
+		});
+		it('getStats from orders.total_amount', function(done) {
+			model.getStats(model.tables().orders, [], ['total_amount'], function(err, result) {
 				console.log(result);
 				done();
 			});
@@ -91,7 +97,7 @@ describe('Model', function() {
 
 			_.each(tables, function(t) {
 				var order = [{'name': 'asc'}];
-				model.all(t, [], '*', order, 1000, function(err, result) {
+				model.all(t, [], '*', order, 1000, false, function(err, result) {
 					assert(err == null, err);
 					console.log('got ' + result.rows.length + " of " + result.count + " " + t.name);
 					assert(result.count > 0, 'got some ' + t.name);
@@ -109,7 +115,7 @@ describe('Model', function() {
 				{'table': 'customers', 'field': 'name', 'operator': 'eq', 'value': 'Daniel'},
 				{'field': 'total_amount', 'operator': 'le', 'value': 100},
 			];
-			model.all(table, filters, '*', [], 10, function(err, result) {
+			model.all(table, filters, '*', [], 10, false, function(err, result) {
 				assert(err == null, err);
 				console.log('got ' + result.count + " " + table.name);
 				assert(result.count > 0, 'got some ' + table.name);
@@ -125,7 +131,7 @@ describe('Model', function() {
 			var filters = [
 				{'table': 'customers', 'field': 'name', 'operator': 'eq', 'value': 'Daniel'}
 			];
-			model.all(table, filters, '*', [], 10, function(err, result) {
+			model.all(table, filters, '*', [], 10, false, function(err, result) {
 				assert(err == null, err);
 				console.log('got ' + result.count + " " + table.name);
 				assert(result.count > 0, 'got some ' + table.name);

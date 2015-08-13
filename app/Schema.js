@@ -747,6 +747,7 @@ schema.Database.prototype.filterSQL = function(table, filterClauses) {
 
 			if (filter.operator == 'search') {
 				filterTable = me.tables[filter.table].ftsName();
+				//check if full row search
 				if (filterField == filter.table) filterField = filterTable;
 			} else if (filter.table == table.name && useView) {
 				filterTable = table.viewName();

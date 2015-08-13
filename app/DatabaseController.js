@@ -11,6 +11,7 @@ function DatabaseController(router, restBase, model)
 	//console.log("created DatabaseController " + this.seed);
 	log.info("new DatabaseController @ " + restBase);
 
+	//TODO handle string values w/ single quotes (treating text inside as literal, e.g. and)
 	this.getFilterClauses = function(req) {
 		var filterClauses = [];
 		//console.dir(req.query['$filter']);
@@ -25,7 +26,7 @@ function DatabaseController(router, restBase, model)
 				} else {
 					filter.field = fq[0];
 				}
-				filter.operator = fq[1];
+				filter.operator = fq[1];				
 				filter.value = fq[2];
 
 				filterClauses.push(filter);

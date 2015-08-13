@@ -1,9 +1,24 @@
 
 
 start
- = expr
+ = filterTerm
 
-expr
+skip "$skip"
+ = "$skip=" a:int {return {'param': '$skip', 'value': ~~a }; }
+ 
+top "$top"
+ = "$top=" a:int {return {'param': '$top', 'value': ~~a }; }
+
+orderby "$orderby"
+ = "$orderby=" f:field { return {'param': '$orderby', 'value': field}; }
+
+filter "$filter"
+ = "$filter=" filters:filterExpr { return {'param': '$filter', 'values': filters}; }
+
+filterExpr "filter expression"
+ = first:filterTerm others:(ws "and" ws term:filterTerm { return term; })* { return [first].concat(others || []); }
+
+filterTerm
  = field:field ws op:op ws value:value { return {field:field, op: op, value: value }; }
 
 op "operator"
@@ -13,7 +28,7 @@ op "operator"
  / "gt"
 
 field "field name"
- = first:[a-z]i chars:fchar+ { return first + chars.join(""); }
+ = first:[a-z]i chars:fchar+ { return first + chars.join(''); }
 
 fchar "name char"
  = [a-z0-9_]i

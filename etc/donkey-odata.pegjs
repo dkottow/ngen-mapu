@@ -20,6 +20,7 @@ param
  / paramOrderBy
  / paramFilter
  / paramSelect
+ / paramDistinct
 
 paramSkip
  = "$skip=" a:$int 
@@ -41,6 +42,10 @@ paramFilter
  = "$filter=" filters:filterExpr 
    { return {name: '$filter', value: filters}; }
 
+paramDistinct
+ = "$distinct=" distinct:("true" / "false")
+   { return distinct == "true"; }
+
 orderByExpr
  = first:orderByTerm
    rest:("," ws? term:orderByTerm { return term; })*
@@ -56,8 +61,12 @@ filterExpr
    { return [first].concat(rest); }
 
 filterTerm
- = field:field ws op:op ws value:value 
-   { return {field:field, operator: op, value: value }; }
+ = table:(table:field "." { return table; })? 
+   field:field ws op:op ws value:value 
+   { var result = {field:field, operator: op, value: value }; 
+     if (table) result.table = table;
+     return result;
+   }
 
 op "operator"
  = "eq" 
@@ -74,7 +83,13 @@ fields
    rest:("," ws? field:field { return field; })*
    { return [first].concat(rest); }
 
-field "field name"
+table
+ = identifier
+
+field
+ = identifier
+
+identifier "identifier"
  = first:[a-z]i chars:fchar* 
    { return first + chars.join(''); }
 

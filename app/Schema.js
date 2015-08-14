@@ -847,11 +847,11 @@ schema.Database.prototype.selectSQL = function(table, filterClauses, fields, ord
 	}
 
 
+
+	var distinctSQL = (filterSQL.distinct || distinct) ? ' DISTINCT ' : ' ';
+	var fieldSQL = this.fieldSQL(table, fields);
 	var limitSQL = ' LIMIT ' + limit;
 	var offsetSQL = ' OFFSET ' + offset;
-
-	var fieldSQL = this.fieldSQL(table, fields);
-	var distinctSQL = (filterSQL.distinct || distinct) ? ' DISTINCT ' : ' ';
 
 	var sql = 'SELECT' + distinctSQL + fieldSQL + ' FROM ' + tableName 
 			+ ' ' + filterSQL.join + filterSQL.where + orderSQL + limitSQL + offsetSQL;

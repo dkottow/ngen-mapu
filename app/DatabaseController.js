@@ -45,9 +45,11 @@ function DatabaseController(router, restBase, model)
 				
 				var params = {};
 				_.each(req.query, function(v, k) {
-					var param = parser.parse(k + "=" + v);	
-					params[param.name] = param.value;
-					//console.log(param);
+					if (k[0] == '$') {
+						var param = parser.parse(k + "=" + v);	
+						params[param.name] = param.value;
+						//console.log(param);
+					}
 				});
 
 				me.model.all(table, 
@@ -78,9 +80,11 @@ function DatabaseController(router, restBase, model)
 
 				var params = {};
 				_.each(req.query, function(v, k) {
-					var param = parser.parse(k + "=" + v);	
-					params[param.name] = param.value;
-					console.log(param);
+					if (k[0] == '$') {
+						var param = parser.parse(k + "=" + v);	
+						params[param.name] = param.value;
+						console.log(param);
+					}
 				});
 
 				me.model.getStats(table, 

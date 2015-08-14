@@ -19,6 +19,8 @@ if (global.log) {
 var TABLEDEF_NAME = "_tabledef_";
 var FIELDDEF_NAME = "_fielddef_";
 
+var USE_VIEW = true;
+
 var schema = {};
 
 schema.Field = function(fieldDef) {
@@ -674,7 +676,6 @@ schema.Database.prototype.get = function() {
 
 schema.Database.prototype.filterSQL = function(table, filterClauses) {
 
-	var useView = true;
 	var joinTables = {};
 	var joinSQL = '';
 
@@ -704,7 +705,7 @@ schema.Database.prototype.filterSQL = function(table, filterClauses) {
 			var j = joinTablePath(path, joinTables);
 			
 			var jSQL = j.sql;
-			if (useView) {
+			if (USE_VIEW) {
 				var r = new RegExp('\\b' + table.name + '\\b', 'g');
 				jSQL = j.sql.replace(r, table.viewName());
 			}			
@@ -717,7 +718,7 @@ schema.Database.prototype.filterSQL = function(table, filterClauses) {
 		}
 
 		if (filter.operator == 'search') {
-			var filterTable = (filter.table == table.name && useView) ?
+			var filterTable = (filter.table == table.name && USE_VIEW) ?
 								table.viewName() : filter.table;
 
 			joinSQL = joinSQL + ' INNER JOIN ' 
@@ -750,7 +751,7 @@ schema.Database.prototype.filterSQL = function(table, filterClauses) {
 				filterTable = me.tables[filter.table].ftsName();
 				//check if full row search
 				if (filterField == filter.table) filterField = filterTable;
-			} else if (filter.table == table.name && useView) {
+			} else if (filter.table == table.name && USE_VIEW) {
 				filterTable = table.viewName();
 			} else {
 				filterTable = filter.table;
@@ -783,14 +784,13 @@ schema.Database.prototype.checkFields = function(table, fieldNames) {
 
 
 schema.Database.prototype.fieldSQL = function(table, fields) {
-	var useView = true;
-	var tableName = useView ? table.viewName() : table.name;
+	var tableName = USE_VIEW ? table.viewName() : table.name;
 
 	if (fields == '*') {
 		fields = _.map(table.fields, function(f) {
 			return util.format('%s."%s" as %s', tableName, f.name, f.name);
 		});
-		if (useView) {
+		if (USE_VIEW) {
 			var fk_fields =_.map(table.foreignKeys(), function(f) {
 				return util.format('%s."%s" as %s', 
 							tableName, f.refName(), f.refName());
@@ -807,18 +807,8 @@ schema.Database.prototype.fieldSQL = function(table, fields) {
 	return fields.join(",");
 }
 
-schema.Database.prototype.selectSQL = function(table, filterClauses, fields, orderClauses, limit, offset, distinct) {
-	assert(_.isArray(filterClauses), "arg 'filterClauses' is array");
-	assert(_.isObject(table), "arg 'table' is object");
-	assert(_.isArray(orderClauses), "arg 'orderClauses' is array");
-	
-	var useView = true;
-	var tableName = useView ? table.viewName() : table.name;
-
-	if (_.isNumber(limit)) limit = limit.toString();
-	assert(_.isString(limit), "arg 'limit' is string");
-
-	var filterSQL = this.filterSQL(table ,filterClauses);
+schema.Database.prototype.orderSQL = function(table, orderClauses) {
+	var tableName = USE_VIEW ? table.viewName() : table.name;
 
 	var orderSQL;
 	if ( ! _.isEmpty(orderClauses)) {	
@@ -845,9 +835,22 @@ schema.Database.prototype.selectSQL = function(table, filterClauses, fields, ord
 		//most recently modified first
 		orderSQL = " ORDER BY " + tableName + ".id DESC";
 	}
+	return orderSQL;
 
+}
 
+schema.Database.prototype.selectSQL = function(table, filterClauses, fields, orderClauses, limit, offset, distinct) {
+	assert(_.isArray(filterClauses), "arg 'filterClauses' is array");
+	assert(_.isObject(table), "arg 'table' is object");
+	assert(_.isArray(orderClauses), "arg 'orderClauses' is array");
+	
+	var tableName = USE_VIEW ? table.viewName() : table.name;
 
+	if (_.isNumber(limit)) limit = limit.toString();
+	assert(_.isString(limit), "arg 'limit' is string");
+
+	var filterSQL = this.filterSQL(table, filterClauses);
+	var orderSQL = this.orderSQL(table, orderClauses);
 	var distinctSQL = (filterSQL.distinct || distinct) ? ' DISTINCT ' : ' ';
 	var fieldSQL = this.fieldSQL(table, fields);
 	var limitSQL = ' LIMIT ' + limit;

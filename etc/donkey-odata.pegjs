@@ -1,18 +1,6 @@
 
-
 start
  = param
-
-/*
-params
- = first:param 
-   rest:("&" param:param { return param; })*	
-   { var result = {}; 
-	 result[first.name] = first.value;	
-     for(var i=0;i<rest.length;++i) result[rest[i].name] = rest[i].value;
-     return result;
-   }
-*/
 
 param
  = paramSkip

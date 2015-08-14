@@ -1,37 +1,90 @@
 
 
 start
- = filterTerm
+ = param
 
-skip "$skip"
- = "$skip=" a:int {return {'param': '$skip', 'value': ~~a }; }
+/*
+params
+ = first:param 
+   rest:("&" param:param { return param; })*	
+   { var result = {}; 
+	 result[first.name] = first.value;	
+     for(var i=0;i<rest.length;++i) result[rest[i].name] = rest[i].value;
+     return result;
+   }
+*/
+
+param
+ = paramSkip
+ / paramTop
+ / paramOrderBy
+ / paramFilter
+ / paramSelect
+
+paramSkip
+ = "$skip=" a:$int 
+   {return {name: '$skip', value: parseInt(a) }; }
  
-top "$top"
- = "$top=" a:int {return {'param': '$top', 'value': ~~a }; }
+paramTop
+ = "$top=" a:$int 
+   {return {name: '$top', value: parseInt(a) }; }
 
-orderby "$orderby"
- = "$orderby=" f:field { return {'param': '$orderby', 'value': field}; }
+paramOrderBy
+ = "$orderby=" expr:orderByExpr 
+   { return {name: '$orderby', value: expr}; }
 
-filter "$filter"
- = "$filter=" filters:filterExpr { return {'param': '$filter', 'values': filters}; }
+paramSelect
+ = "$select=" fields:fields 
+   { return {name: '$select', value: fields}; }
 
-filterExpr "filter expression"
- = first:filterTerm others:(ws "and" ws term:filterTerm { return term; })* { return [first].concat(others || []); }
+paramFilter
+ = "$filter=" filters:filterExpr 
+   { return {name: '$filter', value: filters}; }
+
+orderByExpr
+ = first:orderByTerm
+   rest:("," ws? term:orderByTerm { return term; })*
+   { return [first].concat(rest); }
+
+orderByTerm
+ = field:field ord:(ws ord:('asc'i / 'desc'i) {return ord; })?
+   { var result = {}; result[field] = ord || 'asc';  return result; }
+
+filterExpr
+ = first:filterTerm 
+   rest:(ws "and" ws term:filterTerm { return term; })*	
+   { return [first].concat(rest); }
 
 filterTerm
- = field:field ws op:op ws value:value { return {field:field, op: op, value: value }; }
+ = field:field ws op:op ws value:value 
+   { return {field:field, operator: op, value: value }; }
 
 op "operator"
  = "eq" 
  / "ne" 
  / "ge" 
  / "gt"
+ / "le"
+ / "lt"
+ / "search"
+ / "in"
+
+fields
+ = first:field
+   rest:("," ws? field:field { return field; })*
+   { return [first].concat(rest); }
 
 field "field name"
- = first:[a-z]i chars:fchar+ { return first + chars.join(''); }
+ = first:[a-z]i chars:fchar* 
+   { return first + chars.join(''); }
 
 fchar "name char"
  = [a-z0-9_]i
+
+values
+ = first:value
+   rest:("," ws? value:value { return value; })*
+   { return [first].concat(rest); }
 
 value
  = number

@@ -1,6 +1,7 @@
 var _ = require('underscore');
 
 var log = global.log.child({'mod': 'g6.DatabaseController.js'});
+var parser = require('./Parser.js');
 
 function DatabaseController(router, restBase, model)
 {	
@@ -10,38 +11,6 @@ function DatabaseController(router, restBase, model)
 	//this.seed = Math.random();
 	//console.log("created DatabaseController " + this.seed);
 	log.info("new DatabaseController @ " + restBase);
-
-	//TODO handle string values w/ single quotes (treating text inside as literal, e.g. and)
-	this.getFilterClauses = function(req) {
-		var filterClauses = [];
-		//console.dir(req.query['$filter']);
-		if (req.query['$filter']) {
-			var clauses = req.query['$filter'].split('and');
-			_.each(clauses, function(clause) {
-				var filter = {};
-				var fq = clause.trim().split(' ');
-				if (fq[0].indexOf(".") > 0) {
-					filter.table = fq[0].split('.')[0];
-					filter.field = fq[0].split('.')[1];
-				} else {
-					filter.field = fq[0];
-				}
-				filter.operator = fq[1];				
-				filter.value = fq[2];
-
-				filterClauses.push(filter);
-			});
-		}				
-		return filterClauses;
-	}
-
-	this.getFields = function(req) {
-		var resultFields = '*';
-		if (req.query['$fields']) {
-			resultFields = req.query['$fields'].split(',');
-		} 
-		return resultFields;
-	}
 
 	this.init = function(cbAfter) {
 		var me = this;
@@ -74,44 +43,31 @@ function DatabaseController(router, restBase, model)
 			var getRowsHandler = function(req, res) {
 				log.info(req.method + " " + req.url);
 				
-				var filterClauses = me.getFilterClauses(req);
-				var fields = me.getFields(req);
-
-				var orderClauses = [];
-				if (req.query['$orderby']) {
-					var orderBy = req.query['$orderby'].split(' ');
-					var order = {};
-					var fld = orderBy[0];
-					order[fld] = 'ASC';
-					if (orderBy.length > 1) {
-						order[fld] = orderBy[1];
-					}
-					orderClauses.push(order);
-				}
-
-				var limit = global.row_max_count;
-				if (req.query['$top']) {
-					limit = req.query['$top'];
-				}
-				if (req.query['$skip']) {
-					limit = req.query['$skip'] + "," + limit;
-				}
-
-				var distinct = false;
-				if (req.query['$distinct']) {
-					distinct = req.query['$distinct'] > 0;
-				}
-
-				me.model.all(table, filterClauses, fields, 
-							 orderClauses, limit, distinct, function(err, result) { 
-					if (err) {
-						log.warn(err);
-						res.send(400, err.message);
-						return;
-					}
-					log.debug(result);
-					res.send(result); 
+				var params = {};
+				_.each(req.query, function(v, k) {
+					var param = parser.parse(k + "=" + v);	
+					params[param.name] = param.value;
+					//console.log(param);
 				});
+
+				me.model.all(table, 
+					params['$filter'] || [], 
+					params['$select'] || '*', 
+					params['$orderby'] || [],
+					params['$top'] || global.row_max_count,
+					params['$skip'] || 0,
+					params['$distinct'] || false,					
+					function(err, result) { 
+						if (err) {
+							log.warn(err);
+							res.send(400, err.message);
+							return;
+						}
+						log.debug(result);
+						res.send(result); 
+					}
+				);
+
 			}		
 
 			me.router.get(url, getRowsHandler);	
@@ -120,18 +76,26 @@ function DatabaseController(router, restBase, model)
 			var statsExt = ".stats";
 			me.router.get(url + statsExt, function(req, res) {
 
-				var filterClauses = me.getFilterClauses(req);
-				var fields = me.getFields(req);
-
-				me.model.getStats(table, filterClauses, fields, function(err, result) {
-					if (err) {
-						log.warn(err);
-						res.send(400, err.message);
-						return;
-					}
-					log.debug(result);
-					res.send(result); 
+				var params = {};
+				_.each(req.query, function(v, k) {
+					var param = parser.parse(k + "=" + v);	
+					params[param.name] = param.value;
+					console.log(param);
 				});
+
+				me.model.getStats(table, 
+					params['$filter'] || [], 
+					params['$select'] || '*', 
+					function(err, result) {
+						if (err) {
+							log.warn(err);
+							res.send(400, err.message);
+							return;
+						}
+						log.debug(result);
+						res.send(result); 
+					}
+				);
 
 			});	
 
@@ -162,13 +126,6 @@ function DatabaseController(router, restBase, model)
 			}		
 			me.router.get(url + "/:id", getDeepHandler);
 			me.router.get(url + rowsExt + "/:id", getDeepHandler);
-
-
-/*
-			var distinctExt = ".uniq";
-			me.router.get(url + distinctExt + "/:field", function(req, res) {
-			});
-*/
 
 			//insert a row into table
 			var postRowHandler = function(req, res) {

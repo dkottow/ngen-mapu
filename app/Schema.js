@@ -730,6 +730,7 @@ schema.Database.prototype.filterSQL = function(table, filterClauses) {
 		if (filter.operator && filter.value) {
 
 			var scalarClauses = { 'eq' : '=', 
+								  'ne' : '!=',	
 								  'ge': '>=', 
 								  'gt': '>', 
 								  'le': '<=', 
@@ -806,7 +807,7 @@ schema.Database.prototype.fieldSQL = function(table, fields) {
 	return fields.join(",");
 }
 
-schema.Database.prototype.selectSQL = function(table, filterClauses, fields, orderClauses, limit, distinct) {
+schema.Database.prototype.selectSQL = function(table, filterClauses, fields, orderClauses, limit, offset, distinct) {
 	assert(_.isArray(filterClauses), "arg 'filterClauses' is array");
 	assert(_.isObject(table), "arg 'table' is object");
 	assert(_.isArray(orderClauses), "arg 'orderClauses' is array");
@@ -846,26 +847,14 @@ schema.Database.prototype.selectSQL = function(table, filterClauses, fields, ord
 	}
 
 
-	var limitSQL = " LIMIT " + row_max_count;
-	if (limit.indexOf(',') > 0) {
-		var ab = limit.split(",");
-		var a = parseInt(ab[0]);
-		var b = parseInt(ab[1]);
-		if ( !_.isNaN(a) && !_.isNaN(b)) {
-			limitSQL = util.format(" LIMIT %d, %d", a, b);
-		}
-	} else {
-		var a = parseInt(limit);
-		if (!_.isNaN(a)) {
-			limitSQL = util.format(" LIMIT %d", a);
-		}
-	}
+	var limitSQL = ' LIMIT ' + limit;
+	var offsetSQL = ' OFFSET ' + offset;
 
 	var fieldSQL = this.fieldSQL(table, fields);
 	var distinctSQL = (filterSQL.distinct || distinct) ? ' DISTINCT ' : ' ';
 
 	var sql = 'SELECT' + distinctSQL + fieldSQL + ' FROM ' + tableName 
-			+ ' ' + filterSQL.join + filterSQL.where + orderSQL + limitSQL;
+			+ ' ' + filterSQL.join + filterSQL.where + orderSQL + limitSQL + offsetSQL;
 
 	log.debug(sql, filterSQL.params);
 

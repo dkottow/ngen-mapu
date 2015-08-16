@@ -91,13 +91,17 @@ describe('Model', function() {
   	describe('all()', function() {		
 
 		it('get all customers/products', function(done) {
-			var tables = [model.tables().products, model.tables().customers];
+			var tables = [
+					model.tables().products, 
+					model.tables().customers
+			];
 
 			var allDone = _.after(tables.length, done);			
 
 			_.each(tables, function(t) {
 				var order = [{'name': 'asc'}];
-				model.all(t, [], '*', order, 1000, false, function(err, result) {
+
+				model.all(t, [], '*', order, 1000, 0, false, function(err, result) {
 					assert(err == null, err);
 					console.log('got ' + result.rows.length + " of " + result.count + " " + t.name);
 					assert(result.count > 0, 'got some ' + t.name);
@@ -115,7 +119,7 @@ describe('Model', function() {
 				{'table': 'customers', 'field': 'name', 'operator': 'eq', 'value': 'Daniel'},
 				{'field': 'total_amount', 'operator': 'le', 'value': 100},
 			];
-			model.all(table, filters, '*', [], 10, false, function(err, result) {
+			model.all(table, filters, '*', [], 10, 0, false, function(err, result) {
 				assert(err == null, err);
 				console.log('got ' + result.count + " " + table.name);
 				assert(result.count > 0, 'got some ' + table.name);
@@ -128,10 +132,14 @@ describe('Model', function() {
 
 			var table = model.tables().products;
 
-			var filters = [
-				{'table': 'customers', 'field': 'name', 'operator': 'eq', 'value': 'Daniel'}
-			];
-			model.all(table, filters, '*', [], 10, false, function(err, result) {
+			var filters = [{
+					'table': 'customers', 
+					'field': 'name', 
+					'operator': 'eq', 
+					'value': 'Daniel'
+			}];
+
+			model.all(table, filters, '*', [], 10, 0, false, function(err, result) {
 				assert(err == null, err);
 				console.log('got ' + result.count + " " + table.name);
 				assert(result.count > 0, 'got some ' + table.name);
@@ -139,6 +147,27 @@ describe('Model', function() {
 			});
 
 		});
+
+		it('all orders filtered by products.id in (1,2)', 
+		function(done) {
+
+			var table = model.tables().orders;
+
+			var filters = [{
+				'table': 'products', 
+				'field': 'id', 
+				'operator': 'in', 
+				'value': [1,2,3]
+			}];
+
+			model.all(table, filters, '*', [], 10, 0, false, function(err, result) {
+				assert(err == null, err);
+				console.log('got ' + result.count + " " + table.name);
+				assert(result.count > 0, 'got some ' + table.name);
+				done();
+			});
+		});
+
 	});
 
   	describe('getDeep()', function() {		

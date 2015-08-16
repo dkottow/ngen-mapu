@@ -676,11 +676,9 @@ schema.Database.prototype.get = function() {
 
 schema.Database.prototype.filterSQL = function(table, filterClauses) {
 
+	var me = this;
 	var joinTables = {};
 	var joinSQL = '';
-
-	var me = this;
-
 	var whereSQL = " WHERE 1=1";
 	var distinct = false;
 	var sql_params = [];
@@ -717,52 +715,63 @@ schema.Database.prototype.filterSQL = function(table, filterClauses) {
 			}
 		}
 
-		if (filter.operator == 'search') {
-			var filterTable = (filter.table == table.name && USE_VIEW) ?
-								table.viewName() : filter.table;
+
+		var filterTable = (filter.table == table.name && USE_VIEW) ?
+							table.viewName() : filter.table;
+
+		var comparatorOperators = {
+			'eq' : '=', 
+			'ne' : '!=',	
+			'ge': '>=', 
+			'gt': '>', 
+			'le': '<=', 
+			'lt': '<'
+		};
+
+		if (comparatorOperators[filter.operator]) {
+
+			whereSQL = whereSQL + util.format(" AND %s.%s %s ?", 
+									filterTable, filter.field, 
+									comparatorOperators[filter.operator]
+								);
+				
+			sql_params.push(filter.value);
+
+		} else if (filter.operator == 'in') {
+
+			var inParams = _.times(filter.value.length, function(fn) { 
+					return "?"; 
+			});
+
+			whereSQL = whereSQL + util.format(" AND %s.%s IN (%s)",
+									filterTable, filter.field,
+									inParams.join(',')
+								);
+
+			sql_params = sql_params.concat(filter.value); 
+
+		} else if (filter.operator == 'search') {
 
 			joinSQL = joinSQL + ' INNER JOIN ' 
 					+ me.tables[filter.table].ftsName()
 					+ ' ON ' + util.format('%s.docid = %s.id', 
 									me.tables[filter.table].ftsName(),
 									filterTable);
-		}
 
-		if (filter.operator && filter.value) {
+			whereSQL = whereSQL + util.format(" AND %s.%s MATCH ?", 
+									me.tables[filter.table].ftsName(),
+									//check if full row search
+									filter.field == filter.table ? 
+										me.tables[filter.table].ftsName() :
+										filter.field
+								); 	
 
-			var scalarClauses = { 'eq' : '=', 
-								  'ne' : '!=',	
-								  'ge': '>=', 
-								  'gt': '>', 
-								  'le': '<=', 
-								  'lt': '<',
-								  'search': 'MATCH' };
-			
-			//TODO - IN operator?
-
-			assert(_.has(scalarClauses, filter.operator),
-				util.format("filter clause %s unknown",  
-					filter.operator));
-
-			var filterTable;
-			var filterField = filter.field;
-
-			if (filter.operator == 'search') {
-				filterTable = me.tables[filter.table].ftsName();
-				//check if full row search
-				if (filterField == filter.table) filterField = filterTable;
-			} else if (filter.table == table.name && USE_VIEW) {
-				filterTable = table.viewName();
-			} else {
-				filterTable = filter.table;
-			}
-
-			whereSQL = whereSQL + util.format(" AND %s.%s %s ?", 
-					filterTable, filterField, 
-					scalarClauses[filter.operator]);
-				
 			sql_params.push(filter.value);
+
+		} else {
+			//unknown op
 		}
+
 	});
 
 	return { 

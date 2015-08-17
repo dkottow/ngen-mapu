@@ -1,7 +1,7 @@
 var _ = require('underscore');
 
 var log = global.log.child({'mod': 'g6.DatabaseController.js'});
-var parser = require('./Parser.js');
+var parser = require('./QueryParser.js');
 
 function DatabaseController(router, restBase, model)
 {	

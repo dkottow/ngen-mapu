@@ -40,20 +40,25 @@ orderByExpr
    { return [first].concat(rest); }
 
 orderByTerm
- = field:field ord:(ws ord:('asc'i / 'desc'i) {return ord; })?
+ = field:field ws? ord:('asc'i / 'desc'i)?
    { var result = {}; result[field] = ord || 'asc';  return result; }
-
+   
 filterExpr
  = first:filterTerm 
    rest:(ws "and" ws term:filterTerm { return term; })*	
    { return [first].concat(rest); }
 
 filterTerm
- = table:(table:field "." { return table; })? 
-   field:field ws op:op ws value:value 
-   { var result = {field:field, operator: op, value: value }; 
-     if (table) result.table = table;
-     return result;
+ = table:(table ".")? field:field ws 
+   op:((op ws value) / (vecop ws values))
+   { 
+	 var result = {
+		field: field,
+		operator: op[0],
+		value: op[2]     
+     };	  
+     if (table) result.table = table[0];
+	 return result;
    }
 
 op "operator"
@@ -64,7 +69,9 @@ op "operator"
  / "le"
  / "lt"
  / "search"
- / "in"
+
+vecop "vector operator"
+ = "in"
 
 fields
  = first:field

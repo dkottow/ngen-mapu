@@ -48,7 +48,7 @@ function DatabaseController(router, restBase, model)
 					if (k[0] == '$') {
 						var param = parser.parse(k + "=" + v);	
 						params[param.name] = param.value;
-						//console.log(param);
+						console.log(param);
 					}
 				});
 
@@ -58,7 +58,7 @@ function DatabaseController(router, restBase, model)
 					params['$orderby'] || [],
 					params['$top'] || global.row_max_count,
 					params['$skip'] || 0,
-					params['$distinct'] || false,					
+					params['$distinct'] || false, //this works!					
 					function(err, result) { 
 						if (err) {
 							log.warn(err);

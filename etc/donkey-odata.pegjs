@@ -32,7 +32,7 @@ paramFilter
 
 paramDistinct
  = "$distinct=" distinct:("true" / "false")
-   { return distinct == "true"; }
+   { return {name: '$distinct', value: (distinct == "true") }; }
 
 orderByExpr
  = first:orderByTerm

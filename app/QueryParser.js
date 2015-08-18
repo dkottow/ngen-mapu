@@ -54,7 +54,7 @@ module.exports = (function() {
         peg$c19 = { type: "literal", value: "true", description: "\"true\"" },
         peg$c20 = "false",
         peg$c21 = { type: "literal", value: "false", description: "\"false\"" },
-        peg$c22 = function(distinct) { return distinct == "true"; },
+        peg$c22 = function(distinct) { return {name: '$distinct', value: (distinct == "true") }; },
         peg$c23 = [],
         peg$c24 = ",",
         peg$c25 = { type: "literal", value: ",", description: "\",\"" },

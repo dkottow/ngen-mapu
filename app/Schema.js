@@ -601,6 +601,7 @@ schema.Database.prototype.viewSQL = function(table) {
 			}
 			return result;
 		}, '');
+		nkValue = nkValue + util.format(" || ' (' || %s.id || ')' ", fk_table.name);
 		fk_fields.push(nkValue + ' AS ' + fk.refName());
 			
 	});
@@ -751,12 +752,17 @@ schema.Database.prototype.filterSQL = function(table, filterClauses) {
 			sql_params = sql_params.concat(filter.value); 
 
 		} else if (filter.operator == 'search') {
-
-			joinSQL = joinSQL + ' INNER JOIN ' 
+			//if ( ! joinTables[me.tables[filter.table].ftsName()]) {
+			//dosnt work, you cant search two different criteria
+				joinSQL = joinSQL + ' INNER JOIN ' 
 					+ me.tables[filter.table].ftsName()
 					+ ' ON ' + util.format('%s.docid = %s.id', 
 									me.tables[filter.table].ftsName(),
 									filterTable);
+
+				joinTables[me.tables[filter.table].ftsName()] 
+					= me.tables[filter.table].ftsName(); 
+			//}
 
 			whereSQL = whereSQL + util.format(" AND %s.%s MATCH ?", 
 									me.tables[filter.table].ftsName(),

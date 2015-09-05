@@ -28,9 +28,9 @@ var app = express();
 var log = global.log.child({'mod': 'g6.server.js'});
 
 var config = {
-	"ip"	:  null,
-	"port"	: 3000, 
-	"root"  : 'projects'
+	'ip'	:  '127.0.0.1',
+	'port'	: 3000, 
+	'root'  : 'projects'
 }
 
 if (process.env.OPENSHIFT_DATA_DIR) {
@@ -79,14 +79,9 @@ function serveAccounts(rootDir) {
 	});
 }
 
-if (config.ip) {
-	app.listen(config.port, config.ip, function() {
-		log.info("Started server on " + config.ip + ":" + config.port);
-	});
-} else {
-	app.listen(config.port);
-	log.info("Started server on localhost:" + config.port);
-}
+app.listen(config.port, config.ip, function() {
+	log.info("Started server on " + config.ip + ":" + config.port);
+});
 
 app.use(bodyParser.json()); //json parsing 
 

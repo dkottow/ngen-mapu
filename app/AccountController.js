@@ -91,7 +91,7 @@ function AccountController(router, baseUrl, baseDir) {
 					res.send(400, err.message);
 					return;
 				}
-				db.save(dbFile, function(err) {
+				db.create(dbFile, function(err) {
 					if (err) {
 						log.warn(req.method + " " + req.url + " failed.");
 						res.send(400, err.message);
@@ -164,7 +164,7 @@ function AccountController(router, baseUrl, baseDir) {
 							res.send(400, err.message);
 							return;	
 						}
-						db.save(dbFile, function(err) {
+						db.create(dbFile, function(err) {
 							if (err) {
 								log.warn(req.method + " " 
 										+ req.url + " failed.");

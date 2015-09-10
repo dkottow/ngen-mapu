@@ -45,30 +45,9 @@ function Database(dbFile)
 	var me = this;
 
 	this.init = function(cbAfter) {
-		var db = new sqlite3.Database( this.dbFile
-							, sqlite3.OPEN_READWRITE
-							, function(err) {
-			if (err) {
-				log.error("Database.init() failed. Could not open '" 
-					+ me.dbFile + "'");
-				cbAfter(err);
-				return;
-			}
-			initTableDefs(err, db, function(err, tables) { 
-				if (_.size(tables) == 0) {
-					cbAfter(err);
-					return;
-				}
-				initFieldDefs(err, db, tables, function(err, tables) {
-					if (err) {
-						cbAfter(err);
-					} else {
-						me.schema = new Schema(tables);
-						me.schema.init(cbAfter);
-					}
-				});
-			});
-		});
+
+		me.schema = new Schema();
+		me.schema.read(this.dbFile, cbAfter);
 	}
 
 	this.getSchema = function(cbResult) {
@@ -330,13 +309,13 @@ function Database(dbFile)
 
 		var fieldNames = _.filter(_.keys(rows[0]) 
 							, function(fn) { 
-				//filter out id and any non-field key
-				return _.has(table.fields, fn) && fn != 'id'; 
+				//filter out any non-field key
+				return _.has(table.fields, fn); // && fn != 'id'; 
 		});
 
 
 		if (table.supertype) {
-			//exception do insert with id = supertype.id when rows are a subtype
+			//insert with id = supertype.id when rows are a subtype
 			fieldNames.push('id');
 			_.each(rows, function(r) {
 				r.id = r[table.supertype.name + "_sid"];
@@ -512,141 +491,6 @@ function Database(dbFile)
 
 		});
 		db.close();
-	}
-
-	function initTableDefs(err, db, cbAfter) {
-		if (err == null) {
-			//get table and field attributes from table _defs_
-			db.all("SELECT name, row_name, custom FROM _tabledef_ WHERE name IN (SELECT name FROM sqlite_master WHERE type = 'table')"
-				, function(err ,rows) {
-					if (err) { 
-						log.error("Get table defs failed. " + err);
-
-					} else {
-					//console.log(rows);
-
-						var tables = _.map(rows, function(r) {
-							var tableDef = { 
-								  "name": r['name'],
-							};
-							if (r['row_name'].length > 0) {
-								tableDef['row_name'] = JSON.parse(r['row_name']);	
-							}
-							if (r['custom']) {
-								tableDef = _.extend(tableDef, JSON.parse(r['custom']))
-							}
-							return tableDef;
-						});	
-						tables = _.object(_.pluck(tables, 'name'), tables);
-					}
-					cbAfter(err, tables);
-			});			
-		} else {
-			cbAfter(err);
-		}
-	}
-
-	function initFieldDefs(err, db, tables, cbAfter) {
-		log.debug("initFieldDefs " + me.dbFile);
-		if (err) {
-			cbAfter(err);
-
-		} else {
-			db.all("SELECT name, table_name, ordering, domain FROM _fielddef_ WHERE table_name IN (SELECT name FROM sqlite_master WHERE type = 'table')"
-				, function(err ,rows) {
-					if (err) { 
-						log.error("Get field defs failed. " + err);
-						cbAfter(err);
-
-					} else {
-						//console.log(rows);
-
-						var tableNames = _.uniq(_.pluck(rows, 'table_name'));
-
-						_.each(tableNames, function(tn) {
-							tables[tn]['fields'] = {};
-						});
-
-						_.each(rows, function(r) {
-							var fieldDef = {
-							  'order' : r['ordering'],
-							  'row_name' : r['row_name'],
-							  'fk' : 0	
-							};
-							if (r['domain']) {
-								fieldDef['domain'] = JSON.parse(r['domain']);	
-							}
-							if (r['custom']) {
-								fieldDef = _.extend(fieldDef, JSON.parse(r['custom']))
-							}
-							tables[r['table_name']]['fields'][r['name']] = fieldDef;
-						});
-						//console.dir(me.tables);
-
-						var doAfter = _.after(2*tableNames.length, function() {
-							//after executing two SQL statements per table
-							cbAfter(null, tables);
-						});
-
-						_.each(tableNames, function(tn) {
-							var sql = util.format("PRAGMA table_info(%s)", tn);
-							//console.log(sql);
-							db.all(sql, function(err, rows) {
-								if (err) {
-									log.error(sql + ' failed.');
-									cbAfter(err, tables);
-									return;
-
-								} else {
-									_.each(rows, function(r) {
-										//console.log(r);
-										var fn = r['name'];
-										var fieldDef = tables[tn]['fields'][fn];
-										if (fieldDef) {
-											fieldDef = _.extend(fieldDef, r);
-											//console.log(fieldDef);
-											 
-										} else {
-											var err = new Error("G6_MODEL_ERROR: "
-														+ tn + '.' + fn + ' not found.');
-											cbAfter(err, tables);
-											return;	
-										}
-									});
-									doAfter();
-								}
-							});
-						});
-						_.each(tableNames, function(tn) {
-							var sql = util.format("PRAGMA foreign_key_list(%s)", tn);
-							db.all(sql, function(err, rows) {
-								if (err) {
-									log.error(sql + ' failed.');
-									cbAfter(err, tables);
-									return;
-								} else {
-									_.each(rows, function(r) {
-										//console.log(r);
-										var fk = r['from'];
-										var fieldDef = tables[tn]['fields'][fk];
-										if (fieldDef) {
-											fieldDef['fk'] = 1;
-											fieldDef['fk_table'] = r['table'];
-											fieldDef['fk_field'] = r['to'];
-										} else {
-											var err = new Error("G6_MODEL_ERROR: "
-														+ tn + '.' + fn + ' not found.');
-											cbAfter(err, tables);
-											return;	
-										}
-									});
-									doAfter();
-								}
-							});
-						});
-					}
-			});
-		}
 	}
 
 }

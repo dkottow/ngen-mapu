@@ -10,7 +10,7 @@ describe('Schema', function() {
 
 	var testSchema = [
 		 { "name": "customers"
-		 , "row_name": ["name", "email"]
+		 , "row_alias": ["name", "email"]
 		 , "fields": {
 				  "id": {
 					  "name": "id"
@@ -40,7 +40,7 @@ describe('Schema', function() {
 			}		
 		 }
 	   , { "name": "products"
-		 , "row_name": ["name"]		  	
+		 , "row_alias": ["name"]		  	
 		 , "fields": {
 				  "id": {
 					  "name": "id"
@@ -70,7 +70,7 @@ describe('Schema', function() {
 			}		
 		 }
 	   , { "name": "orders"
-		 , "row_name": ["order_date", "customers.name"]		  	
+		 , "row_alias": ["order_date", "customers.name"]		  	
 		 , "fields": {
 				  "id": {
 					  "name": "id"
@@ -204,8 +204,9 @@ describe('Schema', function() {
 		
 		before(function(done) {
 			var db = new schema.Schema(testSchema);
-			done();
-			//db.remove(dbFile, done);
+			schema.Schema.remove(dbFile, function(err) {
+				done();
+			});
 		});	
 
 		it('createSQL example', function() {
@@ -220,14 +221,14 @@ describe('Schema', function() {
 			});
 		});
 
-		it('save example', function(done) {
+		it('create example', function(done) {
 	
 			var db = new schema.Schema(testSchema);
 			db.init(function(err) {
 				if (err) {
 					console.log(err);
 				} else {
-					db.save(dbFile, function(err) {
+					db.create(dbFile, function(err) {
 						console.log(err);
 						done();	
 					});
@@ -241,7 +242,7 @@ describe('Schema', function() {
 
 		var selfRefSchema = [
 			 { "name": "employees"
-			 , "row_name": ["name"]
+			 , "row_alias": ["name"]
 			 , "fields": {
 					  "id": {
 						  "name": "id"
@@ -280,6 +281,7 @@ describe('Schema', function() {
 				}		
 			 }];
 
+
 		it('self ref example', function(done) {
 			var db = new schema.Schema(selfRefSchema);
 
@@ -290,7 +292,7 @@ describe('Schema', function() {
 					var sql = db.createSQL();
 					console.log(sql);
 
-					db.save('selfref.sqlite', function(err) {
+					db.create('selfref.sqlite', function(err) {
 						console.log(err);
 						done();	
 					});
@@ -298,6 +300,7 @@ describe('Schema', function() {
 				}
 			});
 		});
+
 	});
 
 });

@@ -43,7 +43,7 @@ describe('Model', function() {
 		before(function(done) {
 			model.getSchema(function(err, result) {
 				defs = result;
-				//console.log(defs);
+				console.log(defs);
 				done();
 			});
 			//console.log(defs);
@@ -260,6 +260,22 @@ describe('Model', function() {
 				done();
 			});
 		});
+
+		it('insert with specific id', function(done) {
+			var row = {
+				'id': 666, 
+				'order_date': '2000-01-01', 
+				'customer_id': 1,
+				'total_amount': 66.66,
+				'modified_by': 'mocha', 
+				'modified_on': '2000-01-01' 
+			};
+			model.insert(table, [row], function(err, result) { 
+				console.log(err);
+				assert(err == null, 'sqlite insert specific id');
+				done();
+			});
+		});
 	});
 
   	describe('update()', function() {		
@@ -297,7 +313,7 @@ describe('Model', function() {
 		it('row does not exist', function(done) {
 
 			var row = {
-				'id': 666,
+				'id': 888,
 				'order_date': '2015-01-02', 
 				'customer_id': 1,
 				'total_amount': 2.00,

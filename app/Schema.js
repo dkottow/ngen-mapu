@@ -15,10 +15,6 @@ if (global.log) {
 		});
 }
 
-//const
-var TABLEDEF_NAME = "_tabledef_";
-var FIELDDEF_NAME = "_fielddef_";
-
 var USE_VIEW = true;
 
 var schema = {};
@@ -36,7 +32,6 @@ schema.Field = function(fieldDef) {
 		assert(_.isObject(fieldDef), errMsg);
 		assert(_.has(fieldDef, "name"), errMsg + " Name attr missing.");
 		assert(_.has(fieldDef, "type"), errMsg + " Type attr missing.");
-		assert(_.has(fieldDef, "order"), errMsg + " Order attr missing.");
 
 		me.name = fieldDef.name;
 
@@ -45,20 +40,63 @@ schema.Field = function(fieldDef) {
 					+ " Field names can only have word-type characters.");
 		}
 
-		if ( ! _.isNumber(fieldDef.order)) {
-			throw new Error(errMsg + " Field order must be an integer");
-		}
-
 		me.type = fieldDef.type;
-		me.order = fieldDef.order;
-		me.notnull = fieldDef.notnull;
-		me.fk = 0;
-		me.fk_table = fieldDef.fk_table;
-		if (me.fk_table) {
-			me.fk = 1;
+		me.notnull = fieldDef.notnull || 0;
+
+		me.fk = fieldDef.fk_table ? 1 : 0;
+		if (me.fk) {
+			me.fk_table = fieldDef.fk_table;
 			me.fk_field = "id";
 		}
+
+		//non-SQL attributes				
+		_.each(schema.Field.PROPERTIES, function(f) {
+			me[f] = fieldDef[f];
+		});
+
+		//notnull
+		me.order = me.order || 0;
+
+		//parse possible JSON
+		if (_.isString(me.domain)) {
+			me.domain = JSON.parse(me.domain);
+		}
 	}
+}
+
+//properties are read-write attributes of a field.
+schema.Field.TABLE = '__fieldprops__';
+schema.Field.PROPERTIES = ['order', 'domain', 'label'];
+schema.Field.TABLE_FIELDS = ['name', 'table_name']
+		.concat(schema.Field.PROPERTIES);
+
+schema.Field.CreateTableSQL 
+	= " CREATE TABLE " + schema.Field.TABLE + " ("
+		+ ' name VARCHAR NOT NULL, '
+		+ ' table_name VARCHAR NOT NULL, '
+		+ ' label VARCHAR, '
+		+ '"order" INTEGER NOT NULL, '
+		+ ' domain VARCHAR, '
+		+ ' PRIMARY KEY (name, table_name) '
+		+ ");\n\n";
+
+schema.Field.prototype.sqlValue = function(name) {
+	switch(name) {
+		case 'order': 
+			return this.order;
+		break;
+
+		case 'domain': 
+			return this.domain
+				? "'" + JSON.stringify(this.domain) + "'"
+				: 'null';
+		break;			
+
+		default:
+			return this[name]
+				? "'" + this[name] + "'"
+				: 'null';
+	}	
 }
 
 schema.Field.prototype.constraintSQL = function() {
@@ -72,31 +110,56 @@ schema.Field.prototype.toSQL = function() {
 	return sql;
 }
 
-schema.Field.prototype.defSQL = function(table) {
-	var custom = "";
-	var domain = "";
-	if (this.domain) domain = JSON.stringify(this.domain);
+schema.Field.prototype.insertPropSQL = function(table) {
 
-	var sql = "INSERT INTO " + FIELDDEF_NAME
-			+ " (name, table_name, ordering, domain, custom) VALUES("
-			+ "'" + this.name + "', "
-			+ "'" + table.name + "', "
-			+ this.order + ", "
-			+ "'" + domain + "', "
-			+ "'" + custom + "');";
+	var values = [ this.sqlValue('name'), table.sqlValue('name') ];
+
+	var props = _.map(schema.Field.PROPERTIES, function(f) {
+		return this.sqlValue(f);
+	}, this);
+
+	var fields = _.map(schema.Field.TABLE_FIELDS, function(f) {
+		return '"' + f + '"';
+	});
+
+	var sql = 'INSERT INTO ' + schema.Field.TABLE
+			+ ' (' + fields.join(',') + ') ' 
+			+ ' VALUES (' + values.join(',') + ',' + props.join(',') + '); ';
+
+	return sql;
+}
+
+schema.Field.prototype.updatePropSQL = function(table) {
+	var sets = _.map(schema.Field.PROPERTIES, function(f) {
+		return util.format(' SET "%s" = %s', f, this.sqlValue(f));
+	}, this);
+
+	var sql = 'UPDATE ' + schema.Field.TABLE
+			+ sets.join(',')
+			+ " WHERE name = '" + this.name 
+			+ "' AND table_name = '" + table.name
+			+ "'; ";
+
 	return sql;
 }
 
 schema.Field.prototype.toJSON = function() {
+
 	var result = {
 		name: this.name,
 		type: this.type,
-		order: this.order,
-		fk: this.fk
+		fk: this.fk,
+		notnull: this.notnull
 	};
+
 	if (result.fk == 1) {
-		result.fk_table = this.fk_table; 
+		result.fk_table = this.fk_table;
 	}
+
+	_.each(schema.Field.PROPERTIES, function(f) {
+		result[f] = this[f];
+	});
+
 	return result;
 }
 
@@ -160,6 +223,7 @@ schema.DatetimeField.prototype.constraintSQL = function() {
 function createField(fieldDef) {
 	var errMsg = util.format("createField(%s) failed. "
 				, util.inspect(fieldDef));
+
 	assert(_.has(fieldDef, "type"), errMsg + " Type attr missing.");
 
 	if (fieldDef.type.indexOf("VARCHAR") == 0) {
@@ -213,39 +277,84 @@ schema.Table = function(tableDef) {
 		});
 
 		me.name = tableDef.name;
-		me.row_name = tableDef.row_name;
 
+		//non-SQL attributes
+		_.each(schema.Table.PROPERTIES, function(f) {
+			me[f] = tableDef[f];
+		});
+
+		//parse possible JSON
+		if (_.isString(me.row_alias)) {
+			me.row_alias = JSON.parse(me.row_alias);
+		}
 	}
 }
 
-function insertTableDefSQL(table) {
+schema.Table.TABLE = '__tableprops__';
+schema.Table.PROPERTIES = ['row_alias', 'label'];
+schema.Table.TABLE_FIELDS = ['name']
+		.concat(schema.Table.PROPERTIES);
 
-	var row_name = "";
-	if (table.row_name) {
-		row_name += JSON.stringify(table.row_name);
-	}		
+schema.Table.CreateTableSQL = "CREATE TABLE " + schema.Table.TABLE + " ("
+		+ " name VARCHAR NOT NULL, "
+		+ "	label VARCHAR, "
+		+ " row_alias VARCHAR, "
+		+ "	PRIMARY KEY (name) "
+		+ ");\n\n";
 
-	var custom = "";
-	if (table.custom) {
-		custom += JSON.stringify(table.custom);
-	}		
+//properties are read-write attributes of a field.
+schema.Table.prototype.sqlValue = function(name) {
+	switch(name) {
+		case 'row_alias': 
+			return this.row_alias
+				? "'" + JSON.stringify(this.row_alias) + "'"
+				: 'null';
+		break;			
 
-	var sql = "INSERT INTO " + TABLEDEF_NAME
-			+ " (name, row_name, custom) VALUES("
-			+ "'" + table.name + "', "
-			+ "'" + row_name + "', "
-			+ "'" + custom + "');";
+		default:
+			return this[name]
+				? "'" + this[name] + "'"
+				: 'null';
+	}	
+}
 
+schema.Table.prototype.insertPropSQL = function(table) {
+
+	var values = [ this.sqlValue('name') ];
+
+	var props = _.map(schema.Table.PROPERTIES, function(f) {
+		return this.sqlValue(f);
+	}, this);
+
+	var fields = _.map(schema.Table.TABLE_FIELDS, function(f) {
+		return '"' + f + '"';
+	});
+
+	var sql = 'INSERT INTO ' + schema.Table.TABLE
+			+ ' (' + fields.join(',') + ') ' 
+			+ ' VALUES (' + values.join(',') + ',' + props.join(',') + '); ';
+
+	_.each(this.fields, function(f) {
+		sql += "\n" + f.insertPropSQL(this);
+	}, this);
+	//console.log(sql);
 	return sql;
 }
 
-schema.Table.prototype.insertDefSQL = function() {
+schema.Table.prototype.updatePropSQL = function(table) {
+	var sets = _.map(schema.Table.PROPERTIES, function(f) {
+		return util.format(' SET "%s" = %s', f, this.sqlValue(f));
+	}, this);
 
-	var sql = insertTableDefSQL(this);
-	var me = this;
+	var sql = 'UPDATE ' + schema.Table.TABLE
+			+ sets.join(',')
+			+ " WHERE name = '" + this.name 
+			+ "'; ";
+
 	_.each(this.fields, function(f) {
-		sql += "\n" + f.defSQL(me);
-	});
+		sql += "\n" + f.updatePropSQL(this);
+	}, this);
+
 	return sql;
 }
 
@@ -299,8 +408,7 @@ sqlite> create trigger orders_ai after insert on orders begin
 
 */
 
-schema.Table.prototype.createSearchSQL = function()
-{
+schema.Table.prototype.createSearchSQL = function() {
 	var viewFields = this.viewFields();
 
 	var sql = 'CREATE VIRTUAL TABLE  ' + this.ftsName() 
@@ -337,15 +445,16 @@ schema.Table.prototype.createSearchSQL = function()
 	return sql;
 }
 
-
-
 schema.Table.prototype.toJSON = function() {
 
 	var result = {
-		name: this.name,
-		row_name: this.row_name
-	}
-	
+		name: this.name
+	};
+
+	_.each(schema.Table.PROPERTIES, function(f) {
+		result[f] = this[f];
+	});
+
 	if (this.supertype && this.supertype.length > 0) {
 		result.supertype = this.supertype.name;
 	}
@@ -400,7 +509,7 @@ schema.Table.prototype.toJSON = function() {
 			"fk": 1,
 			"fk_table": result.supertype,
 			"fk_field": "id",
-			"row_name": 0
+			"row_alias": 0
 		};
 
 		//mark id field as non-fk
@@ -447,7 +556,6 @@ schema.Database = function(tableDefs) {
 schema.Database.prototype.init = function(cbAfter) {
 	try {
 		var me = this;
-		//console.log(util.inspect(me.tableDefs));
 		_.each(me.tableDefs, function(tableDef) {
 			var table = new schema.Table(tableDef);
 			me.tables[table.name] = table;			
@@ -529,28 +637,6 @@ schema.Database.prototype.buildTableGraph = function() {
 	this.linkedTableLists = linkedTables;
 }
 
-function createDefTables() {
-	var sql = "";
-	sql += "CREATE TABLE " + TABLEDEF_NAME + " ("
-		+ " name VARCHAR NOT NULL, "
-		+ " row_name VARCHAR, "
-		+ "	custom VARCHAR, "
-		+ "	PRIMARY KEY (name) "
-		+ ");\n\n";
-
-	sql += " CREATE TABLE " + FIELDDEF_NAME + " ("
-		+ " name VARCHAR NOT NULL, "
-		+ " table_name VARCHAR NOT NULL, "
-		+ " ordering INTEGER NOT NULL, "
-		+ " domain VARCHAR, "
-		+ " custom VARCHAR, "
-		+ " PRIMARY KEY (name, table_name) "
-		+ ");\n\n";
-
-	return sql;
-}
-
-
 function tableAlias(name, idx) {
 	return name + '_' + idx;
 }
@@ -570,7 +656,7 @@ schema.Database.prototype.viewSQL = function(table) {
 	_.each(table.foreignKeys(), function(fk) {
 			
 		var fk_table = me.tables[fk.fk_table];
-		var nkValue = _.reduce(fk_table.row_name, function(memo, nk) {
+		var nkValue = _.reduce(fk_table.row_alias, function(memo, nk) {
 			var result;
 			
 			if (nk.indexOf('.') < 0) {
@@ -620,30 +706,30 @@ schema.Database.prototype.viewSQL = function(table) {
 }
 
 schema.Database.prototype.createSQL = function() {
-	var me = this;
-	var sql = createDefTables();
+	var sql = schema.Table.CreateTableSQL
+			+ schema.Field.CreateTableSQL;
 
 	_.each(this.tables, function(t) {
 		sql += t.toSQL() + '\n\n';
-		sql += me.viewSQL(t) + '\n\n';
+		sql += this.viewSQL(t) + '\n\n';
 		sql += t.createSearchSQL() + '\n\n';
-		sql += t.insertDefSQL() + '\n\n';
-	});
+		sql += t.insertPropSQL() + '\n\n';
+	}, this);
 
 	return sql;
 }
 
-schema.Database.prototype._generateDatabase = function(dbFile, cbResult) {
+schema.Database.prototype._generateDatabase = function(dbFile, cbAfter) {
 	var sql = this.createSQL();
 
 	var execSQL = function(err, db) {
 		if ( ! err) {
 			db.exec(sql, function(err) {
 				db.close();
-				cbResult(err);
+				cbAfter(err);
 			});							
 		} else {
-			cbResult(err);
+			cbAfter(err);
 		}
 	}
 
@@ -885,31 +971,129 @@ schema.Database.prototype.selectSQL = function(table, filterClauses, fields, ord
 	return {'query': sql, 'params': filterSQL.params, 'countSql': countSQL};
 }
 
-schema.Database.prototype.save = function(dbFile, cbResult) {
-	log.debug("schema.Database.save " + dbFile)
+schema.Database.prototype.create = function(dbFile, cbAfter) {
+	log.debug("schema.Database.create " + dbFile)
 	var me = this;
 	me._generateDatabase(null, function(err) {
 		if ( ! err) {
 			me._generateDatabase(dbFile, function(err) {
 				log.info("saving db to " + dbFile)
 				if (err) {
-					log.warn("save() failed. " + err);			
+					log.warn("create() failed. " + err);			
 				}
-				cbResult(err);
+				cbAfter(err);
 			});		
 		} else {
-			log.warn("save() failed. " + err);			
-			cbResult(err);
+			log.warn("create() failed. " + err);			
+			cbAfter(err);
 		}
 	});
 }
 
-schema.Database.remove = function(dbFile, cbResult) {
+schema.Database.remove = function(dbFile, cbAfter) {
 	fs.unlink(dbFile, function(err) {
 		if (err) {
 			log.warn("remove() failed. " + err);			
 		}
-		cbResult(err);
+		cbAfter(err);
+	});
+}
+
+schema.Database.prototype.read = function(dbFile, cbAfter) {
+	log.debug("schema.Database.prototype.read " + dbFile);
+	var me = this;
+	var db = new sqlite3.Database(dbFile
+						, sqlite3.OPEN_READWRITE
+						, function(err) {
+		if (err) {
+			log.error("Schema.read() failed. Could not open '" 
+				+ dbFile + "'");
+			cbAfter(err);
+			return;
+		}
+
+		var fields = _.map(schema.Table.TABLE_FIELDS, function(f) {
+			return '"' + f + '"';
+		});
+		var sql = 'SELECT ' + fields.join(',') 
+				+ ' FROM ' + schema.Table.TABLE;
+
+		//read table properties 
+		db.all(sql, function(err ,rows) {
+
+			if (err) { 
+				log.error("Get table defs failed. " + err);
+				cbAfter(err);
+				return;
+			} 
+
+			//console.dir(rows);
+			var tables = _.object(_.pluck(rows, 'name'), rows);
+				
+			var fields = _.map(schema.Field.TABLE_FIELDS, function(f) {
+				return '"' + f + '"';
+			});
+			var sql = 'SELECT ' + fields.join(',') 
+					+ ' FROM ' + schema.Field.TABLE;
+
+			db.all(sql, function(err ,rows) {
+				
+				var tableNames = _.uniq(_.pluck(rows, 'table_name'));
+
+				_.each(tableNames, function(tn) {
+					tables[tn]['fields'] = {};
+				});
+
+				_.each(rows, function(r) {
+					tables[r.table_name].fields[r.name] = r;
+				});
+
+
+				var doAfter = _.after(2*tableNames.length, function() {
+					//after executing two SQL statements per table
+					me.tableDefs = tables;
+					me.init(cbAfter);
+				});
+
+				_.each(tableNames, function(tn) {
+					var sql = util.format("PRAGMA table_info(%s)", tn);
+					//console.log(sql);
+					db.all(sql, function(err, rows) {
+						if (err) {
+							log.error(sql + ' failed.');
+							cbAfter(err, tables);
+							return;
+
+						} 
+						_.each(rows, function(r) {
+							//console.log(r);
+							_.extend(tables[tn].fields[r.name], r);	
+						});
+						doAfter();
+					});
+				});
+				_.each(tableNames, function(tn) {
+					var sql = util.format("PRAGMA foreign_key_list(%s)", tn);
+					db.all(sql, function(err, rows) {
+						if (err) {
+							log.error(sql + ' failed.');
+							cbAfter(err, tables);
+							return;
+
+						}
+						_.each(rows, function(r) {
+							//console.log(r);
+							_.extend(tables[tn].fields[r.from], {
+								fk: 1,
+								fk_table: r.table,
+								fk_field: r.to
+							});
+						});
+						doAfter();
+					});
+				});
+			});
+		});
 	});
 }
 

@@ -64,9 +64,8 @@ schema.Field = function(fieldDef) {
 	}
 }
 
-//properties are read-write attributes of a field.
 schema.Field.TABLE = '__fieldprops__';
-schema.Field.PROPERTIES = ['order', 'domain', 'label'];
+schema.Field.PROPERTIES = ['order', 'domain', 'label']; //no change in db schema
 schema.Field.TABLE_FIELDS = ['name', 'table_name']
 		.concat(schema.Field.PROPERTIES);
 
@@ -158,7 +157,7 @@ schema.Field.prototype.toJSON = function() {
 
 	_.each(schema.Field.PROPERTIES, function(f) {
 		result[f] = this[f];
-	});
+	}, this);
 
 	return result;
 }
@@ -453,20 +452,10 @@ schema.Table.prototype.toJSON = function() {
 
 	_.each(schema.Table.PROPERTIES, function(f) {
 		result[f] = this[f];
-	});
-
-	if (this.supertype && this.supertype.length > 0) {
-		result.supertype = this.supertype.name;
-	}
+	}, this);
 
 	if (this.parents && this.parents.length > 0) {
 		result.parents = _.map(this.parents, function(t) {
-			return t.name;
-		});
-	}
-	
-	if (this.subtypes && this.subtypes.length > 0) {
-		result.subtypes = _.map(this.subtypes, function(t) {
 			return t.name;
 		});
 	}
@@ -481,40 +470,7 @@ schema.Table.prototype.toJSON = function() {
 		return f.toJSON();
 	});
 
-	if (result.supertype) {
-		//describe virtual <supertype>_sid field
-
-		var sid_order = result.fields.id.order + 1;
-
-		var sid_order_taken = _.find(result.fields, function(f) {
-			return f.order == sid_order;
-		});
-
-		if (sid_order_taken) {
-			//sid field place is taken, make space.
-			_.each(result.fields, function(f) {
-				if (f.order >= sid_order) {
-					f.order = f.order + 1;
-				}
-			});
-		}
-
-		var sid = result.supertype + "_sid";
-		result.fields[sid] = { 
-			"order": sid_order,
-			"name": sid,
-			"type": "INTEGER",
-			"notnull": 1,
-			"pk": 0,
-			"fk": 1,
-			"fk_table": result.supertype,
-			"fk_field": "id",
-			"row_alias": 0
-		};
-
-		//mark id field as non-fk
-		result.fields.id.fk = 0;
-	}
+	console.log(result);
 	return result;
 }
 
@@ -588,13 +544,6 @@ schema.Database.prototype.buildTableGraph = function() {
 			return _.contains(_.pluck(fks, 'fk_table'), t.name);
 		});
 
-		if (table.fields['id'].fk == 1) {
-			table.supertype = _.find(tables, function(t) {
-				return table.fields['id'].fk_table == t.name;
-			});
-			//unmark id as fk
-			//table.fields['id'].fk = 0;
-		}
 		//log.debug(table);
 	});
 	_.each(tables, function(table) {
@@ -603,14 +552,8 @@ schema.Database.prototype.buildTableGraph = function() {
 			return _.contains(_.pluck(t.parents, 'name'), table.name);
 		});
 
-		table.subtypes = _.filter(tables, function(t) {
-			return t.supertype && t.supertype.name == table.name;
-		});
-		
 		table.links = table.parents;
 		table.links = table.links.concat(table.children);
-		table.links = table.links.concat(table.subtypes);
-		if (table.supertype) table.links.push(table.supertype);
 		
 	});
 
@@ -1106,13 +1049,12 @@ function joinTablePath(tables, exclude) {
 
 		if (exclude[pt.name]) continue; 
 
-		//this finds supertypes as well
 		var fk = _.find(t.fields, function(f) {
 			return f.fk_table == pt.name;
 		});
 
 		if (fk) {
-			// pt is parent or supertype			
+
 			var ptName = pt.name;
 			if (t == pt) {
 				joinClause = joinClause 

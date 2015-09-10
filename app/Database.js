@@ -160,11 +160,6 @@ function Database(dbFile)
 				cbResult(err, null);
 			} else {
 				//console.dir(rows);
-				if (table.supertype) {
-					_.each(rows, function(r) {
-						r[table.supertype.name + "_sid"] = r.id;
-					});
-				}
 				
 				var countSql = sql.countSql 
 					+ ' UNION ALL SELECT COUNT(*) as count FROM ' + table.name; 
@@ -198,12 +193,6 @@ function Database(dbFile)
 		db.get(sql.query, sql.params, function(err, row) {
 			if (err) {
 				log.warn("model.get() failed. " + err);	
-			}
-
-			if (row) {
-				if (table.supertype) {
-					row[table.supertype.name + "_sid"] = row.id;
-				}
 			}
 
 			//console.dir(row);
@@ -285,13 +274,8 @@ function Database(dbFile)
 
 						if (parentRow) {				
 							//if fk is another branch, there is no parent loaded
-							if (f.name == 'id') {
-								//supertype
-								parentRow[tn] = row;	
-							} else {
-								parentRow[tn] = parentRow[tn] || [];
-								parentRow[tn].push(row);
-							}	
+							parentRow[tn] = parentRow[tn] || [];
+							parentRow[tn].push(row);
 						}
 					});
 				});
@@ -313,16 +297,8 @@ function Database(dbFile)
 				return _.has(table.fields, fn); // && fn != 'id'; 
 		});
 
-
-		if (table.supertype) {
-			//insert with id = supertype.id when rows are a subtype
-			fieldNames.push('id');
-			_.each(rows, function(r) {
-				r.id = r[table.supertype.name + "_sid"];
-			});
-		}
-
-		var fieldParams = _.times(fieldNames.length, function(fn) { return "?"; });
+		var fieldParams = _.times(fieldNames.length
+						, function(fn) { return "?"; });
 
 		var sql = "INSERT INTO " + table.name 
 				+ '("' + fieldNames.join('", "') + '")'
@@ -382,14 +358,6 @@ function Database(dbFile)
 							, function(fn) { 
 				return _.has(table.fields, fn) && fn != 'id'; 
 		});
-
-		if (table.supertype) {
-			fieldNames.push('id');
-			//update id according to <supertype>_sid
-			_.each(rows, function(r) {
-				r.id = r[table.supertype.name + "_sid"];
-			});
-		}
 
 		var sql = "UPDATE " + table.name
 				+ ' SET "' + fieldNames.join('" = ?, "') + '" = ?'
@@ -502,17 +470,12 @@ function isDescendant(table, parentTable, depth) {
 
 	if (depth > 0) {
 
-		if ( _.contains(parentTable.children, table)
-		  || _.contains(parentTable.subtypes, table)) 
+		if ( _.contains(parentTable.children, table)) 
 		{
 			return true;
 		}
 		for(var i = 0;i < parentTable.children.length; ++i) {
 			if (isDescendant(table, parentTable.children[i], depth - 1))
-				return true;
-		}
-		for(var i = 0;i < parentTable.subtypes.length; ++i) {
-			if (isDescendant(table, parentTable.subtypes[i], depth - 1))
 				return true;
 		}
 	}

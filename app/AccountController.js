@@ -3,6 +3,8 @@ var _ = require('underscore');
 var fs = require('fs');
 var path = require('path');
 var util = require('util');
+var tmp = require('tmp'); //tmp filenames
+var assert = require('assert'); //tmp filenames
 
 var Schema = require('./Schema.js').Schema;
 var Database = require('./Database.js').Database;
@@ -28,16 +30,19 @@ function AccountController(router, baseUrl, baseDir) {
 				throw err;
 			}
 
-			files.filter(function (file) {
+			var dbFiles = files.filter(function (file) {
 				return (path.extname(file) == global.sqlite_ext);
-			}).forEach(function (file, i, files) {
+			});
+
+			dbFiles.forEach(function (file, i, files) {
+				log.debug(file + " from " + files);
 				var dbUrl = util.format('%s/%s' 
 				  , me.url
 				  , path.basename(file, global.sqlite_ext)
 				);
 				var dbFile = path.join(me.baseDir, file);					
 				var model = new Database(dbFile);
-				log.info('Serving ' + model.dbFile);
+				log.info('Serving ' + model.dbFile + " @ " + dbUrl);
 				var controller = new DatabaseController(router, dbUrl, model);
 
 				model.init(function() { 
@@ -48,6 +53,10 @@ function AccountController(router, baseUrl, baseDir) {
 
 				me.databaseControllers[dbUrl] = controller;
 			});
+
+			//handle empty account
+			if (_.isEmpty(dbFiles)) cbAfter();
+
 		});
 
 		//serve list databases
@@ -55,18 +64,22 @@ function AccountController(router, baseUrl, baseDir) {
 			log.info(req.method + " " + req.url);
 
 			var schemaDefs = {};
+			var doAfter = _.after(_.size(me.databaseControllers), function() {
+				res.send(schemaDefs);
+			});
+
 			_.each(me.databaseControllers, function(c) {
 				c.model.getSchema(function(err, schemaDef) {
 					_.each(schemaDef.tables, function(t) { 
 						delete t.fields; 
 					});
 					schemaDefs[c.base] = schemaDef;
-					if (_.keys(schemaDefs).length
-						== _.keys(me.databaseControllers).length) {
-							res.send(schemaDefs);
-					}
+					doAfter();
 				});
 			});
+
+			//handle empty account
+			if (_.size(me.databaseControllers) == 0) res.send({});
 		}
 			
 		router.get(this.url, getSchemaListHandler);	
@@ -78,6 +91,13 @@ function AccountController(router, baseUrl, baseDir) {
 			log.info({'req.body': req.body});
 
 			var schema = req.body;
+
+			if (_.isEmpty(schema.name)) {
+				//create one - only used by temp account
+				assert(this.name == global.tmp_account);
+				schema.name = tmp.tmpNameSync({template: 'new-XXXXXX'});
+				log.debug('created tmp schema ' + schema.name);
+			}
 
 			var dbFile = util.format('%s/%s' 
 						, me.baseDir
@@ -107,7 +127,7 @@ function AccountController(router, baseUrl, baseDir) {
 					var controller = new DatabaseController(router, dbUrl, model);
 					model.init(function() { 
 						controller.init(function() {
-							res.send({url: dbUrl}); //return url of new database
+							res.send({name: schema.name}); //return url of new database
 						}); 
 					});
 

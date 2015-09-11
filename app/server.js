@@ -19,7 +19,8 @@ global.log = bunyan.createLogger({
 
 //max number of rows queried by any SELECT
 global.row_max_count = 1000;
-global.sqlite_ext = '.sqlite'
+global.sqlite_ext = '.sqlite';
+global.tmp_account = 'tmp';
 
 var AccountController = require('./AccountController.js').AccountController;
 
@@ -30,11 +31,11 @@ var log = global.log.child({'mod': 'g6.server.js'});
 var config = {
 	'ip'	:  '127.0.0.1',
 	'port'	: 3000, 
-	'root'  : 'projects'
+	'data_dir'  : 'data'
 }
 
 if (process.env.OPENSHIFT_DATA_DIR) {
-	config.root = process.env.OPENSHIFT_DATA_DIR + config.root;
+	config.data_dir = process.env.OPENSHIFT_DATA_DIR + config.data_dir;
 	config.ip = process.env.OPENSHIFT_NODEJS_IP;
 	config.port = process.env.OPENSHIFT_NODEJS_PORT;
 } else if (process.env.C9_USER) {
@@ -55,22 +56,22 @@ function serveAccounts(rootDir) {
 	    }).filter(function (file) {
     	    return fs.statSync(file).isDirectory();
 	    }).forEach(function (dir, i, subDirs) {
-			
+			log.debug(dir + " from " + subDirs);
 			var url = "/" + path.basename(dir)
 			var controller = new AccountController(router, url, dir);
 			controller.init(function() {
 				if (i == subDirs.length - 1) {
+
 					router.get('/', function(req, res) {
 						log.info(req.method + ' ' + req.url);
-						res.send({
-								'accounts':	
-									_.map(accountControllers, function(ac) { 
-										return ac.url;
-									})	
+						var accounts = _.map(accountControllers, function(ac) {
+							return ac.url;
 						});
-					});
 
+						res.send({ accounts : accounts });
+					});
 					app.use('/', router);
+
 					log.info('done.');
 				}
 			});
@@ -93,7 +94,11 @@ app.use(function(req, res, next) {
   next();
 });
 
-serveAccounts(config.root);
+//make sure tmp account exists
+try { fs.mkdirSync(path.join(config.data_dir, global.tmp_account)); } 
+catch(err) { if (err.code != 'EEXIST') throw(err); } //ignore EEXIST
+
+serveAccounts(config.data_dir);
 
 app.get('/admin/reset', function(req, res) {
 	//replace our express router by a new one calling serveDirectoryTree
@@ -101,7 +106,7 @@ app.get('/admin/reset', function(req, res) {
 		var route = app._router.stack[i];
 		if (route.handle.name == 'router') {
 			app._router.stack.splice(i, 1);
-			serveDirectoryTree(config.root);
+			serveDirectoryTree(config.data_dir);
 			break;
 		}
 	}

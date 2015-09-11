@@ -238,7 +238,7 @@ describe('Schema', function() {
 		});
 	});
 
-	describe('Database.selfReferential()', function() {
+	describe('Database with selfReferential tables', function() {
 
 		var selfRefSchema = [
 			 { "name": "employees"

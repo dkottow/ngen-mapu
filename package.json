@@ -15,6 +15,7 @@
 	, "passport": "*"
 	, "passport-oauth2": "*"
 	, "pegjs": "*"
+	, "tmp": "*"
   }
 }
 

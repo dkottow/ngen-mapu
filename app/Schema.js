@@ -972,6 +972,12 @@ schema.Database.prototype.read = function(dbFile, cbAfter) {
 
 			//console.dir(rows);
 			var tables = _.object(_.pluck(rows, 'name'), rows);
+			me.tableDefs = tables;
+
+			//handle empty schema
+			if (rows.length == 0) {
+				me.init(cbAfter);
+			}
 				
 			var fields = _.map(schema.Field.TABLE_FIELDS, function(f) {
 				return '"' + f + '"';

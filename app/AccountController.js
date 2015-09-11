@@ -92,17 +92,21 @@ function AccountController(router, baseUrl, baseDir) {
 
 			var schema = req.body;
 
-			if (_.isEmpty(schema.name)) {
-				//create one - only used by temp account
-				assert(this.name == global.tmp_account);
+			if (_.isEmpty(schema.name)) { //create empty schema
+
+				//only allowed to tmp account
+				if (me.name != global.tmp_account) {
+					log.warn(req.method + " " + req.url + " failed.");
+					err = new Error("Schema name empty.");	
+					res.send(400, err.message);
+					return;
+				}
 				schema.name = tmp.tmpNameSync({template: 'new-XXXXXX'});
 				log.debug('created tmp schema ' + schema.name);
 			}
 
-			var dbFile = util.format('%s/%s' 
-						, me.baseDir
-						, schema.name + global.sqlite_ext
-				);
+			var dbFile = util.format('%s/%s', me.baseDir,
+								schema.name + global.sqlite_ext);
 
 			var db = new Schema(schema.tables);
 			db.init(function(err) {

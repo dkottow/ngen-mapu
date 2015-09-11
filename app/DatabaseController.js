@@ -48,7 +48,7 @@ function DatabaseController(router, restBase, model)
 					if (k[0] == '$') {
 						var param = parser.parse(k + "=" + v);	
 						params[param.name] = param.value;
-						console.log(param);
+						//console.log(param);
 					}
 				});
 
@@ -83,7 +83,7 @@ function DatabaseController(router, restBase, model)
 					if (k[0] == '$') {
 						var param = parser.parse(k + "=" + v);	
 						params[param.name] = param.value;
-						console.log(param);
+						//console.log(param);
 					}
 				});
 
@@ -144,7 +144,7 @@ function DatabaseController(router, restBase, model)
 					}
 					log.info({'res.body': result});
 					log.info(req.method + " " + req.url + " OK.");
-					res.send(result[0].toString()); //sends row id
+					res.send({id: result[0].toString()}); //send row id
 				});
 			}
 			me.router.post(url, postRowHandler);
@@ -164,7 +164,7 @@ function DatabaseController(router, restBase, model)
 					}
 					log.info({'res.body': result});
 					log.info(req.method + " " + req.url + " OK.");
-					res.send(result.toString()); //sends 1
+					res.send({});  
 				});
 			}
 			me.router.put(url + "/:id", putRowHandler);
@@ -181,7 +181,7 @@ function DatabaseController(router, restBase, model)
 						return;
 					}
 					log.info(req.method + " " + req.url + " OK.");
-					res.send(result.toString()); //sends 1
+					res.send({}); 
 				});
 			}
 			me.router.delete(url + "/:id", deleteRowHandler);

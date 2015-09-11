@@ -470,7 +470,7 @@ schema.Table.prototype.toJSON = function() {
 		return f.toJSON();
 	});
 
-	console.log(result);
+	//console.log(result);
 	return result;
 }
 
@@ -979,6 +979,7 @@ schema.Database.prototype.read = function(dbFile, cbAfter) {
 			var sql = 'SELECT ' + fields.join(',') 
 					+ ' FROM ' + schema.Field.TABLE;
 
+			//read field properties 
 			db.all(sql, function(err ,rows) {
 				
 				var tableNames = _.uniq(_.pluck(rows, 'table_name'));
@@ -998,6 +999,7 @@ schema.Database.prototype.read = function(dbFile, cbAfter) {
 					me.init(cbAfter);
 				});
 
+				//read field sql definition 
 				_.each(tableNames, function(tn) {
 					var sql = util.format("PRAGMA table_info(%s)", tn);
 					//console.log(sql);
@@ -1015,6 +1017,8 @@ schema.Database.prototype.read = function(dbFile, cbAfter) {
 						doAfter();
 					});
 				});
+
+				//read fk sql definition 
 				_.each(tableNames, function(tn) {
 					var sql = util.format("PRAGMA foreign_key_list(%s)", tn);
 					db.all(sql, function(err, rows) {

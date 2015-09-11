@@ -107,7 +107,7 @@ function AccountController(router, baseUrl, baseDir) {
 					var controller = new DatabaseController(router, dbUrl, model);
 					model.init(function() { 
 						controller.init(function() {
-							res.send("1"); //sends 1
+							res.send({url: dbUrl}); //return url of new database
 						}); 
 					});
 
@@ -126,13 +126,13 @@ function AccountController(router, baseUrl, baseDir) {
 
 			var schema = req.body;
 
-			var controller = me.databaseControllers[req.url];
-			if ( ! controller) {
+			var meCtrl = me.databaseControllers[req.url];
+			if ( ! meCtrl) {
 				log.warn("schema " + req.url + " not found.");
 				res.send(404, "schema " + req.url + " not found.");
 				return;
 			}
-			controller.model.getCounts(function(err, result) {
+			meCtrl.model.getCounts(function(err, result) {
 				if (err) {
 					log.warn(req.method + " " + req.url + " failed.");
 					res.send(400, err.message);
@@ -150,7 +150,7 @@ function AccountController(router, baseUrl, baseDir) {
 					res.send(400, err.message);
 					return;
 				}
-				var dbFile = controller.model.dbFile;	
+				var dbFile = meCtrl.model.dbFile;	
 				var db = new Schema(schema.tables);
 				db.init(function(err) {
 					if (err) {
@@ -174,10 +174,10 @@ function AccountController(router, baseUrl, baseDir) {
 
 							log.info(req.method + " " + req.url + " OK.");
 							var model = new Database(dbFile);
-							controller.model = model;
+							meCtrl.model = model;
 							model.init(function() { 
-								controller.init( function() {
-									res.send("1"); //sends 1
+								meCtrl.init( function() {
+									res.send({}); 
 								});
 							});
 						});
@@ -194,14 +194,14 @@ function AccountController(router, baseUrl, baseDir) {
 		var deleteSchemaHandler = function(req, res) {
 			log.info(req.method + " " + req.url);
 
-			var controller = me.databaseControllers[req.url];
-			if ( ! controller) {
+			var meCtrl = me.databaseControllers[req.url];
+			if ( ! meCtrl) {
 				log.warn("schema " + req.url + " not found.");
 				res.send(404, "schema " + req.url + " not found.");
 				return;
 			}
 
-			controller.model.getStats(function(err, result) {
+			meCtrl.model.getCounts(function(err, result) {
 				if (err) {
 					log.warn(req.method + " " + req.url + " failed.");
 					res.send(400, err.message);
@@ -221,7 +221,7 @@ function AccountController(router, baseUrl, baseDir) {
 					res.send(400, err.message);
 					return;
 				}
-				var dbFile = controller.model.dbFile;	
+				var dbFile = meCtrl.model.dbFile;	
 				Schema.remove(dbFile, function(err) {
 					if (err) {
 						log.warn(req.method + " " + req.url + " failed.");
@@ -230,7 +230,7 @@ function AccountController(router, baseUrl, baseDir) {
 					}
 					log.info(req.method + " " + req.url + " OK.");
 					delete me.databaseControllers[req.url];
-					res.send("1");
+					res.send({});
 				});
 			});
 		}

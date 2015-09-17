@@ -20,13 +20,6 @@ global.log = bunyan.createLogger({
 //max number of rows queried by any SELECT
 global.row_max_count = 1000;
 global.sqlite_ext = '.sqlite';
-global.tmp_account = 'tmp';
-
-var AccountController = require('./AccountController.js').AccountController;
-
-var app = express();
-
-var log = global.log.child({'mod': 'g6.server.js'});
 
 var config = {
 	'ip'	:  '127.0.0.1',
@@ -42,6 +35,16 @@ if (process.env.OPENSHIFT_DATA_DIR) {
 	config.ip = process.env.IP;
 	config.port = process.env.PORT;
 }
+
+global.tmp_dir = path.join(config.data_dir, 'tmp');
+
+/*** end globals ***/
+
+var AccountController = require('./AccountController.js').AccountController;
+
+var app = express();
+
+var log = global.log.child({'mod': 'g6.server.js'});
 
 var accountControllers = {};
 function serveAccounts(rootDir) {
@@ -94,8 +97,8 @@ app.use(function(req, res, next) {
   next();
 });
 
-//make sure tmp account exists
-try { fs.mkdirSync(path.join(config.data_dir, global.tmp_account)); } 
+//make sure tmp dir exists
+try { fs.mkdirSync(global.tmp_dir); } 
 catch(err) { if (err.code != 'EEXIST') throw(err); } //ignore EEXIST
 
 serveAccounts(config.data_dir);

@@ -3,14 +3,18 @@ var _ = require('underscore');
 var fs = require('fs');
 var path = require('path');
 var util = require('util');
-var tmp = require('tmp'); //tmp filenames
-var assert = require('assert'); //tmp filenames
 
 var Schema = require('./Schema.js').Schema;
 var Database = require('./Database.js').Database;
 var DatabaseController = require('./DatabaseController.js').DatabaseController;
 
 var log = global.log.child({'mod': 'g6.AccountController.js'});
+
+function sendError(req, res, err) {
+	log.error(err);
+	log.warn(req.method + " " + req.url + " failed.");
+	res.send(400, err.message);
+}
 
 function AccountController(router, baseUrl, baseDir) {
 	this.baseDir = baseDir;
@@ -54,7 +58,7 @@ function AccountController(router, baseUrl, baseDir) {
 				me.databaseControllers[dbUrl] = controller;
 			});
 
-			//handle empty account
+			//handle empty dir
 			if (_.isEmpty(dbFiles)) cbAfter();
 
 		});
@@ -92,6 +96,7 @@ function AccountController(router, baseUrl, baseDir) {
 
 			var schema = req.body;
 
+/*
 			if (_.isEmpty(schema.name)) { //create empty schema
 
 				//only allowed to tmp account
@@ -104,6 +109,7 @@ function AccountController(router, baseUrl, baseDir) {
 				schema.name = tmp.tmpNameSync({template: 'new-XXXXXX'});
 				log.debug('created tmp schema ' + schema.name);
 			}
+*/
 
 			var dbFile = util.format('%s/%s', me.baseDir,
 								schema.name + global.sqlite_ext);
@@ -111,14 +117,12 @@ function AccountController(router, baseUrl, baseDir) {
 			var db = new Schema(schema.tables);
 			db.init(function(err) {
 				if (err) {
-					log.warn(req.method + " " + req.url + " failed.");
-					res.send(400, err.message);
+					sendError(req, res, err);
 					return;
 				}
 				db.create(dbFile, function(err) {
 					if (err) {
-						log.warn(req.method + " " + req.url + " failed.");
-						res.send(400, err.message);
+						sendError(req, res, err);
 						return;
 					}
 					log.info(req.method + " " + req.url + " OK.");
@@ -158,8 +162,7 @@ function AccountController(router, baseUrl, baseDir) {
 			}
 			meCtrl.model.getCounts(function(err, result) {
 				if (err) {
-					log.warn(req.method + " " + req.url + " failed.");
-					res.send(400, err.message);
+					sendError(req, res, err);
 					return;					
 				}
 				var totalRowCount = _.reduce(result, 
@@ -169,40 +172,28 @@ function AccountController(router, baseUrl, baseDir) {
 				0);
 				log.debug("total rows " + totalRowCount);
 				if (totalRowCount > 0) {
-					log.warn(req.method + " " + req.url + " failed.");
-					err = new Error("Database " + req.url + " not empty.");	
-					res.send(400, err.message);
+					err = new Error("Database " + req.url + " not empty.");
+					sendError(req, res, err);
 					return;
 				}
 				var dbFile = meCtrl.model.dbFile;	
 				var db = new Schema(schema.tables);
 				db.init(function(err) {
 					if (err) {
-						log.warn(req.method + " " + req.url + " failed.");
-						res.send(400, err.message);
+						sendError(req, res, err);
 						return;	
 					}
-					Schema.remove(dbFile, function(err) {
+					db.create(dbFile, function(err) {
 						if (err) {
-							log.warn(req.method + " " + req.url + " failed.");
-							res.send(400, err.message);
-							return;	
+							sendError(req, res, err);
+							return;
 						}
-						db.create(dbFile, function(err) {
-							if (err) {
-								log.warn(req.method + " " 
-										+ req.url + " failed.");
-								res.send(400, err.message);
-								return;
-							}
 
-							log.info(req.method + " " + req.url + " OK.");
-							var model = new Database(dbFile);
-							meCtrl.model = model;
-							model.init(function() { 
-								meCtrl.init( function() {
-									res.send({}); 
-								});
+						log.info(req.method + " " + req.url + " OK.");
+						meCtrl.model = new Database(dbFile);
+						meCtrl.model.init(function() { 
+							meCtrl.init( function() {
+								res.send({}); 
 							});
 						});
 					});
@@ -227,8 +218,7 @@ function AccountController(router, baseUrl, baseDir) {
 
 			meCtrl.model.getCounts(function(err, result) {
 				if (err) {
-					log.warn(req.method + " " + req.url + " failed.");
-					res.send(400, err.message);
+					sendError(req, res, err);
 					return;
 					
 				}
@@ -240,16 +230,15 @@ function AccountController(router, baseUrl, baseDir) {
 				log.debug("total rows " + totalRowCount);
 			
 				if (totalRowCount > 0) {
-					log.warn(req.method + " " + req.url + " failed.");
 					err = new Error("Database " + req.url + " not empty.");	
-					res.send(400, err.message);
+					sendError(req, res, err);
 					return;
 				}
+
 				var dbFile = meCtrl.model.dbFile;	
 				Schema.remove(dbFile, function(err) {
 					if (err) {
-						log.warn(req.method + " " + req.url + " failed.");
-						res.send(400, err.message);
+						sendError(req, res, err);
 						return;
 					}
 					log.info(req.method + " " + req.url + " OK.");

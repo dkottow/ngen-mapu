@@ -3,6 +3,12 @@ var _ = require('underscore');
 var log = global.log.child({'mod': 'g6.DatabaseController.js'});
 var parser = require('./QueryParser.js');
 
+function sendError(req, res, err) {
+	log.error(err);
+	log.warn(req.method + " " + req.url + " failed.");
+	res.send(400, err.message);
+}
+
 function DatabaseController(router, restBase, model)
 {	
 	this.router = router;
@@ -20,8 +26,7 @@ function DatabaseController(router, restBase, model)
 			log.info(req.method + " " + req.url);
 			me.model.getSchema(function(err, result) {
 				if (err) {
-					log.warn(err);
-					res.send(400, err.message);
+					sendError(req, res, err);
 					return;
 				}
 				_.each(result.tables, function(t) {
@@ -61,8 +66,7 @@ function DatabaseController(router, restBase, model)
 					params['$distinct'] || false, //this works!					
 					function(err, result) { 
 						if (err) {
-							log.warn(err);
-							res.send(400, err.message);
+							sendError(req, res, err);
 							return;
 						}
 						log.debug(result);
@@ -92,8 +96,7 @@ function DatabaseController(router, restBase, model)
 					params['$select'] || '*', 
 					function(err, result) {
 						if (err) {
-							log.warn(err);
-							res.send(400, err.message);
+							sendError(req, res, err);
 							return;
 						}
 						log.debug(result);
@@ -117,12 +120,8 @@ function DatabaseController(router, restBase, model)
 				me.model.getDeep(table, [filter], '*', depth
 								, function(err, result) { 
 					if (err) {
-						log.warn(err);
-						res.send(400, err.message);
+						sendError(req, res, err);
 						return;
-					}
-					if (req.query['pretty']) {
-						result = JSON.stringify(result, null, '\t');
 					}
 					log.debug(result);
 					res.send(result); 
@@ -138,8 +137,7 @@ function DatabaseController(router, restBase, model)
 				var row = req.body;
 				me.model.insert(table, [row], function(err, result) {
 					if (err) {
-						log.warn(req.method + " " + req.url + " failed.");
-						res.send(400, err.message);
+						sendError(req, res, err);
 						return;
 					}
 					log.info({'res.body': result});
@@ -158,8 +156,7 @@ function DatabaseController(router, restBase, model)
 				row['id'] = req.param('id');
 				me.model.update(table, [row], function(err, result) {
 					if (err) {
-						log.warn(req.method + " " + req.url + " failed.");
-						res.send(400, err.message);
+						sendError(req, res, err);
 						return;
 					}
 					log.info({'res.body': result});
@@ -176,8 +173,7 @@ function DatabaseController(router, restBase, model)
 				var id = req.param('id');
 				me.model.delete(table, [id], function(err, result) {
 					if (err) {
-						log.warn(req.method + " " + req.url + " failed.");
-						res.send(400, err.message);
+						sendError(req, res, err);
 						return;
 					}
 					log.info(req.method + " " + req.url + " OK.");

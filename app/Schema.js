@@ -1,18 +1,22 @@
-var  fs = require('fs')
-  	, _ = require('underscore')
-  	, util = require('util')
-	, assert = require('assert');
+var  fs = require('fs');
+var  path = require('path');
+var _ = require('underscore');
+var util = require('util');
+var assert = require('assert');
+
+var tmp = require('tmp'); //tmp filenames
 
 var sqlite3 = require('sqlite3').verbose();
 
 if (global.log) {
 	var log = global.log.child({'mod': 'g6.schema.js'});
-	var row_max_count = global.row_max_count;
+	var tmp_dir = global.tmp_dir;
 } else {
 	//e.g when testing 
 	var log = require('bunyan').createLogger({
 				'name': 'g6.schema.js', 'level': 'debug'
 		});
+	var tmp_dir = 'data/tmp';
 }
 
 var USE_VIEW = true;
@@ -597,14 +601,14 @@ schema.Database.prototype.viewSQL = function(table) {
 	var fk_fields = [];
 	var aliasCount = 0;
 	_.each(table.foreignKeys(), function(fk) {
-			
+		++aliasCount;	
 		var fk_table = me.tables[fk.fk_table];
 		var nkValue = _.reduce(fk_table.row_alias, function(memo, nk) {
 			var result;
 			
 			if (nk.indexOf('.') < 0) {
 				var fkTableName = (table == fk_table) ?
-									table.alias(++aliasCount) : fk_table.name;
+									table.alias(aliasCount) : fk_table.name;
 				
 				result = util.format('%s."%s"', fkTableName, nk);
 				var path = table.bfsPath(fk_table);
@@ -630,7 +634,10 @@ schema.Database.prototype.viewSQL = function(table) {
 			}
 			return result;
 		}, '');
-		nkValue = nkValue + util.format(" || ' (' || %s.id || ')' ", fk_table.name);
+		var fkValue = util.format("'(' || %s.%s || ')'", table.name, fk.name); 
+		nkValue = nkValue.length > 0 
+				? nkValue + ' || ' + fkValue 
+				: fkValue;
 		fk_fields.push(nkValue + ' AS ' + fk.refName());
 			
 	});
@@ -659,34 +666,8 @@ schema.Database.prototype.createSQL = function() {
 		sql += t.insertPropSQL() + '\n\n';
 	}, this);
 
+	log.debug(sql);
 	return sql;
-}
-
-schema.Database.prototype._generateDatabase = function(dbFile, cbAfter) {
-	var sql = this.createSQL();
-
-	var execSQL = function(err, db) {
-		if ( ! err) {
-			db.exec(sql, function(err) {
-				db.close();
-				cbAfter(err);
-			});							
-		} else {
-			cbAfter(err);
-		}
-	}
-
-	if (dbFile) {
-		var db = new sqlite3.Database(dbFile 
-			, sqlite3.OPEN_READWRITE | sqlite3.OPEN_CREATE
-			, function(err) {
-				execSQL(err, db);
-		});
-	} else {
-		var db = new sqlite3.Database(":memory:");
-		execSQL(null, db);
-	}
-
 }
 
 schema.Database.prototype.get = function() {
@@ -914,23 +895,30 @@ schema.Database.prototype.selectSQL = function(table, filterClauses, fields, ord
 	return {'query': sql, 'params': filterSQL.params, 'countSql': countSQL};
 }
 
+
 schema.Database.prototype.create = function(dbFile, cbAfter) {
-	log.debug("schema.Database.create " + dbFile)
 	var me = this;
-	me._generateDatabase(null, function(err) {
-		if ( ! err) {
-			me._generateDatabase(dbFile, function(err) {
-				log.info("saving db to " + dbFile)
-				if (err) {
-					log.warn("create() failed. " + err);			
-				}
+	var tmpFile = path.join(tmp_dir, 
+				  			tmp.tmpNameSync({template: 'dl-XXXXXX.sqlite'}));
+	var db = new sqlite3.Database(tmpFile 
+		, sqlite3.OPEN_READWRITE | sqlite3.OPEN_CREATE
+		, function(err) {
+			if (err) {
 				cbAfter(err);
-			});		
-		} else {
-			log.warn("create() failed. " + err);			
-			cbAfter(err);
-		}
+				return;
+			}
+			db.exec(me.createSQL(), function(err) {
+				if (err) {
+					fs.unlink(tmpFile);
+					cbAfter(err);
+					return;
+				}
+				fs.rename(tmpFile, dbFile, function(err) {
+					cbAfter(err);
+				});
+			});
 	});
+	db.close();
 }
 
 schema.Database.remove = function(dbFile, cbAfter) {

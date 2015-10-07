@@ -9,8 +9,8 @@ var url = require('url');
 
 var bunyan = require('bunyan');
 
-//var logLevel = 'info';
-var logLevel = 'debug';
+var logLevel = 'info';
+//var logLevel = 'debug';
 global.log = bunyan.createLogger({
 	'name': 'g6.server',
 	'level': logLevel,

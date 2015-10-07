@@ -199,7 +199,7 @@ describe('Schema', function() {
 		});
 	});
 	
-	describe('Database.createSQL()', function() {
+	describe('Database.create()', function() {
 		var dbFile = "test/test-create.sqlite";
 		
 		before(function(done) {
@@ -216,7 +216,7 @@ describe('Schema', function() {
 					console.log(err);
 				} else {
 					var sql = db.createSQL();
-					console.log(sql);
+					//console.log(sql);
 				}
 			});
 		});
@@ -236,6 +236,61 @@ describe('Schema', function() {
 			});
 
 		});
+	});
+
+	describe('Database.update()', function() {
+		var dbFile = "test/test-create.sqlite";
+
+/*
+		it('drop_table example', function(done) {
+	
+			var db = new schema.Schema();
+			db.read(dbFile, function(err) {
+				if (err) {
+					console.log("ERROR ++++ ");
+					console.log(err);
+				} else {
+					var customers = db.tables['customers'].toJSON();
+					db.drop_table('customers', dbFile, function(err) {
+						assert(err == null);
+						db.add_table(customers, dbFile, function(err) {
+							assert(err == null, err);
+							done();	
+						});
+					});
+				}
+			});
+		});
+*/
+
+		it('update example', function(done) {
+	
+			var db = new schema.Schema();
+			db.read(dbFile, function(err) {
+				if (err) {
+					console.log("ERROR ++++ ");
+					console.log(err);
+				} else {
+					var delTables = [
+						{ name: 'customers' }, 
+						{ name: 'orders'}
+					];
+					var addTables = [
+						db.tables['customers'].toJSON(),
+						db.tables['orders'].toJSON()
+					];
+					addTables[0].name = 'cus';
+					addTables[1].fields['customer_id'].fk_table = 'cus';
+					addTables[1].row_alias = ['order_date', 'cus.name'];
+
+					db.update(delTables, addTables, dbFile, function(err) {
+						console.log(err);
+						done();	
+					});
+				}
+			});
+		});
+
 	});
 
 	describe('Database with selfReferential tables', function() {
@@ -290,7 +345,7 @@ describe('Schema', function() {
 					console.log(err);
 				} else {
 					var sql = db.createSQL();
-					console.log(sql);
+					//console.log(sql);
 
 					db.create('selfref.sqlite', function(err) {
 						console.log(err);

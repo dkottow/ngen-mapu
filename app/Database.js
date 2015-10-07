@@ -38,7 +38,7 @@ function Database(dbFile)
 
 	this.linkedTableLists = [];	
 
-	this.tableMap = function() { return this.tables; }
+	//this.tableMap = function() { return this.tables; }
 	this.tableLinkedLists = function() { return this.linkedTableLists; }
 	
 	var me = this;

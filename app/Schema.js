@@ -14,10 +14,12 @@ if (global.log) {
 } else {
 	//e.g when testing 
 	var log = require('bunyan').createLogger({
-				'name': 'g6.schema.js', 'level': 'debug'
+				'name': 'g6.schema.js', 'level': 'info'
 		});
-	var tmp_dir = 'data/tmp';
+	var tmp_dir = '.';
 }
+
+//console.log('TMP DIR ' + tmp_dir);
 
 var USE_VIEW = true;
 
@@ -83,6 +85,29 @@ schema.Field.CreateTableSQL
 		+ ' PRIMARY KEY (name, table_name) '
 		+ ");\n\n";
 
+
+schema.Field.create = function(fieldDef) {
+	var errMsg = util.format("schema.Field.create(%s) failed. "
+				, util.inspect(fieldDef));
+
+	assert(_.has(fieldDef, "type"), errMsg + " Type attr missing.");
+
+	if (fieldDef.type.indexOf("VARCHAR") == 0) {
+		return new schema.TextField(fieldDef);
+	} else if (fieldDef.type == "INTEGER") {
+		return new schema.IntegerField(fieldDef);
+	} else if (fieldDef.type.indexOf("NUMERIC") == 0) {
+		return new schema.NumericField(fieldDef);
+	} else if (fieldDef.type == "DATETIME" || fieldDef.type == "DATE") {
+		return new schema.DatetimeField(fieldDef);
+	}
+
+	throw new Error(util.format("schema.Field.create(%s) failed. Unknown type.", util.inspect(fieldDef)));
+
+}
+
+
+
 schema.Field.prototype.sqlValue = function(name) {
 	switch(name) {
 		case 'order': 
@@ -106,10 +131,17 @@ schema.Field.prototype.constraintSQL = function() {
 	return "";
 }
 
+schema.Field.prototype.foreignKeySQL = function() {
+	return this.fk 
+		? util.format("REFERENCES %s(%s)", this.fk_table, this.fk_field)
+		: "";
+}
+
 schema.Field.prototype.toSQL = function() {
 	var sql = '"' + this.name + '" ' + this.type;
 	if (this.notnull) sql += " NOT NULL";
 	sql += " " + this.constraintSQL();
+	sql += " " + this.foreignKeySQL();
 	return sql;
 }
 
@@ -128,20 +160,6 @@ schema.Field.prototype.insertPropSQL = function(table) {
 	var sql = 'INSERT INTO ' + schema.Field.TABLE
 			+ ' (' + fields.join(',') + ') ' 
 			+ ' VALUES (' + values.join(',') + ',' + props.join(',') + '); ';
-
-	return sql;
-}
-
-schema.Field.prototype.updatePropSQL = function(table) {
-	var sets = _.map(schema.Field.PROPERTIES, function(f) {
-		return util.format(' SET "%s" = %s', f, this.sqlValue(f));
-	}, this);
-
-	var sql = 'UPDATE ' + schema.Field.TABLE
-			+ sets.join(',')
-			+ " WHERE name = '" + this.name 
-			+ "' AND table_name = '" + table.name
-			+ "'; ";
 
 	return sql;
 }
@@ -223,26 +241,6 @@ schema.DatetimeField.prototype.constraintSQL = function() {
 	return sql;
 }
 
-function createField(fieldDef) {
-	var errMsg = util.format("createField(%s) failed. "
-				, util.inspect(fieldDef));
-
-	assert(_.has(fieldDef, "type"), errMsg + " Type attr missing.");
-
-	if (fieldDef.type.indexOf("VARCHAR") == 0) {
-		return new schema.TextField(fieldDef);
-	} else if (fieldDef.type == "INTEGER") {
-		return new schema.IntegerField(fieldDef);
-	} else if (fieldDef.type.indexOf("NUMERIC") == 0) {
-		return new schema.NumericField(fieldDef);
-	} else if (fieldDef.type == "DATETIME" || fieldDef.type == "DATE") {
-		return new schema.DatetimeField(fieldDef);
-	}
-
-	throw new Error(util.format("createField(%s) failed. Unknown type.", util.inspect(fieldDef)));
-
-}
-
 schema.Table = function(tableDef) {
 
 	var me = this;
@@ -276,7 +274,7 @@ schema.Table = function(tableDef) {
 		}
 
 		_.each(tableDef.fields, function(f) {
-			me.fields[f.name] = createField(f);
+			me.fields[f.name] = schema.Field.create(f);
 		});
 
 		me.name = tableDef.name;
@@ -321,7 +319,17 @@ schema.Table.prototype.sqlValue = function(name) {
 	}	
 }
 
-schema.Table.prototype.insertPropSQL = function(table) {
+schema.Table.prototype.deletePropSQL = function() {
+	var sql = "DELETE FROM " + schema.Table.TABLE 
+			+ " WHERE name = '" + this.name + "'; "
+
+			+ "DELETE FROM " + schema.Field.TABLE 
+			+ " WHERE table_name = '" + this.name + "'; ";
+
+	return sql;
+}
+
+schema.Table.prototype.insertPropSQL = function() {
 
 	var values = [ this.sqlValue('name') ];
 
@@ -341,23 +349,6 @@ schema.Table.prototype.insertPropSQL = function(table) {
 		sql += "\n" + f.insertPropSQL(this);
 	}, this);
 	//console.log(sql);
-	return sql;
-}
-
-schema.Table.prototype.updatePropSQL = function(table) {
-	var sets = _.map(schema.Table.PROPERTIES, function(f) {
-		return util.format(' SET "%s" = %s', f, this.sqlValue(f));
-	}, this);
-
-	var sql = 'UPDATE ' + schema.Table.TABLE
-			+ sets.join(',')
-			+ " WHERE name = '" + this.name 
-			+ "'; ";
-
-	_.each(this.fields, function(f) {
-		sql += "\n" + f.updatePropSQL(this);
-	}, this);
-
 	return sql;
 }
 
@@ -382,7 +373,7 @@ schema.Table.prototype.viewFields = function() {
 			.concat(this.virtualFields());
 }
 
-schema.Table.prototype.toSQL = function() {
+schema.Table.prototype.createSQL = function() {
 	var sql = "CREATE TABLE " + this.name + "(";
 	_.each(this.fields, function(f) {
 		sql += "\n" + f.toSQL() + ",";
@@ -390,15 +381,25 @@ schema.Table.prototype.toSQL = function() {
 	sql += "\n PRIMARY KEY (id)";
 
 
+/*
 	_.each(this.foreignKeys(), function(fk) {
 		sql += ",\n FOREIGN KEY(" + fk.name + ") REFERENCES " 
 			+ fk.fk_table + " (id)";
 	});
+*/
 
 	sql += "\n);";
 	log.debug(sql);
 
 	return sql;
+}
+
+function tableAlias(name, idx) {
+	return name + '_' + idx;
+}
+
+schema.Table.prototype.alias = function(idx) {
+	return tableAlias(this.name, idx);
 }
 
 /* 
@@ -448,6 +449,22 @@ schema.Table.prototype.createSearchSQL = function() {
 	return sql;
 }
 
+schema.Table.prototype.deleteViewSQL = function() {
+	return 'DROP VIEW IF EXISTS ' + this.viewName() + ';\n';
+}
+
+schema.Table.prototype.deleteSearchSQL = function() {
+	return 'DROP TABLE IF EXISTS ' + this.ftsName() + ';\n'
+		+ 'DROP TRIGGER IF EXISTS tgr_' + this.name + '_ai' + ';\n'
+		+ 'DROP TRIGGER IF EXISTS tgr_' + this.name + '_bu' + ';\n'
+		+ 'DROP TRIGGER IF EXISTS tgr_' + this.name + '_au' + ';\n'
+		+ 'DROP TRIGGER IF EXISTS tgr_' + this.name + '_bd' + ';\n'
+}
+
+schema.Table.prototype.deleteSQL = function() {
+	return 'DROP TABLE IF EXISTS ' + this.name + ';\n';
+}
+
 schema.Table.prototype.toJSON = function() {
 
 	var result = {
@@ -473,6 +490,8 @@ schema.Table.prototype.toJSON = function() {
 	result.fields = _.map(this.fields, function(f) {
 		return f.toJSON();
 	});
+
+	result.fields = _.object(_.pluck(result.fields, 'name'), result.fields);
 
 	//console.log(result);
 	return result;
@@ -506,32 +525,35 @@ schema.Table.prototype.bfsPath = function(joinTable) {
 	return []; //not found
 }
 
-schema.Database = function(tableDefs) {
+schema.Schema = function(tableDefs) {
 
 	this.tableDefs = tableDefs;
 	this.tables = {};
 	this.linkedTableLists = [];
 }
 
-schema.Database.prototype.init = function(cbAfter) {
+schema.Schema.prototype.init = function(cbAfter) {
 	try {
-		var me = this;
-		_.each(me.tableDefs, function(tableDef) {
-			var table = new schema.Table(tableDef);
-			me.tables[table.name] = table;			
 
-		});
+		this.tables = {};
+		_.each(this.tableDefs, function(tableDef) {
+			var table = new schema.Table(tableDef);
+			this.tables[table.name] = table;			
+
+		}, this);
 		this.buildTableGraph();
 		//console.log(util.inspect(me.tables, {depth: 99}));
-		cbAfter();
 
 	} catch(err) {
+		log.warn("Error in schema.Schema.init " + err);
 		//throw err;
 		cbAfter(err);
+		return;
 	}
+	cbAfter();
 }
 
-schema.Database.prototype.buildTableGraph = function() {
+schema.Schema.prototype.buildTableGraph = function() {
 
 	var me = this;
 	var tables = _.values(me.tables);
@@ -567,6 +589,7 @@ schema.Database.prototype.buildTableGraph = function() {
 		var linked = false;
 		_.each(linkedTables, function(list) {
 			if (! linked) {
+				log.debug("linking..." + table.name);
 				var p = table.bfsPath(me.tables[list[0]]);
 				if (p.length > 0) {
 					list.push(table.name);
@@ -584,15 +607,7 @@ schema.Database.prototype.buildTableGraph = function() {
 	this.linkedTableLists = linkedTables;
 }
 
-function tableAlias(name, idx) {
-	return name + '_' + idx;
-}
-
-schema.Table.prototype.alias = function(idx) {
-	return tableAlias(this.name, idx);
-}
-
-schema.Database.prototype.viewSQL = function(table) {
+schema.Schema.prototype.createViewSQL = function(table) {
 	var me = this;
 	
 	var joinTables = {};
@@ -602,6 +617,7 @@ schema.Database.prototype.viewSQL = function(table) {
 	var aliasCount = 0;
 	_.each(table.foreignKeys(), function(fk) {
 		++aliasCount;	
+log.debug(fk);
 		var fk_table = me.tables[fk.fk_table];
 		var nkValue = _.reduce(fk_table.row_alias, function(memo, nk) {
 			var result;
@@ -655,13 +671,13 @@ schema.Database.prototype.viewSQL = function(table) {
 		+ joinSQL + ';';
 }
 
-schema.Database.prototype.createSQL = function() {
+schema.Schema.prototype.createSQL = function() {
 	var sql = schema.Table.CreateTableSQL
 			+ schema.Field.CreateTableSQL;
 
 	_.each(this.tables, function(t) {
-		sql += t.toSQL() + '\n\n';
-		sql += this.viewSQL(t) + '\n\n';
+		sql += t.createSQL() + '\n\n';
+		sql += this.createViewSQL(t) + '\n\n';
 		sql += t.createSearchSQL() + '\n\n';
 		sql += t.insertPropSQL() + '\n\n';
 	}, this);
@@ -670,7 +686,7 @@ schema.Database.prototype.createSQL = function() {
 	return sql;
 }
 
-schema.Database.prototype.get = function() {
+schema.Schema.prototype.get = function() {
 
 	assert(_.isObject(this.tables)); 
 	
@@ -685,7 +701,7 @@ schema.Database.prototype.get = function() {
 	};		
 }
 
-schema.Database.prototype.filterSQL = function(table, filterClauses) {
+schema.Schema.prototype.filterSQL = function(table, filterClauses) {
 
 	var me = this;
 	var joinTables = {};
@@ -798,7 +814,7 @@ schema.Database.prototype.filterSQL = function(table, filterClauses) {
 	};
 }
 
-schema.Database.prototype.checkFields = function(table, fieldNames) {
+schema.Schema.prototype.checkFields = function(table, fieldNames) {
 	//TODO make sure all field names exist in table
 	_.each(fieldNames, function(f) {
 		if ( ! _.contains(table.viewFields(), f)) {
@@ -808,7 +824,7 @@ schema.Database.prototype.checkFields = function(table, fieldNames) {
 }
 
 
-schema.Database.prototype.fieldSQL = function(table, fields) {
+schema.Schema.prototype.fieldSQL = function(table, fields) {
 	var tableName = USE_VIEW ? table.viewName() : table.name;
 
 	if (fields == '*') {
@@ -832,7 +848,7 @@ schema.Database.prototype.fieldSQL = function(table, fields) {
 	return fields.join(",");
 }
 
-schema.Database.prototype.orderSQL = function(table, orderClauses) {
+schema.Schema.prototype.orderSQL = function(table, orderClauses) {
 	var tableName = USE_VIEW ? table.viewName() : table.name;
 
 	var orderSQL;
@@ -864,7 +880,7 @@ schema.Database.prototype.orderSQL = function(table, orderClauses) {
 
 }
 
-schema.Database.prototype.selectSQL = function(table, filterClauses, fields, orderClauses, limit, offset, distinct) {
+schema.Schema.prototype.selectSQL = function(table, filterClauses, fields, orderClauses, limit, offset, distinct) {
 	assert(_.isArray(filterClauses), "arg 'filterClauses' is array");
 	assert(_.isObject(table), "arg 'table' is object");
 	assert(_.isArray(orderClauses), "arg 'orderClauses' is array");
@@ -895,11 +911,217 @@ schema.Database.prototype.selectSQL = function(table, filterClauses, fields, ord
 	return {'query': sql, 'params': filterSQL.params, 'countSql': countSQL};
 }
 
+/******* start file ops *******/
 
-schema.Database.prototype.create = function(dbFile, cbAfter) {
+schema.Schema.prototype.exec_transaction = function(sql, dbFile, cbAfter) {
+	var db = new sqlite3.Database(dbFile
+		, sqlite3.OPEN_READWRITE
+		, function(err) {
+			if (err) {
+				cbAfter(err);
+				return;
+			}
+			db.serialize(function() {
+				db.run("PRAGMA foreign_keys = ON;");
+				db.run("BEGIN TRANSACTION");
+				db.exec(sql, function(err) {
+					if (err == null) {
+						db.run("COMMIT TRANSACTION");
+					} else {
+						log.warn("schema.Schema.exec_transaction() failed. " + err);
+						db.run("ROLLBACK TRANSACTION");
+					}
+					db.close();
+					cbAfter(err);
+				});
+			});
+		});
+}
+
+schema.Schema.prototype.add_field = function(fieldDef, tableName, dbFile, cbAfter) {
+
 	var me = this;
-	var tmpFile = path.join(tmp_dir, 
-				  			tmp.tmpNameSync({template: 'dl-XXXXXX.sqlite'}));
+	var field;
+
+	try {
+		field = schema.Field.create(fieldDef);
+	} catch(err) {
+		log.warn("Error in schema.Schema.add_field " + err);
+		cbAfter(err);
+		return;
+	}
+
+	var sql = "ALTER TABLE " + tableName + " ADD COLUMN " + field.toSQL();
+
+	this.exec_transaction(sql, dbFile, function(err) {
+		if (err) {
+			cbAfter(err);
+			return;
+		}
+
+		//add field in mem
+		var table = me.tables[tableName];
+		table.fields[field.name] = field;
+		cbAfter();
+	});
+}
+
+schema.Schema.prototype.drop_table = function(tableName, dbFile, cbAfter) {
+	
+	var me = this;
+	var table = this.tables[tableName];
+	if ( ! table) {
+		var msg = util.format("Table %s not found.", tableName);
+		cbAfter(new Error(msg));
+		return;
+	}
+
+	var sql = table.deletePropSQL()
+			+ table.deleteViewSQL()
+			+ table.deleteSearchSQL()
+			+ table.deleteSQL();
+
+	this.exec_transaction(sql, dbFile, function(err) {
+		if (err) {
+			cbAfter(err);
+			return;
+		}
+
+		//update mem
+		delete me.tableDefs[tableName];
+		me.init(function(err) {
+			cbAfter(err);
+		});
+	});
+}
+
+schema.Schema.prototype.add_table = function(tableDef, dbFile, cbAfter) {
+	
+	var me = this;
+	var table;
+
+	try {
+		table = new schema.Table(tableDef);
+	} catch(err) {
+		log.warn("Error in schema.Schema.add_table " + err);
+		cbAfter(err);
+		return;
+	}
+
+	var sql = table.createSQL()
+			+ me.createViewSQL(table)
+			+ table.createSearchSQL()
+			+ table.insertPropSQL();
+
+	this.exec_transaction(sql, dbFile, function(err) {
+		if (err) {
+			cbAfter(err);
+			return;
+		}
+
+		//update mem
+		me.tableDefs[table.name] = tableDef;
+		me.init(function(err) {
+			cbAfter(err);
+		});
+	});
+}
+
+
+schema.Schema.prototype.update = function(delTables, addTables, dbFile, cbAfter) {
+	var me = this;
+
+	var sql = _.reduce(delTables, function(memo, t) {
+		return memo + '\n' 
+			+ me.tables[t.name].deleteSQL()
+			+ me.tables[t.name].deleteViewSQL()
+			+ me.tables[t.name].deleteSearchSQL()
+			+ me.tables[t.name].deletePropSQL()
+			;
+	}, '');
+
+	_.each(delTables, function(t) {
+		delete this.tableDefs[t.name];
+	}, this);
+
+	_.each(addTables, function(t) {
+		this.tableDefs[t.name] = t;
+	}, this);
+
+	this.init(function(err) {
+//TODO instead of this.init try init on new obj, only on trx commit update own 
+		if (err) {
+			cbAfter(err);
+			return;
+		}
+
+		sql = _.reduce(addTables, function(memo, t) {
+			var table = me.tables[t.name];
+			return memo + '\n'
+				+ table.createSQL() + '\n'
+				+ me.createViewSQL(table) + '\n'
+				+ table.createSearchSQL() + '\n'
+				+ table.insertPropSQL() + '\n'
+				;
+		}, sql);
+
+
+		var redoViewTables = _.filter(me.tables, function(t) {
+			var dup = _.some(addTables, function(a) {
+				return t.name == a.name;
+			})
+			if (dup) return false;
+
+			return _.some(t.fields, function(f) {
+				return _.some(addTables, function(a) {
+					return a.name == f.fk_table;
+				});
+			});
+		});
+		//console.log(redoViewTables);
+
+		sql = _.reduce(redoViewTables, function(memo, table) {
+			return memo + '\n'
+				+ table.deleteViewSQL() + '\n'
+				+ table.deleteSearchSQL() + '\n'
+				+ me.createViewSQL(table) + '\n'
+				+ table.createSearchSQL() + '\n'
+				;
+		}, sql);
+
+		log.debug(sql);
+
+		var db = new sqlite3.Database(dbFile
+			, sqlite3.OPEN_READWRITE
+			, function(err) {
+				if (err) {
+					cbAfter(err);
+					return;
+				}
+				db.serialize(function() {
+					db.run("PRAGMA foreign_keys = ON;");
+					db.run("BEGIN TRANSACTION");
+					db.exec(sql, function(err) {
+						if (err == null) {
+							db.run("COMMIT TRANSACTION");
+						} else {
+							log.warn("schema.Table.update() failed. " + err);
+							db.run("ROLLBACK TRANSACTION");
+						}
+						cbAfter(err);
+					});
+				});
+				db.close();
+		});
+
+	});
+}
+
+schema.Schema.prototype.create = function(dbFile, cbAfter) {
+	var me = this;
+	var tmpFile = path.join(tmp_dir,
+						tmp.tmpNameSync({template: 'dl-XXXXXX.sqlite'}));
+
 	var db = new sqlite3.Database(tmpFile 
 		, sqlite3.OPEN_READWRITE | sqlite3.OPEN_CREATE
 		, function(err) {
@@ -909,29 +1131,31 @@ schema.Database.prototype.create = function(dbFile, cbAfter) {
 			}
 			db.exec(me.createSQL(), function(err) {
 				if (err) {
+					log.warn("schema.Schema.create() failed. " + err);	
 					fs.unlink(tmpFile);
 					cbAfter(err);
 					return;
 				}
+				log.debug('rename ' + tmpFile + ' to ' + dbFile);
 				fs.rename(tmpFile, dbFile, function(err) {
 					cbAfter(err);
 				});
 			});
+			db.close();
 	});
-	db.close();
 }
 
-schema.Database.remove = function(dbFile, cbAfter) {
+schema.Schema.remove = function(dbFile, cbAfter) {
 	fs.unlink(dbFile, function(err) {
 		if (err) {
-			log.warn("remove() failed. " + err);			
+			log.warn("schema.Schema.remove() failed. " + err);	
 		}
 		cbAfter(err);
 	});
 }
 
-schema.Database.prototype.read = function(dbFile, cbAfter) {
-	log.debug("schema.Database.prototype.read " + dbFile);
+schema.Schema.prototype.read = function(dbFile, cbAfter) {
+	log.debug("schema.Schema.prototype.read " + dbFile);
 	var me = this;
 	var db = new sqlite3.Database(dbFile
 						, sqlite3.OPEN_READWRITE
@@ -1088,5 +1312,5 @@ function joinTablePath(tables, exclude) {
 }
 
 
-exports.Schema = schema.Database;
+exports.Schema = schema.Schema;
 

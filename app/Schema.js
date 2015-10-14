@@ -380,14 +380,6 @@ schema.Table.prototype.createSQL = function() {
 	});
 	sql += "\n PRIMARY KEY (id)";
 
-
-/*
-	_.each(this.foreignKeys(), function(fk) {
-		sql += ",\n FOREIGN KEY(" + fk.name + ") REFERENCES " 
-			+ fk.fk_table + " (id)";
-	});
-*/
-
 	sql += "\n);";
 	log.debug(sql);
 
@@ -913,160 +905,48 @@ schema.Schema.prototype.selectSQL = function(table, filterClauses, fields, order
 
 /******* start file ops *******/
 
-schema.Schema.prototype.exec_transaction = function(sql, dbFile, cbAfter) {
-	var db = new sqlite3.Database(dbFile
-		, sqlite3.OPEN_READWRITE
-		, function(err) {
-			if (err) {
-				cbAfter(err);
-				return;
-			}
-			db.serialize(function() {
-				db.run("PRAGMA foreign_keys = ON;");
-				db.run("BEGIN TRANSACTION");
-				db.exec(sql, function(err) {
-					if (err == null) {
-						db.run("COMMIT TRANSACTION");
-					} else {
-						log.warn("schema.Schema.exec_transaction() failed. " + err);
-						db.run("ROLLBACK TRANSACTION");
-					}
-					db.close();
-					cbAfter(err);
-				});
-			});
-		});
-}
-
-schema.Schema.prototype.add_field = function(fieldDef, tableName, dbFile, cbAfter) {
-
-	var me = this;
-	var field;
-
-	try {
-		field = schema.Field.create(fieldDef);
-	} catch(err) {
-		log.warn("Error in schema.Schema.add_field " + err);
-		cbAfter(err);
-		return;
-	}
-
-	var sql = "ALTER TABLE " + tableName + " ADD COLUMN " + field.toSQL();
-
-	this.exec_transaction(sql, dbFile, function(err) {
-		if (err) {
-			cbAfter(err);
-			return;
-		}
-
-		//add field in mem
-		var table = me.tables[tableName];
-		table.fields[field.name] = field;
-		cbAfter();
-	});
-}
-
-schema.Schema.prototype.drop_table = function(tableName, dbFile, cbAfter) {
-	
-	var me = this;
-	var table = this.tables[tableName];
-	if ( ! table) {
-		var msg = util.format("Table %s not found.", tableName);
-		cbAfter(new Error(msg));
-		return;
-	}
-
-	var sql = table.deletePropSQL()
-			+ table.deleteViewSQL()
-			+ table.deleteSearchSQL()
-			+ table.deleteSQL();
-
-	this.exec_transaction(sql, dbFile, function(err) {
-		if (err) {
-			cbAfter(err);
-			return;
-		}
-
-		//update mem
-		delete me.tableDefs[tableName];
-		me.init(function(err) {
-			cbAfter(err);
-		});
-	});
-}
-
-schema.Schema.prototype.add_table = function(tableDef, dbFile, cbAfter) {
-	
-	var me = this;
-	var table;
-
-	try {
-		table = new schema.Table(tableDef);
-	} catch(err) {
-		log.warn("Error in schema.Schema.add_table " + err);
-		cbAfter(err);
-		return;
-	}
-
-	var sql = table.createSQL()
-			+ me.createViewSQL(table)
-			+ table.createSearchSQL()
-			+ table.insertPropSQL();
-
-	this.exec_transaction(sql, dbFile, function(err) {
-		if (err) {
-			cbAfter(err);
-			return;
-		}
-
-		//update mem
-		me.tableDefs[table.name] = tableDef;
-		me.init(function(err) {
-			cbAfter(err);
-		});
-	});
-}
-
-
 schema.Schema.prototype.update = function(delTables, addTables, dbFile, cbAfter) {
 	var me = this;
 
-	var sql = _.reduce(delTables, function(memo, t) {
-		return memo + '\n' 
-			+ me.tables[t.name].deleteSQL()
-			+ me.tables[t.name].deleteViewSQL()
-			+ me.tables[t.name].deleteSearchSQL()
-			+ me.tables[t.name].deletePropSQL()
-			;
-	}, '');
+	var newTableDefs = _.map(_.reject(me.tables, function(t) {
+			return _.find(delTables, function(dt) {
+				return dt.name == t.name;
+			})
+		}), function(table) {
+		return table.toJSON();	 
+	}).concat(addTables);
 
-	_.each(delTables, function(t) {
-		delete this.tableDefs[t.name];
-	}, this);
+	//console.log(_.pluck(newTableDefs, "name"));
 
-	_.each(addTables, function(t) {
-		this.tableDefs[t.name] = t;
-	}, this);
-
-	this.init(function(err) {
-//TODO instead of this.init try init on new obj, only on trx commit update own 
+	var newSchema = new schema.Schema(newTableDefs);
+	newSchema.init(function(err) {
 		if (err) {
 			cbAfter(err);
 			return;
 		}
 
+		var sql = '';
+
+		sql = _.reduce(delTables, function(memo, t) {
+			return memo + '\n' 
+				+ me.tables[t.name].deleteSQL()
+				+ me.tables[t.name].deleteViewSQL()
+				+ me.tables[t.name].deleteSearchSQL()
+				+ me.tables[t.name].deletePropSQL()
+				;
+		}, sql);
+
 		sql = _.reduce(addTables, function(memo, t) {
-			var table = me.tables[t.name];
+			var table = newSchema.tables[t.name];
 			return memo + '\n'
 				+ table.createSQL() + '\n'
-				+ me.createViewSQL(table) + '\n'
+				+ newSchema.createViewSQL(table) + '\n'
 				+ table.createSearchSQL() + '\n'
 				+ table.insertPropSQL() + '\n'
 				;
 		}, sql);
 
-
-		var redoViewTables = _.filter(me.tables, function(t) {
+		var redoViewTables = _.filter(newSchema.tables, function(t) {
 			var dup = _.some(addTables, function(a) {
 				return t.name == a.name;
 			})
@@ -1084,7 +964,7 @@ schema.Schema.prototype.update = function(delTables, addTables, dbFile, cbAfter)
 			return memo + '\n'
 				+ table.deleteViewSQL() + '\n'
 				+ table.deleteSearchSQL() + '\n'
-				+ me.createViewSQL(table) + '\n'
+				+ newSchema.createViewSQL(table) + '\n'
 				+ table.createSearchSQL() + '\n'
 				;
 		}, sql);
@@ -1104,17 +984,22 @@ schema.Schema.prototype.update = function(delTables, addTables, dbFile, cbAfter)
 					db.exec(sql, function(err) {
 						if (err == null) {
 							db.run("COMMIT TRANSACTION");
+							me.tableDefs = newTableDefs;
+							me.init(function(err) { 
+								cbAfter(err); 
+							});
 						} else {
 							log.warn("schema.Table.update() failed. " + err);
 							db.run("ROLLBACK TRANSACTION");
+							cbAfter(err);
 						}
-						cbAfter(err);
 					});
 				});
 				db.close();
-		});
+		}); //new Database
 
 	});
+
 }
 
 schema.Schema.prototype.create = function(dbFile, cbAfter) {

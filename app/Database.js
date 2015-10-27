@@ -11,17 +11,13 @@ var util = require('util');
 
 var Schema = require('./Schema.js').Schema;
 
-if (global.log) {
-	var log = global.log.child({'mod': 'g6.Database.js'});
-	var row_max_count = global.row_max_count;
-} else {
-	//e.g when testing 
-	var log = require('bunyan').createLogger({
-				'name': 'g6.Database.js', 'level': 'warn'
-		});
-	var row_max_count = 1000;
-}
-
+global.log = global.log || require('bunyan').createLogger({
+	name: 'g6.server',
+	level: 'debug',
+	src: true,
+	stream: process.stderr
+});
+global.row_max_count = global.row_count || 1000;
 
 
 function Database(dbFile) 
@@ -245,7 +241,7 @@ function Database(dbFile)
 				});
 
 				_.each(tables, function(t) {
-					me.all(t, [joinClause], '*', [], row_max_count, 0, false, function(err, res) {
+					me.all(t, [joinClause], '*', [], global.row_max_count, 0, false, function(err, res) {
 						result[t.name] = res.rows;
 						allDone(err, result);
 					});

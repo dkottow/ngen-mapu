@@ -17,5 +17,9 @@
 	, "pegjs": "*"
 	, "tmp": "*"
   }
+  , "devDependencies": {
+	"request": "*"	
+  }
+  , "main": "app/server.js"
 }
 

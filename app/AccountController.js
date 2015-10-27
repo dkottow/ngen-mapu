@@ -95,22 +95,6 @@ function AccountController(router, baseUrl, baseDir) {
 			log.info({'req.body': req.body});
 
 			var schema = req.body;
-
-/*
-			if (_.isEmpty(schema.name)) { //create empty schema
-
-				//only allowed to tmp account
-				if (me.name != global.tmp_account) {
-					log.warn(req.method + " " + req.url + " failed.");
-					err = new Error("Schema name empty.");	
-					res.send(400, err.message);
-					return;
-				}
-				schema.name = tmp.tmpNameSync({template: 'new-XXXXXX'});
-				log.debug('created tmp schema ' + schema.name);
-			}
-*/
-
 			var dbFile = util.format('%s/%s', me.baseDir,
 								schema.name + global.sqlite_ext);
 
@@ -250,7 +234,20 @@ function AccountController(router, baseUrl, baseDir) {
 
 		router.delete(this.url + "/:schema", deleteSchemaHandler);	
 		router.delete(this.url + '"/:schema.prj', deleteSchemaHandler);	
+
+		//serve patch database
+		var patchSchemaHandler = function(req, res) {
+			log.info(req.method + " " + req.url);
+			log.info({'req.body': req.body});
+
+			var patches = req.body;
+		}
+
+		router.patch(this.url + "/:schema", patchSchemaHandler);	
+		router.patch(this.url + '"/:schema.prj', patchSchemaHandler);	
 	}
+
+
 }
 
 exports.AccountController = AccountController;

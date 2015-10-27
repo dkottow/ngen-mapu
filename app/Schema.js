@@ -8,16 +8,14 @@ var tmp = require('tmp'); //tmp filenames
 
 var sqlite3 = require('sqlite3').verbose();
 
-if (global.log) {
-	var log = global.log.child({'mod': 'g6.schema.js'});
-	var tmp_dir = global.tmp_dir;
-} else {
-	//e.g when testing 
-	var log = require('bunyan').createLogger({
-				'name': 'g6.schema.js', 'level': 'info'
-		});
-	var tmp_dir = '.';
-}
+global.log = global.log || require('bunyan').createLogger({
+	name: 'g6.server',
+	level: 'debug',
+	src: true,
+	stream: process.stderr
+});
+
+global.tmp_dir = global.tmp_dir || '.';
 
 //console.log('TMP DIR ' + tmp_dir);
 
@@ -952,6 +950,7 @@ schema.Schema.prototype.update = function(delTables, addTables, dbFile, cbAfter)
 			})
 			if (dup) return false;
 
+			//get fk fields that reference an updated table
 			return _.some(t.fields, function(f) {
 				return _.some(addTables, function(a) {
 					return a.name == f.fk_table;
@@ -1004,7 +1003,7 @@ schema.Schema.prototype.update = function(delTables, addTables, dbFile, cbAfter)
 
 schema.Schema.prototype.create = function(dbFile, cbAfter) {
 	var me = this;
-	var tmpFile = path.join(tmp_dir,
+	var tmpFile = path.join(global.tmp_dir,
 						tmp.tmpNameSync({template: 'dl-XXXXXX.sqlite'}));
 
 	var db = new sqlite3.Database(tmpFile 

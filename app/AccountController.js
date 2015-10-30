@@ -6,7 +6,8 @@ var util = require('util');
 
 var Schema = require('./Schema.js').Schema;
 var Database = require('./Database.js').Database;
-var DatabaseController = require('./DatabaseController.js').DatabaseController;
+var DatabaseController = require('./DatabaseController.js')
+								.DatabaseController;
 
 var log = global.log.child({'mod': 'g6.AccountController.js'});
 
@@ -67,9 +68,14 @@ function AccountController(router, baseUrl, baseDir) {
 		var getSchemaListHandler = function(req, res) {
 			log.info(req.method + " " + req.url);
 
+			var resBody = {
+				name: me.name,
+				databases: []
+			};
+
 			var schemaDefs = {};
 			var doAfter = _.after(_.size(me.databaseControllers), function() {
-				res.send(schemaDefs);
+				res.send(resBody);
 			});
 
 			_.each(me.databaseControllers, function(c) {
@@ -77,13 +83,15 @@ function AccountController(router, baseUrl, baseDir) {
 					_.each(schemaDef.tables, function(t) { 
 						delete t.fields; 
 					});
-					schemaDefs[c.base] = schemaDef;
+					schemaDef.url = me.url + '/' + schemaDef.name;
+					resBody.databases.push(schemaDef);
+					//schemaDefs[c.base] = schemaDef;
 					doAfter();
 				});
 			});
 
 			//handle empty account
-			if (_.size(me.databaseControllers) == 0) res.send({});
+			if (_.size(me.databaseControllers) == 0) res.send(resBody);
 		}
 			
 		router.get(this.url, getSchemaListHandler);	

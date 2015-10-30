@@ -70,7 +70,7 @@ function AccountController(router, baseUrl, baseDir) {
 
 			var resBody = {
 				name: me.name,
-				databases: []
+				databases: {}
 			};
 
 			var schemaDefs = {};
@@ -84,7 +84,7 @@ function AccountController(router, baseUrl, baseDir) {
 						delete t.fields; 
 					});
 					schemaDef.url = me.url + '/' + schemaDef.name;
-					resBody.databases.push(schemaDef);
+					resBody.databases[schemaDef.name] = schemaDef;
 					//schemaDefs[c.base] = schemaDef;
 					doAfter();
 				});

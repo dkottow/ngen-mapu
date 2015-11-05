@@ -30,14 +30,9 @@ function Database(dbFile)
 	this.dbFile = dbFile;
 	this.schema = null;
 	
-	this.tables = function() { return this.schema.tables; };
-
-	this.linkedTableLists = [];	
-
-	//this.tableMap = function() { return this.tables; }
-	this.tableLinkedLists = function() { return this.linkedTableLists; }
-	
 	var me = this;
+
+	this.tables = function() { return this.schema.tables; };
 
 	this.init = function(cbAfter) {
 
@@ -87,7 +82,7 @@ function Database(dbFile)
 		try {
 
 			var table = this.tables()[tableName];
-			if (_.isFunction(options)) {
+			if (! cbResult) {
 				cbResult = options;
 				options = {};
 			}
@@ -159,7 +154,7 @@ function Database(dbFile)
 		try {
 
 			var table = this.tables()[tableName];
-			if (_.isFunction(options)) {
+			if (! cbResult) {
 				cbResult = options;
 				options = {};
 			}
@@ -215,7 +210,7 @@ function Database(dbFile)
 		try {
 
 			var table = this.tables()[tableName];
-			if (_.isFunction(options)) {
+			if (! cbResult) {
 				cbResult = options;
 				options = {};
 			}
@@ -249,7 +244,7 @@ function Database(dbFile)
 		try {
 
 			var table = this.tables()[tableName];
-			if (_.isFunction(options)) {
+			if (! cbResult) {
 				cbResult = options;
 				options = {};
 			}

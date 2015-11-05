@@ -6,6 +6,8 @@ var assert = require('assert')
 	, schema = require('../app/Schema')
 	, Model = require('../app/Database').Database;
 	
+var log = global.log;
+
 describe('Schema', function() {
 
 	var testSchema = [
@@ -155,7 +157,7 @@ describe('Schema', function() {
 				}
 			]);
 			db.init(function(err) {
-				console.log(err);
+				log.info(err);
 				assert(err instanceof Error);
 			});
 		});
@@ -171,7 +173,7 @@ describe('Schema', function() {
 					 }
 			]);
 			db.init(function(err) {
-				console.log(err);
+				log.info(err);
 				assert(err instanceof Error);
 			});
 		});
@@ -193,7 +195,7 @@ describe('Schema', function() {
 					 }
 			]);
 			db.init(function(err) {
-				console.log(err);
+				log.info(err);
 				assert(err instanceof Error);
 			});
 		});
@@ -213,10 +215,10 @@ describe('Schema', function() {
 			var db = new schema.Schema(testSchema);
 			db.init(function(err) {
 				if (err) {
-					console.log(err);
+					log.info(err);
 				} else {
 					var sql = db.createSQL();
-					//console.log(sql);
+					//log.info(sql);
 				}
 			});
 		});
@@ -226,10 +228,10 @@ describe('Schema', function() {
 			var db = new schema.Schema(testSchema);
 			db.init(function(err) {
 				if (err) {
-					console.log(err);
+					log.info(err);
 				} else {
 					db.create(dbFile, function(err) {
-						console.log(err);
+						log.info(err);
 						done();	
 					});
 				}
@@ -247,8 +249,8 @@ describe('Schema', function() {
 			var db = new schema.Schema();
 			db.read(dbFile, function(err) {
 				if (err) {
-					console.log("ERROR ++++ ");
-					console.log(err);
+					log.info("ERROR ++++ ");
+					log.info(err);
 				} else {
 					var customers = db.tables['customers'].toJSON();
 					db.drop_table('customers', dbFile, function(err) {
@@ -268,8 +270,8 @@ describe('Schema', function() {
 			var db = new schema.Schema();
 			db.read(dbFile, function(err) {
 				if (err) {
-					console.log("ERROR ++++ ");
-					console.log(err);
+					log.info("ERROR ++++ ");
+					log.info(err);
 				} else {
 					var delTables = [
 						{ name: 'customers' }, 
@@ -284,7 +286,7 @@ describe('Schema', function() {
 					addTables[1].row_alias = ['order_date', 'cus.name'];
 
 					db.update(delTables, addTables, dbFile, function(err) {
-						console.log(err);
+						log.info(err);
 						done();	
 					});
 				}
@@ -342,13 +344,13 @@ describe('Schema', function() {
 
 			db.init(function(err) {
 				if (err) {
-					console.log(err);
+					log.info(err);
 				} else {
 					var sql = db.createSQL();
-					//console.log(sql);
+					//log.info(sql);
 
 					db.create('selfref.sqlite', function(err) {
-						console.log(err);
+						log.info(err);
 						done();	
 					});
 

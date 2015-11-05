@@ -7,6 +7,12 @@ var assert = require('assert')
 	, util = require('util')
 	, parser = require('../app/QueryParser');
 
+var log = require('bunyan').createLogger({
+	name: 'g6.server',
+	level: 'debug',
+	src: true,
+	stream: process.stderr
+});
 
 describe('Parser.parser', function() {
 	it('skip', function() {		
@@ -19,7 +25,7 @@ describe('Parser.parser', function() {
 		try {
 			var q = '$orderby=foo DESC, bar';
 			var result = parser.parse(q);			
-	console.log(result);
+	log.info(result);
 		} catch(e) {
 			console.log(e);
 		}
@@ -31,7 +37,7 @@ describe('Parser.parser', function() {
 		try {
 			var q = "$filter=foo eq 'foo' and bar.bar ne 6";
 			var result = parser.parse(q);			
-	console.log(result);
+			log.info(result);
 		} catch(e) {
 			console.log(e);
 		}

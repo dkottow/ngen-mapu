@@ -9,8 +9,9 @@ var assert = require('assert')
 	
 var isDescendant = require('../app/Database').isDescendant;
 
+var log = global.log;
 
-describe('Model', function() {
+describe('Database', function() {
 	var dbFile = "test/test-model.sqlite";
 	var model = new Database(dbFile);
 
@@ -19,7 +20,7 @@ describe('Model', function() {
 	});	
 
 	after(function(done) {
-		//console.log("DELETING ALL ROWS id > 2");
+		//log.debug("DELETING ALL ROWS id > 2");
 		var db = new sqlite3.Database(dbFile);
 		db.run("DELETE FROM orders WHERE id > 10", done);
 		//db.run("DELETE FROM fts_orders WHERE docid > 10", done);
@@ -43,7 +44,7 @@ describe('Model', function() {
 		before(function(done) {
 			model.getSchema(function(err, result) {
 				defs = result;
-				console.log(defs);
+				log.info(defs);
 				done();
 			});
 			//console.log(defs);
@@ -76,13 +77,13 @@ describe('Model', function() {
   	describe('getStats()', function() {		
 		it('getStats for orders', function(done) {
 			model.getStats('orders', function(err, result) {
-				console.log(result);
+				log.info(result);
 				done();
 			});
 		});
 		it('getStats for orders.total_amount', function(done) {
 			model.getStats('orders', { fields: ['total_amount']}, function(err, result) {
-				console.log(result);
+				log.info(result);
 				done();
 			});
 		});
@@ -96,7 +97,6 @@ describe('Model', function() {
 			var allDone = _.after(tables.length, done);			
 
 			_.each(tables, function(tn) {
-				var order = [{'name': 'asc'}];
 
 				model.all(tn, function(err, result) {
 					assert(err == null, err);
@@ -130,7 +130,7 @@ describe('Model', function() {
 			
 			model.all(table, options, function(err, result) {
 				assert(err == null, err);
-				console.log('got ' + result.count + " " + table);
+				log.info('got ' + result.count + " " + table);
 				assert(result.count > 0, 'got some ' + table);
 				done();
 			});
@@ -152,7 +152,7 @@ describe('Model', function() {
 
 			model.all(table, options, function(err, result) {
 				assert(err == null, err);
-				console.log('got ' + result.count + " " + table);
+				log.info('got ' + result.count + " " + table);
 				assert(result.count > 0, 'got some ' + table);
 				done();
 			});
@@ -175,7 +175,7 @@ describe('Model', function() {
 
 			model.all(table, options, function(err, result) {
 				assert(err == null, err);
-				console.log('got ' + result.count + " " + table);
+				log.info('got ' + result.count + " " + table);
 				assert(result.count > 0, 'got some ' + table);
 				done();
 			});
@@ -269,7 +269,7 @@ describe('Model', function() {
 				'modified_on': '2000-01-01' 
 			};
 			model.insert(table, [row], function(err, result) { 
-				console.log(err);
+				log.info(err);
 				assert(err instanceof Error, 'sqlite check constraint holds');
 				done();
 			});
@@ -285,7 +285,7 @@ describe('Model', function() {
 				'modified_on': '2000-01-01' 
 			};
 			model.insert(table, [row], function(err, result) { 
-				console.log(err);
+				log.info(err);
 				assert(err == null, 'sqlite insert specific id');
 				done();
 			});
@@ -333,7 +333,7 @@ describe('Model', function() {
 			};
 
 			model.update(table, [row], function(err, result) { 
-				console.log(err);
+				log.info(err);
 				assert(err instanceof Error, 'row does not exist');
 				done(); 
 			});
@@ -351,7 +351,7 @@ describe('Model', function() {
 			};
 
 			model.update(table, [row], function(err, result) { 
-				console.log(err);
+				log.info(err);
 				assert(err instanceof Error, 'update did not fail');
 				done(); 
 			});
@@ -370,7 +370,7 @@ describe('Model', function() {
 			};
 
 			model.update(table, [row], function(err, result) { 
-				console.log(err);
+				log.info(err);
 				assert(err instanceof Error, 'update did not fail');
 				done(); 
 			});
@@ -385,7 +385,7 @@ describe('Model', function() {
 
 			model.delete(table, [11, 12, 15], function(err, result) {
 				assert(err == null, 'deleted some rows');
-				console.log(err);
+				log.info(err);
 				done(); 
 			});
 		});

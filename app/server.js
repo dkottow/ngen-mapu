@@ -4,11 +4,11 @@ global.log = require('bunyan').createLogger({
 	name: 'g6.server',
 	level: 'debug',
 	src: true,
-/*
+
 	streams: [{
 		'path': 'log.txt',
 	}]
-*/
+
 });
 
 var app = require('./app.js').app;

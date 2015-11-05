@@ -5,16 +5,18 @@ var assert = require('assert')
 	, request = require('request')
 	, app = require('../app/app').app;
 	
+var log = global.log;
+
 function get(url, cbAfter) {
 	request(url, function(error, rsp, body) {
 		assert(!error && rsp.statusCode == 200, 'response error');
-		console.log(body);
+		log.info(body);
 
 		cbAfter(JSON.parse(body));
 	});
 }
 
-describe('app', function() {
+describe('Server (app)', function() {
 	
 	describe('GET', function() {
 

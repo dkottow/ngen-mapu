@@ -57,13 +57,14 @@ function DatabaseController(router, restBase, model)
 					}
 				});
 
-				me.model.all(table, 
-					params['$filter'] || [], 
-					params['$select'] || '*', 
-					params['$orderby'] || [],
-					params['$top'] || global.row_max_count,
-					params['$skip'] || 0,
-					params['$distinct'] || false, //this works!					
+				me.model.all(table.name, {
+						filter: params['$filter'], 
+						fields: params['$select'], 
+						order: params['$orderby'], 
+						limit: params['$top'], 
+						offset: params['$skip'], 
+						distinct: params['$distinct'] 
+					},
 					function(err, result) { 
 						if (err) {
 							sendError(req, res, err);
@@ -91,9 +92,10 @@ function DatabaseController(router, restBase, model)
 					}
 				});
 
-				me.model.getStats(table, 
-					params['$filter'] || [], 
-					params['$select'] || '*', 
+				me.model.getStats(table.name, { 
+						filter: params['$filter'], 
+						fields: params['$select'] 
+					}, 
 					function(err, result) {
 						if (err) {
 							sendError(req, res, err);
@@ -112,12 +114,14 @@ function DatabaseController(router, restBase, model)
 			//upto depth levels  
 			var getDeepHandler = function(req, res) {
 				log.info(req.method + " " + req.url);
-				var filter = { 'field': 'id', 
+				var filters = [{ 'field': 'id', 
 							   'operator': 'eq', 
 							   'value' : req.param('id')
-					};
-				var depth = req.query['depth'] || 3;
-				me.model.getDeep(table, [filter], '*', depth
+					}];
+				me.model.getDeep(table.name, {
+									filter: filters,
+									depth: req.query['depth'] 
+								}
 								, function(err, result) { 
 					if (err) {
 						sendError(req, res, err);
@@ -135,7 +139,7 @@ function DatabaseController(router, restBase, model)
 				log.info(req.method + " " + req.url);
 				log.info({'req.body': req.body});
 				var row = req.body;
-				me.model.insert(table, [row], function(err, result) {
+				me.model.insert(table.name, [row], function(err, result) {
 					if (err) {
 						sendError(req, res, err);
 						return;
@@ -154,7 +158,7 @@ function DatabaseController(router, restBase, model)
 				log.info({'req.body': req.body});
 				var row = req.body;
 				row['id'] = req.param('id');
-				me.model.update(table, [row], function(err, result) {
+				me.model.update(table.name, [row], function(err, result) {
 					if (err) {
 						sendError(req, res, err);
 						return;
@@ -171,7 +175,7 @@ function DatabaseController(router, restBase, model)
 			var deleteRowHandler = function(req, res) {
 				log.info(req.method + " " + req.url);
 				var id = req.param('id');
-				me.model.delete(table, [id], function(err, result) {
+				me.model.delete(table.name, [id], function(err, result) {
 					if (err) {
 						sendError(req, res, err);
 						return;

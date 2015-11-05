@@ -74,14 +74,14 @@ describe('Model', function() {
 	});
 
   	describe('getStats()', function() {		
-		it('getStats from orders', function(done) {
-			model.getStats(model.tables().orders, [], '*', function(err, result) {
+		it('getStats for orders', function(done) {
+			model.getStats('orders', function(err, result) {
 				console.log(result);
 				done();
 			});
 		});
-		it('getStats from orders.total_amount', function(done) {
-			model.getStats(model.tables().orders, [], ['total_amount'], function(err, result) {
+		it('getStats for orders.total_amount', function(done) {
+			model.getStats('orders', { fields: ['total_amount']}, function(err, result) {
 				console.log(result);
 				done();
 			});
@@ -91,20 +91,18 @@ describe('Model', function() {
   	describe('all()', function() {		
 
 		it('get all customers/products', function(done) {
-			var tables = [
-					model.tables().products, 
-					model.tables().customers
-			];
+			var tables = [ 'products', 'customers' ];
 
 			var allDone = _.after(tables.length, done);			
 
-			_.each(tables, function(t) {
+			_.each(tables, function(tn) {
 				var order = [{'name': 'asc'}];
 
-				model.all(t, [], '*', order, 1000, 0, false, function(err, result) {
+				model.all(tn, function(err, result) {
 					assert(err == null, err);
-					console.log('got ' + result.rows.length + " of " + result.count + " " + t.name);
-					assert(result.count > 0, 'got some ' + t.name);
+					log.debug('got ' + result.rows.length + " of " 
+								+ result.count + " " + tn.name);
+					assert(result.count > 0, 'got some ' + tn.name);
 					allDone();
 				});
 			});
@@ -113,16 +111,27 @@ describe('Model', function() {
 
 		it('all orders filtered by customer and limited amount', function(done) {
 
-			var table = model.tables().orders;
+			var table = 'orders';
 
-			var filters = [
-				{'table': 'customers', 'field': 'name', 'operator': 'eq', 'value': 'Daniel'},
-				{'field': 'total_amount', 'operator': 'le', 'value': 100},
-			];
-			model.all(table, filters, '*', [], 10, 0, false, function(err, result) {
+			var options = {
+				filter : [
+					{   'table': 'customers', 
+						'field': 'name', 
+						'operator': 'eq', 
+						'value': 'Daniel'
+					},
+					{	'field': 'total_amount', 
+						'operator': 'le', 
+						'value': 100
+					}
+				],
+				limit: 10
+			};
+			
+			model.all(table, options, function(err, result) {
 				assert(err == null, err);
-				console.log('got ' + result.count + " " + table.name);
-				assert(result.count > 0, 'got some ' + table.name);
+				console.log('got ' + result.count + " " + table);
+				assert(result.count > 0, 'got some ' + table);
 				done();
 			});
 
@@ -130,19 +139,21 @@ describe('Model', function() {
 
 		it('all products ordered filtered by customer', function(done) {
 
-			var table = model.tables().products;
+			var table = 'products';
 
-			var filters = [{
-					'table': 'customers', 
-					'field': 'name', 
-					'operator': 'eq', 
-					'value': 'Daniel'
-			}];
+			var options = {
+					filter : [{
+						'table': 'customers', 
+						'field': 'name', 
+						'operator': 'eq', 
+						'value': 'Daniel'
+					}]
+			};
 
-			model.all(table, filters, '*', [], 10, 0, false, function(err, result) {
+			model.all(table, options, function(err, result) {
 				assert(err == null, err);
-				console.log('got ' + result.count + " " + table.name);
-				assert(result.count > 0, 'got some ' + table.name);
+				console.log('got ' + result.count + " " + table);
+				assert(result.count > 0, 'got some ' + table);
 				done();
 			});
 
@@ -151,19 +162,21 @@ describe('Model', function() {
 		it('all orders filtered by products.id in (1,2)', 
 		function(done) {
 
-			var table = model.tables().orders;
+			var table = 'orders';
 
-			var filters = [{
-				'table': 'products', 
-				'field': 'id', 
-				'operator': 'in', 
-				'value': [1,2,3]
-			}];
+			var options = {
+				filter : [{
+					'table': 'products', 
+					'field': 'id', 
+					'operator': 'in', 
+					'value': [1,2,3]
+				}]
+			};
 
-			model.all(table, filters, '*', [], 10, 0, false, function(err, result) {
+			model.all(table, options, function(err, result) {
 				assert(err == null, err);
-				console.log('got ' + result.count + " " + table.name);
-				assert(result.count > 0, 'got some ' + table.name);
+				console.log('got ' + result.count + " " + table);
+				assert(result.count > 0, 'got some ' + table);
 				done();
 			});
 		});
@@ -172,9 +185,13 @@ describe('Model', function() {
 
   	describe('getDeep()', function() {		
 		it('get customer deep', function(done) {
-			model.getDeep(model.tables().customers, 
-						  	[{'field' : 'id', 'operator': 'eq', 'value' : 1}],
-						  	'*', 2,
+			model.getDeep('customers', { 
+								filter  : [{
+									'field' : 'id', 
+									'operator': 'eq', 
+									'value' : 1
+								}],
+								depth : 2 },
 							function(err, result) {
 								assert(err == null, 'getDeep failed ' + err)
 /*
@@ -189,10 +206,7 @@ describe('Model', function() {
 
   	describe('insert()', function() {		
 
-		var table;
-		before(function() {
-			table = model.tables().orders;
-		});	
+		var table = 'orders';
 
 		it('100 rows', function(done) {
 
@@ -280,10 +294,7 @@ describe('Model', function() {
 
   	describe('update()', function() {		
 
-		var table;
-		before(function() {
-			table = model.tables().orders;
-		});	
+		var table = 'orders';
 
 		it('some rows', function(done) {
 
@@ -368,15 +379,13 @@ describe('Model', function() {
 
   	describe('delete()', function() {		
 
-		var table;
-		before(function() {
-			table = model.tables().orders;
-		});	
+		var table = 'orders';
 
 		it('delete some rows', function(done) {
 
 			model.delete(table, [11, 12, 15], function(err, result) {
 				assert(err == null, 'deleted some rows');
+				console.log(err);
 				done(); 
 			});
 		});

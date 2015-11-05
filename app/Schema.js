@@ -607,7 +607,7 @@ schema.Schema.prototype.createViewSQL = function(table) {
 	var aliasCount = 0;
 	_.each(table.foreignKeys(), function(fk) {
 		++aliasCount;	
-log.debug(fk);
+		//log.debug(fk);
 		var fk_table = me.tables[fk.fk_table];
 		var nkValue = _.reduce(fk_table.row_alias, function(memo, nk) {
 			var result;

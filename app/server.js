@@ -5,10 +5,11 @@ global.log = require('bunyan').createLogger({
 	level: 'debug',
 	src: true,
 
+/*
 	streams: [{
 		'path': 'log.txt',
 	}]
-
+*/
 });
 
 var app = require('./app.js').app;
@@ -16,7 +17,8 @@ var app = require('./app.js').app;
 var log = global.log.child({'mod': 'g6.server.js'});
 
 var config = {
-	'ip'	:  '127.0.0.1',
+	//'ip'	:  '127.0.0.1',
+	'ip'	:  '192.168.1.34',
 	'port'	: 3000, 
 }
 

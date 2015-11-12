@@ -182,6 +182,8 @@ schema.Field.prototype.toJSON = function() {
 	return result;
 }
 
+schema.Field.REF_NAME = 'ref';
+
 schema.Field.prototype.refName = function() {
 	return this.fk_table +'_ref';
 }
@@ -367,7 +369,9 @@ schema.Table.prototype.virtualFields = function() {
 }
 
 schema.Table.prototype.viewFields = function() {
-	return _.pluck(_.values(this.fields), 'name')
+//TODO add row_alias field (ref)
+	return [schema.Field.REF_NAME]
+			.concat( _.pluck(_.values(this.fields), 'name'))
 			.concat(this.virtualFields());
 }
 
@@ -598,6 +602,7 @@ schema.Schema.prototype.buildTableGraph = function() {
 }
 
 schema.Schema.prototype.createViewSQL = function(table) {
+//TODO create ref field and let 'natural keys' link to the fk_table view
 	var me = this;
 	
 	var joinTables = {};
@@ -605,6 +610,70 @@ schema.Schema.prototype.createViewSQL = function(table) {
 	var distinct = false;
 	var fk_fields = [];
 	var aliasCount = 0;
+
+	_.each(table.foreignKeys(), function(fk) {
+		var fk_table = me.tables[fk.fk_table];
+		
+		var path = table.bfsPath(fk_table);
+		var j = joinTablePath(path, joinTables);
+		for(var i = 1; i < path.length; ++i) {
+			joinTables[path[i].name] = path[i];
+		}
+
+		var jSQL = j.sql;
+		if (USE_VIEW) {
+			var r = new RegExp('\\b' + fk_table.name + '\\b', 'g');
+			jSQL = j.sql.replace(r, fk_table.viewName());
+		}			
+
+		joinSQL = joinSQL + jSQL;
+
+		var refName = util.format('%s."%s"', 
+						fk_table.viewName(), schema.Field.REF_NAME);
+
+		fk_fields.push(refName + ' AS ' + fk.refName());
+		
+	});
+
+	var nkValue = _.reduce(table.row_alias, function(memo, nk) {
+		var result;
+			
+		if (nk.indexOf('.') < 0) {
+			result = util.format('%s."%s"', table.name, nk);
+
+		} else {
+			var nkTable = me.tables[nk.split('.')[0]]; 	
+			var nkField = nk.split('.')[1]; 	
+
+			result = util.format('%s."%s"', nkTable.viewName(), nkField);
+
+			var path = table.bfsPath(nkTable);
+			var j = joinTablePath(path, joinTables);
+			for(var i = 1; i < path.length; ++i) {
+				joinTables[path[i].name] = path[i];
+			}
+
+			var jSQL = j.sql;
+			if (USE_VIEW) {
+				var r = new RegExp('\\b' + nkTable.name + '\\b', 'g');
+				jSQL = j.sql.replace(r, nkTable.viewName());
+			}			
+
+			joinSQL = joinSQL + jSQL;
+
+		}	
+		if ( ! _.isEmpty(memo)) {
+			result = memo + " || ' ' || " + result;
+		}
+		return result;
+	}, '');
+
+	var fkValue = util.format("'(' || %s.id || ')'", table.name); 
+	nkValue = nkValue.length > 0 
+			? nkValue + ' || ' + fkValue 
+			: fkValue;
+
+/*
 	_.each(table.foreignKeys(), function(fk) {
 		++aliasCount;	
 		//log.debug(fk);
@@ -647,10 +716,13 @@ schema.Schema.prototype.createViewSQL = function(table) {
 		fk_fields.push(nkValue + ' AS ' + fk.refName());
 			
 	});
+*/
 
 	var fieldSQL = _.map(table.fields, function(f) {
 		return util.format('%s."%s"', table.name, f.name);
 	}).join(',');
+
+	fieldSQL = fieldSQL + ',' + nkValue + ' AS ' + schema.Field.REF_NAME;
 
 	if (fk_fields.length > 0) {
 		fieldSQL = fieldSQL + ',' + fk_fields.join(',');
@@ -805,7 +877,6 @@ schema.Schema.prototype.filterSQL = function(table, filterClauses) {
 }
 
 schema.Schema.prototype.checkFields = function(table, fieldNames) {
-	//TODO make sure all field names exist in table
 	_.each(fieldNames, function(f) {
 		if ( ! _.contains(table.viewFields(), f)) {
 			throw new Error("unknown field '" + f + "'");
@@ -826,6 +897,8 @@ schema.Schema.prototype.fieldSQL = function(table, fields) {
 				return util.format('%s."%s" as %s', 
 							tableName, f.refName(), f.refName());
 			});
+			fields.push(util.format('%s."%s" as %s', 
+				tableName, schema.Field.REF_NAME, schema.Field.REF_NAME));
 			fields = fields.concat(fk_fields);
 		}
 	} else {
@@ -944,6 +1017,7 @@ schema.Schema.prototype.update = function(delTables, addTables, dbFile, cbAfter)
 				;
 		}, sql);
 
+//TODO check if we can get rid of this now
 		var redoViewTables = _.filter(newSchema.tables, function(t) {
 			var dup = _.some(addTables, function(a) {
 				return t.name == a.name;

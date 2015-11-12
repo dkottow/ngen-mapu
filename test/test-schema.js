@@ -213,6 +213,14 @@ describe('Schema', function() {
 
 		it('createSQL example', function() {
 			var db = new schema.Schema(testSchema);
+
+/*
+db.init(function(err) {
+console.log(db.createSQL());
+return;
+});
+*/
+
 			db.init(function(err) {
 				if (err) {
 					log.info(err);

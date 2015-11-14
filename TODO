@@ -1,0 +1,32 @@
+
+*** Authorization
+
+*** Revisit getDeep to resolve al references (children & parents)
+
+*** HTTP PATCH database ops 
+url e.g. /demo/sales
+
+physical, may require empty table
+
+01 add column - alter table add column (any time)
+02 drop column - use update sqlite_master (must be empty)
+03 drop foreign_key - use update sqlite_master (any time)
+04 add table - add table (any time)
+05 drop table - drop table (must be empty)
+06 rename table - alter table rename to (any time)
+
+logical, anytime (although some require db statements like row_alias)
+
+11 set table_prop (row_alias, label..)
+12 clear table_prop
+13 set field_prop (labe, order, domain..)
+14 clear field_prop
+
+
+---
+
+each patch request holds a sequence (array) of ops
+
+e.g. to update column foo
+[{op: 'drop column': arg: {name: foo'}}, { op: 'add column', arg: {name: 'foo', type: 'INTEGER'...}}]
+

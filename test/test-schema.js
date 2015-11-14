@@ -226,7 +226,7 @@ return;
 					log.info(err);
 				} else {
 					var sql = db.createSQL();
-					//log.info(sql);
+					//console.log(sql);
 				}
 			});
 		});
@@ -346,7 +346,7 @@ return;
 				}		
 			 }];
 
-
+/* TODO
 		it('self ref example', function(done) {
 			var db = new schema.Schema(selfRefSchema);
 
@@ -365,9 +365,9 @@ return;
 				}
 			});
 		});
+*/
 
 	});
-
 });
 
 

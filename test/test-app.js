@@ -7,6 +7,16 @@ var assert = require('assert')
 	
 var log = global.log;
 
+var config = {
+	'ip'	:  'localhost',
+	'port'	: 3000, 
+}
+
+if (process.env.C9_USER) {
+	config.ip = process.env.IP;
+	config.port = process.env.PORT;
+}
+
 function get(url, cbAfter) {
 	request(url, function(error, rsp, body) {
 		assert(!error && rsp.statusCode == 200, 'response error');
@@ -17,16 +27,16 @@ function get(url, cbAfter) {
 }
 
 describe('Server (app)', function() {
-	
+
 	describe('GET', function() {
 
 		var server;
-		var baseUrl = 'http://localhost:3000';
+		var baseUrl = 'http://localhost:' + config.port;
 		var demoAccount = 'demo';
 		var salesDatabase = 'sales';
 
 		before(function(done) {
-			server = app.listen(3000, 'localhost', function() {
+			server = app.listen(config.port, config.ip, function() {
 				done(); 
 			});
 		});	

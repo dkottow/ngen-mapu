@@ -12,7 +12,7 @@ var isDescendant = require('../app/Database').isDescendant;
 var log = global.log;
 
 describe('Database', function() {
-	var dbFile = "test/test-model.sqlite";
+	var dbFile = "test/sales.sqlite";
 	var model = new Database(dbFile);
 
 	before(function(done) {

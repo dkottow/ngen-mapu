@@ -12,13 +12,13 @@ global.log = require('bunyan').createLogger({
 */
 });
 
-var app = require('./app.js').app;
+var app = require('./app/app.js').app;
 
 var log = global.log.child({'mod': 'g6.server.js'});
 
 var config = {
-	//'ip'	:  '127.0.0.1',
-	'ip'	:  '192.168.1.38',
+	'ip'	:  'localhost',
+	//'ip'	:  '192.168.1.38',
 	'port'	: 3000, 
 }
 

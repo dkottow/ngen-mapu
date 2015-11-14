@@ -20,6 +20,6 @@
   , "devDependencies": {
 	"request": "*"	
   }
-  , "main": "app/server.js"
+  , "main": "server.js"
 }
 

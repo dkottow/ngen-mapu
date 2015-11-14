@@ -410,7 +410,7 @@ schema.Table.prototype.createSearchSQL = function() {
 	var viewFields = this.viewFields();
 
 	var sql = 'CREATE VIRTUAL TABLE  ' + this.ftsName() 
-			+ ' USING fts4(' +  viewFields.join(',') + 'tokenize=simple "tokenchars=-");\n\n';
+			+ ' USING fts4(' +  viewFields.join(',') + ',' + 'tokenize=simple "tokenchars=-");\n\n';
 
 	sql += 'CREATE TRIGGER tgr_' + this.name + '_ai'
 		+ ' AFTER INSERT ON ' + this.name

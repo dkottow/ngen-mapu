@@ -1,7 +1,14 @@
 
 *** Authorization
+access control with 2 roles admin, user. tables are admin, user too. all access is rw except user on admin tables which is ro. no individual permissions
 
-*** Revisit getDeep to resolve al references (children & parents)
+*** user prefs
+
+*** Revisit getDeep (get obj) to resolve all references (children & parents)
+
+*** modified_at default to now
+
+*** multiple order by
 
 *** HTTP PATCH database ops 
 url e.g. /demo/sales

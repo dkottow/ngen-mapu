@@ -50,10 +50,11 @@ function DatabaseController(router, restBase, model)
 				
 				var params = {};
 				_.each(req.query, function(v, k) {
+					//log.debug(k + " = " + v);
 					if (k[0] == '$') {
 						var param = parser.parse(k + "=" + v);	
 						params[param.name] = param.value;
-						//console.log(param);
+						//log.debug(param);
 					}
 				});
 
@@ -115,7 +116,7 @@ function DatabaseController(router, restBase, model)
 			var getDeepHandler = function(req, res) {
 				log.info(req.method + " " + req.url);
 				var filters = [{ 'field': 'id', 
-							   'operator': 'eq', 
+							   'op': 'eq', 
 							   'value' : req.param('id')
 					}];
 				me.model.getDeep(table.name, {

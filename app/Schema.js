@@ -817,16 +817,29 @@ schema.Schema.prototype.filterSQL = function(table, filterClauses) {
 			'lt': '<'
 		};
 
-		if (comparatorOperators[filter.operator]) {
+		if (comparatorOperators[filter.op]) {
 
 			whereSQL = whereSQL + util.format(" AND %s.%s %s ?", 
 									filterTable, filter.field, 
-									comparatorOperators[filter.operator]
+									comparatorOperators[filter.op]
 								);
 				
 			sql_params.push(filter.value);
 
-		} else if (filter.operator == 'in') {
+		} else if (filter.op == 'btwn') {
+
+			whereSQL = whereSQL + util.format(" AND %s.%s BETWEEN ? AND ?", 
+									filterTable, filter.field 
+								);
+				
+			assert(filter.value.length && filter.value.length >= 2, 
+				util.format("filter.value %s mismatch", filter.value));
+
+			sql_params.push(filter.value[0]);
+			sql_params.push(filter.value[1]);
+
+
+		} else if (filter.op == 'in') {
 
 			var inParams = _.times(filter.value.length, function(fn) { 
 					return "?"; 
@@ -837,9 +850,12 @@ schema.Schema.prototype.filterSQL = function(table, filterClauses) {
 									inParams.join(',')
 								);
 
+			assert(filter.value.length, 
+				util.format("filter.value %s mismatch", filter.value));
+
 			sql_params = sql_params.concat(filter.value); 
 
-		} else if (filter.operator == 'search') {
+		} else if (filter.op == 'search') {
 			//if ( ! joinTables[me.tables[filter.table].ftsName()]) {
 			//dosnt work, you cant search two different criteria
 				joinSQL = joinSQL + ' INNER JOIN ' 

@@ -54,7 +54,7 @@ filterTerm
    { 
 	 var result = {
 		field: field,
-		operator: op[0],
+		op: op[0],
 		value: op[2]     
      };	  
      if (table) result.table = table[0];
@@ -72,6 +72,7 @@ op "operator"
 
 vecop "vector operator"
  = "in"
+ / "btwn"
 
 fields
  = first:field

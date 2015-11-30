@@ -1,3 +1,8 @@
+/* run me from root dir
+   > node_modules/pegjs/bin/pegjs 
+   > mv etc/donkey-odata.pegjs app/QueryParser.js
+   also copy parser to www app
+*/
 
 start
  = param

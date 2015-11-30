@@ -18,7 +18,8 @@
 	, "tmp": "*"
   }
   , "devDependencies": {
-	"request": "*"	
+	"request": "*",
+	"math": "*"
   }
   , "main": "server.js"
 }

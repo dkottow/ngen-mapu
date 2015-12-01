@@ -19,7 +19,8 @@
   }
   , "devDependencies": {
 	"request": "*",
-	"math": "*"
+	"probdist": "*",
+	"random-js": "*"
   }
   , "main": "server.js"
 }

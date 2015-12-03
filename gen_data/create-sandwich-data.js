@@ -46,13 +46,89 @@ describe('Database', function() {
 		});	
 
 		it('create example', function(done) {
+			this.timeout(20000);
 			var startDate = new Date('2014-01-01');
 			var endDate = new Date('2015-12-01');
-			_.times(50, function() {
-				console.log(rand.date(startDate, endDate));
+			var orders = [];
+
+			_.each(customers, function(c) {
+				//randomize or not
+				c = rand.pick(customers);
+
+				console.log('processing ' + c.name);
+				var date = rand.date(startDate, endDate);
+
+				var products_in_order = [];
+				var n = Math.max(1, rand.integer(-3, 5)); 
+
+				_.times(n, function() {
+					var p = rand.pick(products);
+					var po = {
+						product_id: p.id,
+						unit_price: p.price,
+						quantity: 1 + 1*(rand.integer(1, 5) > 3),
+						modified_by: 'www',
+						modified_on: date.toISOString().replace('T', ' ')
+					}
+					products_in_order.push(po);
+				});
+
+				var total = Math.round(_.reduce(products_in_order, function(t, po) {
+					return t + po.quantity * po.unit_price;
+				}, 0) * 100) / 100;
+
+				var order = {
+					order_date: date.toISOString().substr(0,10),
+					customer_id: c.id,
+					total_amount: total,
+					modified_by: 'www',
+					modified_on: date.toISOString().replace('T', ' ')
+				}
+				
+				order.products = products_in_order;
+
+				orders.push(order);
+			});
+
+			var products_in_orders = [];
+
+			db.insert('orders', orders, function(err, ids) {
+				if (err) {
+					console.log(err);
+					done();
+				} else {
+					console.log('inserted orders... ' + ids.length);
+				}
+					
+				for(var i = 0;i < orders.length; ++i) {
+					_.each(orders[i].products, function(po) {
+						po.order_id = ids[i];
+					});
+					products_in_orders =
+						products_in_orders.concat(orders[i].products);
+				}
+
+
+				db.insert('products_in_orders', products_in_orders, 
+					function(err, ids) {
+					if (err) {
+						console.log(err);
+						done();
+					} else {
+						console.log('inserted products_in_orders... ' 
+									+ ids.length);
+					}
+					done();
+				});
+					
+
+				
+				//console.log(order);
+				//console.log(items);
+
 			});
 			//log.debug(products);
-			done();
+			//done();
 		});
 	});
 

@@ -1,10 +1,12 @@
 
+var APP_PATH = "../app/";
+
 var assert = require('assert')
 	, _ = require('underscore')
 	, util = require('util')
 	, sqlite3 = require('sqlite3').verbose()
-	, schema = require('../app/Schema')
-	, Model = require('../app/Database').Database;
+	, schema = require(APP_PATH + 'Schema')
+	, Model = require(APP_PATH + 'Database').Database;
 	
 var log = global.log;
 

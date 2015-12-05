@@ -876,7 +876,9 @@ schema.Schema.prototype.filterSQL = function(table, filterClauses) {
 										filter.field
 								); 	
 
-			sql_params.push(filter.value);
+			//(prefix last + phrase query) - see sqlite fts
+			var searchValue = '"' + filter.value + '*"';  
+			sql_params.push(searchValue);
 
 		} else {
 			//unknown op

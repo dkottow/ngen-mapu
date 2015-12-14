@@ -3,7 +3,7 @@ var assert = require('assert')
 	, _ = require('underscore')
 	, util = require('util')
 	, sqlite3 = require('sqlite3').verbose()
-	, schema = require('../app/Schema')
+	, Schema = require('../app/Schema').Schema
 	, Model = require('../app/Database').Database;
 	
 var log = global.log;
@@ -152,7 +152,7 @@ describe('Schema', function() {
 
 	describe('init()', function() {
 		it('ctor guards tableDef', function() {
-			var db = new schema.Schema([
+			var db = new Schema([
 					 {"name": "table_foo"
 				}
 			]);
@@ -162,7 +162,7 @@ describe('Schema', function() {
 			});
 		});
 		it('ctor guards fieldDef', function() {
-			var db = new schema.Schema([
+			var db = new Schema([
 					 { "name": "test"
 					 , "fields": {
 							"id": {
@@ -178,7 +178,7 @@ describe('Schema', function() {
 			});
 		});
 		it('ctor guards opbligatory fields', function() {
-			var db = new schema.Schema([
+			var db = new Schema([
 					 { "name": "test"
 					 , "fields": {
 							  "id": {
@@ -205,14 +205,14 @@ describe('Schema', function() {
 		var dbFile = "test/test-create.sqlite";
 		
 		before(function(done) {
-			var db = new schema.Schema(testSchema);
-			schema.Schema.remove(dbFile, function(err) {
+			var db = new Schema(testSchema);
+			Schema.remove(dbFile, function(err) {
 				done();
 			});
 		});	
 
 		it('createSQL example', function() {
-			var db = new schema.Schema(testSchema);
+			var db = new Schema(testSchema);
 
 /*
 db.init(function(err) {
@@ -233,7 +233,7 @@ return;
 
 		it('create example', function(done) {
 	
-			var db = new schema.Schema(testSchema);
+			var db = new Schema(testSchema);
 			db.init(function(err) {
 				if (err) {
 					log.info(err);
@@ -254,7 +254,7 @@ return;
 /*
 		it('drop_table example', function(done) {
 	
-			var db = new schema.Schema();
+			var db = new Schema();
 			db.read(dbFile, function(err) {
 				if (err) {
 					log.info("ERROR ++++ ");
@@ -275,7 +275,7 @@ return;
 
 		it('update example', function(done) {
 	
-			var db = new schema.Schema();
+			var db = new Schema();
 			db.read(dbFile, function(err) {
 				if (err) {
 					log.info("ERROR ++++ ");
@@ -348,7 +348,7 @@ return;
 
 /* TODO
 		it('self ref example', function(done) {
-			var db = new schema.Schema(selfRefSchema);
+			var db = new Schema(selfRefSchema);
 
 			db.init(function(err) {
 				if (err) {

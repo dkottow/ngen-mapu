@@ -46,7 +46,7 @@ describe('Database', function() {
 		});	
 
 		it('create orders', function(done) {
-			this.timeout(60000);
+			this.timeout(90000);
 
 			var startDate = new Date('2014-01-01');
 			var endDate = new Date('2015-12-01');
@@ -122,6 +122,7 @@ describe('Database', function() {
 
 				//console.log('processing ' + c.name);
 				var date = rand.date(startDate, endDate);
+				var modDate = date.toISOString().substr(0,19).replace('T', ' ');
 
 				var products_in_order = [];
 				var itemsCount = randBetweenGauss(1, maxItemsPerOrder, 3); 
@@ -133,7 +134,7 @@ describe('Database', function() {
 						unit_price: p.price,
 						quantity: randBetweenGauss(1, 3, 0.5),
 						modified_by: 'www',
-						modified_on: date.toISOString().replace('T', ' ')
+						modified_on: modDate
 					}
 					products_in_order.push(po);
 				});
@@ -147,7 +148,7 @@ describe('Database', function() {
 					customer_id: c.id,
 					total_amount: total,
 					modified_by: 'www',
-					modified_on: date.toISOString().replace('T', ' ')
+					modified_on: modDate
 				}
 				
 				order.products = products_in_order;

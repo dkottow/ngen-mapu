@@ -18,6 +18,7 @@
 	, "tmp": "*"
   }
   , "devDependencies": {
+	"mocha": "*",
 	"request": "*",
 	"probdist": "*",
 	"random-js": "*"

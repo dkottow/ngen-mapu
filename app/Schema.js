@@ -244,8 +244,8 @@ Schema.prototype.createSQL = function() {
 
 	_.each(this.tables, function(t) {
 		sql += t.createSQL() + '\n\n';
-		sql += this.createViewSQL(t) + '\n\n';
-		sql += t.createSearchSQL() + '\n\n';
+//		sql += this.createViewSQL(t) + '\n\n';
+//		sql += t.createSearchSQL() + '\n\n';
 		sql += t.insertPropSQL() + '\n\n';
 	}, this);
 
@@ -762,9 +762,9 @@ function joinTablePath(tables, exclude) {
 			if (t == pt) {
 				joinClause = joinClause 
 				  + util.format(" INNER JOIN %s as %s ON %s.%s = %s.id", 
-								pt.name, tableAlias(pt.name, 1),
+								pt.name, pt.alias(1),
 								t['name'], fk.name, 
-								tableAlias(pt.name, 1));
+								pt.alias(1));
 			} else {
 				joinClause = joinClause 
 				  + util.format(" INNER JOIN %s ON %s.%s = %s.id", 

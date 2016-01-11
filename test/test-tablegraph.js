@@ -5,7 +5,8 @@ var assert = require('assert')
 	, graphlib = require('graphlib')
 	, Table = require('../app/Table.js').Table
 	, TableGraph = require('../app/TableGraph.js').TableGraph
-	, GetAllPaths = require('../app/TableGraph.js').GetAllPaths;
+	, graphutil = require('../app/graph_util.js')
+	, Schema = require('../app/Schema.js').Schema;
 	
 var log = global.log;
 
@@ -33,10 +34,23 @@ describe('GetAllPaths', function() {
 		});
 
 	it('get all paths', function() {
-		var allPaths = GetAllPaths(graph, '2', '7');
+		var allPaths = graphutil.GetAllPaths(graph, '2', '7');
 		console.log(allPaths.paths);
-			
+	});
 
+	it('get cycle', function() {
+		var result = graphutil.FindCycle(graph);
+		console.log(result.cycle);
+	});
+
+	it('get minimum spanning tree', function() {
+		var mst = graphlib.alg.prim(graph, function(e) { return 1; });
+		console.log(mst.edges());
+	});
+
+	it('get all cycles', function() {
+		var result = graphutil.FindAllCycles(graph);
+		console.log(result.cycles);
 	});
 });
 
@@ -185,9 +199,35 @@ describe('TableGraph SportEvent', function() {
 			return new Table(def);
 		});
 		tableGraph = new TableGraph(tables);
+/*
+		schema = new Schema(tables);
+		schema.init(function() {
+			schema.create('sport_teams.sqlite');
+		});
+*/
 	});	
 
 	it('TableGraph.init', function() {
+		console.log('\n*** nodes ***');
+		console.log(tableGraph.graph.nodes());
+		console.log('*** edges ***');
+		console.log(tableGraph.graph.edges());
+		console.log('\n*** spanning trees ***');
+		_.each(tableGraph.trees, function(tree) {
+			console.log(tree.edges());
+		});
+		console.log('\n*** joins ***');
+		var joins = tableGraph.tableJoins(['accomodations', 'persons']);
+		console.log(joins);
+		var joins = tableGraph.tableJoins(['teams', 'persons']);
+		console.log(joins);
+		var joins = tableGraph.tableJoins(tableGraph.tables());
+		console.log(joins);
+
+
+		//console.log(tableGraph.minimumSpanningTree.edges());
+		console.log('\n*** cycles ***');
+		console.log(tableGraph.cycles);
 
 /*
 		console.log('*** edges ***');
@@ -210,12 +250,13 @@ describe('TableGraph SportEvent', function() {
 
 	});
 
+/*
 	it('TableGraph.extendPath', function() {
-		var tables = _.sample(tableGraph.tables(), 2);
+		var tables = _.sample(tableGraph.tables(), 5);
 
 		var paths = tableGraph.joinPaths(tables);
 		console.log(paths);
 	});
-
+*/
 });
 

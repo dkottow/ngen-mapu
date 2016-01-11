@@ -224,39 +224,7 @@ describe('TableGraph SportEvent', function() {
 		var joins = tableGraph.tableJoins(tableGraph.tables());
 		console.log(joins);
 
-
-		//console.log(tableGraph.minimumSpanningTree.edges());
-		console.log('\n*** cycles ***');
-		console.log(tableGraph.cycles);
-
-/*
-		console.log('*** edges ***');
-		console.log(tableGraph.graph.edges());
-
-		console.log('*** all paths ***');
-		_.each(tableGraph.tables(), function(n1) {
-			_.each(tableGraph.tables(), function(n2) {
-				console.log(n1 + " - " + n2);
-				var paths = tableGraph.paths[n1][n2];
-				_.each(paths, function(p) {
-					console.log(p);
-				});
-			});
-		});
-
-		//console.log('*** shortest paths ***');
-		//console.log(tableGraph.shortestPaths);
-*/
-
 	});
 
-/*
-	it('TableGraph.extendPath', function() {
-		var tables = _.sample(tableGraph.tables(), 5);
-
-		var paths = tableGraph.joinPaths(tables);
-		console.log(paths);
-	});
-*/
 });
 

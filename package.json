@@ -16,6 +16,7 @@
 	, "passport-oauth2": "*"
 	, "pegjs": "*"
 	, "tmp": "*"
+	, "graphlib": "*"
   }
   , "devDependencies": {
 	"mocha": "*",

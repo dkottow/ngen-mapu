@@ -9,7 +9,7 @@ var nodeIsTable = function(node) {
 }
 
 var getTableJoins = function(spanningTree, tables) {
-	console.log('getTableJoins ' + tables);
+	//console.log('getTableJoins ' + tables);
 	var result = {};
 
 	var paths = graphlib.alg.dijkstra(spanningTree, tables[0], 
@@ -48,27 +48,14 @@ var TableGraph = function(tables) {
 	}
 
 	me.tableJoins = function(tables) {
-		return getTableJoins(me.mst, tables);
-	}
-
-	function findAllTrees() { 
-		me.trees = [];
-		var gc = graphlib.json.read(graphlib.json.write(me.graph));
-		var cycles = graphutil.FindAllCycles(gc).cycle;
-
-		_.each(cycles, function(cycle) {
-
-			gc = graphlib.json.read(graphlib.json.write(me.graph));
-			_.each(cycles, function(c) {
-				if (c != cycle) {
-					gc.removeEdge(c[0], c[1]);
-					gc.removeEdge(c[1], c[0]);
-				}
-			});
-
-			var tree = graphlib.alg.prim(gc, function(e) { return 1; });
-			me.trees.push(tree);
+		var joins = _.map(me.trees, function(tree) { return getTableJoins(tree, tables); });
+		var hashFn = function(join) { return _.keys(join).sort().join(' '); }
+		var distinctJoins = {};
+		
+		_.each(joins, function(join) {
+			distinctJoins[hashFn(join)] = join;
 		});
+		return _.values(distinctJoins);
 	}
 
 	function init(tables) {	
@@ -91,19 +78,43 @@ var TableGraph = function(tables) {
 
 		});
 
-		//findAllTrees();
+		buildAllTrees();
+	}
 
-		me.mst = graphlib.alg.prim(me.graph, function(e) { return 1; });
-		me.cycles = graphutil.FindAllCycles(me.graph).cycles;
+	function buildAllTrees() { 
 
-		
+		me.trees = [];
+		var mst = graphlib.alg.prim(me.graph, function(e) { return 1; });
+		me.trees.push(mst);
 
-/*
-		me.shortestPaths = graphlib.alg.dijkstraAll(me.graph, 
-					function(e) { return 1; }, 
-					function(v) { return me.graph.nodeEdges(v); } 
+		var paths = graphlib.alg.dijkstraAll(mst,  
+					function(e) { return 1; },
+					function(v) { return mst.nodeEdges(v); } 
 		);
-*/
+
+		var cycles = graphutil.FindAllCycles(me.graph).cycles;
+		//console.log("found cycles count " + cycles.length);
+		_.each(cycles, function(cycle) {
+
+			var tables = _.filter(cycle, function(v) { return nodeIsTable(v) && mst.node(v); });
+			var t1 = tables[0];
+			var t2 = tables[tables.length - 1];
+			
+			var tree = graphlib.json.read(graphlib.json.write(mst));
+			
+			while (t1 != t2) {
+				tree.removeNode(paths[t1][t2].predecessor);
+				t2 = paths[t1][t2].predecessor;
+			}
+			//tree.removeNode(t1);
+
+			for(var i = 0; i < cycle.length; ++i) {
+				tree.setNode(cycle[i]);
+				if (i > 0) tree.setEdge(cycle[i - 1], cycle[i]);
+			}
+			me.trees.push(tree);
+			
+		});
 	}
 
 	init(tables);

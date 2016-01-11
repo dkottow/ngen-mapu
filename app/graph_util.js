@@ -25,6 +25,8 @@ function FindAllCycles(g)
 		if (c.length > 0) {
 			me.cycles.push(c);
 			//remove 1st edge from cycle found
+			console.log('found cycle ' + c) ;
+			console.log('removing edge ' + c[0] + ' - ' + c[1]) ;
 			gc.removeEdge(c[0], c[1]);
 			gc.removeEdge(c[1], c[0]);
 		}

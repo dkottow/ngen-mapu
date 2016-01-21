@@ -218,15 +218,30 @@ describe('TableGraph SportEvent', function() {
 			console.log(tree.edges());
 		});
 		console.log('\n*** joins ***');
-		var joins = tableGraph.tableJoins(['accomodations', 'persons']);
-		console.log(joins);
+		_.each([
+			  ['persons', 'accomodations']
+			, ['teams', 'persons']
+			, ['teams', 'athletes']
+			, ['athletes', 'persons']
+			, ['accomodations', 'persons', 'athletes']
+			, tableGraph.tables()
+		], function(tables) {
+			var joins = tableGraph.tableJoins(tables);
+			console.log('tables ' + tables);
+			console.log('joins count ' + joins.length);
+			console.log(joins);
+		});
+/*
 		var joins = tableGraph.tableJoins(['teams', 'persons']);
+		console.log(joins);
+		var joins = tableGraph.tableJoins(['persons', 'athletes']);
 		console.log(joins);
 		var joins = tableGraph.tableJoins(tableGraph.tables());
 		console.log(joins);
-
+*/
 	});
 
+/*
 	it('Get all paths. persons - teams', function() {
 		var allPaths = graphutil.GetAllPaths(tableGraph.graph, 'persons', 'teams');
 		console.log(allPaths.paths);
@@ -240,5 +255,6 @@ describe('TableGraph SportEvent', function() {
 		var allPaths = graphutil.GetAllPaths(tableGraph.graph, 'teams', 'athletes');
 		console.log(allPaths.paths);
 	});
+*/
 });
 

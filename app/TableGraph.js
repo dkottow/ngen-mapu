@@ -10,6 +10,7 @@ var nodeIsTable = function(node) {
 
 var getTableJoins = function(spanningTree, tables) {
 	//console.log('getTableJoins ' + tables);
+	//console.log('tree ' + spanningTree.isDirected());
 	var result = {};
 
 	var paths = graphlib.alg.dijkstra(spanningTree, tables[0], 
@@ -84,9 +85,30 @@ var TableGraph = function(tables) {
 
 	function buildAllTrees() { 
 
+		var graph = graphlib.json.read(graphlib.json.write(me.graph));
+
 		me.trees = [];
-		var mst = graphlib.alg.prim(me.graph, function(e) { return 1; });
-		console.log(mst.nodes());
+
+		var weightFn = function(e) { 
+			//avoid branching by punishing edge count on nodes 
+			console.log('weight ' + e.v + ' ' + e.w + ' = ' +
+				( me.graph.nodeEdges(e.v).length 
+				+ me.graph.nodeEdges(e.w).length)
+			); 
+			return me.graph.nodeEdges(e.v).length; 
+				+  me.graph.nodeEdges(e.w).length; 
+		};
+
+
+		var weightFn = function(e) {
+			console.log('weight ' + e.v + ' ' + e.w +  ' = ' + 
+				graph.inEdges(e.w).length);
+
+			return graph.inEdges(e.w).length;
+		}
+
+		var mst = graphlib.alg.prim(graph, weightFn);
+		//console.log(mst.nodes());
 		me.trees.push(mst);
 
 		var paths = graphlib.alg.dijkstraAll(mst,  
@@ -98,6 +120,17 @@ var TableGraph = function(tables) {
 		console.log("++ found cycles count " + cycles.length);
 		_.each(cycles, function(cycle) {
 
+/*
+			var tree = graphlib.json.read(graphlib.json.write(mst));
+
+			for(var i = 1; i < cycle.length; ++i) {
+				var edge = mst.edge(cycle[i - 1], cycle[i]);
+				if ( ! edge) {
+					mst.setEdge(cycle[i - 1], cycle[i]);
+				}
+			}
+*/
+
 			var tables = _.filter(cycle, function(v) { 
 				return nodeIsTable(v) && mst.hasNode(v); 
 			});
@@ -107,7 +140,7 @@ var TableGraph = function(tables) {
 			var tree = graphlib.json.read(graphlib.json.write(mst));
 			
 			while (t1 != t2) {
-				//console.log('removing ' + paths[t1][t2].predecessor);
+				console.log('removing ' + paths[t1][t2].predecessor);
 				tree.removeNode(paths[t1][t2].predecessor);
 				t2 = paths[t1][t2].predecessor;
 			}
@@ -116,7 +149,7 @@ var TableGraph = function(tables) {
 			for(var i = 0; i < cycle.length; ++i) {
 				tree.setNode(cycle[i]);
 				if (i > 0) tree.setEdge(cycle[i - 1], cycle[i]);
-				//console.log('adding ' + cycle[i]);
+				console.log('adding ' + cycle[i]);
 			}
 			me.trees.push(tree);
 			

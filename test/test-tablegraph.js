@@ -207,6 +207,7 @@ describe('TableGraph SportEvent', function() {
 */
 	});	
 
+
 	it('TableGraph.init', function() {
 		console.log('\n*** nodes ***');
 		console.log(tableGraph.graph.nodes());
@@ -226,5 +227,18 @@ describe('TableGraph SportEvent', function() {
 
 	});
 
+	it('Get all paths. persons - teams', function() {
+		var allPaths = graphutil.GetAllPaths(tableGraph.graph, 'persons', 'teams');
+		console.log(allPaths.paths);
+	});
+
+	it('Get all paths. persons - athletes', function() {
+		var allPaths = graphutil.GetAllPaths(tableGraph.graph, 'persons', 'athletes');
+		console.log(allPaths.paths);
+	});
+	it('Get all paths. teams - athletes', function() {
+		var allPaths = graphutil.GetAllPaths(tableGraph.graph, 'teams', 'athletes');
+		console.log(allPaths.paths);
+	});
 });
 

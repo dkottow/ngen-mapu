@@ -33,6 +33,7 @@ var getTableJoins = function(spanningTree, tables) {
 		}
 	}
 
+	//console.log(result);
 	return result;
 }
 
@@ -85,6 +86,7 @@ var TableGraph = function(tables) {
 
 		me.trees = [];
 		var mst = graphlib.alg.prim(me.graph, function(e) { return 1; });
+		console.log(mst.nodes());
 		me.trees.push(mst);
 
 		var paths = graphlib.alg.dijkstraAll(mst,  
@@ -93,16 +95,19 @@ var TableGraph = function(tables) {
 		);
 
 		var cycles = graphutil.FindAllCycles(me.graph).cycles;
-		//console.log("found cycles count " + cycles.length);
+		console.log("++ found cycles count " + cycles.length);
 		_.each(cycles, function(cycle) {
 
-			var tables = _.filter(cycle, function(v) { return nodeIsTable(v) && mst.node(v); });
+			var tables = _.filter(cycle, function(v) { 
+				return nodeIsTable(v) && mst.hasNode(v); 
+			});
 			var t1 = tables[0];
 			var t2 = tables[tables.length - 1];
 			
 			var tree = graphlib.json.read(graphlib.json.write(mst));
 			
 			while (t1 != t2) {
+				//console.log('removing ' + paths[t1][t2].predecessor);
 				tree.removeNode(paths[t1][t2].predecessor);
 				t2 = paths[t1][t2].predecessor;
 			}
@@ -111,6 +116,7 @@ var TableGraph = function(tables) {
 			for(var i = 0; i < cycle.length; ++i) {
 				tree.setNode(cycle[i]);
 				if (i > 0) tree.setEdge(cycle[i - 1], cycle[i]);
+				//console.log('adding ' + cycle[i]);
 			}
 			me.trees.push(tree);
 			

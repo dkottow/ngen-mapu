@@ -22,6 +22,7 @@ var getTableJoins = function(spanningTree, tables) {
 	for(var i = 1; i < tables.length; ++i) {
 
 		var j1 = tables[i];
+//console.log('try pred of ' + j1);
 		var fk = paths[j1].predecessor;
 		var j2 = paths[fk].predecessor;
 		result[fk] = [j1, j2];
@@ -41,7 +42,7 @@ var getTableJoins = function(spanningTree, tables) {
 var TableGraph = function(tables) {
 	var me = this;
 
-	me.graph = new graphlib.Graph({ directed: false });
+	me.graph = new graphlib.Graph({ directed: true });
 
 	me.tables = function() {
 		return _.filter(me.graph.nodes(), function(node) {
@@ -50,7 +51,9 @@ var TableGraph = function(tables) {
 	}
 
 	me.tableJoins = function(tables) {
-		var joins = _.map(me.trees, function(tree) { return getTableJoins(tree, tables); });
+		var joins = _.map(me.trees, function(tree) { 
+			return getTableJoins(tree, tables); 
+		});
 		var hashFn = function(join) { return _.keys(join).sort().join(' '); }
 		var distinctJoins = {};
 		
@@ -73,6 +76,7 @@ var TableGraph = function(tables) {
 
 			_.each(fks, function(fk) {			
 				var fkFullName = table.name + "." + fk.name;
+				console.log('fk ' + fkFullName);
 				me.graph.setNode(fkFullName);
 				me.graph.setEdge(fkFullName, fk.fk_table);
 				me.graph.setEdge(table.name, fkFullName);
@@ -85,75 +89,41 @@ var TableGraph = function(tables) {
 
 	function buildAllTrees() { 
 
-		var graph = graphlib.json.read(graphlib.json.write(me.graph));
-
 		me.trees = [];
 
-		var weightFn = function(e) { 
-			//avoid branching by punishing edge count on nodes 
-			console.log('weight ' + e.v + ' ' + e.w + ' = ' +
-				( me.graph.nodeEdges(e.v).length 
-				+ me.graph.nodeEdges(e.w).length)
-			); 
-			return me.graph.nodeEdges(e.v).length; 
-				+  me.graph.nodeEdges(e.w).length; 
-		};
-
-
 		var weightFn = function(e) {
+			/*
 			console.log('weight ' + e.v + ' ' + e.w +  ' = ' + 
-				graph.inEdges(e.w).length);
-
-			return graph.inEdges(e.w).length;
+				me.graph.inEdges(e.w).length);
+			*/
+			return me.graph.inEdges(e.w).length;
 		}
 
-		var mst = graphlib.alg.prim(graph, weightFn);
-		//console.log(mst.nodes());
-		me.trees.push(mst);
+		var mst = graphlib.alg.prim(me.graph, weightFn);
+		var tree = graphutil.DirectTreeEdgesAsGraph(mst, me.graph);
+		me.trees.push(tree);
 
-		var paths = graphlib.alg.dijkstraAll(mst,  
-					function(e) { return 1; },
-					function(v) { return mst.nodeEdges(v); } 
-		);
+		var graph = graphlib.json.read(graphlib.json.write(me.graph));
 
-		var cycles = graphutil.FindAllCycles(me.graph).cycles;
-		console.log("++ found cycles count " + cycles.length);
-		_.each(cycles, function(cycle) {
-
-/*
-			var tree = graphlib.json.read(graphlib.json.write(mst));
-
-			for(var i = 1; i < cycle.length; ++i) {
-				var edge = mst.edge(cycle[i - 1], cycle[i]);
-				if ( ! edge) {
-					mst.setEdge(cycle[i - 1], cycle[i]);
-				}
+		var cycle = graphutil.FindCycle(graph).cycle;
+		while(cycle.length > 0) {
+			//console.log(graph.edges());
+			//remove 1st edge from cycle found
+			console.log('found cycle ' + cycle);
+			var e = { v: cycle[0], w: cycle[1] };
+			if ( ! graph.hasEdge(e)) {
+				e = { v: cycle[1], w: cycle[0] };
 			}
-*/
+			console.log('removing edge')
+			console.log(e);
+			graph.removeEdge(e);
 
-			var tables = _.filter(cycle, function(v) { 
-				return nodeIsTable(v) && mst.hasNode(v); 
-			});
-			var t1 = tables[0];
-			var t2 = tables[tables.length - 1];
-			
-			var tree = graphlib.json.read(graphlib.json.write(mst));
-			
-			while (t1 != t2) {
-				console.log('removing ' + paths[t1][t2].predecessor);
-				tree.removeNode(paths[t1][t2].predecessor);
-				t2 = paths[t1][t2].predecessor;
-			}
-			//tree.removeNode(t1);
-
-			for(var i = 0; i < cycle.length; ++i) {
-				tree.setNode(cycle[i]);
-				if (i > 0) tree.setEdge(cycle[i - 1], cycle[i]);
-				console.log('adding ' + cycle[i]);
-			}
+			mst = graphlib.alg.prim(graph, weightFn);
+			tree = graphutil.DirectTreeEdgesAsGraph(mst, graph);
 			me.trees.push(tree);
-			
-		});
+
+			cycle = graphutil.FindCycle(graph).cycle;
+		}
 	}
 
 	init(tables);

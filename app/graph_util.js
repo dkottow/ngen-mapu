@@ -5,6 +5,7 @@ var util = require('util');
 exports.GetAllPaths = GetAllPaths;
 exports.FindAllCycles = FindAllCycles;
 exports.FindCycle = FindCycle;
+exports.DirectTreeEdgesAsGraph = DirectTreeEdgesAsGraph;
 
 /*
  * FindAllCycles proceeds iteratively until no further cycles found.
@@ -26,7 +27,7 @@ function FindAllCycles(g)
 			me.cycles.push(c);
 			//remove 1st edge from cycle found
 			console.log('found cycle ' + c) ;
-			console.log('removing edge ' + c[0] + ' - ' + c[1]) ;
+			console.log('removing undirected edge ' + c[0] + ' - ' + c[1]) ;
 			gc.removeEdge(c[0], c[1]);
 			gc.removeEdge(c[1], c[0]);
 		}
@@ -215,6 +216,19 @@ function GetAllPaths(graph, start, end)
 
 function r4() {
 	return Math.random().toString().substr(4,4);
+}
+
+function DirectTreeEdgesAsGraph(tree, graph) {
+	var result = new graphlib.Graph({ directed: true });
+	_.each(tree.edges(), function(e) {
+		if (graph.hasEdge(e)) {
+			result.setEdge(e);
+		} else {
+			//flip edge
+			result.setEdge(e.w, e.v);
+		}
+	});
+	return result;
 }
 
 

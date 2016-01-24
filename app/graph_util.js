@@ -9,10 +9,9 @@ exports.DirectTreeEdgesAsGraph = DirectTreeEdgesAsGraph;
 
 /*
  * FindAllCycles proceeds iteratively until no further cycles found.
- * It uses 
- *		FindCycle from Sedgewick to find a cycle, 
- *		opens that cycle by removing its first edge
- * until no further cycles can be found.
+ * It uses FindCycle from Sedgewick to find a cycle, 
+ * then opens that cycle by removing its first edge. 
+ * Iterates until no further cycles can be found.
  */
  		
 function FindAllCycles(g) 
@@ -26,8 +25,8 @@ function FindAllCycles(g)
 		if (c.length > 0) {
 			me.cycles.push(c);
 			//remove 1st edge from cycle found
-			console.log('found cycle ' + c) ;
-			console.log('removing undirected edge ' + c[0] + ' - ' + c[1]) ;
+			//console.log('found cycle ' + c) ;
+			//console.log('removing undirected edge ' + c[0] + ' - ' + c[1]) ;
 			gc.removeEdge(c[0], c[1]);
 			gc.removeEdge(c[1], c[0]);
 		}

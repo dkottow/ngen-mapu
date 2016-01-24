@@ -4,9 +4,37 @@ var util = require('util');
 
 var graphutil = require('./graph_util.js');
 
+/*
+ * from http://rosettacode.org/wiki/Power_set
+ */
+
+function powerset(ary) {
+    var ps = [[]];
+    for (var i=0; i < ary.length; i++) {
+        for (var j = 0, len = ps.length; j < len; j++) {
+            ps.push(ps[j].concat(ary[i]));
+        }
+    }
+    return ps;
+}
+
 var nodeIsTable = function(node) {
 	return node.indexOf('.') < 0;
 }
+
+function buildTableTree(graph, weightFn) {
+	var tree = graphlib.alg.prim(graph, weightFn);
+
+	var keyNodes = _.filter(tree.nodes(), function(v) {
+		return ! nodeIsTable(v) && tree.nodeEdges(v).length <= 1;
+	});
+	_.each(keyNodes, function(v) { tree.removeNode(v); });
+
+	tree = graphutil.DirectTreeEdgesAsGraph(tree, graph);
+
+	return tree;
+}
+
 
 var getTableJoins = function(spanningTree, tables) {
 	//console.log('getTableJoins ' + tables);
@@ -76,7 +104,7 @@ var TableGraph = function(tables) {
 
 			_.each(fks, function(fk) {			
 				var fkFullName = table.name + "." + fk.name;
-				console.log('fk ' + fkFullName);
+				//console.log('fk ' + fkFullName);
 				me.graph.setNode(fkFullName);
 				me.graph.setEdge(fkFullName, fk.fk_table);
 				me.graph.setEdge(table.name, fkFullName);
@@ -91,39 +119,45 @@ var TableGraph = function(tables) {
 
 		me.trees = [];
 
+		var distinctTrees = {};
+
 		var weightFn = function(e) {
-			/*
-			console.log('weight ' + e.v + ' ' + e.w +  ' = ' + 
-				me.graph.inEdges(e.w).length);
-			*/
-			return me.graph.inEdges(e.w).length;
+			return 1; 
 		}
 
-		var mst = graphlib.alg.prim(me.graph, weightFn);
-		var tree = graphutil.DirectTreeEdgesAsGraph(mst, me.graph);
-		me.trees.push(tree);
+		var tree = buildTableTree(me.graph, weightFn);
 
-		var graph = graphlib.json.read(graphlib.json.write(me.graph));
+		var hashFn = function(tree) { 
+			var keys = _.filter(tree.nodes(), function(v) {
+				return ! nodeIsTable(v);
+			});
+			return keys.sort().join(' '); 
+		}
 
-		var cycle = graphutil.FindCycle(graph).cycle;
-		while(cycle.length > 0) {
-			//console.log(graph.edges());
-			//remove 1st edge from cycle found
-			console.log('found cycle ' + cycle);
-			var e = { v: cycle[0], w: cycle[1] };
-			if ( ! graph.hasEdge(e)) {
-				e = { v: cycle[1], w: cycle[0] };
+		distinctTrees[hashFn(tree)] = tree;
+
+		var cycles = graphutil.FindAllCycles(me.graph).cycles;
+		var cycleKeys = _.uniq(_.filter(_.flatten(cycles), function(v) {
+			return ! nodeIsTable(v);
+		}));
+
+		//console.log('cycleKeys');
+		//console.log(cycleKeys);
+
+		var weightCombinations = powerset(cycleKeys);
+		_.each(weightCombinations, function(weights) {
+			weightFn = function(e) {
+				if (_.contains(weights, e.v)) return 0;
+				if (_.contains(weights, e.w)) return 0;
+				return 1;
 			}
-			console.log('removing edge')
-			console.log(e);
-			graph.removeEdge(e);
 
-			mst = graphlib.alg.prim(graph, weightFn);
-			tree = graphutil.DirectTreeEdgesAsGraph(mst, graph);
-			me.trees.push(tree);
+			tree = buildTableTree(me.graph, weightFn);
+			distinctTrees[hashFn(tree)] = tree;
 
-			cycle = graphutil.FindCycle(graph).cycle;
-		}
+		});
+
+		me.trees = _.values(distinctTrees);
 	}
 
 	init(tables);

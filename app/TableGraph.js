@@ -47,19 +47,26 @@ var getTableJoins = function(spanningTree, tables) {
 	);
 	//console.log(paths);
 
+	var join = function(fk, j1, j2) {
+		var fkTable = fk.split('.')[0];
+		return fkTable == j1 ? [j1, j2] : [j2, j1];
+	}
+
 	for(var i = 1; i < tables.length; ++i) {
 
 		var j1 = tables[i];
 //console.log('try pred of ' + j1);
 		var fk = paths[j1].predecessor;
 		var j2 = paths[fk].predecessor;
-		result[fk] = [j1, j2];
+		result[fk] = join(fk, j1, j2);
+		//result[fk] = [j1, j2];
 
 		while(j2 != tables[0]) {
 			j1 = j2;
 			fk = paths[j1].predecessor;
 			j2 = paths[fk].predecessor;
-			result[fk] = [j1, j2];
+			result[fk] = join(fk, j1, j2);
+			//result[fk] = [j1, j2];
 		}
 	}
 
@@ -78,15 +85,48 @@ var TableGraph = function(tables) {
 		});
 	}
 
+	me.joinSQL = function(tables) {
+
+		var joinPaths = me.tableJoins(tables);
+
+		var result = _.map(joinPaths, function(joinPath) {
+			var fkTables = _.map(joinPath, function(p) {
+				return p[0];
+			});
+			var idTables = _.map(joinPath, function(p) {
+				return p[1];
+			});
+			var startTable = _.find(fkTables, function(t) {
+				return ! _.contains(idTables, t)
+			});
+
+			return _.reduce(joinPath, function(memo, ts, fk) {
+				return memo + util.format(' INNER JOIN %s ON %s = %s.id ',
+					ts[1], fk, ts[1])
+				}, startTable);
+		});
+		
+		return result;
+	}
+
 	me.tableJoins = function(tables) {
-		var joins = _.map(me.trees, function(tree) { 
+		var joinPaths = _.map(me.trees, function(tree) { 
 			return getTableJoins(tree, tables); 
 		});
+
+		//filter out invalid join paths (rhs of joinPath has duplicates)
+		joinPaths = _.filter(joinPaths, function(joinPath) {
+			var idTables = _.map(joinPath, function(p) {
+				return p[1];
+			});
+			return _.uniq(idTables).length == idTables.length;
+		});
+
 		var hashFn = function(join) { return _.keys(join).sort().join(' '); }
 		var distinctJoins = {};
 		
-		_.each(joins, function(join) {
-			distinctJoins[hashFn(join)] = join;
+		_.each(joinPaths, function(joinPath) {
+			distinctJoins[hashFn(joinPath)] = joinPath;
 		});
 		return _.values(distinctJoins);
 	}

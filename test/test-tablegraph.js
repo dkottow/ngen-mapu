@@ -230,31 +230,11 @@ describe('TableGraph SportEvent', function() {
 			console.log('tables ' + tables);
 			console.log('joins count ' + joins.length);
 			console.log(joins);
+			var sql = tableGraph.joinSQL(tables);
+			console.log('join SQL');
+			console.log(sql);
 		});
-/*
-		var joins = tableGraph.tableJoins(['teams', 'persons']);
-		console.log(joins);
-		var joins = tableGraph.tableJoins(['persons', 'athletes']);
-		console.log(joins);
-		var joins = tableGraph.tableJoins(tableGraph.tables());
-		console.log(joins);
-*/
 	});
 
-/*
-	it('Get all paths. persons - teams', function() {
-		var allPaths = graphutil.GetAllPaths(tableGraph.graph, 'persons', 'teams');
-		console.log(allPaths.paths);
-	});
-
-	it('Get all paths. persons - athletes', function() {
-		var allPaths = graphutil.GetAllPaths(tableGraph.graph, 'persons', 'athletes');
-		console.log(allPaths.paths);
-	});
-	it('Get all paths. teams - athletes', function() {
-		var allPaths = graphutil.GetAllPaths(tableGraph.graph, 'teams', 'athletes');
-		console.log(allPaths.paths);
-	});
-*/
 });
 

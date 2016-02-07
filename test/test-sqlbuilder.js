@@ -2,57 +2,11 @@
 var assert = require('assert')
 	, _ = require('underscore')
 	, util = require('util')
-	, graphlib = require('graphlib')
 	, Table = require('../app/Table.js').Table
 	, TableGraph = require('../app/TableGraph.js').TableGraph
-	, graphutil = require('../app/graph_util.js')
-	, Schema = require('../app/Schema.js').Schema;
+	, SqlBuilder = require('../app/SqlBuilder.js').SqlBuilder;
 	
 var log = global.log;
-
-describe('GetAllPaths', function() {
-
-		var graph = new graphlib.Graph({ directed: false });
-
-		before(function() {
-			graph.setEdge('1', '6', 1.0);
-			graph.setEdge('1', '2', 2.5 );	
-			graph.setEdge('1', '4', 3.0 );
-			graph.setEdge('1', '5', 0.5 );
-			graph.setEdge('2', '1', 0.5 );
-			graph.setEdge('2', '3', 3.0 );
-			graph.setEdge('2', '4', 2.0 );
-			graph.setEdge('2', '7', 10.5 );
-			graph.setEdge('2', '5', 2.5 );
-			graph.setEdge('3', '4', 1.0 );
-			graph.setEdge('3', '7', 1.5 );
-			graph.setEdge('4', '5', 1.0 );
-			graph.setEdge('5', '4', 0.5 );
-			graph.setEdge('5', '6', 0.5 );
-			graph.setEdge('5', '7', 1.5 );
-			graph.setEdge('7', '6', 1.0 );
-		});
-
-	it('get all paths', function() {
-		var allPaths = graphutil.GetAllPaths(graph, '2', '7');
-		console.log(allPaths.paths);
-	});
-
-	it('get cycle', function() {
-		var result = graphutil.FindCycle(graph);
-		console.log(result.cycle);
-	});
-
-	it('get minimum spanning tree', function() {
-		var mst = graphlib.alg.prim(graph, function(e) { return 1; });
-		console.log(mst.edges());
-	});
-
-	it('get all cycles', function() {
-		var result = graphutil.FindAllCycles(graph);
-		console.log(result.cycles);
-	});
-});
 
 describe('SandwichSales DB', function() {
 	var tableDefs = [
@@ -195,40 +149,30 @@ describe('SandwichSales DB', function() {
 		 }
 	];
 
-	var tableGraph;
+	var sqlBuilder;
 	beforeEach(function() {		
 		var tables = _.map(tableDefs, function(def) {
 			return new Table(def);
 		});
-		tableGraph = new TableGraph(tables);
+		var tableGraph = new TableGraph(tables);
+		sqlBuilder = new SqlBuilder(tableGraph);
 	});	
 
 
 	it('TableGraph.init', function() {
-		console.log('\n*** nodes ***');
-		console.log(tableGraph.graph.nodes());
-		console.log('*** edges ***');
-		console.log(tableGraph.graph.edges());
-		console.log('\n*** spanning trees ***');
-		_.each(tableGraph.trees, function(tree) {
-			console.log(tree.edges());
-		});
-		console.log('\n*** joins ***');
+		console.log('\n*** join SQL ***');
 		_.each([
 			  ['products', 'orders']
 			, ['customers', 'products']
 			, ['customers', 'products_in_orders']
-			, tableGraph.tables()
+			, sqlBuilder.graph.tables()
 		], function(tables) {
-			var joins = tableGraph.tableJoins(tables);
 			console.log('tables ' + tables);
-			console.log('joins count ' + joins.length);
-			console.log(joins);
-/*
-			var sql = tableGraph.joinSQL(tables);
+
+			var sql = sqlBuilder.joinSQL(tables);
 			console.log('join SQL');
 			console.log(sql);
-*/
+
 		});
 	});
 
@@ -372,46 +316,6 @@ describe('AthleteTeam DB', function() {
 			}		
 		 }
 	];
-
-	
-	var tableGraph;
-	beforeEach(function() {		
-		var tables = _.map(tableDefs, function(def) {
-			return new Table(def);
-		});
-		tableGraph = new TableGraph(tables);
-	});	
-
-
-	it('TableGraph.init', function() {
-		console.log('\n*** nodes ***');
-		console.log(tableGraph.graph.nodes());
-		console.log('*** edges ***');
-		console.log(tableGraph.graph.edges());
-		console.log('\n*** spanning trees ***');
-		_.each(tableGraph.trees, function(tree) {
-			console.log(tree.edges());
-		});
-		console.log('\n*** joins ***');
-		_.each([
-			  ['persons', 'accomodations']
-			, ['teams', 'persons']
-			, ['teams', 'athletes']
-			, ['athletes', 'persons']
-			, ['accomodations', 'persons', 'athletes']
-			, tableGraph.tables()
-		], function(tables) {
-			var joins = tableGraph.tableJoins(tables);
-			console.log('tables ' + tables);
-			console.log('joins count ' + joins.length);
-			console.log(joins);
-/*
-			var sql = tableGraph.joinSQL(tables);
-			console.log('join SQL');
-			console.log(sql);
-*/
-		});
-	});
 
 });
 

@@ -139,10 +139,18 @@ Table.prototype.virtualFields = function() {
 }
 
 Table.prototype.viewFields = function() {
-//TODO add row_alias field (ref)
 	return [Field.REF_NAME]
 			.concat( _.pluck(_.values(this.fields), 'name'))
 			.concat(this.virtualFields());
+}
+
+Table.prototype.assertFields = function(fieldNames) {
+	var me = this;
+	_.each(fieldNames, function(f) {
+		if ( ! _.contains(me.viewFields(), f)) {
+			throw new Error("unknown field '" + f + "'");
+		}			
+	});		
 }
 
 Table.prototype.createSQL = function() {
@@ -261,6 +269,7 @@ Table.prototype.toJSON = function() {
 	return result;
 }
 
+//TODO obsolete
 Table.prototype.bfsPath = function(joinTable) {
 	//console.log(table.name);
 	//console.log(joinTable.name);

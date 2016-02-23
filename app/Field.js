@@ -174,7 +174,8 @@ Field.prototype.toJSON = function() {
 Field.REF_NAME = 'ref';
 
 Field.prototype.refName = function() {
-	return this.fk_table +'_ref';
+//TODO changeme
+	return this.fk_table + '_ref';
 }
 
 TextField = function(fieldDef) {

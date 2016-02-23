@@ -399,14 +399,6 @@ Schema.prototype.filterSQL = function(table, filterClauses) {
 	};
 }
 
-Schema.prototype.checkFields = function(table, fieldNames) {
-	_.each(fieldNames, function(f) {
-		if ( ! _.contains(table.viewFields(), f)) {
-			throw new Error("unknown field '" + f + "'");
-		}			
-	});		
-}
-
 
 Schema.prototype.fieldSQL = function(table, fields) {
 	var tableName = USE_VIEW ? table.viewName() : table.name;
@@ -425,7 +417,7 @@ Schema.prototype.fieldSQL = function(table, fields) {
 			fields = fields.concat(fk_fields);
 		}
 	} else {
-		this.checkFields(fields);
+		table.assertFields(fields);
 		fields = _.map(fields, function(f) {
 			return util.format('%s."%s" as %s', tableName, f, f);
 		});	
@@ -497,6 +489,7 @@ Schema.prototype.selectSQL = function(table, filterClauses, fields, orderClauses
 	return {'query': sql, 'params': filterSQL.params, 'countSql': countSQL};
 }
 
+//TODO reduce Schema class to roughly the methods that follow
 /******* start file ops *******/
 
 Schema.prototype.update = function(delTables, addTables, dbFile, cbAfter) {

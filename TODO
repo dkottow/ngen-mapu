@@ -1,3 +1,18 @@
+*** Self-joins. e.g. 
+
+SELECT p1.id + p1.name AS supervisor_ref, p2.id + p2.name AS substitute_ref FROM persons INNER JOIN persons as p1 on persons.supervisor_id = p1.id INNER JOIN persons as p2 on persons.substitute_id = p2.id WHERE XXX
+
+
+*** more than one join between 2 tables. a movie joining persons through two foreign keys should produce views like e.g. 
+
+SELECT persons.id + persons.name AS director_ref FROM movies
+INNER JOIN persons ON movies.director_id = persons.id 
+
+UNION 
+
+SELECT persons.id + persons.name AS lead_ref FROM movies
+INNER JOIN persons ON movies.lead_id = persons.id 
+
 
 *** Authorization
 access control with 2 roles admin, user. tables are admin, user too. all access is rw except user on admin tables which is ro. no individual permissions

@@ -84,6 +84,9 @@ TableGraph.prototype.tables = function() {
 	});
 }
 
+TableGraph.prototype.table = function(name) {
+	return this.graph.node(name);
+}
 
 TableGraph.prototype.tableJoins = function(tables) {
 	var joinPaths = _.map(this.trees, function(tree) { 

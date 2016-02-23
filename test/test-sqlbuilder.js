@@ -8,6 +8,18 @@ var assert = require('assert')
 	
 var log = global.log;
 
+function sqlReplaceParams(selectResult) {
+	var sql = selectResult.query;
+	var pos = sql.length - 1;
+	for(var i = selectResult.params.length - 1; i >= 0; --i) {
+		var param = selectResult.params[i];
+		pos = sql.lastIndexOf('?', pos);
+		if (_.isString(param)) param = "'" + param + "'";
+		sql = sql.substr(0, pos) + param + sql.substr(pos+1);
+	}
+	return sql;
+}
+
 describe('SandwichSales DB', function() {
 	var tableDefs = [
 		 { "name": "customers"
@@ -159,23 +171,86 @@ describe('SandwichSales DB', function() {
 	});	
 
 
-	it('TableGraph.init', function() {
-		console.log('\n*** join SQL ***');
+	it('SqlBuilder.joinSQL', function() {
+		
 		_.each([
 			  ['products', 'orders']
 			, ['customers', 'products']
 			, ['customers', 'products_in_orders']
 			, sqlBuilder.graph.tables()
 		], function(tables) {
-			console.log('tables ' + tables);
+			console.log('\ntables ' + tables);
 
 			var sql = sqlBuilder.joinSQL(tables);
-			console.log('join SQL');
+			console.log('sql');
 			console.log(sql);
 
 		});
 	});
 
+	it('SqlBuilder.filterSQL', function() {
+		var filterClauses = [
+			{
+				field: 'name',
+				table: 'customers',
+				op: 'eq',
+				value: 'Daniel'
+			},
+			{
+				field: 'total_amount',
+				table: 'orders',
+				op: 'btwn',
+				value: [40.00, 80.00]
+			},
+			{
+				field: '',
+				table: 'products',
+				op: 'search',
+				value: 'car'
+			},
+			
+		];
+		
+		var result = sqlBuilder.filterSQL(filterClauses);
+		console.log(result.query);
+	});
+
+	it('SqlBuilder.selectSQL', function() {
+		var filterClauses = [
+			{
+				field: 'name',
+				table: 'customers',
+				op: 'eq',
+				value: 'Daniel'
+			},
+			{
+				field: 'total_amount',
+				table: 'orders',
+				op: 'btwn',
+				value: [40.00, 80.00]
+			},
+			/*
+			{
+				field: '',
+				table: 'products',
+				op: 'search',
+				value: 'car'
+			},
+			*/
+		];
+		
+		var table = sqlBuilder.graph.table('orders');
+		var fields = '*';
+		//var fields = ['ref', 'customers_ref', 'total_amount'];
+		var orderClauses = [];
+		var limit = 10;
+		var offset = 50;
+		var result = sqlBuilder.selectSQL(table, fields, filterClauses,
+					orderClauses, limit, offset);
+
+		//console.log(result.query);
+		console.log(sqlReplaceParams(result));
+	});
 });
 
 
@@ -291,6 +366,11 @@ describe('AthleteTeam DB', function() {
 					, "type": "INTEGER"
 					, "order": 0
 				}
+				, "score": {
+					  "name": "score"
+					, "type": "NUMERIC(4,1)"
+					, "order": 0
+				}
 				, "team_id": {
 					  "name": "team_id"
 					, "type": "INTEGER"
@@ -317,5 +397,51 @@ describe('AthleteTeam DB', function() {
 		 }
 	];
 
+	var sqlBuilder;
+	beforeEach(function() {		
+		var tables = _.map(tableDefs, function(def) {
+			return new Table(def);
+		});
+		var tableGraph = new TableGraph(tables);
+		sqlBuilder = new SqlBuilder(tableGraph);
+	});	
+
+
+	it('SqlBuilder.selectSQL', function() {
+		var filterClauses = [
+			{
+				field: 'country',
+				table: 'teams',
+				op: 'le',
+				value: 'K'
+			},
+			{
+				field: 'score',
+				table: 'athletes',
+				op: 'ge',
+				value: 100 
+			},
+			/*
+			{
+				field: '',
+				table: 'products',
+				op: 'search',
+				value: 'car'
+			},
+			*/
+		];
+		
+		var table = sqlBuilder.graph.table('persons');
+		var fields = ['name'];
+		//var fields = ['ref', 'customers_ref', 'total_amount'];
+		var orderClauses = [];
+		var limit = 10;
+		var offset = 50;
+		var result = sqlBuilder.selectSQL(table, fields, filterClauses,
+					orderClauses, limit, offset);
+
+		//console.log(result.query);
+		console.log(sqlReplaceParams(result));
+	});
 });
 

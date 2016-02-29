@@ -61,6 +61,8 @@ var TableGraph = function(tables) {
 		//console.log(cycleKeys);
 
 		var weightCombinations = powerset(cycleKeys);
+		//TODO powerset might become quickly very large - take care!
+
 		_.each(weightCombinations, function(weights) {
 			weightFn = function(e) {
 				if (_.contains(weights, e.v)) return 0;

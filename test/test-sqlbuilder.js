@@ -251,6 +251,13 @@ describe('SandwichSales DB', function() {
 		//console.log(result.query);
 		console.log(sqlReplaceParams(result));
 	});
+
+	it('SqlBuilder.createViewSQL', function() {
+		var table = sqlBuilder.graph.table('products_in_orders');
+		//var table = sqlBuilder.graph.table('orders');
+		var result = sqlBuilder.createViewSQL(table);
+		console.log(result);
+	});
 });
 
 
@@ -410,10 +417,10 @@ describe('AthleteTeam DB', function() {
 	it('SqlBuilder.selectSQL', function() {
 		var filterClauses = [
 			{
-				field: 'country',
+				field: '',  //full row search
 				table: 'teams',
-				op: 'le',
-				value: 'K'
+				op: 'search',
+				value: 'chile'
 			},
 			{
 				field: 'score',
@@ -421,14 +428,6 @@ describe('AthleteTeam DB', function() {
 				op: 'ge',
 				value: 100 
 			},
-			/*
-			{
-				field: '',
-				table: 'products',
-				op: 'search',
-				value: 'car'
-			},
-			*/
 		];
 		
 		var table = sqlBuilder.graph.table('persons');

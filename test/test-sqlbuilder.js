@@ -203,7 +203,7 @@ describe('SandwichSales DB', function() {
 				value: [40.00, 80.00]
 			},
 			{
-				field: '',
+				field: '*',
 				table: 'products',
 				op: 'search',
 				value: 'car'
@@ -253,8 +253,8 @@ describe('SandwichSales DB', function() {
 	});
 
 	it('SqlBuilder.createViewSQL', function() {
-		var table = sqlBuilder.graph.table('products_in_orders');
-		//var table = sqlBuilder.graph.table('orders');
+		//var table = sqlBuilder.graph.table('products_in_orders');
+		var table = sqlBuilder.graph.table('orders');
 		var result = sqlBuilder.createViewSQL(table);
 		console.log(result);
 	});
@@ -417,7 +417,7 @@ describe('AthleteTeam DB', function() {
 	it('SqlBuilder.selectSQL', function() {
 		var filterClauses = [
 			{
-				field: '',  //full row search
+				field: '*',  //full row search
 				table: 'teams',
 				op: 'search',
 				value: 'chile'
@@ -441,6 +441,12 @@ describe('AthleteTeam DB', function() {
 
 		//console.log(result.query);
 		console.log(sqlReplaceParams(result));
+	});
+
+	it('SqlBuilder.createViewSQL', function() {
+		var table = sqlBuilder.graph.table('teams');
+		var result = sqlBuilder.createViewSQL(table);
+		console.log(result);
 	});
 });
 

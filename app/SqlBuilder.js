@@ -64,16 +64,49 @@ SqlBuilder.prototype.selectSQL
 	};
 }
 
+SqlBuilder.prototype.createSQL = function() {
+	var sysTableSQL = Table.CreateTableSQL
+					+ Field.CreateTableSQL;
+
+	var tableSQL = _.map(this.tables, function(t) {
+		return t.createSQL();
+	}).join('\n');
+
+	
+
+
+	return sysTableSQL + '\n\n'
+			+ tableSQL;
+	
+
+	_.each(this.tables, function(t) {
+		sql += t.createSQL() + '\n\n';
+	}
+
+//		sql += this.createViewSQL(t) + '\n\n';
+//		sql += t.createSearchSQL() + '\n\n';
+		sql += t.insertPropSQL() + '\n\n';
+	}, this);
+
+	log.debug(sql);
+	return sql;
+}
+
 // private methods...
 
+
+/*
 function srns(pre, n) {
 	//small random nmuber string
 	return Math.random().toString(n,n);
 }
+*/
 
 SqlBuilder.prototype.createViewSQL = function(table) {
 	var me = this;
 	
+	//group foreign keys by referenced table to number referenced tables
+	//e.g. persons as persons01, persons as persons02 etc.
 	var fk_groups = _.groupBy(table.foreignKeys(), function(fk) {
 		return fk.fk_table;
 	});
@@ -84,7 +117,7 @@ SqlBuilder.prototype.createViewSQL = function(table) {
 
 	var fk_join = _.reduce(table.foreignKeys(), function(memo, fk) {
 		var fk_table = me.graph.table(fk.fk_table);
-		return memo + util.format(' INNER JOIN %s AS %s ON %s.%s = %s.id ',
+		return memo + util.format(' INNER JOIN %s AS %s ON %s."%s" = %s.id ',
 			fk_table.viewName(), aliasFn(fk),
 			table.name, fk.name,
 			aliasFn(fk));	
@@ -109,7 +142,7 @@ SqlBuilder.prototype.createViewSQL = function(table) {
 	}
 
 	var fk_fields = _.map(table.foreignKeys(), function(fk) {
-		return util.format("%s.%s AS %s", 
+		return util.format('%s."%s" AS "%s"', 
 			aliasFn(fk), Field.REF_NAME, 
 			fk.refName()); 
 	});
@@ -117,9 +150,9 @@ SqlBuilder.prototype.createViewSQL = function(table) {
 	var ref_field = _.reduce(table.row_alias, function(memo, f) {
 		var result;
 		if (f.indexOf('.') < 0) {
-			result = util.format('%s.%s', table.name, f);
+			result = util.format('%s."%s"', table.name, f);
 		} else {
-			result = util.format('%s.%s', 
+			result = util.format('%s."%s"', 
 				me.graph.table(f.split('.')[0]).viewName(),
 				f.split('.')[1]);
 		}
@@ -139,7 +172,7 @@ SqlBuilder.prototype.createViewSQL = function(table) {
 		: ref_id;
 
 	var table_fields = _.map(table.fields, function(f) {
-		return util.format('%s.%s AS %s', table.name, f.name, f.name);
+		return util.format('%s."%s" AS "%s"', table.name, f.name, f.name);
 	});
 
 	var fields = [ref_field].concat(table_fields).concat(fk_fields);
@@ -194,8 +227,8 @@ SqlBuilder.prototype.filterSQL = function(filterClauses) {
 		var table = me.graph.table(filter.table);
 
 		assert(table, util.format('filter.table %s unknown', filter.table));
-		if ( ! (filter.op == 'search' && filter.field.length == 0)) {
-			//filter field may be empty if filter.op is search		
+		if ( ! (filter.op == 'search' && filter.field == '*')) {
+			//check field exists		
 			table.assertFields([filter.field]);
 		}
 
@@ -210,7 +243,7 @@ SqlBuilder.prototype.filterSQL = function(filterClauses) {
 
 		if (comparatorOperators[filter.op]) {
 
-			var clause = util.format("%s.%s %s ?", 
+			var clause = util.format('%s."%s" %s ?', 
 							table.viewName(), filter.field, 
 							comparatorOperators[filter.op]);
 
@@ -219,7 +252,7 @@ SqlBuilder.prototype.filterSQL = function(filterClauses) {
 
 		} else if (filter.op == 'btwn') {
 
-			var clause = util.format("%s.%s BETWEEN ? AND ?", 
+			var clause = util.format('%s."%s" BETWEEN ? AND ?', 
 							table.viewName(), filter.field);
 				
 			assert(filter.value.length && filter.value.length >= 2, 
@@ -236,7 +269,7 @@ SqlBuilder.prototype.filterSQL = function(filterClauses) {
 					return "?"; 
 			});
 
-			var clause = util.format("%s.%s IN (%s)",
+			var clause = util.format('%s."%s" IN (%s)',
 							table.viewName(), filter.field, 
 							inParams.join(','));
 
@@ -248,10 +281,10 @@ SqlBuilder.prototype.filterSQL = function(filterClauses) {
 
 		} else if (filter.op == 'search') {
 
-			var clause = util.format("%s.%s MATCH ?", 
+			var clause = util.format('%s."%s" MATCH ?', 
 							table.ftsName(),
 							//check if full row search
-							filter.field.length == 0
+							filter.field == '*'
 								? table.ftsName()
 								: filter.field
 						); 	
@@ -301,7 +334,7 @@ SqlBuilder.prototype.fieldSQL = function(table, fields) {
 	}
 
 	fields = _.map(fields, function(fieldName) {
-		return util.format('%s."%s" as %s', table.viewName(), fieldName, 
+		return util.format('%s."%s" AS "%s"', table.viewName(), fieldName, 
 			fieldName);
 	});
 

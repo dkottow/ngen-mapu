@@ -218,7 +218,7 @@ describe('SandwichSales DB', function() {
 			  ['products', 'orders']
 			, ['customers', 'products']
 			, ['customers', 'products_in_orders']
-			, tableGraph.tables()
+			, _.pluck(tableGraph.tables(), 'name')
 		], function(tables) {
 			var joins = tableGraph.tableJoins(tables);
 			console.log('tables ' + tables);
@@ -232,6 +232,14 @@ describe('SandwichSales DB', function() {
 		});
 	});
 
+	it('TableGraph.tablesByDependencies', function() {
+		//TODO test me better, shuffle table ordering
+		var tables = tableGraph.tables();
+		var tablesByDeps = tableGraph.tablesByDependencies();
+		console.log(_.pluck(tables, 'name'));
+		console.log('by deps');
+		console.log(_.pluck(tablesByDeps, 'name'));
+	});
 });
 
 
@@ -399,7 +407,7 @@ describe('AthleteTeam DB', function() {
 			, ['teams', 'athletes']
 			, ['athletes', 'persons']
 			, ['accomodations', 'persons', 'athletes']
-			, tableGraph.tables()
+			, _.pluck(tableGraph.tables(), 'name')
 		], function(tables) {
 			var joins = tableGraph.tableJoins(tables);
 			console.log('tables ' + tables);

@@ -253,21 +253,6 @@ Schema.prototype.createSQL = function() {
 	return sql;
 }
 
-Schema.prototype.get = function() {
-
-	assert(_.isObject(this.tables)); 
-	
-	var tableDefs = _.map(this.tables, function(table) {
-		return table.toJSON();
-	});
-
-	tableDefs = _.object(_.pluck(tableDefs, 'name'), tableDefs);
-	return {
-		'tables': tableDefs,
-		'joins': this.linkedTableLists
-	};		
-}
-
 Schema.prototype.filterSQL = function(table, filterClauses) {
 
 	var me = this;
@@ -490,6 +475,22 @@ Schema.prototype.selectSQL = function(table, filterClauses, fields, orderClauses
 }
 
 //TODO reduce Schema class to roughly the methods that follow
+
+Schema.prototype.get = function() {
+
+	assert(_.isObject(this.tables)); 
+	
+	var tableDefs = _.map(this.tables, function(table) {
+		return table.toJSON();
+	});
+
+	tableDefs = _.object(_.pluck(tableDefs, 'name'), tableDefs);
+	return {
+		'tables': tableDefs,
+		'joins': this.linkedTableLists
+	};		
+}
+
 /******* start file ops *******/
 
 Schema.prototype.update = function(delTables, addTables, dbFile, cbAfter) {

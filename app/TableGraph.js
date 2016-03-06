@@ -81,9 +81,50 @@ var TableGraph = function(tables) {
 }
 
 TableGraph.prototype.tables = function() {
-	return _.filter(this.graph.nodes(), function(node) {
-		return nodeIsTable(node);
-	});
+	return _.map(_.filter(this.graph.nodes(), function(node) {
+			return nodeIsTable(node);
+		}), function(name) {
+			return this.table(name);
+	}, this);
+}
+
+TableGraph.prototype.tablesByDependencies = function() {
+
+	var me = this;
+	var getDepTables = function(table) {
+		return _.map(table.foreignKeys(), function(fk) {
+			return me.table(fk.fk_table);
+		});
+	};
+
+	
+	var tables = this.tables();
+	var result = [];
+
+	while (result.length < tables.length) {
+		var remainingTables = _.difference(tables, result);
+		_.each(remainingTables, function(t) {
+
+			var depTables = getDepTables(t);
+			var pos = 0;
+			var doInsert = true;
+			for(var i = 0;i < depTables.length; ++i) {
+				var p = result.indexOf(depTables[i]);
+				if (p < 0) {
+					doInsert = false;
+					break;
+				} else {
+					pos = Math.max(p + 1, pos);
+				}
+			}
+			if (doInsert) {
+				//console.log('inserting ' + t.name + ' @ ' + pos);
+				result.splice(pos, 0, t);
+			}
+		});
+	}
+
+	return result;
 }
 
 TableGraph.prototype.table = function(name) {

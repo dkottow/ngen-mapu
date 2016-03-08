@@ -32,7 +32,10 @@ function Database(dbFile)
 	
 	var me = this;
 
-	this.tables = function() { return this.schema.tables; };
+	this.tables = function() { 
+		var tables = this.schema.tables();
+		return _.object(_.pluck(tables, 'name'), tables); 
+	};
 
 	this.init = function(cbAfter) {
 
@@ -82,50 +85,21 @@ function Database(dbFile)
 		try {
 
 			var table = this.tables()[tableName];
+
 			if (! cbResult) {
+				//shift fn args
 				cbResult = options;
 				options = {};
 			}
+
 			options = options || {};		
-
 			var filterClauses = options.filter || [];
-			var resultFields = options.fields || '*'; 
+			var fields = options.fields || '*'; 
 
-			var filterSQL = this.schema.filterSQL(table, filterClauses);
-
-			if (resultFields == '*') {
-				resultFields = table.viewFields();
-			} else {
-				this.schema.checkFields(resultFields);
-			}
-
-			var useView = true;
-			var tName = useView ? table.viewName() : table.name;
-
-			var sql_query = _.reduce(resultFields, function(memo, f) {
-
-				var s = util.format("SELECT '%s' as field, "
-							+ "min(%s.%s) as min, max(%s.%s) as max "
-							+ " FROM %s", 
-								f, 
-								tName, f, 
-								tName, f, 
-								tName);
-
-				s += filterSQL.join + filterSQL.where;
-
-				return (memo.length == 0) ?  s : memo + ' UNION ALL ' + s;
-			}, '');
-
-			var sql_params = [];
-			_.each(resultFields, function() {
-				sql_params = sql_params.concat(filterSQL.params);
-			});
-
-			log.debug(sql_query);
-			log.debug(sql_params);
+			var sql = this.schema.sqlBuilder.statsSQL(table, fields, filterClauses);
+			
 			var db = new sqlite3.cached.Database(this.dbFile);
-			db.all(sql_query, sql_params, function(err, rows) {
+			db.all(sql.query, sql.params, function(err, rows) {
 				if (err) {
 					log.warn("db.all() failed. " + err);	
 					cbResult(err, null);
@@ -161,16 +135,15 @@ function Database(dbFile)
 			options = options || {};		
 
 			var filterClauses = options.filter || [];
-			var resultFields = options.fields || '*'; 
+			var fields = options.fields || '*'; 
 			var order = options.order || [];
 			var limit = options.limit || global.row_max_count;
 			var offset = options.offset || 0;
-			var distinct = options.distinct || false;
 
-			log.debug(resultFields + " from " + table.name 
+			log.debug(fields + " from " + table.name 
 					+ " filtered by " + util.inspect(filterClauses));
 
-			var sql = this.schema.selectSQL(table, filterClauses, resultFields, order, limit, offset, distinct);
+			var sql = this.schema.sqlBuilder.selectSQL(table, fields, filterClauses, order, limit, offset);
 
 			var db = new sqlite3.cached.Database(this.dbFile);
 
@@ -217,9 +190,9 @@ function Database(dbFile)
 			options = options || {};		
 
 			var filterClauses = options.filter || [];
-			var resultFields = options.fields || '*'; 
+			var fields = options.fields || '*'; 
 
-			var sql = this.schema.selectSQL(table, filterClauses, resultFields, [], 1, 0, false);
+			var sql = this.schema.sqlBuilder.selectSQL(table, fields, filterClauses, [], 1, 0, false);
 
 			var db = new sqlite3.cached.Database(this.dbFile);
 
@@ -237,108 +210,6 @@ function Database(dbFile)
 			cbResult(err, []);
 		}
 	}
-
-	//TODO we should join all table, not only children
-	this.getDeep = function(tableName, options, cbResult) {
-		
-		try {
-
-			var table = this.tables()[tableName];
-			if (! cbResult) {
-				cbResult = options;
-				options = {};
-			}
-			options = options || {};		
-
-			var depth = options.depth || 3;
-
-/* TODO
-			if (resultFields != '*' &&  ! _.contains('id', resultFields)) {
-				resultFields.push('id');
-			}	
-*/
-
-			var result = {};
-		
-			var tables = _.filter(me.tables(), function(t) {
-				return isDescendant(t, table, depth);
-			});
-
-			//get top-level row	
-			this.get(tableName, options, function(err, row) { 
-
-				log.debug('get err "' + err + '" row "' + row + '"'); 
-				
-				if (err) {
-					cbResult(err, null);
-
-				} else if (! row) {
-					cbResult(null, result);
-
-				} else if (depth == 0 || tables.length == 0) {
-					result = row;
-					cbResult(err, result);
-
-				} else /* (tables.length > 0 && !err && row) */ {
-					result[table.name] = [row];
-
-					var joinClause = {
-						'table' : table.name,
-						'field' : 'id',
-						'operator'	: 'eq',
-						'value' : row.id
-					};
-
-					var allDone = _.after(tables.length, function(err, result) {
-						buildRowTree(table, result, depth);
-						var obj = {};
-						obj = result[table.name][0]; 
-						cbResult(err, obj);
-					});
-
-					_.each(tables, function(t) {
-						me.all(t.name, { filter: [joinClause] }, 
-							function(err, res) {
-								result[t.name] = res.rows;
-								allDone(err, result);
-						});
-					});
-				}
-
-			});
-
-		} catch(err) {
-			log.warn("model.getDeep() failed. " + err);	
-			cbResult(err, {});
-		}
-	}
-
-	function buildRowTree(rootTable, tableRows, depth) {
-
-		_.each(tableRows, function(rows, tn) {
-			if (tn != rootTable.name) {
-				var fks = _.filter(me.tables()[tn].fields, function(f) { 
-					return f.fk > 0; 
-				});
-				_.each(rows, function(row) {
-	//console.log(row);
-					_.each(fks, function(f) {
-						var parentRow = _.find(tableRows[f.fk_table], 
-							function(pr) {
-								return pr.id == row[f.name];
-							});	
-
-						if (parentRow) {				
-							//if fk is another branch, there is no parent loaded
-							parentRow[tn] = parentRow[tn] || [];
-							parentRow[tn].push(row);
-						}
-					});
-				});
-			}
-		});
-	}	
-
 
 	this.insert = function(tableName, rows, cbResult) {
 

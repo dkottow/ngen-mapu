@@ -421,5 +421,13 @@ describe('AthleteTeam DB', function() {
 		});
 	});
 
+	it('TableGraph.tablesByDependencies', function() {
+		//TODO test me better, shuffle table ordering
+		var tables = tableGraph.tables();
+		var tablesByDeps = tableGraph.tablesByDependencies();
+		console.log(_.pluck(tables, 'name'));
+		console.log('by deps');
+		console.log(_.pluck(tablesByDeps, 'name'));
+	});
 });
 

@@ -64,28 +64,22 @@ describe('Database', function() {
 
 	});
 
-  	describe('isDescendant()', function() {		
-		it('products_in_orders descendant from products', function() {
-			var d = model.tables().products_in_orders;
-			var t = model.tables().products;
-			var result = isDescendant(d, t, 5);
-			//console.log("Descendant " + d.name + " from " + t.name + " is " + result);	
-			assert(result, d.name + " descends from " + t.name);
-		});
-	});
-
   	describe('getStats()', function() {		
 		it('getStats for orders', function(done) {
 			model.getStats('orders', function(err, result) {
+				assert(err == null, err);
 				log.info(result);
 				done();
 			});
 		});
 		it('getStats for orders.total_amount', function(done) {
-			model.getStats('orders', { fields: ['total_amount']}, function(err, result) {
-				log.info(result);
-				done();
-			});
+			model.getStats('orders', { fields: ['total_amount'] }, 
+				function(err, result) {
+					assert(err == null, err);
+					log.info(result);
+					done();
+				}
+			);
 		});
 	});
 
@@ -117,11 +111,11 @@ describe('Database', function() {
 				filter : [
 					{   'table': 'customers', 
 						'field': 'name', 
-						'operator': 'eq', 
+						'op': 'eq', 
 						'value': 'Daniel'
 					},
 					{	'field': 'total_amount', 
-						'operator': 'le', 
+						'op': 'le', 
 						'value': 100
 					}
 				],
@@ -145,7 +139,7 @@ describe('Database', function() {
 					filter : [{
 						'table': 'customers', 
 						'field': 'name', 
-						'operator': 'eq', 
+						'op': 'eq', 
 						'value': 'Daniel'
 					}]
 			};
@@ -168,7 +162,7 @@ describe('Database', function() {
 				filter : [{
 					'table': 'products', 
 					'field': 'id', 
-					'operator': 'in', 
+					'op': 'in', 
 					'value': [1,2,3]
 				}]
 			};
@@ -181,27 +175,6 @@ describe('Database', function() {
 			});
 		});
 
-	});
-
-  	describe('getDeep()', function() {		
-		it('get customer deep', function(done) {
-			model.getDeep('customers', { 
-								filter  : [{
-									'field' : 'id', 
-									'operator': 'eq', 
-									'value' : 1
-								}],
-								depth : 2 },
-							function(err, result) {
-								assert(err == null, 'getDeep failed ' + err)
-/*
-		console.log("******* done deep... *******")
-		console.log(util.inspect(result, {depth: 5}));				
-		console.log("******* ...done deep *******")
-*/
-				done();
-			});
-		});
 	});
 
   	describe('insert()', function() {		

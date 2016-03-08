@@ -5,6 +5,8 @@ var assert = require('assert')
 	, Table = require('../app/Table.js').Table
 	, TableGraph = require('../app/TableGraph.js').TableGraph
 	, SqlBuilder = require('../app/SqlBuilder.js').SqlBuilder;
+
+var fs = require('fs');
 	
 var log = global.log;
 
@@ -177,7 +179,7 @@ describe('SandwichSales DB', function() {
 			  ['products', 'orders']
 			, ['customers', 'products']
 			, ['customers', 'products_in_orders']
-			, sqlBuilder.graph.tables()
+			, _.pluck(sqlBuilder.graph.tables(), 'name')
 		], function(tables) {
 			console.log('\ntables ' + tables);
 
@@ -256,6 +258,13 @@ describe('SandwichSales DB', function() {
 		//var table = sqlBuilder.graph.table('products_in_orders');
 		var table = sqlBuilder.graph.table('orders');
 		var result = sqlBuilder.createViewSQL(table);
+		console.log(result);
+	});
+
+	it('SqlBuilder.createSQL', function() {
+		//var table = sqlBuilder.graph.table('products_in_orders');
+		var result = sqlBuilder.createSQL();
+		fs.writeFile('create.sql', result);
 		console.log(result);
 	});
 });

@@ -211,26 +211,6 @@ describe('Schema', function() {
 			});
 		});	
 
-		it('createSQL example', function() {
-			var db = new Schema(testSchema);
-
-/*
-db.init(function(err) {
-console.log(db.createSQL());
-return;
-});
-*/
-
-			db.init(function(err) {
-				if (err) {
-					log.info(err);
-				} else {
-					var sql = db.createSQL();
-					//console.log(sql);
-				}
-			});
-		});
-
 		it('create example', function(done) {
 	
 			var db = new Schema(testSchema);
@@ -246,61 +226,6 @@ return;
 			});
 
 		});
-	});
-
-	describe('Database.update()', function() {
-		var dbFile = "test/test-create.sqlite";
-
-/*
-		it('drop_table example', function(done) {
-	
-			var db = new Schema();
-			db.read(dbFile, function(err) {
-				if (err) {
-					log.info("ERROR ++++ ");
-					log.info(err);
-				} else {
-					var customers = db.tables['customers'].toJSON();
-					db.drop_table('customers', dbFile, function(err) {
-						assert(err == null);
-						db.add_table(customers, dbFile, function(err) {
-							assert(err == null, err);
-							done();	
-						});
-					});
-				}
-			});
-		});
-*/
-
-		it('update example', function(done) {
-	
-			var db = new Schema();
-			db.read(dbFile, function(err) {
-				if (err) {
-					log.info("ERROR ++++ ");
-					log.info(err);
-				} else {
-					var delTables = [
-						{ name: 'customers' }, 
-						{ name: 'orders'}
-					];
-					var addTables = [
-						db.tables['customers'].toJSON(),
-						db.tables['orders'].toJSON()
-					];
-					addTables[0].name = 'cus';
-					addTables[1].fields['customer_id'].fk_table = 'cus';
-					addTables[1].row_alias = ['order_date', 'cus.name'];
-
-					db.update(delTables, addTables, dbFile, function(err) {
-						log.info(err);
-						done();	
-					});
-				}
-			});
-		});
-
 	});
 
 	describe('Database with selfReferential tables', function() {

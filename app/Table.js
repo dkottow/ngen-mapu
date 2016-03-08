@@ -247,18 +247,6 @@ Table.prototype.toJSON = function() {
 		result[f] = this[f];
 	}, this);
 
-	if (this.parents && this.parents.length > 0) {
-		result.parents = _.map(this.parents, function(t) {
-			return t.name;
-		});
-	}
-
-	if (this.children && this.children.length > 0) {
-		result.children = _.map(this.children, function(t) {
-			return t.name;
-		});
-	}
-
 	result.fields = _.map(this.fields, function(f) {
 		return f.toJSON();
 	});
@@ -267,35 +255,6 @@ Table.prototype.toJSON = function() {
 
 	//console.log(result);
 	return result;
-}
-
-//TODO obsolete
-Table.prototype.bfsPath = function(joinTable) {
-	//console.log(table.name);
-	//console.log(joinTable.name);
-
-	if (this == joinTable) return [this, this];
-	var visited = {};
-	var queue = [];
-	queue.push([this]);
-	visited[this.name] = true;
-	while ( ! _.isEmpty(queue)) {
-		var path = queue.shift();
-		var table = _.last(path);
-		if (table == joinTable) {
-			return path;
-		}		
-
-		_.each(table.links, function(lt) {
-			if (! visited[lt.name]) {
-				visited[lt.name] = true;
-				var np = path.slice(0); //copy path
-				np.push(lt);
-				queue.push(np);
-			}
-		});
-	}
-	return []; //not found
 }
 
 exports.Table = Table;

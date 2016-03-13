@@ -34,12 +34,19 @@ Field = function(fieldDef) {
 		}
 
 		me.type = fieldDef.type;
-		me.notnull = fieldDef.notnull || 0;
 
+		//fk
 		me.fk = fieldDef.fk_table ? 1 : 0;
 		if (me.fk) {
 			me.fk_table = fieldDef.fk_table;
 			me.fk_field = "id";
+		}
+
+		//notnull
+		if (me.name == "id" || me.fk == 1) {
+			me.notnull = 1;
+		} else {
+			me.notnull = fieldDef.notnull || 0;
 		}
 
 		//non-SQL attributes				
@@ -47,7 +54,7 @@ Field = function(fieldDef) {
 			me[f] = fieldDef[f];
 		});
 
-		//notnull
+		//order
 		me.order = me.order || 0;
 
 		//parse possible JSON

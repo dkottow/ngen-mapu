@@ -17,26 +17,29 @@ SqlBuilder.prototype.selectSQL
 	assert(_.isNumber(limit), "arg limit must be integer");
 	assert(_.isNumber(offset), "arg offset must be integer");
 
-	var tables = {};
-	tables[table.name] = table.name;
+	//sanitize filterClauses
 	_.each(filterClauses, function(fc) {
 		if ( ! fc.table) fc.table = table.name;
-		tables[fc.table] = fc.table;
 	});
 
-	var tableJoins = _.size(tables) == 1
-		? [table.viewName()] 
-		: this.joinSQL(_.keys(tables));
+	var tables = _.uniq([table.name].concat(
+		_.map(filterClauses, function(fc) {
+			return fc.table;
+	})));
+
+	var tableJoinPaths = tables.length == 1
+		? [ table.viewName() ] 
+		: this.joinSQL(tables);
 
 	var filterSQL = this.filterSQL(filterClauses);
 	var filterJoinSQL = this.filterJoinSQL(filterClauses);
 	var orderSQL = this.orderSQL(table, orderClauses);
 	var fieldSQL = this.fieldSQL(table, fields);
 
-	var sql = _.reduce(tableJoins, function(memo, joinSQL) {
+	var sql = _.reduce(tableJoinPaths, function(memo, tableSQL) {
 
 		var selectSQL = 'SELECT DISTINCT ' + fieldSQL 
-						+ ' FROM ' + joinSQL + filterJoinSQL
+						+ ' FROM ' + tableSQL + filterJoinSQL
 						+ ' WHERE ' + filterSQL.query; 
 
 		if (memo.length == 0) return selectSQL;
@@ -50,15 +53,15 @@ SqlBuilder.prototype.selectSQL
 					+ ' LIMIT ' + limit
 					+ ' OFFSET ' + offset;
 
-	var totalParams = _.flatten(_.times(tableJoins.length, function(n) {
+	var totalParams = _.flatten(_.times(tableJoinPaths.length, function(n) {
 		return filterSQL.params;
 	}), true);
 	
-
+/*
 	log.debug(selectSQL);
 	log.debug(totalParams);
 	log.debug(countSQL);
-
+*/
 
 	return {
 		'query': selectSQL, 
@@ -245,7 +248,7 @@ SqlBuilder.prototype.createViewSQL = function(table) {
 	);
 	
 	ref_field = ref_field.length > 0
-		? ref_field + ' || ' + ref_id 
+		? "COALESCE(" + ref_field + ", '') || " + ref_id 
 		: ref_id;
 
 	var table_fields = _.map(table.fields, function(f) {
@@ -262,6 +265,8 @@ SqlBuilder.prototype.createViewSQL = function(table) {
 }
 
 SqlBuilder.prototype.joinSQL = function(tables) {
+
+	assert(tables.length > 1);
 
 	var me = this;
 	var joinPaths = this.graph.tableJoins(tables);
@@ -293,7 +298,6 @@ SqlBuilder.prototype.joinSQL = function(tables) {
 	return result;
 }
 
-//TODO
 SqlBuilder.prototype.filterSQL = function(filterClauses) {
 
 	var me = this;

@@ -21,10 +21,12 @@ describe('Database', function() {
 
 	after(function(done) {
 		//log.debug("DELETING ALL ROWS id > 2");
+		console.log("DELETING ALL ROWS id > 2");
 		var db = new sqlite3.Database(dbFile);
 		db.run("DELETE FROM orders WHERE id > 10", done);
 		//db.run("DELETE FROM fts_orders WHERE docid > 10", done);
 		db.close();
+		console.log("Done DELETING ALL ROWS id > 2");
 	});
 
 	describe('init()', function() {
@@ -153,7 +155,7 @@ describe('Database', function() {
 
 		});
 
-		it('all orders filtered by products.id in (1,2)', 
+		it('all orders filtered by products.id in (1,2,3)', 
 		function(done) {
 
 			var table = 'orders';
@@ -170,7 +172,7 @@ describe('Database', function() {
 			model.all(table, options, function(err, result) {
 				assert(err == null, err);
 				log.info('got ' + result.count + " " + table);
-				assert(result.count > 0, 'got some ' + table);
+				assert(result.count == 4, 'got 4 ' + table);
 				done();
 			});
 		});

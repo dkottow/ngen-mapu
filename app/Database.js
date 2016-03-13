@@ -65,15 +65,17 @@ function Database(dbFile)
 
 		var db = new sqlite3.cached.Database(me.dbFile);
 		db.all(sql, function(err, rows) {
-			if (err) {
-				log.warn("model.getStats() failed. " + err);	
-				cbResult(err, null);
-				return;
-			}
-			_.each(rows, function(r) {
-				result[r.table_name] = r.count;
+			db.close(function() {
+				if (err) {
+					log.warn("model.getStats() failed. " + err);	
+					cbResult(err, null);
+					return;
+				}
+				_.each(rows, function(r) {
+					result[r.table_name] = r.count;
+				});
+				cbResult(null, result);
 			});
-			cbResult(null, result);
 		});
 	}
 
@@ -126,21 +128,23 @@ function Database(dbFile)
 			log.debug(sql_params);
 			var db = new sqlite3.cached.Database(this.dbFile);
 			db.all(sql_query, sql_params, function(err, rows) {
-				if (err) {
-					log.warn("db.all() failed. " + err);	
-					cbResult(err, null);
-					return;
-				}
-				var result = {};
-				_.each(rows, function(r) {
-					result[r.field] = { 
-						field: r.field,
-						min: r.min,
-						max: r.max,
-						distinct: r.count
-					};
+				db.close(function() {
+					if (err) {
+						log.warn("db.all() failed. " + err);	
+						cbResult(err, null);
+						return;
+					}
+					var result = {};
+					_.each(rows, function(r) {
+						result[r.field] = { 
+							field: r.field,
+							min: r.min,
+							max: r.max,
+							distinct: r.count
+						};
+					});
+					cbResult(null, result);
 				});
-				cbResult(null, result);
 			});
 
 		} catch(err) {
@@ -172,11 +176,12 @@ function Database(dbFile)
 
 			var sql = this.schema.selectSQL(table, filterClauses, resultFields, order, limit, offset, distinct);
 
-			var db = new sqlite3.cached.Database(this.dbFile);
+			var db = new sqlite3.Database(this.dbFile);
 
 			db.all(sql.query, sql.params, function(err, rows) {
 				if (err) {
 					log.warn("model.all() failed. " + err);	
+					db.close();
 					cbResult(err, null);
 				} else {
 					//console.dir(rows);
@@ -185,16 +190,18 @@ function Database(dbFile)
 						+ ' UNION ALL SELECT COUNT(*) as count FROM ' + table.name; 
 					
 					db.all(countSql, sql.params, function(err, countRows) {
-						if (err) {
-							cbResult(err, null);
-						} else {
-							var result = { 
-								rows: rows, 
-								count: countRows[0].count,
-								totalCount: countRows[1].count
+						db.close(function() {
+							if (err) {
+								cbResult(err, null);
+							} else {
+								var result = { 
+									rows: rows, 
+									count: countRows[0].count,
+									totalCount: countRows[1].count
+								}
+								cbResult(null, result);
 							}
-							cbResult(null, result);
-						}
+						});
 					});
 				}
 			});
@@ -221,15 +228,16 @@ function Database(dbFile)
 
 			var sql = this.schema.selectSQL(table, filterClauses, resultFields, [], 1, 0, false);
 
-			var db = new sqlite3.cached.Database(this.dbFile);
+			var db = new sqlite3.Database(this.dbFile);
 
 			db.get(sql.query, sql.params, function(err, row) {
-				if (err) {
-					log.warn("model.get() failed. " + err);	
-				}
-
-				//console.dir(row);
-				cbResult(err, row);
+				db.close(function() {
+					if (err) {
+						log.warn("model.get() failed. " + err);	
+					}
+					//console.dir(row);
+					cbResult(err, row);
+				});
 			});
 
 		} catch(err) {
@@ -400,11 +408,11 @@ function Database(dbFile)
 						log.warn("Database.insert() failed. Rollback. " + err);
 						db.run("ROLLBACK TRANSACTION");
 					}
+					db.close();
 					cbResult(err, ids); 
 				});	
 
 			});
-			db.close();
 
 		} catch(err) {
 			log.warn("model.insert() failed. " + err);	
@@ -471,11 +479,11 @@ function Database(dbFile)
 						log.warn("Database.update() failed. Rollback. " + err);
 						db.run("ROLLBACK TRANSACTION");
 					}
+					db.close();
 					cbResult(err, modCount); 
 				});	
 
 			});
-			db.close();
 
 		} catch(err) {
 			log.warn("model.update() failed. " + err);	
@@ -532,11 +540,11 @@ function Database(dbFile)
 						log.warn("Database.delete() failed. Rollback. " + err);
 						db.run("ROLLBACK TRANSACTION");
 					}
+					db.close();
 					cbResult(err, delCount); 
 				});	
 
 			});
-			db.close();
 
 		} catch(err) {
 			log.warn("model.delete() failed. " + err);	

@@ -22,9 +22,11 @@ describe('Database', function() {
 	after(function(done) {
 		//log.debug("DELETING ALL ROWS id > 2");
 		var db = new sqlite3.Database(dbFile);
-		db.run("DELETE FROM orders WHERE id > 10", done);
+		db.run("DELETE FROM orders WHERE id > 10", function() {
+			db.close();
+			done();
+		});
 		//db.run("DELETE FROM fts_orders WHERE docid > 10", done);
-		db.close();
 	});
 
 	describe('init()', function() {

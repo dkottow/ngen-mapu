@@ -1106,18 +1106,19 @@ schema.Schema.prototype.create = function(dbFile, cbAfter) {
 				return;
 			}
 			db.exec(me.createSQL(), function(err) {
-				if (err) {
-					log.warn("schema.Schema.create() failed. " + err);	
-					fs.unlink(tmpFile);
-					cbAfter(err);
-					return;
-				}
-				log.debug('rename ' + tmpFile + ' to ' + dbFile);
-				fs.rename(tmpFile, dbFile, function(err) {
-					cbAfter(err);
+				db.close(function() {
+					if (err) {
+						log.warn("schema.Schema.create() failed. " + err);	
+						fs.unlink(tmpFile);
+						cbAfter(err);
+						return;
+					}
+					log.debug('rename ' + tmpFile + ' to ' + dbFile);
+					fs.rename(tmpFile, dbFile, function(err) {
+						cbAfter(err);
+					});
 				});
 			});
-			db.close();
 	});
 }
 
@@ -1164,7 +1165,9 @@ schema.Schema.prototype.read = function(dbFile, cbAfter) {
 
 			//handle empty schema
 			if (rows.length == 0) {
+				db.close();
 				me.init(cbAfter);
+				return;
 			}
 				
 			var fields = _.map(schema.Field.TABLE_FIELDS, function(f) {
@@ -1189,6 +1192,7 @@ schema.Schema.prototype.read = function(dbFile, cbAfter) {
 
 				var doAfter = _.after(2*tableNames.length, function() {
 					//after executing two SQL statements per table
+					db.close();
 					me.tableDefs = tables;
 					me.init(cbAfter);
 				});

@@ -17,8 +17,8 @@ var app = require('./app/app.js').app;
 var log = global.log.child({'mod': 'g6.server.js'});
 
 var config = {
-	'ip'	:  'localhost',
-	//'ip'	:  '192.168.1.38',
+	//'ip'	:  'localhost',
+	'ip'	:  '10.22.254.248',
 	'port'	: 3000, 
 }
 

@@ -63,7 +63,7 @@ function Database(dbFile)
 			return;
 		}
 
-		var db = new sqlite3.cached.Database(me.dbFile);
+		var db = new sqlite3.Database(me.dbFile);
 		db.all(sql, function(err, rows) {
 			db.close(function() {
 				if (err) {
@@ -126,7 +126,7 @@ function Database(dbFile)
 
 			log.debug(sql_query);
 			log.debug(sql_params);
-			var db = new sqlite3.cached.Database(this.dbFile);
+			var db = new sqlite3.Database(this.dbFile);
 			db.all(sql_query, sql_params, function(err, rows) {
 				db.close(function() {
 					if (err) {

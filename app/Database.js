@@ -25,7 +25,7 @@ function Database(dbFile)
 	log.debug('ctor ' + dbFile);
 
 	//destroy cached DBs with this name
-	delete sqlite3.cached.objects[path.resolve(dbFile)];
+	//delete sqlite3.cached.objects[path.resolve(dbFile)];
 
 	this.dbFile = dbFile;
 	this.schema = null;
@@ -66,17 +66,19 @@ function Database(dbFile)
 			return;
 		}
 
-		var db = new sqlite3.cached.Database(me.dbFile);
+		var db = new sqlite3.Database(me.dbFile);
 		db.all(sql, function(err, rows) {
-			if (err) {
-				log.warn("model.getStats() failed. " + err);	
-				cbResult(err, null);
-				return;
-			}
-			_.each(rows, function(r) {
-				result[r.table_name] = r.count;
+			db.close(function() {
+				if (err) {
+					log.warn("model.getCounts() failed. " + err);	
+					cbResult(err, null);
+					return;
+				}
+				_.each(rows, function(r) {
+					result[r.table_name] = r.count;
+				});
+				cbResult(null, result);
 			});
-			cbResult(null, result);
 		});
 	}
 
@@ -94,27 +96,33 @@ function Database(dbFile)
 
 			options = options || {};		
 			var filterClauses = options.filter || [];
+
 			var fields = options.fields || '*'; 
+			if (fields == '*') fields = table.viewFields();
 
 			var sql = this.schema.sqlBuilder.statsSQL(table, fields, filterClauses);
 			
-			var db = new sqlite3.cached.Database(this.dbFile);
-			db.all(sql.query, sql.params, function(err, rows) {
-				if (err) {
-					log.warn("db.all() failed. " + err);	
-					cbResult(err, null);
-					return;
-				}
-				var result = {};
-				_.each(rows, function(r) {
-					result[r.field] = { 
-						field: r.field,
-						min: r.min,
-						max: r.max,
-						distinct: r.count
-					};
+			var db = new sqlite3.Database(this.dbFile);
+			db.get(sql.query, sql.params, function(err, row) {
+				db.close(function() {
+					if (err) {
+						log.warn("db.get() failed. " + err);	
+						log.debug(sql.query);	
+						cbResult(err, null);
+						return;
+					}
+					var result = {};
+					_.each(fields, function(f) {
+						var min_key = 'min_' + f;
+						var max_key = 'max_' + f;
+						result[f] = { 
+							field: f,
+							min: row[min_key],
+							max: row[max_key]
+						};
+					});
+					cbResult(null, result);
 				});
-				cbResult(null, result);
 			});
 
 		} catch(err) {
@@ -145,12 +153,15 @@ function Database(dbFile)
 
 			var sql = this.schema.sqlBuilder.selectSQL(table, fields, filterClauses, order, limit, offset);
 
-			var db = new sqlite3.cached.Database(this.dbFile);
+			var db = new sqlite3.Database(this.dbFile);
 
 			db.all(sql.query, sql.params, function(err, rows) {
 				if (err) {
-					log.warn("model.all() failed. " + err);	
-					cbResult(err, null);
+					db.close(function() {
+						log.warn("model.all() failed. " + err);	
+						log.debug(sql.query);	
+						cbResult(err, null);
+					});
 				} else {
 					//console.dir(rows);
 					
@@ -158,16 +169,18 @@ function Database(dbFile)
 						+ ' UNION ALL SELECT COUNT(*) as count FROM ' + table.name; 
 					
 					db.all(countSql, sql.params, function(err, countRows) {
-						if (err) {
-							cbResult(err, null);
-						} else {
-							var result = { 
-								rows: rows, 
-								count: countRows[0].count,
-								totalCount: countRows[1].count
+						db.close(function() {
+							if (err) {
+								cbResult(err, null);
+							} else {
+								var result = { 
+									rows: rows, 
+									count: countRows[0].count,
+									totalCount: countRows[1].count
+								}
+								cbResult(null, result);
 							}
-							cbResult(null, result);
-						}
+						});
 					});
 				}
 			});
@@ -194,15 +207,17 @@ function Database(dbFile)
 
 			var sql = this.schema.sqlBuilder.selectSQL(table, fields, filterClauses, [], 1, 0, false);
 
-			var db = new sqlite3.cached.Database(this.dbFile);
+			var db = new sqlite3.Database(this.dbFile);
 
 			db.get(sql.query, sql.params, function(err, row) {
-				if (err) {
-					log.warn("model.get() failed. " + err);	
-				}
+				db.close(function() {
+					if (err) {
+						log.warn("model.get() failed. " + err);	
+					}
 
-				//console.dir(row);
-				cbResult(err, row);
+					//console.dir(row);
+					cbResult(err, row);
+				});
 			});
 
 		} catch(err) {
@@ -271,11 +286,11 @@ function Database(dbFile)
 						log.warn("Database.insert() failed. Rollback. " + err);
 						db.run("ROLLBACK TRANSACTION");
 					}
+					db.close();
 					cbResult(err, ids); 
 				});	
 
 			});
-			db.close();
 
 		} catch(err) {
 			log.warn("model.insert() failed. " + err);	
@@ -342,11 +357,10 @@ function Database(dbFile)
 						log.warn("Database.update() failed. Rollback. " + err);
 						db.run("ROLLBACK TRANSACTION");
 					}
+					db.close();
 					cbResult(err, modCount); 
 				});	
-
 			});
-			db.close();
 
 		} catch(err) {
 			log.warn("model.update() failed. " + err);	
@@ -403,11 +417,11 @@ function Database(dbFile)
 						log.warn("Database.delete() failed. Rollback. " + err);
 						db.run("ROLLBACK TRANSACTION");
 					}
+					db.close();
 					cbResult(err, delCount); 
 				});	
 
 			});
-			db.close();
 
 		} catch(err) {
 			log.warn("model.delete() failed. " + err);	
@@ -417,25 +431,4 @@ function Database(dbFile)
 
 }
 
-
-
-
-function isDescendant(table, parentTable, depth) {
-
-	if (depth > 0) {
-
-		if ( _.contains(parentTable.children, table)) 
-		{
-			return true;
-		}
-		for(var i = 0;i < parentTable.children.length; ++i) {
-			if (isDescendant(table, parentTable.children[i], depth - 1))
-				return true;
-		}
-	}
-	
-	return false;
-}
-
 exports.Database = Database;
-exports.isDescendant = isDescendant;

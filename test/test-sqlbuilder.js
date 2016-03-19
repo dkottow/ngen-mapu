@@ -183,7 +183,7 @@ describe('SandwichSales DB', function() {
 		], function(tables) {
 			console.log('\ntables ' + tables);
 
-			var sql = sqlBuilder.joinSQL(tables);
+			var sql = sqlBuilder.joinSQL(tables[0], tables);
 			console.log('sql');
 			console.log(sql);
 

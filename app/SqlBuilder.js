@@ -6,57 +6,25 @@ var SqlBuilder = function(tableGraph) {
 	this.graph = tableGraph;
 }
 
+
 SqlBuilder.prototype.selectSQL 
 	= function(table, fields, filterClauses, orderClauses, limit, offset) 
 {
-	assert(_.isObject(table), "arg 'table' is object");
-	assert(fields == '*' || _.isArray(fields), "arg 'fields' is '*' or array");
-	assert(_.isArray(filterClauses), "arg 'filterClauses' is array");
 	assert(_.isArray(orderClauses), "arg 'orderClauses' is array");
-	
 	assert(_.isNumber(limit), "arg limit must be integer");
 	assert(_.isNumber(offset), "arg offset must be integer");
 
-	//sanitize filterClauses
-	_.each(filterClauses, function(fc) {
-		if ( ! fc.table) fc.table = table.name;
-	});
+	var query = this.querySQL(table, fields, filterClauses);
 
-	var tables = _.uniq([table.name].concat(
-		_.map(filterClauses, function(fc) {
-			return fc.table;
-	})));
-
-	var tableJoinPaths = tables.length == 1
-		? [ table.viewName() ] 
-		: this.joinSQL(tables);
-
-	var filterSQL = this.filterSQL(filterClauses);
-	var filterJoinSQL = this.filterJoinSQL(filterClauses);
 	var orderSQL = this.orderSQL(table, orderClauses);
-	var fieldSQL = this.fieldSQL(table, fields);
 
-	var sql = _.reduce(tableJoinPaths, function(memo, tableSQL) {
-
-		var selectSQL = 'SELECT DISTINCT ' + fieldSQL 
-						+ ' FROM ' + tableSQL + filterJoinSQL
-						+ ' WHERE ' + filterSQL.query; 
-
-		if (memo.length == 0) return selectSQL;
-		else return memo + ' UNION ' + selectSQL;
-	}, '');
-
-	var countSQL = 'SELECT COUNT(*) as count FROM (' + sql + ')';
-
-	var selectSQL = 'SELECT * FROM (' + sql + ')'
+	var selectSQL = 'SELECT * FROM (' + query.sql + ')'
 					+ ' ORDER BY ' + orderSQL
 					+ ' LIMIT ' + limit
 					+ ' OFFSET ' + offset;
 
-	var totalParams = _.flatten(_.times(tableJoinPaths.length, function(n) {
-		return filterSQL.params;
-	}), true);
-	
+	var countSQL = 'SELECT COUNT(*) as count FROM (' + query.sql + ')';
+
 /*
 	log.debug(selectSQL);
 	log.debug(totalParams);
@@ -65,43 +33,31 @@ SqlBuilder.prototype.selectSQL
 
 	return {
 		'query': selectSQL, 
-		'params': totalParams, 
+		'params': query.params,
 		'countSql': countSQL
-	};
+	}
 }
 
-//TODO - merge with selectSQL
 SqlBuilder.prototype.statsSQL = function(table, fields, filterClauses) 
 {
-	assert(_.isObject(table), "arg 'table' is object");
-	assert(fields == '*' || _.isArray(fields), "arg 'fields' is '*' or array");
-	assert(_.isArray(filterClauses), "arg 'filterClauses' is array");
-	
-	var joinTables = {};
-	joinTables[table.name] = table.name;
-	_.each(filterClauses, function(fc) {
-		if ( ! fc.table) fc.table = table.name;
-		joinTables[fc.table] = fc.table;
-	});
+	var query = this.querySQL(table, fields, filterClauses);
 
-	var joins = this.joinSQL(_.keys(joinTables));
-	var filterSQL = this.filterSQL(filterClauses);
-	var filterJoinSQL = this.filterJoinSQL(filterClauses);
-	var fieldSQL = this.fieldSQL(table, fields);
 
-/* TODO take out
-	var sql = _.reduce(joins, function(memo, joinSQL) {
-
-		var selectSQL = 'SELECT DISTINCT ' + fieldSQL 
-						+ ' FROM ' + joinSQL + filterJoinSQL
-						+ ' WHERE ' + filterSQL.query; 
-
-		if (memo.length == 0) return selectSQL;
-		else return memo + ' UNION ' + selectSQL;
+	var outerSQL = _.reduce(fields, function(memo, f) {
+		var s = util.format("min(%s) as min_%s, max(%s) as max_%s ",
+							f, f, f, f);
+		return (memo.length == 0) ? s : memo + ', ' + s;
 	}, '');
-*/
 
-/* TODO implement
+	var statsSQL = 'SELECT ' + outerSQL + ' FROM (' + query.sql + ')';
+
+	return {
+		'query': statsSQL, 
+		'params': query.params
+	}
+}
+
+/* old statsSQL 
 			var sql_query = _.reduce(resultFields, function(memo, f) {
 
 				var s = util.format("SELECT '%s' as field, "
@@ -112,7 +68,7 @@ SqlBuilder.prototype.statsSQL = function(table, fields, filterClauses)
 								table.viewName(), f, 
 								table.viewName());
 
-				s += filterJoinSQL 
+				s += joinSearchSQL 
 					+ ' WHERE ' + filterSQL.query;
 
 				return (memo.length == 0) ?  s : memo + ' UNION ALL ' + s;
@@ -127,20 +83,46 @@ SqlBuilder.prototype.statsSQL = function(table, fields, filterClauses)
 			log.debug(sql_params);
 */
 
-	var totalParams = _.flatten(_.times(joins.length, function(n) {
+
+SqlBuilder.prototype.querySQL = function(table, fields, filterClauses) {
+
+	assert(_.isObject(table), "arg 'table' is object");
+	assert(fields == '*' || _.isArray(fields), "arg 'fields' is '*' or array");
+	assert(_.isArray(filterClauses), "arg 'filterClauses' is array");
+	
+	//sanitize filterClauses
+	_.each(filterClauses, function(fc) {
+		if ( ! fc.table) fc.table = table.name;
+	});
+
+	var filterTables = _.map(filterClauses, function(fc) {
+			return fc.table;
+	});
+
+	var joinPaths = this.joinSQL(table.name, filterTables, { joinViews: true });
+
+	var joinSearchSQL = this.joinSearchSQL(filterClauses);
+	var filterSQL = this.filterSQL(filterClauses);
+	var fieldSQL = this.fieldSQL(table, fields);
+
+	var sql = _.reduce(joinPaths, function(memo, joinSQL) {
+
+		var selectSQL = 'SELECT DISTINCT ' + fieldSQL 
+						+ ' FROM ' + table.viewName() 
+						+ joinSQL + joinSearchSQL
+						+ ' WHERE ' + filterSQL.query; 
+
+		if (memo.length == 0) return selectSQL;
+		else return memo + ' UNION ' + selectSQL;
+	}, '');
+
+	var totalParams = _.flatten(_.times(joinPaths.length, function(n) {
 		return filterSQL.params;
 	}), true);
-	
-/*
-	log.debug(selectSQL);
-	log.debug(totalParams);
-	log.debug(countSQL);
-*/
 
 	return {
-		'query': selectSQL, 
+		'sql': sql, 
 		'params': totalParams, 
-		'countSql': countSQL
 	};
 }
 
@@ -203,23 +185,18 @@ SqlBuilder.prototype.createViewSQL = function(table) {
 			aliasFn(fk));	
 	}, '');
 
-	var ref_tables = _.uniq(_.map(_.filter(table.row_alias, function(ref) {
+	var ref_tables = _.map(_.filter(table.row_alias, function(ref) {
 			return ref.indexOf('.') >= 0;		
 		}), function(ref) {
 		return ref.split('.')[0];	
-	}));
+	});
 
-	var ref_join = table.name;
-	if (ref_tables.length > 0) {
-		ref_join = this.joinSQL([table.name].concat(ref_tables));
-
-		if (ref_join.length > 1) {
-			throw new Error(util.format("Error creating view %s. row_alias [%s] must have a unique join path"), table.viewName(), table.row_alias.join(", "));
-		}
-
-		var r = new RegExp('\\b' + table.viewName() + '\\b', 'g');
-		ref_join = ref_join[0].replace(r, table.name);
+	var ref_join = this.joinSQL(table.name, ref_tables, { joinViews: true });
+	if (ref_join.length > 1) {
+		throw new Error(util.format("Error creating view %s. row_alias [%s] must have a unique join path"), table.viewName(), table.row_alias.join(", "));
 	}
+	var r = new RegExp('\\b' + table.viewName() + '\\b', 'g');
+	ref_join = ref_join[0].replace(r, table.name);;
 
 	var fk_fields = _.map(table.foreignKeys(), function(fk) {
 		return util.format('%s."%s" AS "%s"', 
@@ -242,7 +219,7 @@ SqlBuilder.prototype.createViewSQL = function(table) {
 		return result;
 	}, '');
 
-	var ref_id =  util.format("'(' || %s.id || ')' AS %s", 
+	var ref_id =  util.format("' [' || %s.id || ']' AS %s", 
 		table.name,
 		Field.REF_NAME
 	);
@@ -259,40 +236,46 @@ SqlBuilder.prototype.createViewSQL = function(table) {
 
 	var sql = 'CREATE VIEW ' + table.viewName() + ' AS '
 		+ ' SELECT ' + fields.join(', ')
-		+ ' FROM ' + ref_join + ' ' + fk_join + ';';
+		+ ' FROM ' + table.name + ' ' + ref_join + ' ' + fk_join + ';';
 
 	return sql;
 }
 
-SqlBuilder.prototype.joinSQL = function(tables) {
+SqlBuilder.prototype.joinSQL = function(mainTable, tables, options) {
 
-	assert(tables.length > 1);
+	options = options || {};
 
-	var me = this;
-	var joinPaths = this.graph.tableJoins(tables);
+	var uniqTables = _.uniq([mainTable].concat(tables));
+	if (uniqTables.length < 2) return [''];
+
+	var joinPaths = this.graph.tableJoins(uniqTables);
+
+	var joinViews = options.joinViews == true;
 	
+	var me = this;
 	var result = _.map(joinPaths, function(joinPath) {
 
-		var fkTables = _.map(joinPath, function(p) {
-			return p[0];
-		});
-
-		var idTables = _.map(joinPath, function(p) {
-			return p[1];
-		});
-
-		var startTable = _.find(fkTables, function(t) {
-			return ! _.contains(idTables, t)
-		});
-
 		return _.reduce(joinPath, function(memo, ts, fk) {
-			var t1 = me.graph.table(ts[0]);
-			var t2 = me.graph.table(ts[1]);
+			var joinTable, idTable, fkTable;
+
+			idTable = ts[1];
+			fkTable = ts[0];
+
+			if (ts[1] == mainTable) {
+				joinTable = ts[0];
+			} else {
+				joinTable = ts[1];
+			}
+
+			if (joinViews) {
+				joinTable = me.graph.table(joinTable).viewName();
+				fkTable = me.graph.table(fkTable).viewName();
+				idTable = me.graph.table(idTable).viewName();
+			}			
+
 			return memo + util.format(' INNER JOIN %s ON %s.id = %s.%s ',
-							t2.viewName(), 
-							t2.viewName(),
-							t1.viewName(), fk.split('.')[1]); 
-		}, me.graph.table(startTable).viewName());
+							joinTable, idTable, fkTable, fk.split('.')[1]); 
+		}, '');
 	});
 		
 	return result;
@@ -389,7 +372,7 @@ SqlBuilder.prototype.filterSQL = function(filterClauses) {
 	};
 }
 
-SqlBuilder.prototype.filterJoinSQL = function(filterClauses) {
+SqlBuilder.prototype.joinSearchSQL = function(filterClauses) {
 	//there can be only one search filter
 	var searchFilter = _.find(filterClauses, function(filter) {
 		return filter.op == 'search';

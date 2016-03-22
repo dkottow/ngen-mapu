@@ -49,6 +49,7 @@ Field = function(fieldDef) {
 			me.notnull = fieldDef.notnull || 0;
 		}
 
+
 		//non-SQL attributes				
 		_.each(Field.PROPERTIES, function(f) {
 			me[f] = fieldDef[f];
@@ -121,6 +122,16 @@ Field.prototype.sqlValue = function(name) {
 	}	
 }
 
+Field.prototype.defaultSQL = function() {
+
+	if (this.name == 'modified_on') {
+		return "DEFAULT(datetime('now'))";
+
+	} else {
+		return "";
+	}
+}
+
 Field.prototype.constraintSQL = function() {
 	return "";
 }
@@ -134,6 +145,7 @@ Field.prototype.foreignKeySQL = function() {
 Field.prototype.toSQL = function() {
 	var sql = '"' + this.name + '" ' + this.type;
 	if (this.notnull) sql += " NOT NULL";
+	sql += " " + this.defaultSQL();
 	sql += " " + this.constraintSQL();
 	sql += " " + this.foreignKeySQL();
 	return sql;

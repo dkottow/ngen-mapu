@@ -76,6 +76,12 @@ var TableGraph = function(tables) {
 		});
 
 		me.trees = _.values(distinctTrees);
+
+/*
+		_.each(me.trees, function(tree) {
+			log.debug(tree.edges());
+		});
+*/
 	}
 
 }
@@ -103,6 +109,7 @@ TableGraph.prototype.tablesByDependencies = function() {
 
 	while (result.length < tables.length) {
 		var remainingTables = _.difference(tables, result);
+		var doneInsert = false;
 		_.each(remainingTables, function(t) {
 
 			var depTables = getDepTables(t);
@@ -120,8 +127,15 @@ TableGraph.prototype.tablesByDependencies = function() {
 			if (doInsert) {
 				//console.log('inserting ' + t.name + ' @ ' + pos);
 				result.splice(pos, 0, t);
+				doneInsert = true;
 			}
 		});
+		
+		//TODO if we cant resolve it, push it
+		if ( ! doneInsert) {
+			log.warn("TabelGraph.tablesByDependency. Found interdependent tables, forcing result"); 
+			result.push(remainingTables[0]);
+		}
 	}
 
 	return result;

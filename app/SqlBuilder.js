@@ -141,7 +141,9 @@ SqlBuilder.prototype.createSQL = function() {
 	}).join('\n');
 
 	var createViewSQL = _.map(tables, function(t) {
-		return this.createViewSQL(t);
+		var viewSQL = this.createViewSQL(t);
+		log.debug(viewSQL);
+		return viewSQL;
 	}, this).join('\n');
 
 
@@ -185,6 +187,8 @@ SqlBuilder.prototype.createViewSQL = function(table) {
 			aliasFn(fk));	
 	}, '');
 
+	//TODO make sure row_alias only references existing table/fields
+
 	var ref_tables = _.map(_.filter(table.row_alias, function(ref) {
 			return ref.indexOf('.') >= 0;		
 		}), function(ref) {
@@ -193,7 +197,8 @@ SqlBuilder.prototype.createViewSQL = function(table) {
 
 	var ref_join = this.joinSQL(table.name, ref_tables, { joinViews: true });
 	if (ref_join.length > 1) {
-		throw new Error(util.format("Error creating view %s. row_alias [%s] must have a unique join path"), table.viewName(), table.row_alias.join(", "));
+		//TODO maybe pick the shortest join path instead of rejecting?
+		throw new Error(util.format("Error creating view %s. row_alias [%s] must have a unique join path", table.viewName(), table.row_alias.join(", ")));
 	}
 	var r = new RegExp('\\b' + table.viewName() + '\\b', 'g');
 	ref_join = ref_join[0].replace(r, table.name);;
@@ -218,6 +223,7 @@ SqlBuilder.prototype.createViewSQL = function(table) {
 		}
 		return result;
 	}, '');
+
 
 	var ref_id =  util.format("' [' || %s.id || ']' AS %s", 
 		table.name,

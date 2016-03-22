@@ -41,13 +41,14 @@ Schema.prototype.init = function(cbAfter) {
 		this.graph = new TableGraph(tables);
 		this.sqlBuilder = new SqlBuilder(this.graph);
 
+		cbAfter();
+
 	} catch(err) {
-		log.warn("Error in Schema.init " + err);
+		log.error("Schema.init() exception. " + err);
 		//throw err;
 		cbAfter(err);
 		return;
 	}
-	cbAfter();
 }
 
 Schema.prototype.tables = function() {
@@ -84,19 +85,24 @@ Schema.prototype.create = function(dbFile, cbAfter) {
 				cbAfter(err);
 				return;
 			}
-			db.exec(me.sqlBuilder.createSQL(), function(err) {
-				if (err) {
-					log.warn("Schema.create() failed. " + err);	
-					fs.unlink(tmpFile);
-					cbAfter(err);
-					return;
-				}
-				log.debug('rename ' + tmpFile + ' to ' + dbFile);
-				fs.rename(tmpFile, dbFile, function(err) {
-					cbAfter(err);
+			try {
+				db.exec(me.sqlBuilder.createSQL(), function(err) {
+					if (err) {
+						log.warn("Schema.create() failed. " + err);	
+						fs.unlink(tmpFile);
+						cbAfter(err);
+						return;
+					}
+					log.debug('rename ' + tmpFile + ' to ' + dbFile);
+					fs.rename(tmpFile, dbFile, function(err) {
+						cbAfter(err);
+					});
 				});
-			});
-			db.close();
+				db.close();
+			} catch(err) {
+				log.error("Schema.create() exception. " + err);
+				db.close();
+			}
 	});
 }
 

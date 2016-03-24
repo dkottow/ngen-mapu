@@ -168,10 +168,19 @@ TableGraph.prototype.tableJoins = function(tables) {
 }
 
 TableGraph.prototype.tableJSON = function(table) {
-	table = _.isObject(table) ? table.name : table;
-	var json = this.graph.node(table).toJSON();
-	json.parents = this.graph.successors(table);
-	json.children = this.graph.predecessors(table);
+	var tableName = _.isObject(table) ? table.name : table;
+	table = this.graph.node(tableName);
+	var json = table.toJSON();
+	json.referencing = _.map(this.graph.successors(tableName), 
+						function(fkFullName) {
+		var fk = table.fields[fkFullName.split('.')[1]];
+		return { fk: fk.name, fk_table: fk.fk_table };
+	});
+	json.referenced = _.map(this.graph.predecessors(tableName), 
+						function(fkFullName) {
+		var fk = fkFullName.split('.');
+		return { table: fk[0], fk: fk[1] };
+	});
 	return json;
 }
 

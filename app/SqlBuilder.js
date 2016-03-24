@@ -57,31 +57,37 @@ SqlBuilder.prototype.statsSQL = function(table, fields, filterClauses)
 	}
 }
 
-/* old statsSQL 
-			var sql_query = _.reduce(resultFields, function(memo, f) {
+SqlBuilder.prototype.createSQL = function() {
+	var createSysTablesSQL = Table.CreateTableSQL
+					+ Field.CreateTableSQL;
 
-				var s = util.format("SELECT '%s' as field, "
-							+ "min(%s.%s) as min, max(%s.%s) as max "
-							+ " FROM %s", 
-								f, 
-								table.viewName(), f, 
-								table.viewName(), f, 
-								table.viewName());
+	var sysTablesInsertSQL = _.map(this.graph.tables(), function(t) {
+		return t.insertPropSQL();
+	}).join('\n');
 
-				s += joinSearchSQL 
-					+ ' WHERE ' + filterSQL.query;
+	var tables = this.graph.tablesByDependencies();
 
-				return (memo.length == 0) ?  s : memo + ' UNION ALL ' + s;
-			}, '');
+	var createTableSQL = _.map(tables, function(t) {
+		return t.createSQL();
+	}).join('\n');
 
-			var sql_params = [];
-			_.each(resultFields, function() {
-				sql_params = sql_params.concat(filterSQL.params);
-			});
+	var createViewSQL = _.map(tables, function(t) {
+		var viewSQL = this.createViewSQL(t);
+		log.debug(viewSQL);
+		return viewSQL;
+	}, this).join('\n');
 
-			log.debug(sql_query);
-			log.debug(sql_params);
-*/
+
+	var sql = createSysTablesSQL + '\n\n'
+			+ sysTablesInsertSQL + '\n\n'
+			+ createTableSQL + '\n\n'
+			+ createViewSQL + '\n\n';
+	
+	log.debug(sql);
+	return sql;
+}
+
+// private methods...
 
 
 SqlBuilder.prototype.querySQL = function(table, fields, filterClauses) {
@@ -125,39 +131,6 @@ SqlBuilder.prototype.querySQL = function(table, fields, filterClauses) {
 		'params': totalParams, 
 	};
 }
-
-SqlBuilder.prototype.createSQL = function() {
-	var createSysTablesSQL = Table.CreateTableSQL
-					+ Field.CreateTableSQL;
-
-	var sysTablesInsertSQL = _.map(this.graph.tables(), function(t) {
-		return t.insertPropSQL();
-	}).join('\n');
-
-	var tables = this.graph.tablesByDependencies();
-
-	var createTableSQL = _.map(tables, function(t) {
-		return t.createSQL();
-	}).join('\n');
-
-	var createViewSQL = _.map(tables, function(t) {
-		var viewSQL = this.createViewSQL(t);
-		log.debug(viewSQL);
-		return viewSQL;
-	}, this).join('\n');
-
-
-	var sql = createSysTablesSQL + '\n\n'
-			+ sysTablesInsertSQL + '\n\n'
-			+ createTableSQL + '\n\n'
-			+ createViewSQL + '\n\n';
-	
-	log.debug(sql);
-	return sql;
-}
-
-// private methods...
-
 
 /*
 function srns(pre, n) {

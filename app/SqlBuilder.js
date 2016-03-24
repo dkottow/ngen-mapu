@@ -225,13 +225,13 @@ SqlBuilder.prototype.createViewSQL = function(table) {
 	}, '');
 
 
-	var ref_id =  util.format("' [' || %s.id || ']' AS %s", 
+	var ref_id =  util.format("'[' || %s.id || ']' AS %s", 
 		table.name,
 		Field.REF_NAME
 	);
 	
 	ref_field = ref_field.length > 0
-		? "COALESCE(" + ref_field + ", '') || " + ref_id 
+		? "COALESCE(" + ref_field + ", '') || ' ' || " + ref_id 
 		: ref_id;
 
 	var table_fields = _.map(table.fields, function(f) {

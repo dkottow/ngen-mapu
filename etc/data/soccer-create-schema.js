@@ -14,7 +14,7 @@ var log = global.log;
 
 describe('Schema', function() {
 
-	var tournamentSchema = [
+	var soccerSchema = [
 		 { "name": "Person"
 		 , "row_alias": ["Name"]
 		 , "fields": {
@@ -92,7 +92,7 @@ describe('Schema', function() {
 				}
 			}		
 		 }
-	   , { "name": "TeamMember"
+	   , { "name": "Player"
 		 , "fields": {
 				  "id": {
 					  "name": "id"
@@ -105,16 +105,47 @@ describe('Schema', function() {
 					, "fk_table": "Team"
 					, "order": 1
 				}
-				, "Member_id": {
-					  "name": "Member_id"
+				, "Player_id": {
+					  "name": "Player_id"
 					, "type": "INTEGER"
 					, "fk_table": "Person"
 					, "order": 2
 				}
-				, "MembershipDate": {
-					  "name": "MembershipDate"
-					, "type": "DATE"
+				, "Position_id": {
+					  "name": "Position_id"
+					, "type": "INTEGER"
+					, "fk_table": "Position"
 					, "order": 10
+				}
+				, "modified_by": {
+					  "name": "modified_by"
+					, "type": "VARCHAR(256)"
+					, "order": 91
+				}
+				, "modified_on": {
+					  "name": "modified_on"
+					, "type": "DATETIME"
+					, "order": 92
+				}
+			}		
+		 }
+	   , { "name": "Position"
+		 , "row_alias": ["Code"]		  	
+		 , "fields": {
+				  "id": {
+					  "name": "id"
+					, "type": "INTEGER"
+					, "order": 0
+				}
+				, "Code": {
+					  "name": "Code"
+					, "type": "VARCHAR(2)"
+					, "order": 10
+				}
+				, "Name": {
+					  "name": "Name"
+					, "type": "VARCHAR"
+					, "order": 11
 				}
 				, "modified_by": {
 					  "name": "modified_by"
@@ -204,7 +235,7 @@ describe('Schema', function() {
 	];
 
 	describe('create()', function() {
-		var dbFile = "./tournament.sqlite";
+		var dbFile = "./soccer.sqlite";
 		
 		before(function(done) {
 			schema.Schema.remove(dbFile, function(err) {
@@ -214,7 +245,7 @@ describe('Schema', function() {
 
 		it('create example', function(done) {
 	
-			var db = new schema.Schema(tournamentSchema);
+			var db = new schema.Schema(soccerSchema);
 			db.init(function(err) {
 console.log('init');
 				if (err) {

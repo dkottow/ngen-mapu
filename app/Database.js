@@ -11,16 +11,16 @@ var util = require('util');
 
 var Schema = require('./Schema.js').Schema;
 
-global.log = global.log || require('bunyan').createLogger({
+var log = global.log || require('bunyan').createLogger({
 	name: 'g6.server',
 	level: 'debug',
 	src: true,
 	stream: process.stderr
 });
+
 global.row_max_count = global.row_count || 1000;
 
-
-function Database(dbFile) 
+Database = function(dbFile) 
 {
 	log.debug('ctor ' + dbFile);
 
@@ -29,30 +29,30 @@ function Database(dbFile)
 
 	this.dbFile = dbFile;
 	this.schema = null;
+}
 	
-	var me = this;
+Database.prototype.init = function(cbAfter) {
+	this.schema = new Schema();
+	this.schema.read(this.dbFile, cbAfter);
+}
 
-	this.tables = function() { 
-		var tables = this.schema.tables();
-		return _.object(_.pluck(tables, 'name'), tables); 
-	};
+Database.prototype.tables = function() { 
+	var tables = this.schema.tables();
+	return _.object(_.pluck(tables, 'name'), tables); 
+};
 
-	this.init = function(cbAfter) {
-
-		me.schema = new Schema();
-		me.schema.read(this.dbFile, cbAfter);
-	}
-
-	this.getSchema = function(cbResult) {
-		var result = me.schema.get();
-		result.name = path.basename(me.dbFile, global.sqlite_ext);
-		cbResult(null, result);
-	}
+Database.prototype.getSchema = function(cbResult) {
+	var result = this.schema.get();
+	result.name = path.basename(this.dbFile, global.sqlite_ext);
+	cbResult(null, result);
+}
 
 
-	this.getCounts = function(cbResult) {
+Database.prototype.getCounts = function(cbResult) {
+
+	try {
 		//add row counts
-		var sql = _.map(_.keys(me.tables()), function(tn) {
+		var sql = _.map(_.keys(this.tables()), function(tn) {
 			return 'SELECT ' + "'" + tn + "'" + ' AS table_name' 
 					+ ', COUNT(*) AS count'
 					+ ' FROM "' + tn + '"';
@@ -61,16 +61,16 @@ function Database(dbFile)
 		//console.dir(sql);
 
 		var result = {};
-		if (_.size(me.tables()) == 0) {
+		if (_.size(this.tables()) == 0) {
 			cbResult(null, result);
 			return;
 		}
 
-		var db = new sqlite3.Database(me.dbFile);
+		var db = new sqlite3.Database(this.dbFile);
 		db.all(sql, function(err, rows) {
 			db.close(function() {
 				if (err) {
-					log.warn("model.getCounts() failed. " + err);	
+					log.error("model.getCounts() failed. " + err);	
 					cbResult(err, null);
 					return;
 				}
@@ -80,355 +80,360 @@ function Database(dbFile)
 				cbResult(null, result);
 			});
 		});
+
+	} catch(err) {
+		log.error("model.getCounts() exception. " + err);	
+		cbResult(err, null);
 	}
-
-	this.getStats = function(tableName, options, cbResult) {
-
-		try {
-
-			var table = this.tables()[tableName];
-
-			if (! cbResult) {
-				//shift fn args
-				cbResult = options;
-				options = {};
-			}
-
-			options = options || {};		
-			var filterClauses = options.filter || [];
-
-			var fields = options.fields || '*'; 
-			if (fields == '*') fields = table.viewFields();
-
-			var sql = this.schema.sqlBuilder.statsSQL(table, fields, filterClauses);
-			
-			var db = new sqlite3.Database(this.dbFile);
-			db.get(sql.query, sql.params, function(err, row) {
-				db.close(function() {
-					if (err) {
-						log.warn("db.get() failed. " + err);	
-						log.debug(sql.query);	
-						cbResult(err, null);
-						return;
-					}
-					var result = {};
-					_.each(fields, function(f) {
-						var min_key = 'min_' + f;
-						var max_key = 'max_' + f;
-						result[f] = { 
-							field: f,
-							min: row[min_key],
-							max: row[max_key]
-						};
-					});
-					cbResult(null, result);
-				});
-			});
-
-		} catch(err) {
-			log.warn("model.getStats() failed. " + err);	
-			cbResult(err, null);
-		}
-	}	
-
-	this.all = function(tableName, options, cbResult) {
-
-		try {
-
-			var table = this.tables()[tableName];
-			if (! cbResult) {
-				cbResult = options;
-				options = {};
-			}
-			options = options || {};		
-
-			var filterClauses = options.filter || [];
-			var fields = options.fields || '*'; 
-			var order = options.order || [];
-			var limit = options.limit || global.row_max_count;
-			var offset = options.offset || 0;
-
-			log.debug(fields + " from " + table.name 
-					+ " filtered by " + util.inspect(filterClauses));
-
-			var sql = this.schema.sqlBuilder.selectSQL(table, fields, filterClauses, order, limit, offset);
-
-			var db = new sqlite3.Database(this.dbFile);
-
-			db.all(sql.query, sql.params, function(err, rows) {
-				if (err) {
-					db.close(function() {
-						log.warn("model.all() failed. " + err);	
-						log.debug(sql.query);	
-						cbResult(err, null);
-					});
-				} else {
-					//console.dir(rows);
-					
-					var countSql = sql.countSql 
-						+ ' UNION ALL SELECT COUNT(*) as count FROM ' + table.name; 
-					
-					db.all(countSql, sql.params, function(err, countRows) {
-						db.close(function() {
-							if (err) {
-								cbResult(err, null);
-							} else {
-								var result = { 
-									rows: rows, 
-									count: countRows[0].count,
-									totalCount: countRows[1].count
-								}
-								cbResult(null, result);
-							}
-						});
-					});
-				}
-			});
-
-		} catch(err) {
-			log.warn("model.all() failed. " + err);	
-			cbResult(err, []);
-		}
-	}
-
-	this.get = function(tableName, options, cbResult) {
-
-		try {
-
-			var table = this.tables()[tableName];
-			if (! cbResult) {
-				cbResult = options;
-				options = {};
-			}
-			options = options || {};		
-
-			var filterClauses = options.filter || [];
-			var fields = options.fields || '*'; 
-
-			var sql = this.schema.sqlBuilder.selectSQL(table, fields, filterClauses, [], 1, 0, false);
-
-			var db = new sqlite3.Database(this.dbFile);
-
-			db.get(sql.query, sql.params, function(err, row) {
-				db.close(function() {
-					if (err) {
-						log.warn("model.get() failed. " + err);	
-					}
-
-					//console.dir(row);
-					cbResult(err, row);
-				});
-			});
-
-		} catch(err) {
-			log.warn("model.get() failed. " + err);	
-			cbResult(err, []);
-		}
-	}
-
-	this.insert = function(tableName, rows, cbResult) {
-
-		try {
-
-			var table = this.tables()[tableName];
-
-			if (rows.length == 0) {
-				cbResult(null, []);
-				return;
-			}
-
-			var fieldNames = _.filter(_.keys(rows[0]) 
-								, function(fn) { 
-					//filter out any non-field key
-					return _.has(table.fields, fn); // && fn != 'id'; 
-			});
-
-			var fieldParams = _.times(fieldNames.length
-							, function(fn) { return "?"; });
-
-			var sql = "INSERT INTO " + table.name 
-					+ '("' + fieldNames.join('", "') + '")'
-					+ " VALUES (" + fieldParams.join(', ') + ");"
-
-			//console.log(sql);
-
-			var err = null;
-			var ids = [];
-			var db = new sqlite3.Database(this.dbFile);
-			
-			db.serialize(function() {
-				db.run("PRAGMA foreign_keys = ON;");
-				db.run("BEGIN TRANSACTION");
-
-				var stmt = db.prepare(sql, function(e) {
-					err = err || e;
-				});
-
-				_.each(rows, function(r) {
-					if (err == null) {					
-
-						var params = _.map(fieldNames, function(fn) { 
-											return r[fn]; });
-						//console.log(params);
-						stmt.run(params, function(e) { 
-							err = err || e;
-							ids.push(this.lastID);
-						});
-					
-
-					}
-				});
-
-				stmt.finalize(function() { 
-					if (err == null) {
-						db.run("COMMIT TRANSACTION");
-					} else {
-						log.warn("Database.insert() failed. Rollback. " + err);
-						db.run("ROLLBACK TRANSACTION");
-					}
-					db.close();
-					cbResult(err, ids); 
-				});	
-
-			});
-
-		} catch(err) {
-			log.warn("model.insert() failed. " + err);	
-			cbResult(err, []);
-		}
-	}
-
-	this.update = function(tableName, rows, cbResult) {
-
-		try {
-
-			var table = this.tables()[tableName];
-
-			if (rows.length == 0) {
-				cbResult(null, []);
-				return;
-			}
-
-			var fieldNames = _.filter(_.keys(rows[0]) 
-								, function(fn) { 
-					return _.has(table.fields, fn) && fn != 'id'; 
-			});
-
-			var sql = "UPDATE " + table.name
-					+ ' SET "' + fieldNames.join('" = ?, "') + '" = ?'
-					+ " WHERE id = ?"; 
-			//console.log(sql);
-
-			var err = null;
-			var modCount = 0;	
-			var db = new sqlite3.Database(this.dbFile);
-
-			db.serialize(function() {
-				db.run("PRAGMA foreign_keys = ON;");
-				db.run("BEGIN TRANSACTION");
-
-				var stmt = db.prepare(sql, function(e) {
-					err = err || e;
-				});
-
-				_.each(rows, function(r) {
-
-					if (err == null) {					
-						var params = _.map(fieldNames, function(fn) { return r[fn]; });
-						params.push(r.id);
-						//console.log(params);
-
-						stmt.run(params, function(e) {
-							err = err || e;
-							modCount += this.changes;
-						});
-					}
-				});
-
-				stmt.finalize(function() { 
-					if (err == null && modCount != rows.length) {
-						err = new Error("G6_MODEL_ERROR: update row count mismatch. Expected " + rows.length + " got " + modCount);
-					}
-
-					if (err == null) {
-						db.run("COMMIT TRANSACTION");
-
-					} else {
-						log.warn("Database.update() failed. Rollback. " + err);
-						db.run("ROLLBACK TRANSACTION");
-					}
-					db.close();
-					cbResult(err, modCount); 
-				});	
-			});
-
-		} catch(err) {
-			log.warn("model.update() failed. " + err);	
-			cbResult(err, 0);
-		}
-	}
-
-	this.delete = function(tableName, rows, cbResult) {
-
-		try {
-
-			var table = this.tables()[tableName];
-
-			if (rows.length == 0) {
-				cbResult(null, []);
-				return;
-			}
-
-			var idParams = _.times(rows.length, function(fn) { return "?"; });
-
-			var sql = "DELETE FROM " + table['name'] 
-					+ " WHERE id IN (" + idParams.join(', ') + ")";
-			//console.log(sql);
-
-			var err = null;
-			var delCount = 0;
-			var db = new sqlite3.Database(this.dbFile);
-			
-			db.serialize(function() {
-				db.run("PRAGMA foreign_keys = ON;");
-				db.run("BEGIN TRANSACTION");
-
-				var stmt = db.prepare(sql, function(e) {
-					err = err || e;
-				});
-
-				if (err == null) 
-				{
-					stmt.run(rows, function(e) { 
-						err = err || e;
-						delCount = this.changes;
-					});
-				}
-
-				stmt.finalize(function() { 
-					if (err == null && delCount != rows.length) {
-						//console.log(delCount + " <> " + rows.length);
-						err = new Error("G6_MODEL_ERROR: delete row count mismatch");
-					}
-
-					if (err == null) {
-						db.run("COMMIT TRANSACTION");
-					} else {
-						log.warn("Database.delete() failed. Rollback. " + err);
-						db.run("ROLLBACK TRANSACTION");
-					}
-					db.close();
-					cbResult(err, delCount); 
-				});	
-
-			});
-
-		} catch(err) {
-			log.warn("model.delete() failed. " + err);	
-			cbResult(err, 0);
-		}
-	}
-
 }
+
+Database.prototype.getStats = function(tableName, options, cbResult) {
+
+	try {
+
+		var table = this.tables()[tableName];
+
+		if (! cbResult) {
+			//shift fn args
+			cbResult = options;
+			options = {};
+		}
+
+		options = options || {};		
+		var filterClauses = options.filter || [];
+
+		var fields = options.fields || '*'; 
+		if (fields == '*') fields = table.viewFields();
+
+		var sql = this.schema.sqlBuilder.statsSQL(table, fields, filterClauses);
+		
+		var db = new sqlite3.Database(this.dbFile);
+		db.get(sql.query, sql.params, function(err, row) {
+			db.close(function() {
+				if (err) {
+					log.error("db.get() failed. " + err);	
+					log.debug(sql.query);	
+					cbResult(err, null);
+					return;
+				}
+				var result = {};
+				_.each(fields, function(f) {
+					var min_key = 'min_' + f;
+					var max_key = 'max_' + f;
+					result[f] = { 
+						field: f,
+						min: row[min_key],
+						max: row[max_key]
+					};
+				});
+				cbResult(null, result);
+			});
+		});
+
+	} catch(err) {
+		log.error("model.getStats() exception. " + err);	
+		cbResult(err, null);
+	}
+}	
+
+Database.prototype.all = function(tableName, options, cbResult) {
+
+	try {
+
+		var table = this.tables()[tableName];
+		if (! cbResult) {
+			cbResult = options;
+			options = {};
+		}
+		options = options || {};		
+
+		var filterClauses = options.filter || [];
+		var fields = options.fields || '*'; 
+		var order = options.order || [];
+		var limit = options.limit || global.row_max_count;
+		var offset = options.offset || 0;
+
+		log.debug(fields + " from " + table.name 
+				+ " filtered by " + util.inspect(filterClauses));
+
+		var sql = this.schema.sqlBuilder.selectSQL(table, fields, filterClauses, order, limit, offset);
+
+		var db = new sqlite3.Database(this.dbFile);
+
+		db.all(sql.query, sql.params, function(err, rows) {
+			if (err) {
+				db.close(function() {
+					log.error("model.all() failed. " + err);	
+					log.debug(sql.query);	
+					cbResult(err, null);
+				});
+			} else {
+				//console.dir(rows);
+				
+				var countSql = sql.countSql 
+					+ ' UNION ALL SELECT COUNT(*) as count FROM ' + table.name; 
+				
+				db.all(countSql, sql.params, function(err, countRows) {
+					db.close(function() {
+						if (err) {
+							cbResult(err, null);
+						} else {
+							var result = { 
+								rows: rows, 
+								count: countRows[0].count,
+								totalCount: countRows[1].count
+							}
+							cbResult(null, result);
+						}
+					});
+				});
+			}
+		});
+
+	} catch(err) {
+		log.error("model.all() exception. " + err);	
+		cbResult(err, []);
+	}
+}
+
+Database.prototype.get = function(tableName, options, cbResult) {
+
+	try {
+
+		var table = this.tables()[tableName];
+		if (! cbResult) {
+			cbResult = options;
+			options = {};
+		}
+		options = options || {};		
+
+		var filterClauses = options.filter || [];
+		var fields = options.fields || '*'; 
+
+		var sql = this.schema.sqlBuilder.selectSQL(table, fields, filterClauses, [], 1, 0, false);
+
+		var db = new sqlite3.Database(this.dbFile);
+
+		db.get(sql.query, sql.params, function(err, row) {
+			db.close(function() {
+				if (err) {
+					log.error("model.get() failed. " + err);	
+				}
+
+				//console.dir(row);
+				cbResult(err, row);
+			});
+		});
+
+	} catch(err) {
+		log.error("model.get() exception. " + err);	
+		cbResult(err, []);
+	}
+}
+
+Database.prototype.insert = function(tableName, rows, cbResult) {
+
+	try {
+
+		var table = this.tables()[tableName];
+
+		if (rows.length == 0) {
+			cbResult(null, []);
+			return;
+		}
+
+		var fieldNames = _.filter(_.keys(rows[0]) 
+							, function(fn) { 
+				//filter out any non-field key
+				return _.has(table.fields, fn); // && fn != 'id'; 
+		});
+
+		var fieldParams = _.times(fieldNames.length
+						, function(fn) { return "?"; });
+
+		var sql = "INSERT INTO " + table.name 
+				+ '("' + fieldNames.join('", "') + '")'
+				+ " VALUES (" + fieldParams.join(', ') + ");"
+
+		//console.log(sql);
+
+		var err = null;
+		var ids = [];
+		var db = new sqlite3.Database(this.dbFile);
+		
+		db.serialize(function() {
+			db.run("PRAGMA foreign_keys = ON;");
+			db.run("BEGIN TRANSACTION");
+
+			var stmt = db.prepare(sql, function(e) {
+				err = err || e;
+			});
+
+			_.each(rows, function(r) {
+				if (err == null) {					
+
+					var params = _.map(fieldNames, function(fn) { 
+										return r[fn]; });
+					//console.log(params);
+					stmt.run(params, function(e) { 
+						err = err || e;
+						ids.push(this.lastID);
+					});
+				
+
+				}
+			});
+
+			stmt.finalize(function() { 
+				if (err == null) {
+					db.run("COMMIT TRANSACTION");
+				} else {
+					log.error("Database.insert() failed. Rollback. " + err);
+					db.run("ROLLBACK TRANSACTION");
+				}
+				db.close();
+				cbResult(err, ids); 
+			});	
+
+		});
+
+	} catch(err) {
+		log.error("model.insert() exception. " + err);	
+		cbResult(err, []);
+	}
+}
+
+Database.prototype.update = function(tableName, rows, cbResult) {
+
+	try {
+
+		var table = this.tables()[tableName];
+
+		if (rows.length == 0) {
+			cbResult(null, []);
+			return;
+		}
+
+		var fieldNames = _.filter(_.keys(rows[0]) 
+							, function(fn) { 
+				return _.has(table.fields, fn) && fn != 'id'; 
+		});
+
+		var sql = "UPDATE " + table.name
+				+ ' SET "' + fieldNames.join('" = ?, "') + '" = ?'
+				+ " WHERE id = ?"; 
+		//console.log(sql);
+
+		var err = null;
+		var modCount = 0;	
+		var db = new sqlite3.Database(this.dbFile);
+
+		db.serialize(function() {
+			db.run("PRAGMA foreign_keys = ON;");
+			db.run("BEGIN TRANSACTION");
+
+			var stmt = db.prepare(sql, function(e) {
+				err = err || e;
+			});
+
+			_.each(rows, function(r) {
+
+				if (err == null) {					
+					var params = _.map(fieldNames, function(fn) { return r[fn]; });
+					params.push(r.id);
+					//console.log(params);
+
+					stmt.run(params, function(e) {
+						err = err || e;
+						modCount += this.changes;
+					});
+				}
+			});
+
+			stmt.finalize(function() { 
+				if (err == null && modCount != rows.length) {
+					err = new Error("G6_MODEL_ERROR: update row count mismatch. Expected " + rows.length + " got " + modCount);
+				}
+
+				if (err == null) {
+					db.run("COMMIT TRANSACTION");
+
+				} else {
+					log.error("Database.update() failed. Rollback. " + err);
+					db.run("ROLLBACK TRANSACTION");
+				}
+				db.close();
+				cbResult(err, modCount); 
+			});	
+		});
+
+	} catch(err) {
+		log.error("model.update() exception. " + err);	
+		cbResult(err, 0);
+	}
+}
+
+Database.prototype.delete = function(tableName, rows, cbResult) {
+
+	try {
+
+		var table = this.tables()[tableName];
+
+		if (rows.length == 0) {
+			cbResult(null, []);
+			return;
+		}
+
+		var idParams = _.times(rows.length, function(fn) { return "?"; });
+
+		var sql = "DELETE FROM " + table['name'] 
+				+ " WHERE id IN (" + idParams.join(', ') + ")";
+		//console.log(sql);
+
+		var err = null;
+		var delCount = 0;
+		var db = new sqlite3.Database(this.dbFile);
+		
+		db.serialize(function() {
+			db.run("PRAGMA foreign_keys = ON;");
+			db.run("BEGIN TRANSACTION");
+
+			var stmt = db.prepare(sql, function(e) {
+				err = err || e;
+			});
+
+			if (err == null) 
+			{
+				stmt.run(rows, function(e) { 
+					err = err || e;
+					delCount = this.changes;
+				});
+			}
+
+			stmt.finalize(function() { 
+				if (err == null && delCount != rows.length) {
+					//console.log(delCount + " <> " + rows.length);
+					err = new Error("G6_MODEL_ERROR: delete row count mismatch");
+				}
+
+				if (err == null) {
+					db.run("COMMIT TRANSACTION");
+				} else {
+					log.error("Database.delete() failed. Rollback. " + err);
+					db.run("ROLLBACK TRANSACTION");
+				}
+				db.close();
+				cbResult(err, delCount); 
+			});	
+
+		});
+
+	} catch(err) {
+		log.error("model.delete() exception. " + err);	
+		cbResult(err, 0);
+	}
+}
+
+//}
 
 exports.Database = Database;

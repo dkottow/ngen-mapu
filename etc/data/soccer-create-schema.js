@@ -93,6 +93,7 @@ describe('Schema', function() {
 			}		
 		 }
 	   , { "name": "Player"
+		 , "row_alias": ["Person.Name"]		  	
 		 , "fields": {
 				  "id": {
 					  "name": "id"
@@ -105,8 +106,8 @@ describe('Schema', function() {
 					, "fk_table": "Team"
 					, "order": 1
 				}
-				, "Player_id": {
-					  "name": "Player_id"
+				, "Person_id": {
+					  "name": "Person_id"
 					, "type": "INTEGER"
 					, "fk_table": "Person"
 					, "order": 2

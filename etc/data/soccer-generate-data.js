@@ -16,36 +16,27 @@ var log = global.log;
 
 describe('Database', function() {
 
-	describe('create_orders()', function() {
+	describe('create_teams()', function() {
 
-		var dbFile = "gen_data/sales_sandwich.sqlite";
+		var dbFile = "soccer.sqlite";
 		var db = new database.Database(dbFile);
-		var customers;
-		var products;
+		var persons;
 		
 		before(function(done) {
 			db.init(function(err) {
 				if (err) {
 					log.info(err);
 				} else {
-					var allDone = _.after(2, function() {
+					db.all('persons', function(err, result) {
+						log.debug('got ' + result.rows.length + " persons.");
+						persons = result.rows;
 						done();
-					});
-					db.all('customers', function(err, result) {
-						log.debug('got ' + result.rows.length + " customers.");
-						customers = result.rows;
-						allDone();
-					});
-					db.all('products', function(err, result) {
-						log.debug('got ' + result.rows.length + " products.");
-						products = result.rows;
-						allDone();
 					});
 				}
 			});
 		});	
 
-		it('create orders', function(done) {
+		it('create teams', function(done) {
 			this.timeout(90000);
 
 			var startDate = new Date('2014-01-01');

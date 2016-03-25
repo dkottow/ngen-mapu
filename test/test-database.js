@@ -61,7 +61,7 @@ describe('Database', function() {
 			var products = defs.tables["products"];
 			assert(products, 'table exists');
 			assert(_.values(products.fields).length > 3, 'fields exists');
-			assert.equal(products.children.length, 1, 'one child');
+			assert.equal(products.referenced.length, 1, 'one referenced table');
 		});
 
 	});

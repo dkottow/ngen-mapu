@@ -127,6 +127,9 @@ Field.prototype.defaultSQL = function() {
 	if (this.name == 'modified_on') {
 		return "DEFAULT(datetime('now'))";
 
+	} else if (this.name == 'modified_by') {
+		return "DEFAULT 'sql'";
+
 	} else {
 		return "";
 	}

@@ -77,11 +77,15 @@ SqlBuilder.prototype.createSQL = function() {
 		return viewSQL;
 	}, this).join('\n');
 
+	var createSearchSQL = _.map(tables, function(t) {
+		return t.createSearchSQL();
+	}).join('\n');
 
 	var sql = createSysTablesSQL + '\n\n'
 			+ sysTablesInsertSQL + '\n\n'
 			+ createTableSQL + '\n\n'
-			+ createViewSQL + '\n\n';
+			+ createViewSQL + '\n\n'
+			+ createSearchSQL + '\n\n';
 	
 	log.debug(sql);
 	return sql;
@@ -170,8 +174,10 @@ SqlBuilder.prototype.createViewSQL = function(table) {
 
 	var ref_join = this.joinSQL(table.name, ref_tables, { joinViews: true });
 	if (ref_join.length > 1) {
-		//TODO maybe pick the shortest join path instead of rejecting?
+		log.warn('No unique join path, taking one of the shortest');
+/*
 		throw new Error(util.format("Error creating view %s. row_alias [%s] must have a unique join path", table.viewName(), table.row_alias.join(", ")));
+*/
 	}
 	var r = new RegExp('\\b' + table.viewName() + '\\b', 'g');
 	ref_join = ref_join[0].replace(r, table.name);;

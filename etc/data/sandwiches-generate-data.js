@@ -1,5 +1,5 @@
 
-var APP_PATH = "../app/";
+var APP_PATH = "../../app/";
 
 var assert = require('assert')
 	, _ = require('underscore')
@@ -18,10 +18,10 @@ describe('Database', function() {
 
 	describe('create_orders()', function() {
 
-		var dbFile = "gen_data/sales_sandwich.sqlite";
+		var dbFile = "sandwiches.sqlite";
 		var db = new database.Database(dbFile);
 		var customers;
-		var products;
+		var sandwiches;
 		
 		before(function(done) {
 			db.init(function(err) {
@@ -36,9 +36,9 @@ describe('Database', function() {
 						customers = result.rows;
 						allDone();
 					});
-					db.all('products', function(err, result) {
-						log.debug('got ' + result.rows.length + " products.");
-						products = result.rows;
+					db.all('sandwiches', function(err, result) {
+						log.debug('got ' + result.rows.length + " sandwiches.");
+						sandwiches = result.rows;
 						allDone();
 					});
 				}
@@ -61,7 +61,7 @@ describe('Database', function() {
 				start_date: startDate,
 				end_date: endDate,
 				sample_size_customers: 50,
-				sample_size_products: 50,
+				sample_size_sandwiches: 50,
 			});
 			
 			generateOrders(500, {
@@ -69,7 +69,7 @@ describe('Database', function() {
 				start_date: startDate,
 				end_date: endDate,
 				sample_size_customers: 10,
-				sample_size_products: 10,
+				sample_size_sandwiches: 10,
 			});
 
 			var peakStartDate = rand.date(startDate, endDate);
@@ -79,7 +79,7 @@ describe('Database', function() {
 			generateOrders(300, {
 				orders: orders,
 				sample_size_customers: 30,
-				sample_size_products: 30,
+				sample_size_sandwiches: 30,
 				start_date: peakStartDate,
 				end_date: peakEndDate
 			});
@@ -109,8 +109,8 @@ describe('Database', function() {
 			var selectedCustomers = options.sample_size_customers 
 				? rand.sample(customers, options.sample_size_customers) : customers;
 
-			var selectedProducts = options.sample_size_products
-				? rand.sample(products, options.sample_size_products) : products;
+			var selectedProducts = options.sample_size_sandwiches
+				? rand.sample(sandwiches, options.sample_size_sandwiches) : sandwiches;
 
 			var maxItemsPerOrder = options.max_items_per_order || 8; 
 
@@ -124,22 +124,22 @@ describe('Database', function() {
 				var date = rand.date(startDate, endDate);
 				var modDate = date.toISOString().substr(0,19).replace('T', ' ');
 
-				var products_in_order = [];
+				var order_items = [];
 				var itemsCount = randBetweenGauss(1, maxItemsPerOrder, 3); 
 				//console.log("order items count " + itemsCount);
 				_.times(itemsCount, function() {
 					var p = rand.pick(selectedProducts);
 					var po = {
-						product_id: p.id,
+						sandwich_id: p.id,
 						unit_price: p.price,
 						quantity: randBetweenGauss(1, 3, 0.5),
 						modified_by: 'www',
 						modified_on: modDate
 					}
-					products_in_order.push(po);
+					order_items.push(po);
 				});
 
-				var total = Math.round(_.reduce(products_in_order, function(t, po) {
+				var total = Math.round(_.reduce(order_items, function(t, po) {
 					return t + po.quantity * po.unit_price;
 				}, 0) * 100) / 100;
 
@@ -151,7 +151,7 @@ describe('Database', function() {
 					modified_on: modDate
 				}
 				
-				order.products = products_in_order;
+				order.sandwiches = order_items;
 
 				orders.push(order);
 			});
@@ -169,22 +169,22 @@ describe('Database', function() {
 				} else {
 					console.log('inserted orders... ' + ids.length);
 				}
-				var products_in_orders = [];
+				var order_items = [];
 				
 				for(var i = 0;i < orders.length; ++i) {
-					_.each(orders[i].products, function(po) {
+					_.each(orders[i].sandwiches, function(po) {
 						po.order_id = ids[i];
 					});
-					products_in_orders =
-						products_in_orders.concat(orders[i].products);
+					order_items =
+						order_items.concat(orders[i].sandwiches);
 				}
 
-				db.insert('products_in_orders', products_in_orders, 
+				db.insert('order_items', order_items, 
 					function(err, ids) {
 					if (err) {
 						console.log(err);
 					} else {
-						console.log('inserted products_in_orders... ' 
+						console.log('inserted order_items... ' 
 									+ ids.length);
 					}
 					done();

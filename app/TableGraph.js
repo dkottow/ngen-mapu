@@ -164,7 +164,11 @@ TableGraph.prototype.tableJoins = function(tables) {
 	_.each(joinPaths, function(joinPath) {
 		distinctJoins[hashFn(joinPath)] = joinPath;
 	});
-	return _.values(distinctJoins);
+
+	//return join paths sorted by number of intermediate tables
+	return _.values(distinctJoins).sort(function(j1, j2) {
+		return _.keys(j1).length - _.keys(j2).length; 
+	});
 }
 
 TableGraph.prototype.tableJSON = function(table) {

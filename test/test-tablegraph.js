@@ -2,13 +2,16 @@
 var assert = require('assert')
 	, _ = require('underscore')
 	, util = require('util')
-	, graphlib = require('graphlib')
-	, Table = require('../app/Table.js').Table
+	, graphlib = require('graphlib');
+	
+global.log = require('./log.js').log;
+	
+var Table = require('../app/Table.js').Table
 	, TableGraph = require('../app/TableGraph.js').TableGraph
 	, graphutil = require('../app/graph_util.js')
 	, Schema = require('../app/Schema.js').Schema;
 	
-var log = global.log;
+var log = global.log.child({'mod': 'mocha.test-tablegraph.js'});
 
 describe('GetAllPaths', function() {
 
@@ -35,22 +38,22 @@ describe('GetAllPaths', function() {
 
 	it('get all paths', function() {
 		var allPaths = graphutil.GetAllPaths(graph, '2', '7');
-		console.log(allPaths.paths);
+		log.info(allPaths.paths);
 	});
 
 	it('get cycle', function() {
 		var result = graphutil.FindCycle(graph);
-		console.log(result.cycle);
+		log.info(result.cycle);
 	});
 
 	it('get minimum spanning tree', function() {
 		var mst = graphlib.alg.prim(graph, function(e) { return 1; });
-		console.log(mst.edges());
+		log.info(mst.edges());
 	});
 
 	it('get all cycles', function() {
 		var result = graphutil.FindAllCycles(graph);
-		console.log(result.cycles);
+		log.info(result.cycles);
 	});
 });
 
@@ -205,15 +208,15 @@ describe('SandwichSales DB', function() {
 
 
 	it('TableGraph.init', function() {
-		console.log('\n*** nodes ***');
-		console.log(tableGraph.graph.nodes());
-		console.log('*** edges ***');
-		console.log(tableGraph.graph.edges());
-		console.log('\n*** spanning trees ***');
+		log.info('\n*** nodes ***');
+		log.info(tableGraph.graph.nodes());
+		log.info('*** edges ***');
+		log.info(tableGraph.graph.edges());
+		log.info('\n*** spanning trees ***');
 		_.each(tableGraph.trees, function(tree) {
-			console.log(tree.edges());
+			log.info(tree.edges());
 		});
-		console.log('\n*** joins ***');
+		log.info('\n*** joins ***');
 		_.each([
 			  ['products', 'orders']
 			, ['customers', 'products']
@@ -221,13 +224,13 @@ describe('SandwichSales DB', function() {
 			, _.pluck(tableGraph.tables(), 'name')
 		], function(tables) {
 			var joins = tableGraph.tableJoins(tables);
-			console.log('tables ' + tables);
-			console.log('joins count ' + joins.length);
-			console.log(joins);
+			log.info('tables ' + tables);
+			log.info('joins count ' + joins.length);
+			log.info(joins);
 /*
 			var sql = tableGraph.joinSQL(tables);
-			console.log('join SQL');
-			console.log(sql);
+			log.info('join SQL');
+			log.info(sql);
 */
 		});
 	});
@@ -236,9 +239,9 @@ describe('SandwichSales DB', function() {
 		//TODO test me better, shuffle table ordering
 		var tables = tableGraph.tables();
 		var tablesByDeps = tableGraph.tablesByDependencies();
-		console.log(_.pluck(tables, 'name'));
-		console.log('by deps');
-		console.log(_.pluck(tablesByDeps, 'name'));
+		log.info(_.pluck(tables, 'name'));
+		log.info('by deps');
+		log.info(_.pluck(tablesByDeps, 'name'));
 	});
 });
 
@@ -392,15 +395,15 @@ describe('AthleteTeam DB', function() {
 
 
 	it('TableGraph.init', function() {
-		console.log('\n*** nodes ***');
-		console.log(tableGraph.graph.nodes());
-		console.log('*** edges ***');
-		console.log(tableGraph.graph.edges());
-		console.log('\n*** spanning trees ***');
+		log.info('\n*** nodes ***');
+		log.info(tableGraph.graph.nodes());
+		log.info('*** edges ***');
+		log.info(tableGraph.graph.edges());
+		log.info('\n*** spanning trees ***');
 		_.each(tableGraph.trees, function(tree) {
-			console.log(tree.edges());
+			log.info(tree.edges());
 		});
-		console.log('\n*** joins ***');
+		log.info('\n*** joins ***');
 		_.each([
 			  ['persons', 'accomodations']
 			, ['teams', 'persons']
@@ -410,13 +413,13 @@ describe('AthleteTeam DB', function() {
 			, _.pluck(tableGraph.tables(), 'name')
 		], function(tables) {
 			var joins = tableGraph.tableJoins(tables);
-			console.log('tables ' + tables);
-			console.log('joins count ' + joins.length);
-			console.log(joins);
+			log.info('tables ' + tables);
+			log.info('joins count ' + joins.length);
+			log.info(joins);
 /*
 			var sql = tableGraph.joinSQL(tables);
-			console.log('join SQL');
-			console.log(sql);
+			log.info('join SQL');
+			log.info(sql);
 */
 		});
 	});
@@ -425,9 +428,9 @@ describe('AthleteTeam DB', function() {
 		//TODO test me better, shuffle table ordering
 		var tables = tableGraph.tables();
 		var tablesByDeps = tableGraph.tablesByDependencies();
-		console.log(_.pluck(tables, 'name'));
-		console.log('by deps');
-		console.log(_.pluck(tablesByDeps, 'name'));
+		log.info(_.pluck(tables, 'name'));
+		log.info('by deps');
+		log.info(_.pluck(tablesByDeps, 'name'));
 	});
 });
 

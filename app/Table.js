@@ -4,14 +4,9 @@ var assert = require('assert');
 
 var Field = require('./Field.js').Field;
 
-global.log = global.log || require('bunyan').createLogger({
-	name: 'g6.server',
-	level: 'debug',
-	src: true,
-	stream: process.stderr
-});
+var log = global.log.child({'mod': 'g6.Table.js'});
 
-Table = function(tableDef) {
+var Table = function(tableDef) {
 
 	var me = this;
 	me.fields = {};

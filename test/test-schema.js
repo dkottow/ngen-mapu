@@ -2,11 +2,14 @@
 var assert = require('assert')
 	, _ = require('underscore')
 	, util = require('util')
-	, sqlite3 = require('sqlite3').verbose()
-	, Schema = require('../app/Schema').Schema
+	, sqlite3 = require('sqlite3').verbose();
+	
+global.log = require('./log.js').log;
+	
+var Schema = require('../app/Schema').Schema
 	, Model = require('../app/Database').Database;
 	
-var log = global.log;
+var log = global.log.child({'mod': 'mocha.test-schema.js'});
 
 describe('Schema', function() {
 

@@ -4,12 +4,13 @@
 var assert = require('assert')
 	, _ = require('underscore')
 	, util = require('util')
-	, sqlite3 = require('sqlite3').verbose()
-	, Database = require('../app/Database').Database;
-	
-var isDescendant = require('../app/Database').isDescendant;
+	, sqlite3 = require('sqlite3').verbose();
 
-var log = global.log;
+global.log = require('./log.js').log;
+
+var Database = require('../app/Database').Database;
+	
+var log = global.log.child({'mod': 'mocha.test-database.js'});
 
 describe('Database', function() {
 	var dbFile = "test/sales.sqlite";

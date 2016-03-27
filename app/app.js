@@ -11,13 +11,7 @@ var AccountController = require('./AccountController.js')
 								.AccountController;
 
 /** globals **/
-
-global.log = global.log || require('bunyan').createLogger({
-	name: 'g6.server',
-	level: 'debug',
-	src: true,
-	stream: process.stderr
-});
+var log = global.log.child({'mod': 'g6.app.js'});
 
 //max number of rows queried by any SELECT
 global.row_max_count = 1000;

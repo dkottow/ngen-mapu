@@ -11,18 +11,13 @@ var util = require('util');
 
 var Schema = require('./Schema.js').Schema;
 
-var log = global.log || require('bunyan').createLogger({
-	name: 'g6.server',
-	level: 'debug',
-	src: true,
-	stream: process.stderr
-});
+var log = global.log.child({'mod': 'g6.Database.js'});
 
 global.row_max_count = global.row_count || 1000;
 
-Database = function(dbFile) 
+var Database = function(dbFile) 
 {
-	log.debug('ctor ' + dbFile);
+	log.debug('new Database ' + dbFile);
 
 	//destroy cached DBs with this name
 	//delete sqlite3.cached.objects[path.resolve(dbFile)];

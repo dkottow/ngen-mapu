@@ -4,15 +4,13 @@
 */
 var assert = require('assert')
 	, _ = require('underscore')
-	, util = require('util')
-	, parser = require('../app/QueryParser');
+	, util = require('util');
+	
+global.log = require('./log.js').log;
 
-var log = require('bunyan').createLogger({
-	name: 'g6.server',
-	level: 'debug',
-	src: true,
-	stream: process.stderr
-});
+var parser = require('../app/QueryParser');
+
+var log = global.log.child({'mod': 'mocha.test-parser.js'});
 
 describe('Parser.parser', function() {
 	it('skip', function() {		

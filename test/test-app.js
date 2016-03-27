@@ -2,10 +2,13 @@
 var assert = require('assert')
 	, _ = require('underscore')
 	, util = require('util')
-	, request = require('request')
-	, app = require('../app/app').app;
+	, request = require('request');
 	
-var log = global.log;
+global.log = require('./log.js').log;
+
+var app = require('../app/app').app;
+
+var log = global.log.child({'mod': 'mocha.test-app.js'});
 
 var config = {
 	'ip'	:  'localhost',

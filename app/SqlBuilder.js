@@ -2,6 +2,9 @@ var _ = require('underscore');
 var util = require('util');
 var assert = require('assert');
 
+var Table = require('./Table.js').Table;
+var log = global.log.child({'mod': 'g6.SqlBuilder.js'});
+
 var SqlBuilder = function(tableGraph) {
 	this.graph = tableGraph;
 }
@@ -181,7 +184,6 @@ SqlBuilder.prototype.createViewSQL = function(table) {
 	}
 	var r = new RegExp('\\b' + table.viewName() + '\\b', 'g');
 	ref_join = ref_join[0].replace(r, table.name);;
-debugger;
 	var fk_fields = _.map(table.foreignKeys(), function(fk) {
 		return util.format('%s."%s" AS "%s"', 
 			aliasFn(fk), Field.REF_NAME, 

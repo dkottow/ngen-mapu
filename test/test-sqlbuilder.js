@@ -2,14 +2,16 @@
 var assert = require('assert')
 	, _ = require('underscore')
 	, util = require('util')
-	, Table = require('../app/Table.js').Table
+	, fs = require('fs');
+	
+global.log = require('./log.js').log;
+	
+var Table = require('../app/Table.js').Table
 	, TableGraph = require('../app/TableGraph.js').TableGraph
 	, SqlBuilder = require('../app/SqlBuilder.js').SqlBuilder;
 
-var fs = require('fs');
+var log = global.log.child({'mod': 'mocha.test-sqlbuilder.js'});
 	
-var log = global.log;
-
 function sqlReplaceParams(selectResult) {
 	var sql = selectResult.query;
 	var pos = sql.length - 1;
@@ -181,11 +183,11 @@ describe('SandwichSales DB', function() {
 			, ['customers', 'products_in_orders']
 			, _.pluck(sqlBuilder.graph.tables(), 'name')
 		], function(tables) {
-			console.log('\ntables ' + tables);
+			log.info('\ntables ' + tables);
 
 			var sql = sqlBuilder.joinSQL(tables[0], tables);
-			console.log('sql');
-			console.log(sql);
+			log.info('sql');
+			log.info(sql);
 
 		});
 	});
@@ -214,7 +216,7 @@ describe('SandwichSales DB', function() {
 		];
 		
 		var result = sqlBuilder.filterSQL(filterClauses);
-		console.log(result.query);
+		log.info(result.query);
 	});
 
 	it('SqlBuilder.selectSQL', function() {
@@ -250,22 +252,22 @@ describe('SandwichSales DB', function() {
 		var result = sqlBuilder.selectSQL(table, fields, filterClauses,
 					orderClauses, limit, offset);
 
-		//console.log(result.query);
-		console.log(sqlReplaceParams(result));
+		//log.info(result.query);
+		log.info(sqlReplaceParams(result));
 	});
 
 	it('SqlBuilder.createViewSQL', function() {
 		//var table = sqlBuilder.graph.table('products_in_orders');
 		var table = sqlBuilder.graph.table('orders');
 		var result = sqlBuilder.createViewSQL(table);
-		console.log(result);
+		log.info(result);
 	});
 
 	it('SqlBuilder.createSQL', function() {
 		//var table = sqlBuilder.graph.table('products_in_orders');
 		var result = sqlBuilder.createSQL();
 		fs.writeFile('create.sql', result);
-		console.log(result);
+		log.info(result);
 	});
 });
 
@@ -448,14 +450,14 @@ describe('AthleteTeam DB', function() {
 		var result = sqlBuilder.selectSQL(table, fields, filterClauses,
 					orderClauses, limit, offset);
 
-		//console.log(result.query);
-		console.log(sqlReplaceParams(result));
+		//log.info(result.query);
+		log.info(sqlReplaceParams(result));
 	});
 
 	it('SqlBuilder.createViewSQL', function() {
 		var table = sqlBuilder.graph.table('teams');
 		var result = sqlBuilder.createViewSQL(table);
-		console.log(result);
+		log.info(result);
 	});
 });
 

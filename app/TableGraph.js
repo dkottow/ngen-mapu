@@ -4,6 +4,8 @@ var util = require('util');
 
 var graphutil = require('./graph_util.js');
 
+var log = global.log.child({'mod': 'g6.TableGraph.js'});
+
 var TableGraph = function(tables) {
 
 	this.graph = new graphlib.Graph({ directed: true });

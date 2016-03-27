@@ -13,16 +13,11 @@ var Table = require('./Table.js').Table;
 var TableGraph = require('./TableGraph.js').TableGraph;
 var SqlBuilder = require('./SqlBuilder.js').SqlBuilder;
 
-var log = global.log || require('bunyan').createLogger({
-	name: 'g6.server',
-	level: 'debug',
-	src: true,
-	stream: process.stderr
-});
+var log = global.log.child({'mod': 'g6.Schema.js'});
 
 global.tmp_dir = global.tmp_dir || '.';
 
-Schema = function(tableDefs) {
+var Schema = function(tableDefs) {
 
 	this.tableDefs = tableDefs;
 }

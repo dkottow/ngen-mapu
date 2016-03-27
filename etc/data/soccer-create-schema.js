@@ -15,7 +15,37 @@ var log = global.log;
 describe('Schema', function() {
 
 	var soccerSchema = [
-		 { "name": "Person"
+	   { "name": "Team"
+		 , "row_alias": ["Name"]		  	
+		 , "fields": {
+				  "id": {
+					  "name": "id"
+					, "type": "INTEGER"
+					, "order": 0
+				}
+				, "Name": {
+					  "name": "Name"
+					, "type": "VARCHAR"
+					, "order": 1
+				}
+				, "Country": {
+					  "name": "Country"
+					, "type": "VARCHAR"
+					, "order": 1
+				}
+				, "modified_by": {
+					  "name": "modified_by"
+					, "type": "VARCHAR(64)"
+					, "order": 91
+				}
+				, "modified_on": {
+					  "name": "modified_on"
+					, "type": "DATETIME"
+					, "order": 92
+				}
+			}		
+		 }
+		 , { "name": "TeamMember"
 		 , "row_alias": ["Name"]
 		 , "fields": {
 				  "id": {
@@ -35,92 +65,23 @@ describe('Schema', function() {
 				}
 				, "DateOfBirth": {
 					  "name": "DateOfBirth"
-					, "type": "DATE"
-					, "order": 30
-				}
-				, "Role": {
-					  "name": "Role"
-					, "type": "VARCHAR(20)"
-					, "order": 30
-				}
-				, "modified_by": {
-					  "name": "modified_by"
-					, "type": "VARCHAR(64)"
-					, "order": 91
-				}
-				, "modified_on": {
-					  "name": "modified_on"
-					, "type": "DATETIME"
-					, "order": 92
-				}
-			}		
-		 }
-	   , { "name": "Team"
-		 , "row_alias": ["Name"]		  	
-		 , "fields": {
-				  "id": {
-					  "name": "id"
-					, "type": "INTEGER"
-					, "order": 0
-				}
-				, "Name": {
-					  "name": "Name"
 					, "type": "VARCHAR"
-					, "order": 1
-				}
-				, "Coach_id": {
-					  "name": "Coach_id"
-					, "type": "INTEGER"
-					, "fk_table": "Person"
-					, "order": 10
-				}
-				, "Captain_id": {
-					  "name": "Captain_id"
-					, "type": "INTEGER"
-					, "fk_table": "Person"
-					, "order": 11
-				}
-				, "modified_by": {
-					  "name": "modified_by"
-					, "type": "VARCHAR(64)"
-					, "order": 91
-				}
-				, "modified_on": {
-					  "name": "modified_on"
-					, "type": "DATETIME"
-					, "order": 92
-				}
-			}		
-		 }
-	   , { "name": "Player"
-		 , "row_alias": ["Person.Name"]		  	
-		 , "fields": {
-				  "id": {
-					  "name": "id"
-					, "type": "INTEGER"
-					, "order": 0
+					, "order": 20
 				}
 				, "Team_id": {
 					  "name": "Team_id"
 					, "type": "INTEGER"
+					, "order": 30
 					, "fk_table": "Team"
-					, "order": 1
 				}
-				, "Person_id": {
-					  "name": "Person_id"
-					, "type": "INTEGER"
-					, "fk_table": "Person"
-					, "order": 2
-				}
-				, "Position_id": {
-					  "name": "Position_id"
-					, "type": "INTEGER"
-					, "fk_table": "Position"
-					, "order": 10
+				, "Role": {
+					  "name": "Role"
+					, "type": "VARCHAR(20)"
+					, "order": 31
 				}
 				, "modified_by": {
 					  "name": "modified_by"
-					, "type": "VARCHAR(256)"
+					, "type": "VARCHAR(64)"
 					, "order": 91
 				}
 				, "modified_on": {
@@ -220,6 +181,44 @@ describe('Schema', function() {
 					, "type": "INTEGER"
 					, "fk_table": "Team"
 					, "order": 21
+				}
+				, "modified_by": {
+					  "name": "modified_by"
+					, "type": "VARCHAR(256)"
+					, "order": 91
+				}
+				, "modified_on": {
+					  "name": "modified_on"
+					, "type": "DATETIME"
+					, "order": 92
+				}
+			}		
+		 }
+	   , { "name": "Formation"
+		 , "row_alias": ["TeamMember.Name", "Game.EventDate"]		  	
+		 , "fields": {
+				  "id": {
+					  "name": "id"
+					, "type": "INTEGER"
+					, "order": 0
+				}
+				, "TeamMember_id": {
+					  "name": "TeamMember_id"
+					, "type": "INTEGER"
+					, "fk_table": "TeamMember"
+					, "order": 2
+				}
+				, "Position_id": {
+					  "name": "Position_id"
+					, "type": "INTEGER"
+					, "fk_table": "Position"
+					, "order": 10
+				}
+				, "Game_id": {
+					  "name": "Game_id"
+					, "type": "INTEGER"
+					, "fk_table": "Game"
+					, "order": 2
 				}
 				, "modified_by": {
 					  "name": "modified_by"

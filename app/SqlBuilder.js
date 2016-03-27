@@ -181,7 +181,7 @@ SqlBuilder.prototype.createViewSQL = function(table) {
 	}
 	var r = new RegExp('\\b' + table.viewName() + '\\b', 'g');
 	ref_join = ref_join[0].replace(r, table.name);;
-
+debugger;
 	var fk_fields = _.map(table.foreignKeys(), function(fk) {
 		return util.format('%s."%s" AS "%s"', 
 			aliasFn(fk), Field.REF_NAME, 

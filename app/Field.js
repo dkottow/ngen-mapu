@@ -196,7 +196,7 @@ Field.prototype.toJSON = function() {
 Field.REF_NAME = 'ref';
 
 Field.prototype.refName = function() {
-	if (this.name.endsWith("id")) return this.name.replace(/id$/, "ref");
+	if (this.name.match(/id$/)) return this.name.replace(/id$/, "ref");
 	else return this.name + "_ref";
 }
 

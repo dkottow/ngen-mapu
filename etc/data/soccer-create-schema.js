@@ -81,64 +81,15 @@ describe('Schema', function() {
 					, "type": "VARCHAR(20)"
 					, "order": 31
 				}
+				, "PreferredPosition_id": {
+					  "name": "PreferredPosition_id"
+					, "type": "INTEGER"
+					, "fk_table": "Position"
+					, "order": 10
+				}
 				, "modified_by": {
 					  "name": "modified_by"
 					, "type": "VARCHAR(64)"
-					, "order": 91
-				}
-				, "modified_on": {
-					  "name": "modified_on"
-					, "type": "DATETIME"
-					, "order": 92
-				}
-			}		
-		 }
-	   , { "name": "Position"
-		 , "row_alias": ["Code"]		  	
-		 , "fields": {
-				  "id": {
-					  "name": "id"
-					, "type": "INTEGER"
-					, "order": 0
-				}
-				, "Code": {
-					  "name": "Code"
-					, "type": "VARCHAR(2)"
-					, "order": 10
-				}
-				, "Name": {
-					  "name": "Name"
-					, "type": "VARCHAR"
-					, "order": 11
-				}
-				, "modified_by": {
-					  "name": "modified_by"
-					, "type": "VARCHAR(256)"
-					, "order": 91
-				}
-				, "modified_on": {
-					  "name": "modified_on"
-					, "type": "DATETIME"
-					, "order": 92
-				}
-			}		
-		 }
-	   , { "name": "Venue"
-		 , "row_alias": ["Name"]		  	
-		 , "fields": {
-				  "id": {
-					  "name": "id"
-					, "type": "INTEGER"
-					, "order": 0
-				}
-				, "Name": {
-					  "name": "Name"
-					, "type": "VARCHAR"
-					, "order": 1
-				}
-				, "modified_by": {
-					  "name": "modified_by"
-					, "type": "VARCHAR(256)"
 					, "order": 91
 				}
 				, "modified_on": {
@@ -221,6 +172,61 @@ describe('Schema', function() {
 					, "type": "INTEGER"
 					, "fk_table": "Game"
 					, "order": 2
+				}
+				, "modified_by": {
+					  "name": "modified_by"
+					, "type": "VARCHAR(256)"
+					, "order": 91
+				}
+				, "modified_on": {
+					  "name": "modified_on"
+					, "type": "DATETIME"
+					, "order": 92
+				}
+			}		
+		 }
+	   , { "name": "Position"
+		 , "row_alias": ["Code"]		  	
+		 , "fields": {
+				  "id": {
+					  "name": "id"
+					, "type": "INTEGER"
+					, "order": 0
+				}
+				, "Code": {
+					  "name": "Code"
+					, "type": "VARCHAR(2)"
+					, "order": 10
+				}
+				, "Name": {
+					  "name": "Name"
+					, "type": "VARCHAR"
+					, "order": 11
+				}
+				, "modified_by": {
+					  "name": "modified_by"
+					, "type": "VARCHAR(256)"
+					, "order": 91
+				}
+				, "modified_on": {
+					  "name": "modified_on"
+					, "type": "DATETIME"
+					, "order": 92
+				}
+			}		
+		 }
+	   , { "name": "Venue"
+		 , "row_alias": ["Name"]		  	
+		 , "fields": {
+				  "id": {
+					  "name": "id"
+					, "type": "INTEGER"
+					, "order": 0
+				}
+				, "Name": {
+					  "name": "Name"
+					, "type": "VARCHAR"
+					, "order": 1
 				}
 				, "modified_by": {
 					  "name": "modified_by"

@@ -2,6 +2,7 @@ var _ = require('underscore');
 var util = require('util');
 var assert = require('assert');
 
+global.log = global.log || require('bunyan').createLogger({name: 'nn'});
 var log = global.log.child({'mod': 'g6.Field.js'});
 
 //console.log('TMP DIR ' + tmp_dir);

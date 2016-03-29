@@ -7,8 +7,7 @@ var path = require('path');
 var util = require('util');
 var url = require('url');
 
-var AccountController = require('./AccountController.js')
-								.AccountController;
+var AccountController = require('./AccountController.js').AccountController;
 
 /** globals **/
 var log = global.log.child({'mod': 'g6.app.js'});

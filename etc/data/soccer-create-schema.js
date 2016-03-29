@@ -1,11 +1,13 @@
 
-var APP_PATH = "../../app/";
 
 var assert = require('assert')
 	, _ = require('underscore')
 	, util = require('util')
-	, sqlite3 = require('sqlite3').verbose()
-	, schema = require(APP_PATH + 'Schema')
+	, sqlite3 = require('sqlite3').verbose();
+
+var APP_PATH = "../../app/";
+
+var Schema = require(APP_PATH + 'Schema').Schema
 	, Model = require(APP_PATH + 'Database').Database;
 	
 var log = global.log;
@@ -234,20 +236,19 @@ describe('Schema', function() {
 		 }
 	];
 
-	describe('create()', function() {
+	describe('Soccer', function() {
 		var dbFile = "./soccer.sqlite";
 		
 		before(function(done) {
-			schema.Schema.remove(dbFile, function(err) {
+			Schema.remove(dbFile, function(err) {
 				done();
 			});
 		});	
 
-		it('create example', function(done) {
+		it('create ' + dbFile, function(done) {
 	
-			var db = new schema.Schema(soccerSchema);
+			var db = new Schema(soccerSchema);
 			db.init(function(err) {
-console.log('init');
 				if (err) {
 					log.error(err);
 					done();

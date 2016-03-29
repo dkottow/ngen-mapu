@@ -6,7 +6,7 @@ var assert = require('assert')
 	
 global.log = require('./log.js').log;
 
-var app = require('../app/app').app;
+var app = require('../app/app.js').app;
 
 var log = global.log.child({'mod': 'mocha.test-app.js'});
 
@@ -22,9 +22,15 @@ if (process.env.C9_USER) {
 
 function get(url, cbAfter) {
 	request(url, function(error, rsp, body) {
-		assert(!error && rsp.statusCode == 200, 'response error');
+		if (error) {
+			log.error(error);			
+			throw new Error(error);
+		}
+		if (rsp.statusCode != 200) {
+			log.error(rsp);
+			throw new Error(rsp.statusMessage);
+		}
 		log.info(body);
-
 		cbAfter(JSON.parse(body));
 	});
 }
@@ -34,12 +40,14 @@ describe('Server (app)', function() {
 	describe('GET', function() {
 
 		var server;
-		var baseUrl = 'http://localhost:' + config.port;
+		var baseUrl = 'http://' + config.ip+ ':' + config.port;
 		var demoAccount = 'demo';
 		var salesDatabase = 'sales';
 
 		before(function(done) {
+			this.timeout(10000);
 			server = app.listen(config.port, config.ip, function() {
+				log.info("server started. " + config.ip + ":" + config.port);
 				done(); 
 			});
 		});	
@@ -50,6 +58,7 @@ describe('Server (app)', function() {
 
 
 		it(baseUrl, function(done) {
+			//this.timeout(10000);
 			get(baseUrl, function(result) {
 				assert(result.accounts, 'response malformed');
 				assert(_.find(result.accounts, function(a) {

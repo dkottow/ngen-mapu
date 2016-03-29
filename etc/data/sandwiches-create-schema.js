@@ -164,7 +164,7 @@ describe('Schema', function() {
 		 }
 	];
 
-	describe('create()', function() {
+	describe('Sandwiches', function() {
 		var dbFile = "./sandwiches.sqlite";
 		
 		before(function(done) {
@@ -173,7 +173,7 @@ describe('Schema', function() {
 			});
 		});	
 
-		it('create example', function(done) {
+		it('create ' + dbFile, function(done) {
 	
 			var db = new schema.Schema(salesSchema);
 			db.init(function(err) {

@@ -154,9 +154,7 @@ TableGraph.prototype.tableJoins = function(tables) {
 
 	//filter out invalid join paths (rhs of joinPath has duplicates)
 	joinPaths = _.filter(joinPaths, function(joinPath) {
-		var idTables = _.map(joinPath, function(p) {
-			return p[1];
-		});
+		var idTables = _.pluck(joinPath, 'idTable');
 		return _.uniq(idTables).length == idTables.length;
 	});
 
@@ -167,10 +165,12 @@ TableGraph.prototype.tableJoins = function(tables) {
 		distinctJoins[hashFn(joinPath)] = joinPath;
 	});
 
-	//return join paths sorted by number of intermediate tables
-	return _.values(distinctJoins).sort(function(j1, j2) {
+	//return join paths sorted by length (number of intermediate tables)
+	var result = _.values(distinctJoins).sort(function(j1, j2) {
 		return _.keys(j1).length - _.keys(j2).length; 
 	});
+	log.trace(result);
+	return result;
 }
 
 TableGraph.prototype.tableJSON = function(table) {
@@ -209,39 +209,45 @@ function buildTableTree(graph, weightFn) {
 
 
 function getTableJoins(spanningTree, tables) {
+	log.trace(tables);
 	//console.log('getTableJoins ' + tables);
 	//console.log('tree ' + spanningTree.isDirected());
 	var result = {};
 
-	var paths = graphlib.alg.dijkstra(spanningTree, tables[0], 
+	var path = graphlib.alg.dijkstra(spanningTree, tables[0], 
 				function(e) { return 1; },
 				function(v) { return spanningTree.nodeEdges(v); } 
 	);
-	//console.log(paths);
+	log.trace(path);
+	//console.log(path);
 
 	var join = function(fk, j1, j2) {
 		var fkTable = fk.split('.')[0];
-		return fkTable == j1 ? [j1, j2] : [j2, j1];
+		var idTable = (fkTable == j1) ? j2 : j1;
+
+		return {
+			idTable: idTable,
+			fkTable: fkTable,
+			joinTable: j1
+		}	
 	}
 
 	for(var i = 1; i < tables.length; ++i) {
 
 		var j1 = tables[i];
-//console.log('try pred of ' + j1);
-		var fk = paths[j1].predecessor;
-		var j2 = paths[fk].predecessor;
+		var fk = path[j1].predecessor;
+		var j2 = path[fk].predecessor;
 		result[fk] = join(fk, j1, j2);
-		//result[fk] = [j1, j2];
 
 		while(j2 != tables[0]) {
 			j1 = j2;
-			fk = paths[j1].predecessor;
-			j2 = paths[fk].predecessor;
+			fk = path[j1].predecessor;
+			j2 = path[fk].predecessor;
 			result[fk] = join(fk, j1, j2);
-			//result[fk] = [j1, j2];
 		}
 	}
 
+	log.debug(result);
 	//console.log(result);
 	return result;
 }

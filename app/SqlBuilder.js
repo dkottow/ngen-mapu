@@ -28,17 +28,14 @@ SqlBuilder.prototype.selectSQL
 
 	var countSQL = 'SELECT COUNT(*) as count FROM (' + query.sql + ')';
 
-/*
-	log.debug(selectSQL);
-	log.debug(totalParams);
-	log.debug(countSQL);
-*/
-
-	return {
+	var result = {
 		'query': selectSQL, 
 		'params': query.params,
 		'countSql': countSQL
 	}
+	log.debug("SqlBuilder.selectSQL return value");
+	log.debug(result);
+	return result;
 }
 
 SqlBuilder.prototype.statsSQL = function(table, fields, filterClauses) 
@@ -54,10 +51,13 @@ SqlBuilder.prototype.statsSQL = function(table, fields, filterClauses)
 
 	var statsSQL = 'SELECT ' + outerSQL + ' FROM (' + query.sql + ')';
 
-	return {
+	var result = {
 		'query': statsSQL, 
 		'params': query.params
 	}
+	log.debug("SqlBuilder.selectSQL return value");
+	log.debug(result);
+	return result;
 }
 
 SqlBuilder.prototype.createSQL = function() {
@@ -243,16 +243,10 @@ SqlBuilder.prototype.joinSQL = function(mainTable, tables, options) {
 	var result = _.map(joinPaths, function(joinPath) {
 
 		return _.reduce(joinPath, function(memo, ts, fk) {
-			var joinTable, idTable, fkTable;
 
-			idTable = ts[1];
-			fkTable = ts[0];
-
-			if (ts[1] == mainTable) {
-				joinTable = ts[0];
-			} else {
-				joinTable = ts[1];
-			}
+			var joinTable = ts.joinTable;
+			var idTable = ts.idTable;
+			var fkTable = ts.fkTable;
 
 			if (joinViews) {
 				joinTable = me.graph.table(joinTable).viewName();

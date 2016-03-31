@@ -260,7 +260,7 @@ Database.prototype.insert = function(tableName, rows, cbResult) {
 				+ '("' + fieldNames.join('", "') + '")'
 				+ " VALUES (" + fieldParams.join(', ') + ");"
 
-		//console.log(sql);
+		log.debug(sql);
 
 		var err = null;
 		var ids = [];
@@ -284,8 +284,6 @@ Database.prototype.insert = function(tableName, rows, cbResult) {
 						err = err || e;
 						ids.push(this.lastID);
 					});
-				
-
 				}
 			});
 
@@ -328,7 +326,8 @@ Database.prototype.update = function(tableName, rows, cbResult) {
 		var sql = "UPDATE " + table.name
 				+ ' SET "' + fieldNames.join('" = ?, "') + '" = ?'
 				+ " WHERE id = ?"; 
-		//console.log(sql);
+
+		log.debug(sql);
 
 		var err = null;
 		var modCount = 0;	
@@ -395,7 +394,8 @@ Database.prototype.delete = function(tableName, rows, cbResult) {
 
 		var sql = "DELETE FROM " + table.name 
 				+ " WHERE id IN (" + idParams.join(', ') + ")";
-		//console.log(sql);
+
+		log.debug(sql);
 
 		var err = null;
 		var delCount = 0;

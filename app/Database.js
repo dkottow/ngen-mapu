@@ -158,6 +158,8 @@ Database.prototype.all = function(tableName, options, cbResult) {
 		var limit = options.limit || global.row_max_count;
 		var offset = options.offset || 0;
 
+		var debug = options.debug || false;
+
 		log.debug(fields + " from " + table.name 
 				+ " filtered by " + util.inspect(filterClauses));
 
@@ -188,6 +190,10 @@ Database.prototype.all = function(tableName, options, cbResult) {
 								count: countRows[0].count,
 								totalCount: countRows[1].count
 							}
+							if (debug) {
+								result.sql = sql.query;
+								result.sqlParams = sql.params;
+							}		
 							cbResult(null, result);
 						}
 					});

@@ -55,16 +55,19 @@ function DatabaseController(router, restBase, model)
 						var param = parser.parse(k + "=" + v);	
 						params[param.name] = param.value;
 						//log.debug(param);
+					} else {
+						params[k] = v;
 					}
 				});
 
 				me.model.all(table.name, {
-						filter: params['$filter'], 
-						fields: params['$select'], 
-						order: params['$orderby'], 
-						limit: params['$top'], 
-						offset: params['$skip'], 
-						distinct: params['$distinct'] 
+						filter: params['$filter'] 
+						, fields: params['$select'] 
+						, order: params['$orderby'] 
+						, limit: params['$top'] 
+						, offset: params['$skip'] 
+						, distinct: params['$distinct'] 
+						, debug: params['debug']	
 					},
 					function(err, result) { 
 						if (err) {

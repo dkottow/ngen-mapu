@@ -114,7 +114,7 @@ describe('Schema', function() {
 				}
 				, "EventTime": {
 					  "name": "EventTime"
-					, "type": "DATETIME"
+					, "type": "VARCHAR(4)"
 					, "order": 2
 				}
 				, "Venue_id": {
@@ -252,6 +252,7 @@ describe('Schema', function() {
 		});	
 
 		it('create ' + dbFile, function(done) {
+			this.timeout(5000);
 	
 			var db = new Schema(soccerSchema);
 			db.init(function(err) {

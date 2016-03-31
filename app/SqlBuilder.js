@@ -272,7 +272,8 @@ SqlBuilder.prototype.filterSQL = function(filterClauses) {
 		var table = me.graph.table(filter.table);
 
 		assert(table, util.format('filter.table %s unknown', filter.table));
-		if ( ! (filter.op == 'search' && filter.field == '*')) {
+		//if ( ! (filter.op == 'search' && filter.field == '*')) {
+		if ( ! (filter.op == 'search' && filter.field == filter.table)) {
 			//check field exists		
 			table.assertFields([filter.field]);
 		}
@@ -329,7 +330,8 @@ SqlBuilder.prototype.filterSQL = function(filterClauses) {
 			var clause = util.format('%s."%s" MATCH ?', 
 							table.ftsName(),
 							//check if full row search
-							filter.field == '*'
+							//filter.field == '*'
+							filter.field == filter.table
 								? table.ftsName()
 								: filter.field
 						); 	

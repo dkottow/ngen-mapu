@@ -26,6 +26,9 @@ describe('Database', function() {
 
 		var teams, coaches, players;
 		var qualifiedTeams;
+
+		var venues;
+		var games, formations;
 		
 
 		before(function(done) {
@@ -33,8 +36,14 @@ describe('Database', function() {
 				if (err) {
 					log.info(err);
 				} else {
-					var allDone = _.after(2, function() {
+					var allDone = _.after(3, function() {
 						done();
+					});
+					db.all('Venue', function(err, result) {
+						if (err) throw new Error(err);
+						log.info('got ' + result.rows.length + ' venues');
+						venues = result.rows;
+						allDone();
 					});
 					db.all('Team', function(err, result) {
 						if (err) throw new Error(err);
@@ -64,33 +73,77 @@ describe('Database', function() {
 			const qualifiedTeamCount = 8;
 			qualifiedTeams = rand.sample(teams, qualifiedTeamCount);
 
-			//assign an equal number of players to qual teams
 			log.info(_.pluck(qualifiedTeams, 'Name'));
-			var teamIds = _.pluck(qualifiedTeams, 'id');
+			var qualIds = _.pluck(qualifiedTeams, 'id');
+
+			//assign an equal number of players to qual teams
 			rand.shuffle(players);
 			for (var i = 0;i < players.length; ++i) {
-				players[i].Team_id = teamIds[i % teamIds.length];
+				players[i].Team_id = qualIds[i % qualIds.length];
 			}
 
-			//delete unqual coaches
-			var disqualifiedCoaches = _.filter(coaches, function(c) {
-				return ! _.contains(teamIds, c.Team_id);
+			//delete unqual
+			var disqualifiedTeams = _.filter(teams, function(t) {
+				return ! _.contains(qualIds, t.id);
 			});
-			log.info(_.pluck(disqualifiedCoaches, 'Name'));
+
+			var disqualifiedCoaches = _.filter(coaches, function(c) {
+				return ! _.contains(qualIds, c.Team_id);
+			});
 			
 			//update DB
 			db.update('TeamMember', players, function(err, c) {
 				if (err) throw new Error(err);
-				db.delete('TeamMember', _.pluck(disqualifiedCoaches, 'id'), function(err, c) {
+
+				var ids = _.pluck(disqualifiedCoaches, 'id');
+				db.delete('TeamMember', ids, function(err, c) {
 					if (err) throw new Error(err);
-					done();	
+
+					var ids = _.pluck(disqualifiedTeams, 'id');
+					db.delete('Team', ids, function(err, c) {
+						if (err) throw new Error(err);
+						done();	
+					});
 				});
+
 			});
 		});
 
+		function get_formations(team1, team2) {
+		}
+
 		it('Games. Start the tournament. Generate games and team formations', function(done) {
 			//TODO
-			done();
+			games = [];
+			formations = [];
+			var winners;
+			var round = qualifiedTeams;
+			while (round.length >= 2) {
+				winners = [];
+				for(var i = 0;i < round.length; i += 2) {
+					games.push({
+						EventDate: '2015-01-01'
+						, EventTime: '21:30'
+						, Venue_id: 1 + (games.length % venues.length)
+						, Team1_id: round[i].id
+						, Team2_id: round[i+1].id
+					});
+
+					var fs = get_formations(round[i], round[i+1]);
+					formations = formations.concat(fs);
+
+					//play.. all we care about is the winner
+					var winner = round[i];
+
+					winners.push(winner);
+				}
+				round = winners;
+			}
+			log.info(games);
+			db.insert('Game', games, function(err, c) {
+				if (err) throw new Error(err);
+				done();	
+			});
 		});
 
 

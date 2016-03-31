@@ -31,6 +31,16 @@ Database.prototype.init = function(cbAfter) {
 	this.schema.read(this.dbFile, cbAfter);
 }
 
+Database.prototype.table = function(name) { 
+	var table = _.find(this.schema.tables(), function(t) { 
+		return t.name == name; 
+	});
+	if ( ! table) {
+		throw new Error(util.format('G6_MODEL_ERROR: Table %s not found.', name));
+	}
+	return table;
+}
+
 Database.prototype.tables = function() { 
 	var tables = this.schema.tables();
 	return _.object(_.pluck(tables, 'name'), tables); 
@@ -86,7 +96,7 @@ Database.prototype.getStats = function(tableName, options, cbResult) {
 
 	try {
 
-		var table = this.tables()[tableName];
+		var table = this.table(tableName);
 
 		if (! cbResult) {
 			//shift fn args
@@ -135,7 +145,7 @@ Database.prototype.all = function(tableName, options, cbResult) {
 
 	try {
 
-		var table = this.tables()[tableName];
+		var table = this.table(tableName);
 		if (! cbResult) {
 			cbResult = options;
 			options = {};
@@ -195,7 +205,7 @@ Database.prototype.get = function(tableName, options, cbResult) {
 
 	try {
 
-		var table = this.tables()[tableName];
+		var table = this.table(tableName);
 		if (! cbResult) {
 			cbResult = options;
 			options = {};
@@ -230,7 +240,7 @@ Database.prototype.insert = function(tableName, rows, cbResult) {
 
 	try {
 
-		var table = this.tables()[tableName];
+		var table = this.table(tableName);
 
 		if (rows.length == 0) {
 			cbResult(null, []);
@@ -286,8 +296,9 @@ Database.prototype.insert = function(tableName, rows, cbResult) {
 					log.error("Database.insert() failed. Rollback. " + err);
 					db.run("ROLLBACK TRANSACTION");
 				}
-				db.close();
-				cbResult(err, ids); 
+				db.close(function() {
+					cbResult(err, ids); 
+				});
 			});	
 
 		});
@@ -302,7 +313,7 @@ Database.prototype.update = function(tableName, rows, cbResult) {
 
 	try {
 
-		var table = this.tables()[tableName];
+		var table = this.table(tableName);
 
 		if (rows.length == 0) {
 			cbResult(null, []);
@@ -357,8 +368,9 @@ Database.prototype.update = function(tableName, rows, cbResult) {
 					log.error("Database.update() failed. Rollback. " + err);
 					db.run("ROLLBACK TRANSACTION");
 				}
-				db.close();
-				cbResult(err, modCount); 
+				db.close(function() {
+					cbResult(err, modCount); 
+				});
 			});	
 		});
 
@@ -372,7 +384,7 @@ Database.prototype.delete = function(tableName, rows, cbResult) {
 
 	try {
 
-		var table = this.tables()[tableName];
+		var table = this.table(tableName);
 
 		if (rows.length == 0) {
 			cbResult(null, []);
@@ -381,7 +393,7 @@ Database.prototype.delete = function(tableName, rows, cbResult) {
 
 		var idParams = _.times(rows.length, function(fn) { return "?"; });
 
-		var sql = "DELETE FROM " + table['name'] 
+		var sql = "DELETE FROM " + table.name 
 				+ " WHERE id IN (" + idParams.join(', ') + ")";
 		//console.log(sql);
 
@@ -417,8 +429,9 @@ Database.prototype.delete = function(tableName, rows, cbResult) {
 					log.error("Database.delete() failed. Rollback. " + err);
 					db.run("ROLLBACK TRANSACTION");
 				}
-				db.close();
-				cbResult(err, delCount); 
+				db.close(function() {
+					cbResult(err, delCount); 
+				});
 			});	
 
 		});

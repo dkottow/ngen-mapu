@@ -24,19 +24,22 @@ describe('Database', function() {
 		var db = new Database(dbFile);
 		var rand =  new Random(Random.engines.mt19937().autoSeed());
 
+		const tournamentStartDate = new Date('2016-06-01');
+
 		var teams, coaches, players;
 		var qualifiedTeams;
 
+		var positions, fieldPositions;
+		
 		var venues;
 		var games, formations;
 		
-
 		before(function(done) {
 			db.init(function(err) {
 				if (err) {
 					log.info(err);
 				} else {
-					var allDone = _.after(3, function() {
+					var allDone = _.after(4, function() {
 						done();
 					});
 					db.all('Venue', function(err, result) {
@@ -62,6 +65,13 @@ describe('Database', function() {
 						});
 						allDone();
 					});
+					db.all('Position', function(err, result) {
+						if (err) throw new Error(err);
+						log.info('got ' + result.rows.length + ' positions');
+						positions = result.rows;
+						fieldPositions = _.filter(positions, function(p) { return p.id < 20; });
+						allDone();
+					});
 				}
 			});
 		});	
@@ -82,7 +92,7 @@ describe('Database', function() {
 				players[i].Team_id = qualIds[i % qualIds.length];
 			}
 
-			//delete unqual
+			//delete disqualified
 			var disqualifiedTeams = _.filter(teams, function(t) {
 				return ! _.contains(qualIds, t.id);
 			});
@@ -109,28 +119,31 @@ describe('Database', function() {
 			});
 		});
 
-		function get_formations(team1, team2) {
-		}
-
-		it('Games. Start the tournament. Generate games and team formations', function(done) {
+		it('Games. Start the tournament. Generate games.', function(done) {
 			//TODO
 			games = [];
-			formations = [];
 			var winners;
 			var round = qualifiedTeams;
+			var eventDate = tournamentStartDate;
+			var eventTimes = ['21:00', '19:00'];
 			while (round.length >= 2) {
 				winners = [];
-				for(var i = 0;i < round.length; i += 2) {
-					games.push({
-						EventDate: '2015-01-01'
-						, EventTime: '21:30'
+				var roundStartDate = new Date(eventDate);
+				for(var gc = 0;gc < round.length / 2; ++gc) {
+					if (gc % eventTimes.length == 0 && gc > 0) {
+						eventDate.setDate(eventDate.getDate() + 1);
+					} 
+
+					var i = Math.floor(gc / 2);
+					var game = {
+						EventDate: eventDate.toISOString().split('T')[0]
+						, EventTime: eventTimes[gc % eventTimes.length]
 						, Venue_id: 1 + (games.length % venues.length)
 						, Team1_id: round[i].id
 						, Team2_id: round[i+1].id
-					});
-
-					var fs = get_formations(round[i], round[i+1]);
-					formations = formations.concat(fs);
+					};
+					
+					games.push(game);
 
 					//play.. all we care about is the winner
 					var winner = round[i];
@@ -138,14 +151,74 @@ describe('Database', function() {
 					winners.push(winner);
 				}
 				round = winners;
+				eventDate.setDate(roundStartDate.getDate() + 7);
 			}
-			log.info(games);
-			db.insert('Game', games, function(err, c) {
+
+			log.debug(games);
+
+			//update DB
+			db.insert('Game', games, function(err, ids) {
 				if (err) throw new Error(err);
-				done();	
+				_.each(_.zip(games, ids), function(game_id) {
+					game_id[0].id = game_id[1];
+				});
+				done();
 			});
 		});
 
+
+		it('Formations. Pick 11 players from both team for each game.', function(done) {
+			formations = [];
+
+			_.each(games, function(game) {
+				var team1 = _.find(teams, function(t) { return t.id == game.Team1_id; });
+				var team2 = _.find(teams, function(t) { return t.id == game.Team2_id; });
+				
+				var fs = get_formations(game, team1, team2);
+				formations = formations.concat(fs);
+			});
+
+			db.insert('Formation', formations, function(err, ids) {
+				if (err) throw new Error(err);
+				done();	
+			});
+
+		});
+
+		function get_formation(game, team) {
+			var formation = [];
+
+			var i = 0;
+			_.each(fieldPositions, function(p) {
+
+				for(; i < players.length; ++i) {
+					
+					//TODO something more fancy, e.g. find a player who is close to position p
+					if (players[i].Team_id == team.id) {
+						
+						formation.push({
+							TeamMember_id: players[i].id
+							, Position_id: p.id
+							, Game_id: game.id
+						});
+						break;
+					}
+				}
+
+				++i; //move on to next player
+				
+			});
+			
+			return formation;			
+		}
+
+		function get_formations(game, team1, team2) {
+
+			var form1 = get_formation(game, team1);
+			var form2 = get_formation(game, team2);
+
+			return form1.concat(form2);
+		}
 
 		function randBetweenGauss(min, max, sigma) {
 			var pg = probdist.gaussian(0, sigma);

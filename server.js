@@ -10,7 +10,7 @@ global.log = require('bunyan').createLogger({
 	{
 		type: 'rotating-file',
 		path: 'logs/g6.rest-server.json',
-		level: 'trace',
+		level: 'debug',
 		period: '1d'
 	}]
 });

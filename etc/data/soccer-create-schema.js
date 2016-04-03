@@ -67,7 +67,7 @@ describe('Schema', function() {
 				}
 				, "DateOfBirth": {
 					  "name": "DateOfBirth"
-					, "type": "VARCHAR"
+					, "type": "DATE"
 					, "order": 20
 				}
 				, "Team_id": {

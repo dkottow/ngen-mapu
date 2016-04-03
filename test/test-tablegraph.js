@@ -218,12 +218,18 @@ describe('SandwichSales DB', function() {
 		});
 		log.info('\n*** joins ***');
 		_.each([
-			  ['products', 'orders']
-			, ['customers', 'products']
-			, ['customers', 'products_in_orders']
-			, _.pluck(tableGraph.tables(), 'name')
+			  { fromTable: 'products', joinTables: ['orders']}
+			, { fromTable: 'customers', joinTables: ['products']}
+			, { fromTable: 'customers', 
+				joinTables: ['products_in_orders']}
+			, { fromTable: 'orders', 
+				joinTables: ['customers', 'products', 
+							'products_in_orders']}
 		], function(tables) {
-			var joins = tableGraph.tableJoins(tables);
+
+			var joins = tableGraph.tableJoins(tables.fromTable, 
+				tables.joinTables);
+
 			log.info('tables ' + tables);
 			log.info('joins count ' + joins.length);
 			log.info(joins);
@@ -405,22 +411,21 @@ describe('AthleteTeam DB', function() {
 		});
 		log.info('\n*** joins ***');
 		_.each([
-			  ['persons', 'accomodations']
-			, ['teams', 'persons']
-			, ['teams', 'athletes']
-			, ['athletes', 'persons']
-			, ['accomodations', 'persons', 'athletes']
-			, _.pluck(tableGraph.tables(), 'name')
+			  { fromTable: 'persons', joinTables: ['accomodations'] }
+			, { fromTable: 'teams', joinTables: ['persons'] }
+			, { fromTable: 'teams', joinTables: ['athletes'] }
+			, { fromTable: 'athletes', joinTables: ['persons'] }
+			, { fromTable: 'accomodations', 
+				joinTables: ['persons', 'athletes'] }
+
 		], function(tables) {
-			var joins = tableGraph.tableJoins(tables);
+
+			var joins = tableGraph.tableJoins(tables.fromTable, 
+				tables.joinTables);
+
 			log.info('tables ' + tables);
 			log.info('joins count ' + joins.length);
 			log.info(joins);
-/*
-			var sql = tableGraph.joinSQL(tables);
-			log.info('join SQL');
-			log.info(sql);
-*/
 		});
 	});
 

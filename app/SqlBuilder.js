@@ -228,15 +228,17 @@ SqlBuilder.prototype.createViewSQL = function(table) {
 	return sql;
 }
 
-SqlBuilder.prototype.joinSQL = function(mainTable, tables, options) {
+SqlBuilder.prototype.joinSQL = function(fromTable, tables, options) {
 
 	options = options || {};
 
-	var uniqTables = _.uniq([mainTable].concat(tables));
-	if (uniqTables.length < 2) return [''];
+	//var uniqTables = _.uniq([fromTable].concat(tables));
+	//if (joinTables.length < 2) return [''];
+	var joinTables = _.without(_.uniq(tables), fromTable).sort();
+	if (joinTables.length == 0) return [''];
 
-	var joinPaths = this.graph.tableJoins(uniqTables);
-
+	var joinPaths = this.graph.tableJoins(fromTable, joinTables);
+	
 	var joinViews = options.joinViews == true;
 	
 	var me = this;

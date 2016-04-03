@@ -134,7 +134,7 @@ describe('Database', function() {
 						eventDate.setDate(eventDate.getDate() + 1);
 					} 
 
-					var i = Math.floor(gc / 2);
+					var i = gc * 2;
 					var game = {
 						EventDate: eventDate.toISOString().split('T')[0]
 						, EventTime: eventTimes[gc % eventTimes.length]
@@ -167,12 +167,16 @@ describe('Database', function() {
 		});
 
 
-		it('Formations. Pick 11 players from both team for each game.', function(done) {
+		it('Formations. Pick 11 players from each team and each game.', function(done) {
 			formations = [];
 
 			_.each(games, function(game) {
-				var team1 = _.find(teams, function(t) { return t.id == game.Team1_id; });
-				var team2 = _.find(teams, function(t) { return t.id == game.Team2_id; });
+				var team1 = _.find(teams, function(t) { 
+					return t.id == game.Team1_id; 
+				});
+				var team2 = _.find(teams, function(t) { 
+					return t.id == game.Team2_id; 
+				});
 				
 				var fs = get_formations(game, team1, team2);
 				formations = formations.concat(fs);

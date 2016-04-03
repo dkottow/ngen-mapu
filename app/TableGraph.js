@@ -11,10 +11,13 @@ var TableGraph = function(tables) {
 	this.graph = new graphlib.Graph({ directed: true });
 	this.trees = [];
 
+	this.tableJoinMap = {};
+
 	var me = this;
 	init(tables);
 
 	function init(tables) {	
+		log.debug(_.pluck(tables, 'name'), 'init...');
 
 		_.each(tables, function(table) {
 			me.graph.setNode(table.name, table);					
@@ -37,13 +40,9 @@ var TableGraph = function(tables) {
 
 		/** build table trees **/
 
-		var distinctTrees = {};
-
 		var weightFn = function(e) {
 			return 1; 
 		}
-
-		var tree = buildTableTree(me.graph, weightFn);
 
 		var hashFn = function(tree) { 
 			var keys = _.filter(tree.nodes(), function(v) {
@@ -52,6 +51,9 @@ var TableGraph = function(tables) {
 			return keys.sort().join(' '); 
 		}
 
+		var distinctTrees = {};
+
+		var tree = buildTableTree(me.graph, weightFn);
 		distinctTrees[hashFn(tree)] = tree;
 
 		var cycles = graphutil.FindAllCycles(me.graph).cycles;
@@ -59,6 +61,7 @@ var TableGraph = function(tables) {
 			return ! nodeIsTable(v);
 		}));
 
+		log.trace(cycleKeys);
 		//console.log('cycleKeys');
 		//console.log(cycleKeys);
 
@@ -79,11 +82,13 @@ var TableGraph = function(tables) {
 
 		me.trees = _.values(distinctTrees);
 
-/*
+		log.debug('tree count = ' + me.trees.length);
+
 		_.each(me.trees, function(tree) {
-			log.debug(tree.edges());
+			log.debug(tree.nodes(), 'tree nodes');
+			log.debug(tree.edges(), 'tree edges');
 		});
-*/
+		log.debug('...init');
 	}
 
 }
@@ -147,29 +152,53 @@ TableGraph.prototype.table = function(name) {
 	return this.graph.node(name);
 }
 
-TableGraph.prototype.tableJoins = function(tables) {
-	var joinPaths = _.map(this.trees, function(tree) { 
-		return getTableJoins(tree, tables); 
+TableGraph.prototype.tableJoins = function(fromTable, joinTables) {
+
+	log.info({fromTable: fromTable, joinTables: joinTables},
+		"tableJoins...");
+	
+	var shortestPathTrees = _.map(this.trees, function(tree) { 
+
+		var paths = graphlib.alg.dijkstra(tree, fromTable, 
+				function(e) { return 1; },
+				function(v) { return tree.nodeEdges(v); } 
+		);
+
+		return {
+			tree: tree,
+			paths: paths
+		}
+
+	});
+		
+	var joinPaths = _.map(shortestPathTrees, function(paths) {
+
+		var result = {};
+		for(var i = 0; i < joinTables.length; ++i) {
+
+			//TODO get join path instead calculating it
+			//var r = getJoinPath(fromTable, joinTables[i], paths.tree);
+
+			var r = shortestPath(fromTable, joinTables[i], paths.paths); 
+
+			result = _.extend(result, r);
+		}
+
+		log.debug({fromTable: fromTable, path: result});
+		return result;
 	});
 
-	//filter out invalid join paths (rhs of joinPath has duplicates)
-	joinPaths = _.filter(joinPaths, function(joinPath) {
-		var idTables = _.pluck(joinPath, 'idTable');
-		return _.uniq(idTables).length == idTables.length;
-	});
-
-	var hashFn = function(join) { return _.keys(join).sort().join(' '); }
 	var distinctJoins = {};
-	 
 	_.each(joinPaths, function(joinPath) {
-		distinctJoins[hashFn(joinPath)] = joinPath;
+		var pathKey = _.keys(joinPath).sort().join(' ');
+		distinctJoins[pathKey] = joinPath;
 	});
 
-	//return join paths sorted by length (number of intermediate tables)
-	var result = _.values(distinctJoins).sort(function(j1, j2) {
-		return _.keys(j1).length - _.keys(j2).length; 
-	});
-	log.trace(result);
+	log.trace(distinctJoins, 'distinctJoins');
+
+	var result = _.values(distinctJoins);
+
+	log.info(result, '...tableJoins');
 	return result;
 }
 
@@ -207,21 +236,13 @@ function buildTableTree(graph, weightFn) {
 	return tree;
 }
 
+function shortestPath(fromTable, joinTable, pathTree) {
+	log.debug({
+		fromTable: fromTable, 
+		joinTable: joinTable,
+	}, 'shortestPath...');
 
-function getTableJoins(spanningTree, tables) {
-	log.trace(tables);
-	//console.log('getTableJoins ' + tables);
-	//console.log('tree ' + spanningTree.isDirected());
-	var result = {};
-
-	var path = graphlib.alg.dijkstra(spanningTree, tables[0], 
-				function(e) { return 1; },
-				function(v) { return spanningTree.nodeEdges(v); } 
-	);
-	log.trace(path);
-	//console.log(path);
-
-	var join = function(fk, j1, j2) {
+	var joinFn = function(fk, j1, j2) {
 		var fkTable = fk.split('.')[0];
 		var idTable = (fkTable == j1) ? j2 : j1;
 
@@ -232,25 +253,24 @@ function getTableJoins(spanningTree, tables) {
 		}	
 	}
 
-	for(var i = 1; i < tables.length; ++i) {
+	var result = {};
 
-		var j1 = tables[i];
-		var fk = path[j1].predecessor;
-		var j2 = path[fk].predecessor;
-		result[fk] = join(fk, j1, j2);
+	var j1 = joinTable;
+	var fk = pathTree[j1].predecessor;
+	var j2 = pathTree[fk].predecessor;
+	result[fk] = joinFn(fk, j1, j2);
 
-		while(j2 != tables[0]) {
-			j1 = j2;
-			fk = path[j1].predecessor;
-			j2 = path[fk].predecessor;
-			result[fk] = join(fk, j1, j2);
-		}
+	while(j2 != fromTable) {
+		j1 = j2;
+		fk = pathTree[j1].predecessor;
+		j2 = pathTree[fk].predecessor;
+		result[fk] = joinFn(fk, j1, j2);
 	}
 
-	log.debug(result);
-	//console.log(result);
+	log.debug(result, '...shortestPath');
 	return result;
 }
+
 
 /*
  * from http://rosettacode.org/wiki/Power_set

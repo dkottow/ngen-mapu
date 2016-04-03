@@ -74,7 +74,7 @@ function DatabaseController(router, restBase, model)
 							sendError(req, res, err);
 							return;
 						}
-						log.debug(result);
+						log.trace(result);
 						res.send(result); 
 					}
 				);

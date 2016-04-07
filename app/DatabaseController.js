@@ -143,14 +143,15 @@ function DatabaseController(router, restBase, model)
 				log.info(req.method + " " + req.url);
 				log.info({'req.body': req.body});
 				var row = req.body;
-				me.model.insert(table.name, [row], function(err, result) {
+				var params = req.query;
+				me.model.insert(table.name, [row], params, function(err, result) {
 					if (err) {
 						sendError(req, res, err);
 						return;
 					}
 					log.info({'res.body': result});
 					log.info(req.method + " " + req.url + " OK.");
-					res.send({id: result[0].toString()}); //send row id
+					res.send(result); 
 				});
 			}
 			me.router.post(url, postRowHandler);
@@ -162,14 +163,15 @@ function DatabaseController(router, restBase, model)
 				log.info({'req.body': req.body});
 				var row = req.body;
 				row['id'] = req.param('id');
-				me.model.update(table.name, [row], function(err, result) {
+				var params = req.query;
+				me.model.update(table.name, [row], params, function(err, result) {
 					if (err) {
 						sendError(req, res, err);
 						return;
 					}
 					log.info({'res.body': result});
 					log.info(req.method + " " + req.url + " OK.");
-					res.send({});  
+					res.send(result);  
 				});
 			}
 			me.router.put(url + "/:id", putRowHandler);
@@ -185,7 +187,7 @@ function DatabaseController(router, restBase, model)
 						return;
 					}
 					log.info(req.method + " " + req.url + " OK.");
-					res.send({}); 
+					res.send(result); 
 				});
 			}
 			me.router.delete(url + "/:id", deleteRowHandler);

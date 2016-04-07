@@ -204,7 +204,7 @@ describe('Database', function() {
 				rows.push(r);
 			}
 
-			model.insert(table, rows, function(err, result) { 
+			model.insert(table, rows, {}, function(err, result) { 
 				assert(err == null, err);
 				done(); 
 			});
@@ -244,7 +244,7 @@ describe('Database', function() {
 				'modified_by': 'mocha', 
 				'modified_on': '2000-01-01' 
 			};
-			model.insert(table, [row], function(err, result) { 
+			model.insert(table, [row], {}, function(err, result) { 
 				log.info(err);
 				assert(err instanceof Error, 'sqlite check constraint holds');
 				done();
@@ -260,9 +260,10 @@ describe('Database', function() {
 				'modified_by': 'mocha', 
 				'modified_on': '2000-01-01' 
 			};
-			model.insert(table, [row], function(err, result) { 
+			model.insert(table, [row], { retmod: true }, function(err, result) { 
 				log.info(err);
 				assert(err == null, 'sqlite insert specific id');
+				assert(result.rows[0].id == row.id);
 				done();
 			});
 		});
@@ -291,8 +292,9 @@ describe('Database', function() {
 				rows.push(r);
 			}
 
-			model.update(table, rows, function(err, result) { 
+			model.update(table, rows, { retmod: true }, function(err, result) { 
 				assert(err == null, 'update some rows');
+				assert(result.rows.length == rows.length);
 				done(); 
 			});
 		});
@@ -308,7 +310,7 @@ describe('Database', function() {
 				'modified_on': '2001-01-01' 
 			};
 
-			model.update(table, [row], function(err, result) { 
+			model.update(table, [row], {}, function(err, result) { 
 				log.info(err);
 				assert(err instanceof Error, 'row does not exist');
 				done(); 
@@ -326,7 +328,7 @@ describe('Database', function() {
 				'modified_on': '2001-01-01' 
 			};
 
-			model.update(table, [row], function(err, result) { 
+			model.update(table, [row], {}, function(err, result) { 
 				log.info(err);
 				assert(err instanceof Error, 'update did not fail');
 				done(); 
@@ -345,7 +347,7 @@ describe('Database', function() {
 				'modified_on': '2001-01-01' 
 			};
 
-			model.update(table, [row], function(err, result) { 
+			model.update(table, [row], {}, function(err, result) { 
 				log.info(err);
 				assert(err instanceof Error, 'update did not fail');
 				done(); 

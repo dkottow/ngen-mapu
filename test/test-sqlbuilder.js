@@ -207,7 +207,8 @@ describe('SandwichSales DB', function() {
 				value: [40.00, 80.00]
 			},
 			{
-				field: '*',
+				field: 'products',
+				//field: '*',
 				table: 'products',
 				op: 'search',
 				value: 'car'
@@ -428,7 +429,8 @@ describe('AthleteTeam DB', function() {
 	it('SqlBuilder.selectSQL', function() {
 		var filterClauses = [
 			{
-				field: '*',  //full row search
+				//field: '*',  //full row search
+				field: 'teams',  //full row search
 				table: 'teams',
 				op: 'search',
 				value: 'chile'

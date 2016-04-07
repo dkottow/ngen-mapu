@@ -242,7 +242,18 @@ Database.prototype.get = function(tableName, options, cbResult) {
 	}
 }
 
-Database.prototype.insert = function(tableName, rows, cbResult) {
+Database.prototype.allById = function(tableName, ids, cbResult) {
+	var options = {
+		filter: [{
+			field: 'id',
+			op: 'in',
+			value: ids
+		}]
+	};	
+	return this.all(tableName, options, cbResult);
+} 
+
+Database.prototype.insert = function(tableName, rows, options, cbResult) {
 
 	try {
 
@@ -252,6 +263,9 @@ Database.prototype.insert = function(tableName, rows, cbResult) {
 			cbResult(null, []);
 			return;
 		}
+
+		options = options || {};		
+		var returnModifiedRows = options.retmod || false;
 
 		var fieldNames = _.filter(_.keys(rows[0]) 
 							, function(fn) { 
@@ -271,6 +285,7 @@ Database.prototype.insert = function(tableName, rows, cbResult) {
 		var err = null;
 		var ids = [];
 		var db = new sqlite3.Database(this.dbFile);
+		var me = this;
 		
 		db.serialize(function() {
 			db.run("PRAGMA foreign_keys = ON;");
@@ -295,16 +310,22 @@ Database.prototype.insert = function(tableName, rows, cbResult) {
 
 			stmt.finalize(function() { 
 				if (err == null) {
-					db.run("COMMIT TRANSACTION");
+					db.run("COMMIT TRANSACTION");			
 				} else {
 					log.error("Database.insert() failed. Rollback. " + err);
 					db.run("ROLLBACK TRANSACTION");
 				}
 				db.close(function() {
-					cbResult(err, ids); 
+					if (err == null && returnModifiedRows) {
+						me.allById(tableName, ids, cbResult);
+					} else {
+						var rows = _.map(ids, function(id) { 
+							return { id: id };
+						});
+						cbResult(err, { rows: rows }); 
+					}
 				});
 			});	
-
 		});
 
 	} catch(err) {
@@ -313,7 +334,7 @@ Database.prototype.insert = function(tableName, rows, cbResult) {
 	}
 }
 
-Database.prototype.update = function(tableName, rows, cbResult) {
+Database.prototype.update = function(tableName, rows, options, cbResult) {
 
 	try {
 
@@ -323,6 +344,9 @@ Database.prototype.update = function(tableName, rows, cbResult) {
 			cbResult(null, []);
 			return;
 		}
+
+		options = options || {};		
+		var returnModifiedRows = options.retmod || false;
 
 		var fieldNames = _.filter(_.keys(rows[0]) 
 							, function(fn) { 
@@ -338,6 +362,7 @@ Database.prototype.update = function(tableName, rows, cbResult) {
 		var err = null;
 		var modCount = 0;	
 		var db = new sqlite3.Database(this.dbFile);
+		var me = this;
 
 		db.serialize(function() {
 			db.run("PRAGMA foreign_keys = ON;");
@@ -374,7 +399,15 @@ Database.prototype.update = function(tableName, rows, cbResult) {
 					db.run("ROLLBACK TRANSACTION");
 				}
 				db.close(function() {
-					cbResult(err, modCount); 
+					var ids = _.pluck(rows, 'id');
+					if (err == null && returnModifiedRows) {
+						me.allById(tableName, ids, cbResult);
+					} else {
+						rows = _.map(rows, function(row) { 
+							return { id: row.id };
+						});
+						cbResult(err, { 'rows': rows }); 
+					}
 				});
 			});	
 		});
@@ -385,18 +418,18 @@ Database.prototype.update = function(tableName, rows, cbResult) {
 	}
 }
 
-Database.prototype.delete = function(tableName, rows, cbResult) {
+Database.prototype.delete = function(tableName, ids, cbResult) {
 
 	try {
 
 		var table = this.table(tableName);
 
-		if (rows.length == 0) {
+		if (ids.length == 0) {
 			cbResult(null, []);
 			return;
 		}
 
-		var idParams = _.times(rows.length, function(fn) { return "?"; });
+		var idParams = _.times(ids.length, function(fn) { return "?"; });
 
 		var sql = "DELETE FROM " + table.name 
 				+ " WHERE id IN (" + idParams.join(', ') + ")";
@@ -417,15 +450,15 @@ Database.prototype.delete = function(tableName, rows, cbResult) {
 
 			if (err == null) 
 			{
-				stmt.run(rows, function(e) { 
+				stmt.run(ids, function(e) { 
 					err = err || e;
 					delCount = this.changes;
 				});
 			}
 
 			stmt.finalize(function() { 
-				if (err == null && delCount != rows.length) {
-					//console.log(delCount + " <> " + rows.length);
+				if (err == null && delCount != ids.length) {
+					//console.log(delCount + " <> " + ids.length);
 					err = new Error("G6_MODEL_ERROR: delete row count mismatch");
 				}
 
@@ -436,7 +469,7 @@ Database.prototype.delete = function(tableName, rows, cbResult) {
 					db.run("ROLLBACK TRANSACTION");
 				}
 				db.close(function() {
-					cbResult(err, delCount); 
+					cbResult(err, ids); 
 				});
 			});	
 

@@ -11,8 +11,6 @@ var TableGraph = function(tables) {
 	this.graph = new graphlib.Graph({ directed: true });
 	this.trees = [];
 
-	this.tableJoinMap = {};
-
 	var me = this;
 	init(tables);
 

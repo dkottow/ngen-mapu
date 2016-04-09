@@ -25,11 +25,13 @@ describe('Schema', function() {
 				, "name": {
 					  "name": "name"
 					, "type": "VARCHAR"
+					, "length": 20
 					, "order": 1
 				}
 				, "email": {
 					  "name": "email"
 					, "type": "VARCHAR(256)"
+					, "length": 100
 					, "order": 2
 				}
 				, "modified_by": {
@@ -55,6 +57,7 @@ describe('Schema', function() {
 				, "name": {
 					  "name": "name"
 					, "type": "VARCHAR"
+					, "length": 40
 					, "order": 1
 				}
 				, "price": {
@@ -96,6 +99,7 @@ describe('Schema', function() {
 				, "total_amount": {
 					  "name": "total_amount"
 					, "type": "NUMERIC(8,2)"
+					, "length": 12
 					, "order": 3
 				}
 				, "modified_by": {

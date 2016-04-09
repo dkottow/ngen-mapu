@@ -264,6 +264,12 @@ Database.prototype.insert = function(tableName, rows, options, cbResult) {
 			return;
 		}
 
+		if (! cbResult) {
+			//shift fn args
+			cbResult = options;
+			options = {};
+		}
+
 		options = options || {};		
 		var returnModifiedRows = options.retmod || false;
 
@@ -343,6 +349,12 @@ Database.prototype.update = function(tableName, rows, options, cbResult) {
 		if (rows.length == 0) {
 			cbResult(null, []);
 			return;
+		}
+
+		if (! cbResult) {
+			//shift fn args
+			cbResult = options;
+			options = {};
 		}
 
 		options = options || {};		

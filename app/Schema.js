@@ -155,8 +155,17 @@ Schema.prototype.read = function(dbFile, cbAfter) {
 
 				dbErrorHandlerFn(err);
 
+				var tables = _.map(rows, function(r) {
+					var table = { 
+						name: r.name,
+						row_alias: r.row_alias
+					 };
+					_.extend(table, JSON.parse(r.properties));
+					return table;
+				});
+
 				//console.dir(rows);
-				var tables = _.object(_.pluck(rows, 'name'), rows);
+				tables = _.object(_.pluck(tables, 'name'), tables);
 				me.tableDefs = tables;
 
 				//handle empty schema
@@ -182,7 +191,9 @@ Schema.prototype.read = function(dbFile, cbAfter) {
 					});
 
 					_.each(rows, function(r) {
-						tables[r.table_name].fields[r.name] = r;
+						var field = { name: r.name };
+						_.extend(field, JSON.parse(r.properties));
+						tables[r.table_name].fields[r.name] = field;
 					});
 
 					var doAfter = _.after(2*tableNames.length, function() {

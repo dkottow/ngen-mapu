@@ -162,30 +162,32 @@ describe('Database', function() {
 		function saveOrders(orders, done) {
 			console.log("saving orders " + orders.length);
 
-			db.insert('orders', orders, function(err, ids) {
+			db.insert('orders', orders, function(err, result) {
+				var rows = result.rows;
 				if (err) {
 					console.log(err);
 					done();
 				} else {
-					console.log('inserted orders... ' + ids.length);
+					console.log('inserted orders... ' + rows.length);
 				}
 				var order_items = [];
 				
 				for(var i = 0;i < orders.length; ++i) {
 					_.each(orders[i].sandwiches, function(po) {
-						po.order_id = ids[i];
+						po.order_id = rows[i].id;
 					});
 					order_items =
 						order_items.concat(orders[i].sandwiches);
 				}
 
 				db.insert('order_items', order_items, 
-					function(err, ids) {
+					function(err, result) {
+					var rows = result.rows;
 					if (err) {
 						console.log(err);
 					} else {
 						console.log('inserted order_items... ' 
-									+ ids.length);
+									+ rows.length);
 					}
 					done();
 				});

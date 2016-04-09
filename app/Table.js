@@ -44,45 +44,32 @@ var Table = function(tableDef) {
 
 		me.name = tableDef.name;
 
-		//non-SQL attributes
-		_.each(Table.PROPERTIES, function(f) {
-			me[f] = tableDef[f];
-		});
-
-		//parse possible JSON
+		//row alias
+		me.row_alias = tableDef.row_alias || [];
 		if (_.isString(me.row_alias)) {
 			me.row_alias = JSON.parse(me.row_alias);
 		}
+
+		//default property values
+
+		//non-SQL attributes
+		_.each(Table.PROPERTIES, function(f) {
+			if (tableDef[f] != undefined) me[f] = tableDef[f];
+		});
+
 	}
 }
 
 Table.TABLE = '__tableprops__';
-Table.PROPERTIES = ['row_alias', 'label'];
-Table.TABLE_FIELDS = ['name']
-		.concat(Table.PROPERTIES);
+Table.PROPERTIES = ['order', 'label'];
+Table.TABLE_FIELDS = ['name', 'row_alias', 'properties'];
 
 Table.CreateTableSQL = "CREATE TABLE " + Table.TABLE + " ("
 		+ " name VARCHAR NOT NULL, "
-		+ "	label VARCHAR, "
 		+ " row_alias VARCHAR, "
+		+ "	properties VARCHAR, "
 		+ "	PRIMARY KEY (name) "
 		+ ");\n\n";
-
-//properties are read-write attributes of a field.
-Table.prototype.sqlValue = function(name) {
-	switch(name) {
-		case 'row_alias': 
-			return this.row_alias
-				? "'" + JSON.stringify(this.row_alias) + "'"
-				: 'null';
-		break;			
-
-		default:
-			return this[name]
-				? "'" + this[name] + "'"
-				: 'null';
-	}	
-}
 
 Table.prototype.deletePropSQL = function() {
 	var sql = "DELETE FROM " + Table.TABLE 
@@ -96,11 +83,14 @@ Table.prototype.deletePropSQL = function() {
 
 Table.prototype.insertPropSQL = function() {
 
-	var values = [ this.sqlValue('name') ];
-
-	var props = _.map(Table.PROPERTIES, function(f) {
-		return this.sqlValue(f);
-	}, this);
+	var props = JSON.stringify(_.pick(this, Table.PROPERTIES));
+	var values = _.map([
+			this.name, 
+			JSON.stringify(this.row_alias), 
+			props
+		], function(v) {
+		return "'" + v + "'";
+	});
 
 	var fields = _.map(Table.TABLE_FIELDS, function(f) {
 		return '"' + f + '"';
@@ -108,7 +98,7 @@ Table.prototype.insertPropSQL = function() {
 
 	var sql = 'INSERT INTO ' + Table.TABLE
 			+ ' (' + fields.join(',') + ') ' 
-			+ ' VALUES (' + values.join(',') + ',' + props.join(',') + '); ';
+			+ ' VALUES (' + values.join(',') + '); ';
 
 	_.each(this.fields, function(f) {
 		sql += "\n" + f.insertPropSQL(this);
@@ -235,7 +225,8 @@ Table.prototype.deleteSQL = function() {
 Table.prototype.toJSON = function() {
 
 	var result = {
-		name: this.name
+		name: this.name, 
+		row_alias: this.row_alias
 	};
 
 	_.each(Table.PROPERTIES, function(f) {

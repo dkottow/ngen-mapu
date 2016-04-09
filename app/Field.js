@@ -45,13 +45,15 @@ Field = function(fieldDef) {
 		}
 
 
+		//default property values
+		me.order = 0;
+		me.length = me.defaultLength();
+
 		//non-SQL attributes				
 		_.each(Field.PROPERTIES, function(f) {
-			me[f] = fieldDef[f];
+			if (fieldDef[f] != undefined) me[f] = fieldDef[f];
 		});
 
-		//order
-		me.order = me.order || 0;
 
 		//parse possible JSON
 		if (_.isString(me.domain)) {
@@ -61,17 +63,15 @@ Field = function(fieldDef) {
 }
 
 Field.TABLE = '__fieldprops__';
-Field.PROPERTIES = ['order', 'domain', 'label']; //no change in db schema
-Field.TABLE_FIELDS = ['name', 'table_name']
-		.concat(Field.PROPERTIES);
+//adding or removing PROPERTIES needs no change in db schema
+Field.PROPERTIES = ['order', 'length', 'precision', 'domain', 'label']; 
+Field.TABLE_FIELDS = ['name', 'table_name', 'properties'];
 
 Field.CreateTableSQL 
 	= " CREATE TABLE " + Field.TABLE + " ("
 		+ ' name VARCHAR NOT NULL, '
 		+ ' table_name VARCHAR NOT NULL, '
-		+ ' label VARCHAR, '
-		+ '"order" INTEGER NOT NULL, '
-		+ ' domain VARCHAR, '
+		+ ' properties VARCHAR, '
 		+ ' PRIMARY KEY (name, table_name) '
 		+ ");\n\n";
 
@@ -94,27 +94,6 @@ Field.create = function(fieldDef) {
 
 	throw new Error(util.format("Field.create(%s) failed. Unknown type.", util.inspect(fieldDef)));
 
-}
-
-
-
-Field.prototype.sqlValue = function(name) {
-	switch(name) {
-		case 'order': 
-			return this.order;
-		break;
-
-		case 'domain': 
-			return this.domain
-				? "'" + JSON.stringify(this.domain) + "'"
-				: 'null';
-		break;			
-
-		default:
-			return this[name]
-				? "'" + this[name] + "'"
-				: 'null';
-	}	
 }
 
 Field.prototype.defaultSQL = function() {
@@ -151,11 +130,10 @@ Field.prototype.toSQL = function() {
 
 Field.prototype.insertPropSQL = function(table) {
 
-	var values = [ this.sqlValue('name'), table.sqlValue('name') ];
-
-	var props = _.map(Field.PROPERTIES, function(f) {
-		return this.sqlValue(f);
-	}, this);
+	var props = JSON.stringify(_.pick(this, Field.PROPERTIES));
+	var values = _.map([this.name, table.name, props], function(v) {
+		return "'" + v + "'";
+	});
 
 	var fields = _.map(Field.TABLE_FIELDS, function(f) {
 		return '"' + f + '"';
@@ -163,9 +141,17 @@ Field.prototype.insertPropSQL = function(table) {
 
 	var sql = 'INSERT INTO ' + Field.TABLE
 			+ ' (' + fields.join(',') + ') ' 
-			+ ' VALUES (' + values.join(',') + ',' + props.join(',') + '); ';
+			+ ' VALUES (' + values.join(',') + '); ';
 
 	return sql;
+}
+
+Field.prototype.defaultLength = function() {
+	if (this instanceof IntegerField) return 4;
+	if (this instanceof NumericField) return 8;
+	if (this instanceof TextField) return 20;
+	if (this instanceof DatetimeField) return 16;
+	return 16;
 }
 
 Field.prototype.toJSON = function() {

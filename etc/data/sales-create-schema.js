@@ -26,11 +26,13 @@ describe('Schema', function() {
 				, "name": {
 					  "name": "name"
 					, "type": "VARCHAR"
+					, "length": 20
 					, "order": 1
 				}
 				, "email": {
 					  "name": "email"
 					, "type": "VARCHAR(256)"
+					, "length": 80
 					, "order": 2
 				}
 				, "modified_by": {
@@ -56,11 +58,13 @@ describe('Schema', function() {
 				, "name": {
 					  "name": "name"
 					, "type": "VARCHAR"
+					, "length": 80
 					, "order": 1
 				}
 				, "price": {
 					  "name": "price"
 					, "type": "NUMERIC(8,2)"
+					, "precision": 2
 					, "order": 2
 				}
 				, "modified_by": {
@@ -97,6 +101,8 @@ describe('Schema', function() {
 				, "total_amount": {
 					  "name": "total_amount"
 					, "type": "NUMERIC(8,2)"
+					, "precision": 2
+					, "length": 12
 					, "order": 3
 				}
 				, "modified_by": {
@@ -133,6 +139,7 @@ describe('Schema', function() {
 				, "unit_price": {
 					  "name": "unit_price"
 					, "type": "NUMERIC(8,2)"
+					, "precision": 2
 					, "order": 3
 				}
 				, "quantity": {

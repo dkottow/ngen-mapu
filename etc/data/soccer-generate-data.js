@@ -157,10 +157,11 @@ describe('Database', function() {
 			log.debug(games);
 
 			//update DB
-			db.insert('Game', games, function(err, ids) {
+			db.insert('Game', games, function(err, result) {
 				if (err) throw new Error(err);
+				var ids = result.rows;
 				_.each(_.zip(games, ids), function(game_id) {
-					game_id[0].id = game_id[1];
+					game_id[0].id = game_id[1].id;
 				});
 				done();
 			});

@@ -21,8 +21,8 @@ function DatabaseController(router, restBase, model)
 	this.init = function(cbAfter) {
 		var me = this;
 
-		//describe model 
-		var defsHandler = function(req, res) {
+		//get schema 
+		var getSchemaHandler = function(req, res) {
 			log.info(req.method + " " + req.url);
 			me.model.getSchema(function(err, result) {
 				if (err) {
@@ -38,8 +38,8 @@ function DatabaseController(router, restBase, model)
 			//log.info(" served by " + me.seed);
 			//res.send(defs);
 		}
-		this.router.get(me.base, defsHandler);
-		this.router.get(me.base + ".db", defsHandler);
+		this.router.get(me.base, getSchemaHandler);
+		this.router.get(me.base + ".db", getSchemaHandler);
 		
 		var rowsExt = ".rows";
 		_.each(me.model.tables(), function(table) {
@@ -194,6 +194,25 @@ function DatabaseController(router, restBase, model)
 			me.router.delete(url + rowsExt + "/:id", deleteRowHandler);
 
 		});
+
+		//patch schema 
+		var patchSchemaHandler = function(req, res) {
+			log.info(req.method + " " + req.url);
+			var patches = req.body;
+			me.model.patchSchema(patches, function(err, result) {
+				if (err) {
+					sendError(req, res, err);
+					return;
+				}
+				log.debug(result);
+				res.send(result); 
+			});
+			//log.info(" served by " + me.seed);
+			//res.send(defs);
+		}
+		this.router.patch(me.base, patchSchemaHandler);
+		this.router.patch(me.base + ".db", patchSchemaHandler);
+
 		if (cbAfter) cbAfter();
 	}
 }

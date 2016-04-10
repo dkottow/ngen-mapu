@@ -31,11 +31,11 @@ var Table = function(tableDef) {
 			throw new Error(errMsg + " id field missing.");
 		}
 
-		if( ! _.has(tableDef.fields, "modified_by")) {
-			throw new Error(errMsg + " modified_by field missing.");
+		if( ! _.has(tableDef.fields, "mod_by")) {
+			throw new Error(errMsg + " mod_by field missing.");
 		}
-		if( ! _.has(tableDef.fields, "modified_on")) {
-			throw new Error(errMsg + " modified_on field missing.");
+		if( ! _.has(tableDef.fields, "mod_on")) {
+			throw new Error(errMsg + " mod_on field missing.");
 		}
 
 		_.each(tableDef.fields, function(f) {
@@ -46,48 +46,56 @@ var Table = function(tableDef) {
 
 		//row alias
 		me.row_alias = tableDef.row_alias || [];
-		if (_.isString(me.row_alias)) {
-			me.row_alias = JSON.parse(me.row_alias);
-		}
 
-		//default property values
+		//property values
+		me.props = {};
 
-		//non-SQL attributes
-		_.each(Table.PROPERTIES, function(f) {
-			if (tableDef[f] != undefined) me[f] = tableDef[f];
-		});
+		//copy known props. 
+		_.extend(me.props, _.pick(tableDef.props, Table.PROPERTIES));
 
 	}
 }
 
 Table.TABLE = '__tableprops__';
+Table.TABLE_FIELDS = ['name', 'row_alias', 'props'];
+
 Table.PROPERTIES = ['order', 'label'];
-Table.TABLE_FIELDS = ['name', 'row_alias', 'properties'];
+
+Table.prototype.setProp = function(name, value) {
+	if (_.contains(Table.PROPERTIES, name)) {
+		this.props[name] = value;
+	} else {
+		throw new Error(util.format('prop %s not found.', name));
+	}
+}
 
 Table.CreateTableSQL = "CREATE TABLE " + Table.TABLE + " ("
 		+ " name VARCHAR NOT NULL, "
 		+ " row_alias VARCHAR, "
-		+ "	properties VARCHAR, "
+		+ "	props VARCHAR, "
 		+ "	PRIMARY KEY (name) "
 		+ ");\n\n";
 
-Table.prototype.deletePropSQL = function() {
-	var sql = "DELETE FROM " + Table.TABLE 
-			+ " WHERE name = '" + this.name + "'; "
+Table.prototype.updatePropSQL = function() {
 
-			+ "DELETE FROM " + Field.TABLE 
-			+ " WHERE table_name = '" + this.name + "'; ";
+	var sql = "UPDATE " + Table.TABLE 
+			+ " SET props = '" + JSON.stringify(this.props) + "'"
+			+ " WHERE name = '" + this.name + "'; ";
 
+	_.each(this.fields, function(f) {
+		sql += "\n" + f.updatePropSQL(this);
+	}, this);
+
+	log.debug({sql: sql}, "Table.updatePropSQL()");
 	return sql;
 }
 
 Table.prototype.insertPropSQL = function() {
 
-	var props = JSON.stringify(_.pick(this, Table.PROPERTIES));
 	var values = _.map([
 			this.name, 
 			JSON.stringify(this.row_alias), 
-			props
+			JSON.stringify(this.props)
 		], function(v) {
 		return "'" + v + "'";
 	});
@@ -103,8 +111,17 @@ Table.prototype.insertPropSQL = function() {
 	_.each(this.fields, function(f) {
 		sql += "\n" + f.insertPropSQL(this);
 	}, this);
-	//console.log(sql);
+
+	log.debug({sql: sql}, "Table.insertPropSQL()");
 	return sql;
+}
+
+Table.prototype.field = function(name) {
+	var field = this.fields[name];
+	if ( ! field) {
+		throw new Error(util.format('field %s not found.', name));
+	}
+	return field;
 }
 
 Table.prototype.foreignKeys = function() {
@@ -226,12 +243,9 @@ Table.prototype.toJSON = function() {
 
 	var result = {
 		name: this.name, 
-		row_alias: this.row_alias
+		row_alias: this.row_alias,
+		props: this.props
 	};
-
-	_.each(Table.PROPERTIES, function(f) {
-		result[f] = this[f];
-	}, this);
 
 	result.fields = _.map(this.fields, function(f) {
 		return f.toJSON();

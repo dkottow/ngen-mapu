@@ -21,29 +21,40 @@ describe('Schema', function() {
 				  "id": {
 					  "name": "id"
 					, "type": "INTEGER"
-					, "order": 0
+					, "props": {
+						"order": 0
+					}
 				}
 				, "name": {
 					  "name": "name"
 					, "type": "VARCHAR"
-					, "length": 20
-					, "order": 1
+					, "props": {
+						"width": 40
+					  , "order": 1
+					}
 				}
 				, "email": {
 					  "name": "email"
 					, "type": "VARCHAR(256)"
-					, "length": 80
-					, "order": 2
+					, "props": {
+						"width": 60
+					  , "order": 2
+					}
 				}
-				, "modified_by": {
-					  "name": "modified_by"
+				, "mod_by": {
+					  "name": "mod_by"
 					, "type": "VARCHAR(64)"
-					, "order": 91
+					, "props": {
+						"order": 91
+					}
 				}
-				, "modified_on": {
-					  "name": "modified_on"
+				, "mod_on": {
+					  "name": "mod_on"
 					, "type": "DATETIME"
-					, "order": 92
+					, "props": {
+						"order": 92,
+						"width": 10
+					}
 				}
 			}		
 		 }
@@ -53,29 +64,40 @@ describe('Schema', function() {
 				  "id": {
 					  "name": "id"
 					, "type": "INTEGER"
-					, "order": 0
+					, "props": {
+						"order": 0
+					}
 				}
 				, "name": {
 					  "name": "name"
 					, "type": "VARCHAR"
-					, "length": 80
-					, "order": 1
+					, "props": {
+						"width": 30
+					  , "order": 1
+					}
 				}
 				, "price": {
 					  "name": "price"
 					, "type": "NUMERIC(8,2)"
-					, "precision": 2
-					, "order": 2
+					, "props": {
+						"scale": 2
+					  , "order": 2
+					}
 				}
-				, "modified_by": {
-					  "name": "modified_by"
+				, "mod_by": {
+					  "name": "mod_by"
 					, "type": "VARCHAR(64)"
-					, "order": 3
+					, "props": {
+						"order": 3
+					}
 				}
-				, "modified_on": {
-					  "name": "modified_on"
+				, "mod_on": {
+					  "name": "mod_on"
 					, "type": "DATETIME"
-					, "order": 4
+					, "props": {
+						"order": 4,
+						"width": 10
+					}
 				}
 			}		
 		 }
@@ -85,35 +107,49 @@ describe('Schema', function() {
 				  "id": {
 					  "name": "id"
 					, "type": "INTEGER"
-					, "order": 0
+					, "props": {
+						"order": 0
+					}
 				}
 				, "order_date": {
 					  "name": "order_date"
 					, "type": "DATE"
-					, "order": 1
+					, "props": {
+						"order": 1
+					}
 				}
 				, "customer_id": {
 					  "name": "customer_id"
 					, "type": "INTEGER"
 					, "fk_table": "customers"
-					, "order": 2
+					, "props": {
+						"order": 2
+					  , "width": 40
+					}
 				}
 				, "total_amount": {
 					  "name": "total_amount"
 					, "type": "NUMERIC(8,2)"
-					, "precision": 2
-					, "length": 12
-					, "order": 3
+					, "props": {
+						"scale": 2
+					  , "width": 12
+					  , "order": 3
+					}
 				}
-				, "modified_by": {
-					  "name": "modified_by"
+				, "mod_by": {
+					  "name": "mod_by"
 					, "type": "VARCHAR(256)"
-					, "order": 91
+					, "props": {
+						"order": 91
+					}
 				}
-				, "modified_on": {
-					  "name": "modified_on"
+				, "mod_on": {
+					  "name": "mod_on"
 					, "type": "DATETIME"
-					, "order": 92
+					, "props": {
+						"order": 92,
+						"width": 10
+					}
 				}
 			}		
 		 }
@@ -122,40 +158,57 @@ describe('Schema', function() {
 				  "id": {
 					  "name": "id"
 					, "type": "INTEGER"
-					, "order": 0
+					, "props": {
+						"order": 0
+					}
 				}
 				, "order_id": {
 					  "name": "order_id"
 					, "type": "INTEGER"
 					, "fk_table": "orders"
-					, "order": 1
+					, "props": {
+						"order": 1
+					  , "width": 40
+					}
 				}
 				, "product_id": {
 					  "name": "product_id"
 					, "type": "INTEGER"
 					, "fk_table": "products"
-					, "order": 2
+					, "props": {
+						"order": 2
+					  , "width": 30
+					}
 				}
 				, "unit_price": {
 					  "name": "unit_price"
 					, "type": "NUMERIC(8,2)"
-					, "precision": 2
-					, "order": 3
+					, "props": {
+						"scale": 2
+					  , "order": 3
+					}
 				}
 				, "quantity": {
 					  "name": "quantity"
 					, "type": "INTEGER"
-					, "order": 4
+					, "props": {
+						"order": 4
+					}
 				}
-				, "modified_by": {
-					  "name": "modified_by"
+				, "mod_by": {
+					  "name": "mod_by"
 					, "type": "VARCHAR(256)"
-					, "order": 91
+					, "props": {
+						"order": 91
+					}
 				}
-				, "modified_on": {
-					  "name": "modified_on"
+				, "mod_on": {
+					  "name": "mod_on"
 					, "type": "DATETIME"
-					, "order": 92
+					, "props": {
+						"order": 92,
+						"width": 10
+					}
 				}
 			}		
 		 }
@@ -163,7 +216,8 @@ describe('Schema', function() {
 
 	describe('Sales', function() {
 		var dbFile = "./sales.sqlite";
-		
+		var jsonFile = "./sales.json";
+
 		before(function(done) {
 			schema.Schema.remove(dbFile, function(err) {
 				done();
@@ -177,9 +231,16 @@ describe('Schema', function() {
 				if (err) {
 					log.info(err);
 				} else {
+					var allDone = _.after(2, function() {
+						done();
+					});
 					db.create(dbFile, function(err) {
 						log.info(err);
-						done();	
+						allDone();	
+					});
+					db.jsonWrite(jsonFile, function(err) {
+						log.info(err);
+						allDone();	
 					});
 				}
 			});

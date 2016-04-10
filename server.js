@@ -1,7 +1,10 @@
 
-global.log = require('bunyan').createLogger({
+var bunyan = require('bunyan');
+
+global.log = bunyan.createLogger({
 	name: 'g6.server',
 	src: true,
+	serializers: bunyan.stdSerializers,
 	streams: [
 	{
 		stream: process.stdout,

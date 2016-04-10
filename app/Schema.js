@@ -17,27 +17,23 @@ var log = global.log.child({'mod': 'g6.Schema.js'});
 
 global.tmp_dir = global.tmp_dir || '.';
 
-var Schema = function(tableDefs) {
-
-	this.tableDefs = tableDefs;
+var Schema = function() {
+	this.graph = null;
 }
 
-Schema.prototype.init = function(cbAfter) {
+Schema.prototype.init = function(tableDefs) {
 	try {
-
-		var tables = _.map(this.tableDefs, function(tableDef) {
+		
+		var tables = _.map(tableDefs, function(tableDef) {
 			return new Table(tableDef);
 		});
 
 		this.graph = new TableGraph(tables);
 		this.sqlBuilder = new SqlBuilder(this.graph);
 
-		cbAfter();
-
 	} catch(err) {
-		log.error("Schema.init() exception. " + err);
-		//throw err;
-		cbAfter(err);
+		log.error({err: err, tables: tableDefs}, "Schema.init() exception.");
+		throw err;
 	}
 }
 
@@ -49,9 +45,19 @@ Schema.prototype.tables = function() {
 		return this._tables;
 
 	} catch(err) {
-		log.error("Schema.tables() exception. " + err);
+		log.error({err: err}, "Schema.tables() exception.");
 		throw err;
 	}
+}
+
+Schema.prototype.table = function(name) { 
+	var table = _.find(this.tables(), function(t) { 
+		return t.name == name; 
+	});
+	if ( ! table) {
+		throw new Error(util.format('Table %s not found.', name));
+	}
+	return table;
 }
 
 Schema.prototype.get = function() {
@@ -68,10 +74,69 @@ Schema.prototype.get = function() {
 		};		
 
 	} catch(err) {
-		log.error("Schema.get() exception. " + err);
+		log.error({err: err}, "Schema.get() exception.");
 		throw err;
 	}
 }
+
+Schema.PATCH_OPS = {
+	SET_PROP: 'set_prop', 
+	ADD_FIELD: 'add_field', 
+	ADD_TABLE: 'add_table'
+};
+
+Schema.prototype.parsePatch = function(patch) {
+
+	if ( ! _.contains(Schema.PATCH_OPS, patch.op)) {
+		throw new Error("Unknown patch op. " + patch.op);
+	}
+
+	if (patch.op == 'set_prop') {
+
+		var path = patch.path.split('/');
+		if (path[0].length == 0) path.shift();
+
+		var table = this.table(path.shift());
+		var prop = path.pop();
+
+		if (path.length == 0) {			
+			return {
+				op: patch.op,
+				table: table,
+				prop: prop,
+				value: patch.value,
+				apply: function() {
+					table.setProp(prop, patch.value);
+				}							
+			}
+		} else if (path.length == 1) {			
+			var field = table.field(path.shift());
+			return {
+				op: patch.op,
+				table: table,
+				field: field,
+				prop: prop,
+				value: patch.value,
+				apply: function() {
+					field.setProp(prop, patch.value);
+				}							
+			}
+		}
+	}
+	return {};
+}
+
+Schema.prototype.patch = function(patch) {
+	try {	
+		var patchHandler = this.parsePatch(patch);		
+		patchHandler.apply();
+
+	} catch(err) {
+		log.error({err: err, patch: patch}, "Schema.patch() exception.");
+		throw err;
+	}
+}
+
 
 /******* start file ops *******/
 
@@ -106,7 +171,7 @@ Schema.prototype.create = function(dbFile, cbAfter) {
 		});
 
 	} catch(err) {
-		log.error("Schema.create() exception. " + err);
+		log.error({err: err}, "Schema.create() exception.");
 		cbAfter(err);
 	}
 }
@@ -114,7 +179,7 @@ Schema.prototype.create = function(dbFile, cbAfter) {
 Schema.remove = function(dbFile, cbAfter) {
 	fs.unlink(dbFile, function(err) {
 		if (err) {
-			log.warn("Schema.remove() failed. " + err);	
+			log.error({err: err}, "Schema.remove() failed.");	
 		}
 		cbAfter(err);
 	});
@@ -129,8 +194,8 @@ Schema.prototype.read = function(dbFile, cbAfter) {
 							, sqlite3.OPEN_READWRITE
 							, function(err) {
 			if (err) {
-				log.error("Schema.read() failed. Could not open '" 
-					+ dbFile + "'");
+				log.error({err: err, file: dbFile}, 
+					"Schema.read() failed. Could not open file.");
 				cbAfter(err);
 				return;
 			}
@@ -138,7 +203,7 @@ Schema.prototype.read = function(dbFile, cbAfter) {
 			var dbErrorHandlerFn = function(err) {
 				if (err) {
 					db.close();
-					log.error("Schema.read() failed. " + err);
+					log.error({err: err}, "Schema.read() failed.");
 					cbAfter(err);
 					return;
 				}
@@ -155,23 +220,26 @@ Schema.prototype.read = function(dbFile, cbAfter) {
 
 				dbErrorHandlerFn(err);
 
+				//handle empty schema
+				if (rows.length == 0) {
+					db.close(function() {
+						me.init([]);
+						cbAfter();
+						return;
+					});
+				}
+
 				var tables = _.map(rows, function(r) {
 					var table = { 
 						name: r.name,
-						row_alias: r.row_alias
-					 };
-					_.extend(table, JSON.parse(r.properties));
+					};
+					table.row_alias = JSON.parse(r.row_alias);
+					table.props = JSON.parse(r.props);
 					return table;
 				});
 
 				//console.dir(rows);
 				tables = _.object(_.pluck(tables, 'name'), tables);
-				me.tableDefs = tables;
-
-				//handle empty schema
-				if (rows.length == 0) {
-					me.init(cbAfter);
-				}
 					
 				var fields = _.map(Field.TABLE_FIELDS, function(f) {
 					return '"' + f + '"';
@@ -191,16 +259,20 @@ Schema.prototype.read = function(dbFile, cbAfter) {
 					});
 
 					_.each(rows, function(r) {
-						var field = { name: r.name };
-						_.extend(field, JSON.parse(r.properties));
+						var field = { 
+							name: r.name, 
+						};
+						field.props = JSON.parse(r.props);
+
 						tables[r.table_name].fields[r.name] = field;
 					});
 
 					var doAfter = _.after(2*tableNames.length, function() {
 						//after executing two SQL statements per table
-						db.close();
-						me.tableDefs = tables;
-						me.init(cbAfter);
+						db.close(function () {
+							me.init(tables);
+							cbAfter();
+						});
 					});
 
 					//read field sql definition 
@@ -241,10 +313,111 @@ Schema.prototype.read = function(dbFile, cbAfter) {
 			});
 		});
 	} catch(err) {
-		log.error("Schema.read() exception. " + err);
+		log.error({err: err}, "Schema.read() exception.");
 		cbAfter(err);
 	}
 }
+
+Schema.prototype.jsonWrite = function(fileName, cbAfter) {
+	try {
+		var data = _.pick(this.get(), 'tables');
+		fs.writeFile(fileName, JSON.stringify(data), function(err) {
+			if (err) {
+				log.error({data: data, error: err}
+					, "Schema.jsonWrite() failed. Could not write to '" 
+					+ fileName + "'");
+				cbAfter(err);
+				return;
+			}
+
+			cbAfter();
+		});
+
+	} catch(err) {
+		log.error({err: err}, "Schema.jsonWrite() exception.");
+		cbAfter(err);
+	}
+}
+
+Schema.prototype.jsonRead = function(fileName, cbAfter) {
+	var me = this;
+	try {
+
+		fs.readFile(fileName, 'utf8', function(err, data) {
+			if (err) {
+				log.error({err: err, file: fileName}, 
+					"Schema.jsonRead() failed. Could not open file.");
+				cbAfter(err);
+				return;
+			}
+
+			var tableDefs = undefined;
+			try {
+				tableDefs = _.values(JSON.parse(data)['tables']);
+
+			} catch(err) {
+				log.error({err: err, data: data}, 
+					"Schema.jsonRead() parse error.");
+				cbAfter(err);
+				return;
+			}
+
+			me.init(tableDefs);
+			cbAfter();
+			
+		});
+
+	} catch(err) {
+		log.error({err: err, file: fileName}, 
+			"Schema.jsonRead() exception.");
+		cbAfter(err);
+	}
+}
+
+Schema.prototype.writePatches = function(dbFile, patchDefs, cbAfter) {
+	try {
+
+		var patches = _.map(patchDefs, function(p) {
+			return this.parsePatch(p);
+		}, this);
+
+		var propPatches = _.filter(patches, function(p) {
+			return p.op == 'set_prop';
+		}, this);
+
+		var sql = this.sqlBuilder.updatePropSQL(propPatches);
+		log.debug({sql: sql});
+
+		var db = new sqlite3.Database(dbFile);
+		
+		try {
+
+			db.serialize(function() {
+				db.run("PRAGMA foreign_keys = ON;");
+				db.run("BEGIN TRANSACTION");
+				db.exec(sql);
+				db.run("COMMIT TRANSACTION");
+				db.close(function() {
+					cbAfter();
+				});
+			});
+
+		} catch(err) {
+			db.run("ROLLBACK TRANSACTION");
+			db.close(function() {
+				log.error({err: err, patches: patches}, 
+					"Schema.writePatches() exception. Rollback.");
+				cbAfter(err);				
+			});
+		}
+
+	} catch(err) {
+		log.error({err: err, patches: patches}, 
+			"Schema.writePatches() exception.");
+		cbAfter(err);
+	}
+}
+
 
 exports.Schema = Schema;
 

@@ -199,7 +199,7 @@ describe('SandwichSales DB', function() {
 	];
 
 	var tableGraph;
-	beforeEach(function() {		
+	beforeEach(function() {	
 		var tables = _.map(tableDefs, function(def) {
 			return new Table(def);
 		});

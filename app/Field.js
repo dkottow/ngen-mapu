@@ -45,33 +45,29 @@ Field = function(fieldDef) {
 		}
 
 
-		//default property values
-		me.order = 0;
-		me.length = me.defaultLength();
+		//property values
+		me.props = {};
 
-		//non-SQL attributes				
-		_.each(Field.PROPERTIES, function(f) {
-			if (fieldDef[f] != undefined) me[f] = fieldDef[f];
-		});
+		//default values
+		me.props.order = 0;
+		me.props.width = me.defaultWidth();
 
-
-		//parse possible JSON
-		if (_.isString(me.domain)) {
-			me.domain = JSON.parse(me.domain);
-		}
+		//copy known props. 
+		_.extend(me.props, _.pick(fieldDef.props, Field.PROPERTIES));
 	}
 }
 
 Field.TABLE = '__fieldprops__';
+Field.TABLE_FIELDS = ['name', 'table_name', 'props'];
+
 //adding or removing PROPERTIES needs no change in db schema
-Field.PROPERTIES = ['order', 'length', 'precision', 'domain', 'label']; 
-Field.TABLE_FIELDS = ['name', 'table_name', 'properties'];
+Field.PROPERTIES = ['order', 'width', 'scale', 'label'];
 
 Field.CreateTableSQL 
 	= " CREATE TABLE " + Field.TABLE + " ("
 		+ ' name VARCHAR NOT NULL, '
 		+ ' table_name VARCHAR NOT NULL, '
-		+ ' properties VARCHAR, '
+		+ ' props VARCHAR, '
 		+ ' PRIMARY KEY (name, table_name) '
 		+ ");\n\n";
 
@@ -96,12 +92,20 @@ Field.create = function(fieldDef) {
 
 }
 
+Field.prototype.setProp = function(name, value) {
+	if (_.contains(Field.PROPERTIES, name)) {
+		this.props[name] = value;
+	} else {
+		throw new Error(util.format('prop %s not found.', name));
+	}
+}
+
 Field.prototype.defaultSQL = function() {
 
-	if (this.name == 'modified_on') {
+	if (this.name == 'mod_on') {
 		return "DEFAULT(datetime('now'))";
 
-	} else if (this.name == 'modified_by') {
+	} else if (this.name == 'mod_by') {
 		return "DEFAULT 'sql'";
 
 	} else {
@@ -130,8 +134,11 @@ Field.prototype.toSQL = function() {
 
 Field.prototype.insertPropSQL = function(table) {
 
-	var props = JSON.stringify(_.pick(this, Field.PROPERTIES));
-	var values = _.map([this.name, table.name, props], function(v) {
+	var values = _.map([
+			this.name, 
+			table.name, 
+			JSON.stringify(this.props)
+		], function(v) {
 		return "'" + v + "'";
 	});
 
@@ -146,7 +153,16 @@ Field.prototype.insertPropSQL = function(table) {
 	return sql;
 }
 
-Field.prototype.defaultLength = function() {
+Field.prototype.updatePropSQL = function(table) {
+	var sql = 'UPDATE ' + Field.TABLE
+			+ " SET props = '" + JSON.stringify(this.props) + "'"
+			+ util.format(" WHERE name = '%s' AND table_name = '%s'; ",
+				this.name, table.name);
+
+	return sql;
+}
+
+Field.prototype.defaultWidth = function() {
 	if (this instanceof IntegerField) return 4;
 	if (this instanceof NumericField) return 8;
 	if (this instanceof TextField) return 20;
@@ -160,16 +176,13 @@ Field.prototype.toJSON = function() {
 		name: this.name,
 		type: this.type,
 		fk: this.fk,
-		notnull: this.notnull
+		notnull: this.notnull,
+		props: this.props
 	};
 
 	if (result.fk == 1) {
 		result.fk_table = this.fk_table;
 	}
-
-	_.each(Field.PROPERTIES, function(f) {
-		result[f] = this[f];
-	}, this);
 
 	return result;
 }

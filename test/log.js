@@ -1,8 +1,10 @@
 
+var bunyan = require('bunyan');
 
-var log = require('bunyan').createLogger({
+var log = bunyan.createLogger({
 	name: 'g6.mocha',
 	level: 'debug',
+	serializers: bunyan.stdSerializers,
 	src: true,
 	streams: [{
 		type: 'rotating-file',

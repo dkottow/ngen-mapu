@@ -9,15 +9,16 @@ var assert = require('assert')
 global.log = require('./log.js').log;
 
 var Database = require('../app/Database').Database;
+var Schema = require('../app/Schema').Schema; //only for some static var
 	
 var log = global.log.child({'mod': 'mocha.test-database.js'});
 
 describe('Database', function() {
 	var dbFile = "test/sales.sqlite";
-	var model = new Database(dbFile);
+	var db = new Database(dbFile);
 
 	before(function(done) {
-		model.init(done);
+		db.init(done);
 	});	
 
 	after(function(done) {
@@ -45,7 +46,7 @@ describe('Database', function() {
 		var defs;
 		
 		before(function(done) {
-			model.getSchema(function(err, result) {
+			db.getSchema(function(err, result) {
 				defs = result;
 				log.info(defs);
 				done();
@@ -69,14 +70,14 @@ describe('Database', function() {
 
   	describe('getStats()', function() {		
 		it('getStats for orders', function(done) {
-			model.getStats('orders', function(err, result) {
+			db.getStats('orders', function(err, result) {
 				assert(err == null, err);
 				log.info(result);
 				done();
 			});
 		});
 		it('getStats for orders.total_amount', function(done) {
-			model.getStats('orders', { fields: ['total_amount'] }, 
+			db.getStats('orders', { fields: ['total_amount'] }, 
 				function(err, result) {
 					assert(err == null, err);
 					log.info(result);
@@ -95,7 +96,7 @@ describe('Database', function() {
 
 			_.each(tables, function(tn) {
 
-				model.all(tn, function(err, result) {
+				db.all(tn, function(err, result) {
 					assert(err == null, err);
 					log.debug('got ' + result.rows.length + " of " 
 								+ result.count + " " + tn.name);
@@ -125,7 +126,7 @@ describe('Database', function() {
 				limit: 10
 			};
 			
-			model.all(table, options, function(err, result) {
+			db.all(table, options, function(err, result) {
 				assert(err == null, err);
 				log.info('got ' + result.count + " " + table);
 				assert(result.count > 0, 'got some ' + table);
@@ -147,7 +148,7 @@ describe('Database', function() {
 					}]
 			};
 
-			model.all(table, options, function(err, result) {
+			db.all(table, options, function(err, result) {
 				assert(err == null, err);
 				log.info('got ' + result.count + " " + table);
 				assert(result.count > 0, 'got some ' + table);
@@ -170,7 +171,7 @@ describe('Database', function() {
 				}]
 			};
 
-			model.all(table, options, function(err, result) {
+			db.all(table, options, function(err, result) {
 				assert(err == null, err);
 				log.info('got ' + result.count + " " + table);
 				assert(result.count == 4, 'got 4 ' + table);
@@ -204,7 +205,7 @@ describe('Database', function() {
 				rows.push(r);
 			}
 
-			model.insert(table, rows, {}, function(err, result) { 
+			db.insert(table, rows, {}, function(err, result) { 
 				assert(err == null, err);
 				done(); 
 			});
@@ -227,7 +228,7 @@ describe('Database', function() {
 					'modified_on': '2000-01-01' 
 				}
 			];				
-			model.insert(table, rows, function(err, result) { 
+			db.insert(table, rows, function(err, result) { 
 				console.log(err);
 				console.log(result);
 				assert(err instanceof Error, 'sqlite null constraint holds on 2nd row');
@@ -244,7 +245,7 @@ describe('Database', function() {
 				'modified_by': 'mocha', 
 				'modified_on': '2000-01-01' 
 			};
-			model.insert(table, [row], {}, function(err, result) { 
+			db.insert(table, [row], {}, function(err, result) { 
 				log.info(err);
 				assert(err instanceof Error, 'sqlite check constraint holds');
 				done();
@@ -260,7 +261,7 @@ describe('Database', function() {
 				'modified_by': 'mocha', 
 				'modified_on': '2000-01-01' 
 			};
-			model.insert(table, [row], { retmod: true }, function(err, result) { 
+			db.insert(table, [row], { retmod: true }, function(err, result) { 
 				log.info(err);
 				assert(err == null, 'sqlite insert specific id');
 				assert(result.rows[0].id == row.id);
@@ -292,7 +293,7 @@ describe('Database', function() {
 				rows.push(r);
 			}
 
-			model.update(table, rows, { retmod: true }, function(err, result) { 
+			db.update(table, rows, { retmod: true }, function(err, result) { 
 				assert(err == null, 'update some rows');
 				assert(result.rows.length == rows.length);
 				done(); 
@@ -310,7 +311,7 @@ describe('Database', function() {
 				'modified_on': '2001-01-01' 
 			};
 
-			model.update(table, [row], {}, function(err, result) { 
+			db.update(table, [row], {}, function(err, result) { 
 				log.info(err);
 				assert(err instanceof Error, 'row does not exist');
 				done(); 
@@ -328,7 +329,7 @@ describe('Database', function() {
 				'modified_on': '2001-01-01' 
 			};
 
-			model.update(table, [row], {}, function(err, result) { 
+			db.update(table, [row], {}, function(err, result) { 
 				log.info(err);
 				assert(err instanceof Error, 'update did not fail');
 				done(); 
@@ -347,7 +348,7 @@ describe('Database', function() {
 				'modified_on': '2001-01-01' 
 			};
 
-			model.update(table, [row], {}, function(err, result) { 
+			db.update(table, [row], {}, function(err, result) { 
 				log.info(err);
 				assert(err instanceof Error, 'update did not fail');
 				done(); 
@@ -361,7 +362,7 @@ describe('Database', function() {
 
 		it('delete some rows', function(done) {
 
-			model.delete(table, [11, 12, 15], function(err, result) {
+			db.delete(table, [11, 12, 15], function(err, result) {
 				assert(err == null, 'deleted some rows');
 				log.info(err);
 				done(); 
@@ -369,5 +370,33 @@ describe('Database', function() {
 		});
 	});
 
+  	describe('patchSchema()', function() {		
+		it('write prop patches', function(done) {
+	
+			var prevOrder = db.table('customers').props.order; 
+
+			var patches = [
+				{
+					op: Schema.PATCH_OPS.SET_PROP
+					, path: '/customers/order'
+					, value: 77
+				},
+				{
+					op: Schema.PATCH_OPS.SET_PROP
+					, path: '/orders/FOO/width'
+					, value: 44
+				}
+			];
+
+			db.patchSchema(patches, function(err, schema) {
+				assert(err instanceof Error);
+				assert(db.table('customers').props.order == prevOrder);
+				log.info({schema: db.schema.get()}, 
+					"schema after failing to write patches");
+				done();				
+			});
+
+		});
+	});
 });
 

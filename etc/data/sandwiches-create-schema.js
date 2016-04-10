@@ -16,34 +16,44 @@ describe('Schema', function() {
 
 	var salesSchema = [
 		 { "name": "customers"
-		 , "row_alias": ["name", "email"]
+		 , "row_alias": ["name"]
 		 , "fields": {
 				  "id": {
 					  "name": "id"
 					, "type": "INTEGER"
-					, "order": 0
+					, "props": {
+						"order": 0
+					}
 				}
 				, "name": {
 					  "name": "name"
 					, "type": "VARCHAR"
-					, "length": 20
-					, "order": 1
+					, "width": 40
+					, "props": {
+						"order": 1
+					}
 				}
 				, "email": {
 					  "name": "email"
 					, "type": "VARCHAR(256)"
-					, "length": 80
-					, "order": 2
+					, "props": {
+						"width": 60
+					  , "order": 2
+					}
 				}
-				, "modified_by": {
-					  "name": "modified_by"
+				, "mod_by": {
+					  "name": "mod_by"
 					, "type": "VARCHAR(64)"
-					, "order": 91
+					, "props": {
+						"order": 91
+					}
 				}
-				, "modified_on": {
-					  "name": "modified_on"
+				, "mod_on": {
+					  "name": "mod_on"
 					, "type": "DATETIME"
-					, "order": 92
+					, "props": {
+						"order": 92
+					}
 				}
 			}		
 		 }
@@ -53,40 +63,55 @@ describe('Schema', function() {
 				  "id": {
 					  "name": "id"
 					, "type": "INTEGER"
-					, "order": 0
+					, "props": {
+						"order": 0
+					}
 				}
 				, "name": {
 					  "name": "name"
 					, "type": "VARCHAR"
-					, "length": 80
-					, "order": 1
+					, "props": {
+						"width": 40
+					  , "order": 1
+					}
 				}
 				, "price": {
 					  "name": "price"
 					, "type": "NUMERIC(8,2)"
-					, "order": 2
+					, "props": {
+						"scale": 2
+					  , "order": 2
+					}
 				}
 				, "description": {
 					  "name": "description"
 					, "type": "VARCHAR"
-					, "length": 80
-					, "order": 3
+					, "props": {
+						"width": 80
+					  , "order": 3
+					}
 				}
 				, "origin": {
 					  "name": "origin"
 					, "type": "VARCHAR"
-					, "length": 20
-					, "order": 4
+					, "props": {
+						"width": 20
+					  , "order": 4
+					}
 				}
-				, "modified_by": {
-					  "name": "modified_by"
+				, "mod_by": {
+					  "name": "mod_by"
 					, "type": "VARCHAR(64)"
-					, "order": 91
+					, "props": {
+						"order": 91
+					}
 				}
-				, "modified_on": {
-					  "name": "modified_on"
+				, "mod_on": {
+					  "name": "mod_on"
 					, "type": "DATETIME"
-					, "order": 92
+					, "props": {
+						"order": 92
+					}
 				}
 			}		
 		 }
@@ -96,33 +121,48 @@ describe('Schema', function() {
 				  "id": {
 					  "name": "id"
 					, "type": "INTEGER"
-					, "order": 0
+					, "props": {
+						"order": 0
+					}
 				}
 				, "order_date": {
 					  "name": "order_date"
 					, "type": "DATE"
-					, "order": 1
+					, "props": {
+						"order": 1
+					}
 				}
 				, "customer_id": {
 					  "name": "customer_id"
 					, "type": "INTEGER"
 					, "fk_table": "customers"
-					, "order": 2
+					, "props": {
+						"width": 40
+					  , "order": 2
+					}
 				}
 				, "total_amount": {
 					  "name": "total_amount"
 					, "type": "NUMERIC(8,2)"
-					, "order": 3
+					, "props": {
+						"scale": 2
+					  , "width": 12
+					  , "order": 3
+					}
 				}
-				, "modified_by": {
-					  "name": "modified_by"
+				, "mod_by": {
+					  "name": "mod_by"
 					, "type": "VARCHAR(256)"
-					, "order": 91
+					, "props": {
+						"order": 91
+					}
 				}
-				, "modified_on": {
-					  "name": "modified_on"
+				, "mod_on": {
+					  "name": "mod_on"
 					, "type": "DATETIME"
-					, "order": 92
+					, "props": {
+						"order": 92
+					}
 				}
 			}		
 		 }
@@ -131,39 +171,56 @@ describe('Schema', function() {
 				  "id": {
 					  "name": "id"
 					, "type": "INTEGER"
-					, "order": 0
+					, "props": {
+						"order": 0
+					}
 				}
 				, "order_id": {
 					  "name": "order_id"
 					, "type": "INTEGER"
 					, "fk_table": "orders"
-					, "order": 1
+					, "props": {
+						"width": 60
+					  , "order": 1
+					}
 				}
 				, "sandwich_id": {
 					  "name": "sandwich_id"
 					, "type": "INTEGER"
 					, "fk_table": "sandwiches"
-					, "order": 2
+					, "props": {
+						"width": 40
+					  , "order": 2
+					}
 				}
 				, "unit_price": {
 					  "name": "unit_price"
 					, "type": "NUMERIC(8,2)"
-					, "order": 3
+					, "props": {
+						"scale": 2
+					  , "order": 3
+					}
 				}
 				, "quantity": {
 					  "name": "quantity"
 					, "type": "INTEGER"
-					, "order": 4
+					, "props": {
+						"order": 4
+					}
 				}
-				, "modified_by": {
-					  "name": "modified_by"
+				, "mod_by": {
+					  "name": "mod_by"
 					, "type": "VARCHAR(256)"
-					, "order": 91
+					, "props": {
+						"order": 91
+					}
 				}
-				, "modified_on": {
-					  "name": "modified_on"
+				, "mod_on": {
+					  "name": "mod_on"
 					, "type": "DATETIME"
-					, "order": 92
+					, "props": {
+						"order": 92
+					}
 				}
 			}		
 		 }
@@ -171,6 +228,7 @@ describe('Schema', function() {
 
 	describe('Sandwiches', function() {
 		var dbFile = "./sandwiches.sqlite";
+		var jsonFile = "./sandwiches.json";
 		
 		before(function(done) {
 			schema.Schema.remove(dbFile, function(err) {
@@ -185,9 +243,16 @@ describe('Schema', function() {
 				if (err) {
 					log.info(err);
 				} else {
+					var allDone = _.after(2, function() {
+						done();
+					});
 					db.create(dbFile, function(err) {
 						log.info(err);
-						done();	
+						allDone();	
+					});
+					db.jsonWrite(jsonFile, function(err) {
+						log.info(err);
+						allDone();	
 					});
 				}
 			});

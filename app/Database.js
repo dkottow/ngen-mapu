@@ -32,13 +32,7 @@ Database.prototype.init = function(cbAfter) {
 }
 
 Database.prototype.table = function(name) { 
-	var table = _.find(this.schema.tables(), function(t) { 
-		return t.name == name; 
-	});
-	if ( ! table) {
-		throw new Error(util.format('G6_MODEL_ERROR: Table %s not found.', name));
-	}
-	return table;
+	return this.schema.table(name);
 }
 
 Database.prototype.tables = function() { 
@@ -51,7 +45,6 @@ Database.prototype.getSchema = function(cbResult) {
 	result.name = path.basename(this.dbFile, global.sqlite_ext);
 	cbResult(null, result);
 }
-
 
 Database.prototype.getCounts = function(cbResult) {
 
@@ -75,7 +68,7 @@ Database.prototype.getCounts = function(cbResult) {
 		db.all(sql, function(err, rows) {
 			db.close(function() {
 				if (err) {
-					log.error("model.getCounts() failed. " + err);	
+					log.error({err: err}, "Database.getCounts() failed.");	
 					cbResult(err, null);
 					return;
 				}
@@ -87,7 +80,7 @@ Database.prototype.getCounts = function(cbResult) {
 		});
 
 	} catch(err) {
-		log.error("model.getCounts() exception. " + err);	
+		log.error({err: err}, "Database.getCounts() exception. ");	
 		cbResult(err, null);
 	}
 }
@@ -116,8 +109,8 @@ Database.prototype.getStats = function(tableName, options, cbResult) {
 		db.get(sql.query, sql.params, function(err, row) {
 			db.close(function() {
 				if (err) {
-					log.error("db.get() failed. " + err);	
-					log.debug(sql.query);	
+					log.error({err: err, sql: sql}, 
+						"Database.get() failed.");
 					cbResult(err, null);
 					return;
 				}
@@ -136,7 +129,7 @@ Database.prototype.getStats = function(tableName, options, cbResult) {
 		});
 
 	} catch(err) {
-		log.error("model.getStats() exception. " + err);	
+		log.error({err: err}, "Database.getStats() exception.");	
 		cbResult(err, null);
 	}
 }	
@@ -170,8 +163,8 @@ Database.prototype.all = function(tableName, options, cbResult) {
 		db.all(sql.query, sql.params, function(err, rows) {
 			if (err) {
 				db.close(function() {
-					log.error("model.all() failed. " + err);	
-					log.debug(sql.query);	
+					log.error({err: err, sql: sql},
+						"Database.all() failed. ");	
 					cbResult(err, null);
 				});
 			} else {
@@ -183,6 +176,8 @@ Database.prototype.all = function(tableName, options, cbResult) {
 				db.all(countSql, sql.params, function(err, countRows) {
 					db.close(function() {
 						if (err) {
+							log.error({err: err, sql: sql},
+								"Database.all() failed. ");	
 							cbResult(err, null);
 						} else {
 							var result = { 
@@ -202,7 +197,7 @@ Database.prototype.all = function(tableName, options, cbResult) {
 		});
 
 	} catch(err) {
-		log.error("model.all() exception. " + err);	
+		log.error({err: err}, "Database.all() exception.");	
 		cbResult(err, []);
 	}
 }
@@ -228,7 +223,8 @@ Database.prototype.get = function(tableName, options, cbResult) {
 		db.get(sql.query, sql.params, function(err, row) {
 			db.close(function() {
 				if (err) {
-					log.error("model.get() failed. " + err);	
+					log.error({err: err, sql: sql}, 
+						"Database.get() failed.");	
 				}
 
 				//console.dir(row);
@@ -237,7 +233,7 @@ Database.prototype.get = function(tableName, options, cbResult) {
 		});
 
 	} catch(err) {
-		log.error("model.get() exception. " + err);	
+		log.error({err: err}, "Database.get() exception.");	
 		cbResult(err, []);
 	}
 }
@@ -273,14 +269,14 @@ Database.prototype.insert = function(tableName, rows, options, cbResult) {
 		options = options || {};		
 		var returnModifiedRows = options.retmod || false;
 
-		var fieldNames = _.filter(_.keys(rows[0]) 
-							, function(fn) { 
+		var fieldNames = _.filter(_.keys(rows[0]), function(fn) { 
 				//filter out any non-field key
 				return _.has(table.fields, fn); // && fn != 'id'; 
 		});
 
-		var fieldParams = _.times(fieldNames.length
-						, function(fn) { return "?"; });
+		var fieldParams = _.times(fieldNames.length, function(fn) { 
+			return "?"; 
+		});
 
 		var sql = "INSERT INTO " + table.name 
 				+ '("' + fieldNames.join('", "') + '")'
@@ -318,7 +314,8 @@ Database.prototype.insert = function(tableName, rows, options, cbResult) {
 				if (err == null) {
 					db.run("COMMIT TRANSACTION");			
 				} else {
-					log.error("Database.insert() failed. Rollback. " + err);
+					log.error({err: err, rows: rows, sql: sql}, 
+						"Database.insert() failed. Rollback.");
 					db.run("ROLLBACK TRANSACTION");
 				}
 				db.close(function() {
@@ -335,7 +332,7 @@ Database.prototype.insert = function(tableName, rows, options, cbResult) {
 		});
 
 	} catch(err) {
-		log.error("model.insert() exception. " + err);	
+		log.error({err: err, rows: rows}, "Database.insert() exception.");	
 		cbResult(err, []);
 	}
 }
@@ -407,7 +404,8 @@ Database.prototype.update = function(tableName, rows, options, cbResult) {
 					db.run("COMMIT TRANSACTION");
 
 				} else {
-					log.error("Database.update() failed. Rollback. " + err);
+					log.error({err: err, rows: rows, sql: sql}, 
+						"Database.update() failed. Rollback. " + err);
 					db.run("ROLLBACK TRANSACTION");
 				}
 				db.close(function() {
@@ -425,8 +423,8 @@ Database.prototype.update = function(tableName, rows, options, cbResult) {
 		});
 
 	} catch(err) {
-		log.error("model.update() exception. " + err);	
-		cbResult(err, 0);
+		log.error({err: err, rows: rows}, "Database.update() exception.");	
+		cbResult(err, null);
 	}
 }
 
@@ -477,7 +475,8 @@ Database.prototype.delete = function(tableName, ids, cbResult) {
 				if (err == null) {
 					db.run("COMMIT TRANSACTION");
 				} else {
-					log.error("Database.delete() failed. Rollback. " + err);
+					log.error({err: err, ids: ids, sql: sql}, 
+						"Database.delete() failed. Rollback.");
 					db.run("ROLLBACK TRANSACTION");
 				}
 				db.close(function() {
@@ -488,11 +487,41 @@ Database.prototype.delete = function(tableName, ids, cbResult) {
 		});
 
 	} catch(err) {
-		log.error("model.delete() exception. " + err);	
-		cbResult(err, 0);
+		log.error({err: err, ids: ids}, "Database.delete() exception.");	
+		cbResult(err, null);
 	}
 }
 
+Database.prototype.patchSchema = function(patches, cbResult) {
+	try {
+
+		//apply patches in memory
+		_.each(patches, function(patch) {
+			this.schema.patch(patch);
+		});	
+
+		//write patches to database
+		this.schema.writePatches(this.dbFile, patches, function(err) {
+			if (err) {
+				log.error({err: err, patches: patches}, 
+					"Database.patchSchema() failed.");
+
+				//recover schema from disk
+				this.schema.read(this.dbFile, function(e) {
+					cbResult(err || e, null);
+				});
+				return;
+			}
+			//return new schema
+			this.getSchema(cbResult);
+		});
+
+	} catch(err) {
+		log.error({err: err, patches: patches}, 
+			"Database.patchSchema() exception.");	
+		cbResult(err, null);
+	}
+}
 //}
 
 exports.Database = Database;

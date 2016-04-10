@@ -94,6 +94,19 @@ SqlBuilder.prototype.createSQL = function() {
 	return sql;
 }
 
+SqlBuilder.prototype.updatePropSQL = function(patches) {
+	var me = this;
+	var tables = _.groupBy(patches, function(ph) {
+		return ph.table.name;				
+	});
+	var sql = _.reduce(tables, function(memo, patches) {
+		return memo + patches[0].table.updatePropSQL();
+	}, '');
+	log.debug({sql: sql}, "SqlBuilder.updatePropSQL");
+
+	return sql;
+}
+
 // private methods...
 
 

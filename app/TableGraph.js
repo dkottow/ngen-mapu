@@ -152,7 +152,7 @@ TableGraph.prototype.table = function(name) {
 
 TableGraph.prototype.tableJoins = function(fromTable, joinTables) {
 
-	log.info({fromTable: fromTable, joinTables: joinTables},
+	log.debug({fromTable: fromTable, joinTables: joinTables},
 		"tableJoins...");
 	
 	var shortestPathTrees = _.map(this.trees, function(tree) { 
@@ -196,7 +196,7 @@ TableGraph.prototype.tableJoins = function(fromTable, joinTables) {
 
 	var result = _.values(distinctJoins);
 
-	log.info(result, '...tableJoins');
+	log.debug(result, '...tableJoins');
 	return result;
 }
 

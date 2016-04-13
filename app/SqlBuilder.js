@@ -33,8 +33,7 @@ SqlBuilder.prototype.selectSQL
 		'params': query.params,
 		'countSql': countSQL
 	}
-	log.debug("SqlBuilder.selectSQL return value");
-	log.debug(result);
+	log.debug({result: result}, "SqlBuilder.selectSQL");
 	return result;
 }
 
@@ -55,8 +54,7 @@ SqlBuilder.prototype.statsSQL = function(table, fields, filterClauses)
 		'query': statsSQL, 
 		'params': query.params
 	}
-	log.debug("SqlBuilder.selectSQL return value");
-	log.debug(result);
+	log.debug({result: result}, "SqlBuilder.statsSQL");
 	return result;
 }
 
@@ -90,7 +88,7 @@ SqlBuilder.prototype.createSQL = function() {
 			+ createViewSQL + '\n\n'
 			+ createSearchSQL + '\n\n';
 	
-	log.debug(sql);
+	log.debug({sql: sql}, 'SqlBuilder.createSQL');
 	return sql;
 }
 

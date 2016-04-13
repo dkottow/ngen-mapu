@@ -1,4 +1,5 @@
 
+var url = require('url');
 var bunyan = require('bunyan');
 
 global.log = bunyan.createLogger({
@@ -28,7 +29,12 @@ var config = {
 	'port'	: 3000, 
 }
 
-if (process.env.OPENSHIFT_DATA_DIR) {
+if (process.env.DONKEYLIFT_API) {
+	var u = url.parse(process.env.DONKEYLIFT_API);
+	config.ip = u.hostname;
+	config.port = u.port;
+
+} else if (process.env.OPENSHIFT_DATA_DIR) {
 	config.ip = process.env.OPENSHIFT_NODEJS_IP;
 	config.port = process.env.OPENSHIFT_NODEJS_PORT;
 

@@ -4,8 +4,7 @@ var log = global.log.child({'mod': 'g6.DatabaseController.js'});
 var parser = require('./QueryParser.js');
 
 function sendError(req, res, err) {
-	log.error(err);
-	log.warn(req.method + " " + req.url + " failed.");
+	log.error({err: err, req: req}, "DatabaseController.sendError()");
 	res.send(400, err.message);
 }
 
@@ -23,7 +22,7 @@ function DatabaseController(router, restBase, model)
 
 		//get schema 
 		var getSchemaHandler = function(req, res) {
-			log.info(req.method + " " + req.url);
+			log.info({req: req}, 'DatabaseController.getSchemaHandler()...');
 			me.model.getSchema(function(err, result) {
 				if (err) {
 					sendError(req, res, err);
@@ -34,6 +33,7 @@ function DatabaseController(router, restBase, model)
 				});
 				log.debug(result);
 				res.send(result); 
+				log.info({res: res}, '...DatabaseController.getSchema().');
 			});
 			//log.info(" served by " + me.seed);
 			//res.send(defs);
@@ -46,19 +46,18 @@ function DatabaseController(router, restBase, model)
 			var url = me.base + "/" + table['name'];
 
 			var getRowsHandler = function(req, res) {
-				log.info(req.method + " " + req.url);
+				log.info({req: req}, 'DatabaseController.get()...');
 				
 				var params = {};
 				_.each(req.query, function(v, k) {
-					//log.debug(k + " = " + v);
 					if (k[0] == '$') {
 						var param = parser.parse(k + "=" + v);	
 						params[param.name] = param.value;
-						//log.debug(param);
 					} else {
 						params[k] = v;
 					}
 				});
+				log.debug({params: params});
 
 				me.model.all(table.name, {
 						filter: params['$filter'] 
@@ -76,6 +75,7 @@ function DatabaseController(router, restBase, model)
 						}
 						log.trace(result);
 						res.send(result); 
+						log.info({res: res}, '...DatabaseController.get().');
 					}
 				);
 
@@ -87,12 +87,14 @@ function DatabaseController(router, restBase, model)
 			var statsExt = ".stats";
 			me.router.get(url + statsExt, function(req, res) {
 
+				log.info({req: req}, 'DatabaseController.getStats()...');
 				var params = {};
 				_.each(req.query, function(v, k) {
 					if (k[0] == '$') {
 						var param = parser.parse(k + "=" + v);	
 						params[param.name] = param.value;
-						//console.log(param);
+					} else {
+						params[k] = v;
 					}
 				});
 
@@ -107,6 +109,7 @@ function DatabaseController(router, restBase, model)
 						}
 						log.debug(result);
 						res.send(result); 
+						log.info({res: res}, '...DatabaseController.getStats().');
 					}
 				);
 
@@ -140,7 +143,7 @@ function DatabaseController(router, restBase, model)
 
 			//insert a row into table
 			var postRowHandler = function(req, res) {
-				log.info(req.method + " " + req.url);
+				log.info({req: req}, 'DatabaseController.post()...');
 				log.info({'req.body': req.body});
 				var row = req.body;
 				var params = req.query;
@@ -149,9 +152,9 @@ function DatabaseController(router, restBase, model)
 						sendError(req, res, err);
 						return;
 					}
-					log.info({'res.body': result});
-					log.info(req.method + " " + req.url + " OK.");
+					log.debug({'res.body': result});
 					res.send(result); 
+					log.info({res: res}, '...DatabaseController.post().');
 				});
 			}
 			me.router.post(url, postRowHandler);
@@ -159,7 +162,7 @@ function DatabaseController(router, restBase, model)
 
 			//update row in table
 			var putRowHandler = function(req, res) {
-				log.info(req.method + " " + req.url);
+				log.info({req: req}, 'DatabaseController.put()...');
 				log.info({'req.body': req.body});
 				var row = req.body;
 				row['id'] = req.param('id');
@@ -169,9 +172,9 @@ function DatabaseController(router, restBase, model)
 						sendError(req, res, err);
 						return;
 					}
-					log.info({'res.body': result});
-					log.info(req.method + " " + req.url + " OK.");
+					log.debug({'res.body': result});
 					res.send(result);  
+					log.info({res: res}, '...DatabaseController.put().');
 				});
 			}
 			me.router.put(url + "/:id", putRowHandler);
@@ -179,15 +182,15 @@ function DatabaseController(router, restBase, model)
 
 			//delete row in table
 			var deleteRowHandler = function(req, res) {
-				log.info(req.method + " " + req.url);
+				log.info({req: req}, 'DatabaseController.delete()...');
 				var id = req.param('id');
 				me.model.delete(table.name, [id], function(err, result) {
 					if (err) {
 						sendError(req, res, err);
 						return;
 					}
-					log.info(req.method + " " + req.url + " OK.");
 					res.send(result); 
+					log.info({res: res}, '...DatabaseController.delete().');
 				});
 			}
 			me.router.delete(url + "/:id", deleteRowHandler);
@@ -197,15 +200,16 @@ function DatabaseController(router, restBase, model)
 
 		//patch schema 
 		var patchSchemaHandler = function(req, res) {
-			log.info(req.method + " " + req.url);
+			log.info({req: req}, 'DatabaseController.patchSchema()...');
 			var patches = req.body;
 			me.model.patchSchema(patches, function(err, result) {
 				if (err) {
 					sendError(req, res, err);
 					return;
 				}
-				log.debug(result);
+				log.debug({'res.body': result});
 				res.send(result); 
+				log.info({res: res}, '...DatabaseController.patchSchema().');
 			});
 			//log.info(" served by " + me.seed);
 			//res.send(defs);

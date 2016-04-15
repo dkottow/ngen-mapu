@@ -106,33 +106,29 @@ function AccountController(router, baseUrl, baseDir) {
 			var dbFile = util.format('%s/%s', me.baseDir,
 								schema.name + global.sqlite_ext);
 
-			var db = new Schema(schema.tables);
-			db.init(function(err) {
+			var db = new Schema();
+			db.init(schema.tables);
+
+			db.create(dbFile, function(err) {
 				if (err) {
 					sendError(req, res, err);
 					return;
 				}
-				db.create(dbFile, function(err) {
-					if (err) {
-						sendError(req, res, err);
-						return;
-					}
-					log.info(req.method + " " + req.url + " OK.");
-					var dbUrl = util.format('%s/%s'
-								, me.url
-								, schema.name
-					);
+				log.info(req.method + " " + req.url + " OK.");
+				var dbUrl = util.format('%s/%s'
+							, me.url
+							, schema.name
+				);
 
-					var model = new Database(dbFile);
-					var controller = new DatabaseController(router, dbUrl, model);
-					model.init(function() { 
-						controller.init(function() {
-							res.send({name: schema.name}); //return url of new database
-						}); 
-					});
-
-					me.databaseControllers[dbUrl] = controller;
+				var model = new Database(dbFile);
+				var controller = new DatabaseController(router, dbUrl, model);
+				model.init(function() { 
+					controller.init(function() {
+						res.send({name: schema.name}); //return url of new database
+					}); 
 				});
+
+				me.databaseControllers[dbUrl] = controller;
 			});
 		}
 
@@ -169,24 +165,19 @@ function AccountController(router, baseUrl, baseDir) {
 					return;
 				}
 				var dbFile = meCtrl.model.dbFile;	
-				var db = new Schema(schema.tables);
-				db.init(function(err) {
+				var db = new Schema();
+				db.init(schema.tables);
+				db.create(dbFile, function(err) {
 					if (err) {
 						sendError(req, res, err);
-						return;	
+						return;
 					}
-					db.create(dbFile, function(err) {
-						if (err) {
-							sendError(req, res, err);
-							return;
-						}
 
-						log.info(req.method + " " + req.url + " OK.");
-						meCtrl.model = new Database(dbFile);
-						meCtrl.model.init(function() { 
-							meCtrl.init( function() {
-								res.send({}); 
-							});
+					log.info(req.method + " " + req.url + " OK.");
+					meCtrl.model = new Database(dbFile);
+					meCtrl.model.init(function() { 
+						meCtrl.init( function() {
+							res.send({}); 
 						});
 					});
 				});

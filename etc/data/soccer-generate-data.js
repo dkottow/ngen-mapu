@@ -8,11 +8,13 @@ var assert = require('assert')
 	, Random = require('random-js');
 
 var APP_PATH = "../../app/";
+global.log = require('./log.js').log;
+
+console.log(global.log);
 
 var Schema = require(APP_PATH + 'Schema').Schema
 	, Database = require(APP_PATH + 'Database').Database;
 	
-var log = global.log;
 
 //run me from root dir
 
@@ -182,6 +184,8 @@ describe('Database', function() {
 				var fs = get_formations(game, team1, team2);
 				formations = formations.concat(fs);
 			});
+
+console.dir(formations);
 
 			db.insert('Formation', formations, function(err, ids) {
 				if (err) throw new Error(err);

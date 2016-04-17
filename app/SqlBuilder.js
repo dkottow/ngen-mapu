@@ -2,7 +2,9 @@ var _ = require('underscore');
 var util = require('util');
 var assert = require('assert');
 
+var Field = require('./Field.js').Field;
 var Table = require('./Table.js').Table;
+
 var log = global.log.child({'mod': 'g6.SqlBuilder.js'});
 
 var SqlBuilder = function(tableGraph) {
@@ -392,6 +394,12 @@ SqlBuilder.prototype.fieldSQL = function(table, fields) {
 	} else {
 		table.assertFields(fields);
 	}
+
+	fields = _.filter(fields, function(fieldName) {
+		//viewFields cannot be disabled
+		if (_.contains(table.fields, fieldName) && table.field(fieldName).disabled) return false;
+		return true;
+	});
 
 	fields = _.map(fields, function(fieldName) {
 		return util.format('%s."%s" AS "%s"', table.viewName(), fieldName, 

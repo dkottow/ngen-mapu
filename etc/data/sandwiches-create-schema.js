@@ -238,25 +238,19 @@ describe('Schema', function() {
 
 		it('create ' + dbFile, function(done) {
 	
-			var db = new schema.Schema(salesSchema);
-			db.init(function(err) {
-				if (err) {
-					log.info(err);
-				} else {
-					var allDone = _.after(2, function() {
-						done();
-					});
-					db.create(dbFile, function(err) {
-						log.info(err);
-						allDone();	
-					});
-					db.jsonWrite(jsonFile, function(err) {
-						log.info(err);
-						allDone();	
-					});
-				}
+			var db = new schema.Schema();
+			db.init(salesSchema);
+			var allDone = _.after(2, function() {
+				done();
 			});
-
+			db.create(dbFile, function(err) {
+				log.info(err);
+				allDone();	
+			});
+			db.jsonWrite(jsonFile, function(err) {
+				log.info(err);
+				allDone();	
+			});
 		});
 	});
 

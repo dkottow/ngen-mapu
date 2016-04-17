@@ -186,6 +186,13 @@ TableGraph.prototype.tableJoins = function(fromTable, joinTables) {
 		return result;
 	});
 
+	//TODO dk BUG I now believe the following is wrong, but helps in general take out nonsense join combinations
+	//filter out invalid join paths (rhs of joinPath has duplicates)
+	joinPaths = _.filter(joinPaths, function(joinPath) {
+		var idTables = _.pluck(joinPath, 'idTable');
+		return _.uniq(idTables).length == idTables.length;
+	});
+
 	var distinctJoins = {};
 	_.each(joinPaths, function(joinPath) {
 		var pathKey = _.keys(joinPath).sort().join(' ');

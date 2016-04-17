@@ -25,14 +25,14 @@ function sqlReplaceParams(selectResult) {
 	return sql;
 }
 
-describe('SandwichSales DB', function() {
+describe('Sandwiches DB', function() {
 
-	var jsonSalesFile = "test/sales.json";
+	var jsonFile = "test/sales.json";
 	var sqlBuilder;
 
 	beforeEach(function(done) {		
 		var schema = new Schema();
-		schema.jsonRead(jsonSalesFile, function(err) {
+		schema.jsonRead(jsonFile, function(err) {
 			log.info(err);
 			assert(err == null, err);
 			sqlBuilder = schema.sqlBuilder;
@@ -146,156 +146,19 @@ describe('SandwichSales DB', function() {
 });
 
 
-describe('AthleteTeam DB', function() {
+describe('Soccer DB', function() {
 
-	var tableDefs = [
-		 { "name": "accomodations"
-		 , "row_alias": ["name"]
-		 , "fields": {
-				  "id": {
-					  "name": "id"
-					, "type": "INTEGER"
-					, "order": 0
-				}
-				, "name": {
-					  "name": "name"
-					, "type": "VARCHAR"
-					, "order": 1
-				}
-				, "modified_by": {
-					  "name": "modified_by"
-					, "type": "VARCHAR(64)"
-					, "order": 91
-				}
-				, "modified_on": {
-					  "name": "modified_on"
-					, "type": "DATETIME"
-					, "order": 92
-				}
-			}
-		 }
-	   , { "name": "persons"
-		 , "row_alias": ["name"]
-		 , "fields": {
-				  "id": {
-					  "name": "id"
-					, "type": "INTEGER"
-					, "order": 0
-				}
-				, "name": {
-					  "name": "name"
-					, "type": "VARCHAR"
-					, "order": 1
-				}
-				, "accomodation_id": {
-					  "name": "accomodation_id"
-					, "type": "INTEGER"
-					, "fk_table": "accomodations"
-					, "order": 2
-				}
-/*
-				, "contact_id": {
-					  "name": "contact_id"
-					, "type": "INTEGER"
-					, "fk_table": "persons"
-					, "order": 2
-				}
-*/
-				, "modified_by": {
-					  "name": "modified_by"
-					, "type": "VARCHAR(64)"
-					, "order": 91
-				}
-				, "modified_on": {
-					  "name": "modified_on"
-					, "type": "DATETIME"
-					, "order": 92
-				}
-			}		
-		 }
-	   , { "name": "teams"
-		 , "row_alias": ["name"]		  	
-		 , "fields": {
-				  "id": {
-					  "name": "id"
-					, "type": "INTEGER"
-					, "order": 0
-				}
-				, "country": {
-					  "name": "country"
-					, "type": "VARCHAR"
-					, "order": 1
-				}
-				, "coach_id": {
-					  "name": "coach_id"
-					, "type": "INTEGER"
-					, "fk_table": "persons"
-					, "order": 2
-				}
-				, "leader_id": {
-					  "name": "leader_id"
-					, "type": "INTEGER"
-					, "fk_table": "persons"
-					, "order": 3
-				}
-				, "modified_by": {
-					  "name": "modified_by"
-					, "type": "VARCHAR(64)"
-					, "order": 91
-				}
-				, "modified_on": {
-					  "name": "modified_on"
-					, "type": "DATETIME"
-					, "order": 92
-				}
-			}		
-		 }
-	   , { "name": "athletes"
-		 , "row_alias": ["teams.name", "persons.name"]		  	
-		 , "fields": {
-				  "id": {
-					  "name": "id"
-					, "type": "INTEGER"
-					, "order": 0
-				}
-				, "score": {
-					  "name": "score"
-					, "type": "NUMERIC(4,1)"
-					, "order": 0
-				}
-				, "team_id": {
-					  "name": "team_id"
-					, "type": "INTEGER"
-					, "fk_table": "teams"
-					, "order": 1
-				}
-				, "person_id": {
-					  "name": "person_id"
-					, "type": "INTEGER"
-					, "fk_table": "persons"
-					, "order": 1
-				}
-				, "modified_by": {
-					  "name": "modified_by"
-					, "type": "VARCHAR(64)"
-					, "order": 91
-				}
-				, "modified_on": {
-					  "name": "modified_on"
-					, "type": "DATETIME"
-					, "order": 92
-				}
-			}		
-		 }
-	];
-
+	var jsonFile = "test/soccer.json";
 	var sqlBuilder;
-	beforeEach(function() {		
-		var tables = _.map(tableDefs, function(def) {
-			return new Table(def);
+
+	beforeEach(function(done) {		
+		var schema = new Schema();
+		schema.jsonRead(jsonFile, function(err) {
+			log.info(err);
+			assert(err == null, err);
+			sqlBuilder = schema.sqlBuilder;
+			done();
 		});
-		var tableGraph = new TableGraph(tables);
-		sqlBuilder = new SqlBuilder(tableGraph);
 	});	
 
 
@@ -303,21 +166,21 @@ describe('AthleteTeam DB', function() {
 		var filterClauses = [
 			{
 				//field: '*',  //full row search
-				field: 'teams',  //full row search
-				table: 'teams',
+				field: 'Team',  //full row search
+				table: 'Team',
 				op: 'search',
-				value: 'chile'
+				value: 'Madrid'
 			},
 			{
-				field: 'score',
-				table: 'athletes',
-				op: 'ge',
-				value: 100 
+				field: 'Code',
+				table: 'Position',
+				op: 'eq',
+				value: 'GC' 
 			},
 		];
 		
-		var table = sqlBuilder.graph.table('persons');
-		var fields = ['name'];
+		var table = sqlBuilder.graph.table('TeamMember');
+		var fields = ['Name'];
 		//var fields = ['ref', 'customers_ref', 'total_amount'];
 		var orderClauses = [];
 		var limit = 10;
@@ -330,7 +193,7 @@ describe('AthleteTeam DB', function() {
 	});
 
 	it('SqlBuilder.createViewSQL', function() {
-		var table = sqlBuilder.graph.table('teams');
+		var table = sqlBuilder.graph.table('Team');
 		var result = sqlBuilder.createViewSQL(table);
 		log.info(result);
 	});

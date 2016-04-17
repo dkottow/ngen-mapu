@@ -47,6 +47,7 @@ var Table = function(tableDef) {
 		//row alias
 		me.row_alias = tableDef.row_alias || [];
 
+		me.disbled = tableDef.disabled || false;
 		//property values
 		me.props = {};
 
@@ -57,7 +58,7 @@ var Table = function(tableDef) {
 }
 
 Table.TABLE = '__tableprops__';
-Table.TABLE_FIELDS = ['name', 'row_alias', 'props'];
+Table.TABLE_FIELDS = ['name', 'row_alias', 'props', 'disabled'];
 
 Table.PROPERTIES = ['order', 'label'];
 
@@ -73,6 +74,7 @@ Table.CreateTableSQL = "CREATE TABLE " + Table.TABLE + " ("
 		+ " name VARCHAR NOT NULL, "
 		+ " row_alias VARCHAR, "
 		+ "	props VARCHAR, "
+		+ " disabled INTEGER DEFAULT 0, "
 		+ "	PRIMARY KEY (name) "
 		+ ");\n\n";
 
@@ -80,6 +82,7 @@ Table.prototype.updatePropSQL = function() {
 
 	var sql = "UPDATE " + Table.TABLE 
 			+ " SET props = '" + JSON.stringify(this.props) + "'"
+			+ " , disabled = " + (this.disabled ? 1 : 0)
 			+ " WHERE name = '" + this.name + "'; ";
 
 	_.each(this.fields, function(f) {
@@ -95,10 +98,12 @@ Table.prototype.insertPropSQL = function() {
 	var values = _.map([
 			this.name, 
 			JSON.stringify(this.row_alias), 
-			JSON.stringify(this.props)
+			JSON.stringify(this.props),
 		], function(v) {
 		return "'" + v + "'";
-	});
+	}).concat([
+		this.disabled ? 1 : 0
+	]);
 
 	var fields = _.map(Table.TABLE_FIELDS, function(f) {
 		return '"' + f + '"';
@@ -244,7 +249,8 @@ Table.prototype.toJSON = function() {
 	var result = {
 		name: this.name, 
 		row_alias: this.row_alias,
-		props: this.props
+		props: this.props,
+		disabled: this.disabled
 	};
 
 	result.fields = _.map(this.fields, function(f) {

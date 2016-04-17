@@ -43,7 +43,16 @@ Database.prototype.tables = function() {
 Database.prototype.getSchema = function(cbResult) {
 	var result = this.schema.get();
 	result.name = path.basename(this.dbFile, global.sqlite_ext);
-	cbResult(null, result);
+	this.getCounts(function(err, counts) {
+		if (err) {
+			cbResult(err, null);
+		} else {
+			_.each(result.tables, function(table) {
+				table.row_count = counts[table.name];
+			});
+			cbResult(null, result);
+		}
+	});
 }
 
 Database.prototype.getCounts = function(cbResult) {

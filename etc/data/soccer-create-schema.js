@@ -35,13 +35,13 @@ describe('Schema', function() {
 					, "type": "VARCHAR"
 					, "order": 1
 				}
-				, "modified_by": {
-					  "name": "modified_by"
+				, "mod_by": {
+					  "name": "mod_by"
 					, "type": "VARCHAR(64)"
 					, "order": 91
 				}
-				, "modified_on": {
-					  "name": "modified_on"
+				, "mod_on": {
+					  "name": "mod_on"
 					, "type": "DATETIME"
 					, "order": 92
 				}
@@ -87,13 +87,13 @@ describe('Schema', function() {
 					, "fk_table": "Position"
 					, "order": 10
 				}
-				, "modified_by": {
-					  "name": "modified_by"
+				, "mod_by": {
+					  "name": "mod_by"
 					, "type": "VARCHAR(64)"
 					, "order": 91
 				}
-				, "modified_on": {
-					  "name": "modified_on"
+				, "mod_on": {
+					  "name": "mod_on"
 					, "type": "DATETIME"
 					, "order": 92
 				}
@@ -135,13 +135,13 @@ describe('Schema', function() {
 					, "fk_table": "Team"
 					, "order": 21
 				}
-				, "modified_by": {
-					  "name": "modified_by"
+				, "mod_by": {
+					  "name": "mod_by"
 					, "type": "VARCHAR(256)"
 					, "order": 91
 				}
-				, "modified_on": {
-					  "name": "modified_on"
+				, "mod_on": {
+					  "name": "mod_on"
 					, "type": "DATETIME"
 					, "order": 92
 				}
@@ -173,13 +173,13 @@ describe('Schema', function() {
 					, "fk_table": "Game"
 					, "order": 2
 				}
-				, "modified_by": {
-					  "name": "modified_by"
+				, "mod_by": {
+					  "name": "mod_by"
 					, "type": "VARCHAR(256)"
 					, "order": 91
 				}
-				, "modified_on": {
-					  "name": "modified_on"
+				, "mod_on": {
+					  "name": "mod_on"
 					, "type": "DATETIME"
 					, "order": 92
 				}
@@ -203,13 +203,13 @@ describe('Schema', function() {
 					, "type": "VARCHAR"
 					, "order": 11
 				}
-				, "modified_by": {
-					  "name": "modified_by"
+				, "mod_by": {
+					  "name": "mod_by"
 					, "type": "VARCHAR(256)"
 					, "order": 91
 				}
-				, "modified_on": {
-					  "name": "modified_on"
+				, "mod_on": {
+					  "name": "mod_on"
 					, "type": "DATETIME"
 					, "order": 92
 				}
@@ -228,13 +228,13 @@ describe('Schema', function() {
 					, "type": "VARCHAR"
 					, "order": 1
 				}
-				, "modified_by": {
-					  "name": "modified_by"
+				, "mod_by": {
+					  "name": "mod_by"
 					, "type": "VARCHAR(256)"
 					, "order": 91
 				}
-				, "modified_on": {
-					  "name": "modified_on"
+				, "mod_on": {
+					  "name": "mod_on"
 					, "type": "DATETIME"
 					, "order": 92
 				}
@@ -244,6 +244,7 @@ describe('Schema', function() {
 
 	describe('Soccer', function() {
 		var dbFile = "./soccer.sqlite";
+		var jsonFile = "./soccer.json";
 		
 		before(function(done) {
 			Schema.remove(dbFile, function(err) {
@@ -254,17 +255,18 @@ describe('Schema', function() {
 		it('create ' + dbFile, function(done) {
 			this.timeout(5000);
 	
-			var db = new Schema(soccerSchema);
-			db.init(function(err) {
-				if (err) {
-					log.error(err);
-					done();
-				} else {
-					db.create(dbFile, function(err) {
-						log.info(err);
-						done();	
-					});
-				}
+			var db = new Schema();
+			db.init(soccerSchema);
+			var allDone = _.after(2, function() {
+				done();
+			});
+			db.create(dbFile, function(err) {
+				log.info(err);
+				allDone();	
+			});
+			db.jsonWrite(jsonFile, function(err) {
+				log.info(err);
+				allDone();	
 			});
 
 		});

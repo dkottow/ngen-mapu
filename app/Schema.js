@@ -231,7 +231,8 @@ Schema.prototype.read = function(dbFile, cbAfter) {
 
 				var tables = _.map(rows, function(r) {
 					var table = { 
-						name: r.name,
+						name: r.name
+						, disabled: r.disabled
 					};
 					table.row_alias = JSON.parse(r.row_alias);
 					table.props = JSON.parse(r.props);
@@ -260,7 +261,8 @@ Schema.prototype.read = function(dbFile, cbAfter) {
 
 					_.each(rows, function(r) {
 						var field = { 
-							name: r.name, 
+							name: r.name
+							, disabled: r.disabled
 						};
 						field.props = JSON.parse(r.props);
 

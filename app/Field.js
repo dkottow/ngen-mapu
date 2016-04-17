@@ -7,7 +7,7 @@ var log = global.log.child({'mod': 'g6.Field.js'});
 
 //console.log('TMP DIR ' + tmp_dir);
 
-Field = function(fieldDef) {
+var Field = function(fieldDef) {
 	//prototype defs call the ctor with no args, get out!
 	if (fieldDef == undefined) return;
 
@@ -44,6 +44,7 @@ Field = function(fieldDef) {
 			me.notnull = fieldDef.notnull || 0;
 		}
 
+		me.disabled = fieldDef.disabled || false;
 
 		//property values
 		me.props = {};
@@ -58,7 +59,7 @@ Field = function(fieldDef) {
 }
 
 Field.TABLE = '__fieldprops__';
-Field.TABLE_FIELDS = ['name', 'table_name', 'props'];
+Field.TABLE_FIELDS = ['name', 'table_name', 'props', 'disabled'];
 
 //adding or removing PROPERTIES needs no change in db schema
 Field.PROPERTIES = ['order', 'width', 'scale', 'label'];
@@ -68,6 +69,7 @@ Field.CreateTableSQL
 		+ ' name VARCHAR NOT NULL, '
 		+ ' table_name VARCHAR NOT NULL, '
 		+ ' props VARCHAR, '
+		+ ' disabled INTEGER DEFAULT 0, '
 		+ ' PRIMARY KEY (name, table_name) '
 		+ ");\n\n";
 
@@ -140,7 +142,9 @@ Field.prototype.insertPropSQL = function(table) {
 			JSON.stringify(this.props)
 		], function(v) {
 		return "'" + v + "'";
-	});
+	}).concat([
+		this.disabled ? 1 : 0]
+	);
 
 	var fields = _.map(Field.TABLE_FIELDS, function(f) {
 		return '"' + f + '"';
@@ -156,6 +160,7 @@ Field.prototype.insertPropSQL = function(table) {
 Field.prototype.updatePropSQL = function(table) {
 	var sql = 'UPDATE ' + Field.TABLE
 			+ " SET props = '" + JSON.stringify(this.props) + "'"
+			+ " , disabled = " + (this.disabled ? 1 : 0)
 			+ util.format(" WHERE name = '%s' AND table_name = '%s'; ",
 				this.name, table.name);
 
@@ -177,7 +182,8 @@ Field.prototype.toJSON = function() {
 		type: this.type,
 		fk: this.fk,
 		notnull: this.notnull,
-		props: this.props
+		props: this.props,
+		disabled: this.disabled
 	};
 
 	if (result.fk == 1) {
@@ -194,7 +200,7 @@ Field.prototype.refName = function() {
 	else return this.name + "_ref";
 }
 
-TextField = function(fieldDef) {
+var TextField = function(fieldDef) {
 	Field.call(this, fieldDef);
 }
 
@@ -207,7 +213,7 @@ TextField.prototype.constraintSQL = function() {
 	return sql;
 }
 
-IntegerField = function(fieldDef) {
+var IntegerField = function(fieldDef) {
 	Field.call(this, fieldDef);
 }
 
@@ -221,7 +227,7 @@ IntegerField.prototype.constraintSQL = function() {
 }
 
 
-NumericField = function(fieldDef) {
+var NumericField = function(fieldDef) {
 	Field.call(this, fieldDef);
 }
 
@@ -234,7 +240,7 @@ NumericField.prototype.constraintSQL = function() {
 	return sql;
 }
 
-DatetimeField = function(fieldDef) {
+var DatetimeField = function(fieldDef) {
 	Field.call(this, fieldDef);
 }
 

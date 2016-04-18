@@ -27,6 +27,7 @@ function get(url, cbAfter) {
 			throw new Error(error);
 		}
 		if (rsp.statusCode != 200) {
+			console.log(rsp);
 			log.error(rsp);
 			throw new Error(rsp.statusMessage);
 		}
@@ -46,9 +47,11 @@ describe('Server (app)', function() {
 
 		before(function(done) {
 			this.timeout(10000);
-			server = app.listen(config.port, config.ip, function() {
-				log.info("server started. " + config.ip + ":" + config.port);
-				done(); 
+			app.init(function(err) {
+				server = app.listen(config.port, config.ip, function() {
+					log.info({config: config}, "server started.");
+					done(); 
+				});
 			});
 		});	
 

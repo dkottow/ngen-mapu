@@ -28,24 +28,41 @@ if (process.env.OPENSHIFT_DATA_DIR) {
 /*** end globals ***/
 
 var app = express();
-
 var log = global.log.child({'mod': 'g6.app.js'});
 
-app.use(bodyParser.json()); //json parsing 
+var accountControllers = {};
 
-//enable CORS
-app.use(function(req, res, next) {
-  res.header("Access-Control-Allow-Origin", "*");
-  res.header('Access-Control-Allow-Methods', 'GET, PUT, POST, DELETE'); 
-  res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
-  next();
-});
+app.init = function(cbAfter) {
+	log.info('app.init()...');
+	app.use(bodyParser.json()); //json parsing 
 
-//make sure tmp dir exists
-try { fs.mkdirSync(global.tmp_dir); } 
-catch(err) { if (err.code != 'EEXIST') throw(err); } //ignore EEXIST
+	//enable CORS
+	app.use(function(req, res, next) {
+	  res.header("Access-Control-Allow-Origin", "*");
+	  res.header('Access-Control-Allow-Methods', 'GET, PUT, POST, DELETE'); 
+	  res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+	  next();
+	});
 
-serveAccounts(global.data_dir);
+	//make sure tmp dir exists
+	try { fs.mkdirSync(global.tmp_dir); } 
+	catch(err) { 
+		if (err.code != 'EEXIST') {
+			log.error({err: err, tmp_dir: global.tmp_dir}, 
+				'app.init() failed. mkdirSync()');
+			cbAfter(err);
+			return;
+		}
+	} //ignore EEXIST
+
+	serveAccounts(global.data_dir, cbAfter);
+
+	app.use(function(err, req, res, next) {
+		log.error(err);
+		res.send(500, err.stack);
+	});
+
+}
 
 /*
 
@@ -65,18 +82,15 @@ app.get('/admin/reset', function(req, res) {
 });
 */
 
-app.use(function(err, req, res, next){
-	log.error(err);
-	res.send(500, err.stack);
-});
 
-var accountControllers = {};
-
-function serveAccounts(rootDir) {
+function serveAccounts(rootDir, cbAfter) {
 	var router = new express.Router();
 	fs.readdir(rootDir, function (err, files) {
     	if (err) {
-        	throw err;
+			log.error({err: err, rootDir: rootDir}, 
+				'app.init() failed. readdir()');
+        	cbAfter(err);
+			return;
     	}
 
 	    files.map(function (file) {
@@ -101,8 +115,8 @@ function serveAccounts(rootDir) {
 						res.send({ accounts : accounts });
 					});
 					app.use('/', router);
-
-					log.info('done.');
+					log.info('...app.init().');
+					cbAfter();	
 				}
 			});
 			accountControllers[controller.name] = controller;
@@ -110,4 +124,4 @@ function serveAccounts(rootDir) {
 	});
 }
 
-exports.app = app; //you call app.listen to start server
+exports.app = app; //you call app.init / app.listen to start server

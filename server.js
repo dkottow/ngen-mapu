@@ -43,8 +43,14 @@ if (process.env.DONKEYLIFT_API) {
 	config.port = process.env.PORT;
 }
 
-app.listen(config.port, config.ip, function() {
-	log.info("Started server on " + config.ip + ":" + config.port);
-	console.log("Started server on " + config.ip + ":" + config.port);
+app.init(function(err) {
+
+	if (err) throw err;
+
+	app.listen(config.port, config.ip, function() {
+		log.info({config: config}, "app listen() - listening.");
+		//console.log("Started server on " + config.ip + ":" + config.port);
+	});
+
 });
 

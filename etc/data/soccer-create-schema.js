@@ -47,7 +47,7 @@ describe('Schema', function() {
 				}
 			}		
 		 }
-		 , { "name": "TeamMember"
+		 , { "name": "Player"
 		 , "row_alias": ["Name"]
 		 , "fields": {
 				  "id": {
@@ -148,17 +148,17 @@ describe('Schema', function() {
 			}		
 		 }
 	   , { "name": "Formation"
-		 , "row_alias": ["TeamMember.Name", "Game.EventDate"]		  	
+		 , "row_alias": ["Player.Name", "Game.EventDate"]		  	
 		 , "fields": {
 				  "id": {
 					  "name": "id"
 					, "type": "INTEGER"
 					, "order": 0
 				}
-				, "TeamMember_id": {
-					  "name": "TeamMember_id"
+				, "Player_id": {
+					  "name": "Player_id"
 					, "type": "INTEGER"
-					, "fk_table": "TeamMember"
+					, "fk_table": "Player"
 					, "order": 2
 				}
 				, "Position_id": {

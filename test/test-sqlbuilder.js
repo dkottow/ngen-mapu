@@ -179,7 +179,7 @@ describe('Soccer DB', function() {
 			},
 		];
 		
-		var table = sqlBuilder.graph.table('TeamMember');
+		var table = sqlBuilder.graph.table('Player');
 		var fields = ['Name'];
 		//var fields = ['ref', 'customers_ref', 'total_amount'];
 		var orderClauses = [];

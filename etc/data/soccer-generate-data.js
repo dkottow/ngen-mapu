@@ -56,7 +56,7 @@ describe('Database', function() {
 						teams = result.rows;
 						allDone();
 					});
-					db.all('TeamMember', function(err, result) {
+					db.all('Player', function(err, result) {
 						if (err) throw new Error(err);
 						log.info('got ' + result.rows.length + ' players');
 						players = _.filter(result.rows, function(r) {
@@ -104,11 +104,11 @@ describe('Database', function() {
 			});
 			
 			//update DB
-			db.update('TeamMember', players, function(err, c) {
+			db.update('Player', players, function(err, c) {
 				if (err) throw new Error(err);
 
 				var ids = _.pluck(disqualifiedCoaches, 'id');
-				db.delete('TeamMember', ids, function(err, c) {
+				db.delete('Player', ids, function(err, c) {
 					if (err) throw new Error(err);
 
 					var ids = _.pluck(disqualifiedTeams, 'id');
@@ -206,7 +206,7 @@ console.dir(formations);
 					if (players[i].Team_id == team.id) {
 						
 						formation.push({
-							TeamMember_id: players[i].id
+							Player_id: players[i].id
 							, Position_id: p.id
 							, Game_id: game.id
 						});

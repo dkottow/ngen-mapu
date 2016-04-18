@@ -146,20 +146,20 @@ describe('AthleteTeam DB', function() {
 		log.info('\n*** joins ***');
 		_.each([
 			  { fromTable: 'Game', joinTables: ['Venue'] }
-			, { fromTable: 'Team', joinTables: ['TeamMember'] }
+			, { fromTable: 'Team', joinTables: ['Player'] }
 			, { fromTable: 'Team', joinTables: ['Formation'] }
 			, { fromTable: 'Formation', joinTables: ['Position'] }
 			, { fromTable: 'Venue', 
-				joinTables: ['TeamMember', 'Team'] }
+				joinTables: ['Player', 'Team'] }
 
 		], function(tables) {
 
 			var joins = tableGraph.tableJoins(tables.fromTable, 
 				tables.joinTables);
 
-			log.info('tables ' + tables);
-			log.info('joins count ' + joins.length);
-			log.info(joins);
+			log.info({from: tables.fromTable, to: tables.joinTables}, 
+				'TableGraph.getJoins()...');
+			log.info({joins: joins}, '...TableGraph.getJoins()');
 		});
 	});
 

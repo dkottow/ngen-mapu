@@ -6,6 +6,35 @@ var graphutil = require('./graph_util.js');
 
 var log = global.log.child({'mod': 'g6.TableGraph.js'});
 
+	function loadUserTrees() {
+log.info('loadUserTrees');
+		var trees = [];
+
+		tree = new graphlib.Graph();
+		tree.setNode('Position');
+		tree.setNode('Player');
+		tree.setNode('Team');
+		tree.setEdge('Player', 'Position');
+		tree.setEdge('Player', 'Team');
+		trees.push(tree);
+
+		tree = new graphlib.Graph();
+		tree.setNode('Team');
+		tree.setNode('Player');
+		tree.setNode('Formation');
+		tree.setNode('Position');
+		tree.setNode('Game');
+		tree.setNode('Venue');
+		tree.setEdge('Formation', 'Player');
+		tree.setEdge('Formation', 'Position');
+		tree.setEdge('Formation', 'Game');
+		tree.setEdge('Player', 'Team');
+		tree.setEdge('Game', 'Venue');
+		trees.push(tree);
+
+		return trees;
+	}
+
 var TableGraph = function(tables) {
 
 	this.graph = new graphlib.Graph({ directed: true });
@@ -43,6 +72,10 @@ var TableGraph = function(tables) {
 
 		//TODO check if we have user-defined trees
 		// eventually replace the mst by them
+
+if (_.find(tables, function(t) { return t.name == 'Formation'; })) {
+	me.trees = loadUserTrees();
+}
 
 		me.trees.sort(function(tree) { return tree.length; });
 

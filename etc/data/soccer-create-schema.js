@@ -3,6 +3,7 @@
 var assert = require('assert')
 	, _ = require('underscore')
 	, util = require('util')
+	, graphlib = require('graphlib')
 	, sqlite3 = require('sqlite3').verbose();
 
 var APP_PATH = "../../app/";
@@ -242,6 +243,34 @@ describe('Schema', function() {
 		 }
 	];
 
+	function loadUserTrees() {
+		var trees = [];
+
+		tree = new graphlib.Graph();
+		tree.setNode('Position');
+		tree.setNode('Player');
+		tree.setNode('Team');
+		tree.setEdge('Player', 'Position');
+		tree.setEdge('Player', 'Team');
+		trees.push(tree);
+
+		tree = new graphlib.Graph();
+		tree.setNode('Player');
+		tree.setNode('Formation');
+		tree.setNode('Position');
+		tree.setNode('Game');
+		tree.setNode('Team');
+		tree.setNode('Venue');
+		tree.setEdge('Formation', 'Player');
+		tree.setEdge('Formation', 'Position');
+		tree.setEdge('Formation', 'Game');
+		tree.setEdge('Game', 'Team');
+		tree.setEdge('Game', 'Venue');
+		trees.push(tree);
+
+		return trees;
+	}
+
 	describe('Soccer', function() {
 		var dbFile = "./soccer.sqlite";
 		var jsonFile = "./soccer.json";
@@ -257,6 +286,8 @@ describe('Schema', function() {
 	
 			var db = new Schema();
 			db.init(soccerSchema);
+			db.graph.trees = loadUserTrees();
+
 			var allDone = _.after(2, function() {
 				done();
 			});

@@ -14,205 +14,207 @@ var log = global.log;
 
 describe('Schema', function() {
 
-	var salesSchema = [
-		 { "name": "customers"
-		 , "row_alias": ["name", "email"]
-		 , "fields": {
-				  "id": {
-					  "name": "id"
-					, "type": "INTEGER"
-					, "props": {
-						"order": 0
+	var salesSchema = {
+		tables : [
+			 { "name": "customers"
+			 , "row_alias": ["name", "email"]
+			 , "fields": {
+					  "id": {
+						  "name": "id"
+						, "type": "INTEGER"
+						, "props": {
+							"order": 0
+						}
 					}
-				}
-				, "name": {
-					  "name": "name"
-					, "type": "VARCHAR"
-					, "props": {
-						"width": 40
-					  , "order": 1
+					, "name": {
+						  "name": "name"
+						, "type": "VARCHAR"
+						, "props": {
+							"width": 40
+						  , "order": 1
+						}
 					}
-				}
-				, "email": {
-					  "name": "email"
-					, "type": "VARCHAR(256)"
-					, "props": {
-						"width": 60
-					  , "order": 2
+					, "email": {
+						  "name": "email"
+						, "type": "VARCHAR(256)"
+						, "props": {
+							"width": 60
+						  , "order": 2
+						}
 					}
-				}
-				, "mod_by": {
-					  "name": "mod_by"
-					, "type": "VARCHAR(64)"
-					, "props": {
-						"order": 91
+					, "mod_by": {
+						  "name": "mod_by"
+						, "type": "VARCHAR(64)"
+						, "props": {
+							"order": 91
+						}
 					}
-				}
-				, "mod_on": {
-					  "name": "mod_on"
-					, "type": "DATETIME"
-					, "props": {
-						"order": 92,
-						"width": 10
+					, "mod_on": {
+						  "name": "mod_on"
+						, "type": "DATETIME"
+						, "props": {
+							"order": 92,
+							"width": 10
+						}
 					}
-				}
-			}		
-		 }
-	   , { "name": "products"
-		 , "row_alias": ["name"]		  	
-		 , "fields": {
-				  "id": {
-					  "name": "id"
-					, "type": "INTEGER"
-					, "props": {
-						"order": 0
+				}		
+			 }
+		   , { "name": "products"
+			 , "row_alias": ["name"]		  	
+			 , "fields": {
+					  "id": {
+						  "name": "id"
+						, "type": "INTEGER"
+						, "props": {
+							"order": 0
+						}
 					}
-				}
-				, "name": {
-					  "name": "name"
-					, "type": "VARCHAR"
-					, "props": {
-						"width": 30
-					  , "order": 1
+					, "name": {
+						  "name": "name"
+						, "type": "VARCHAR"
+						, "props": {
+							"width": 30
+						  , "order": 1
+						}
 					}
-				}
-				, "price": {
-					  "name": "price"
-					, "type": "NUMERIC(8,2)"
-					, "props": {
-						"scale": 2
-					  , "order": 2
+					, "price": {
+						  "name": "price"
+						, "type": "NUMERIC(8,2)"
+						, "props": {
+							"scale": 2
+						  , "order": 2
+						}
 					}
-				}
-				, "mod_by": {
-					  "name": "mod_by"
-					, "type": "VARCHAR(64)"
-					, "props": {
-						"order": 3
+					, "mod_by": {
+						  "name": "mod_by"
+						, "type": "VARCHAR(64)"
+						, "props": {
+							"order": 3
+						}
 					}
-				}
-				, "mod_on": {
-					  "name": "mod_on"
-					, "type": "DATETIME"
-					, "props": {
-						"order": 4,
-						"width": 10
+					, "mod_on": {
+						  "name": "mod_on"
+						, "type": "DATETIME"
+						, "props": {
+							"order": 4,
+							"width": 10
+						}
 					}
-				}
-			}		
-		 }
-	   , { "name": "orders"
-		 , "row_alias": ["order_date", "customers.name"]		  	
-		 , "fields": {
-				  "id": {
-					  "name": "id"
-					, "type": "INTEGER"
-					, "props": {
-						"order": 0
+				}		
+			 }
+		   , { "name": "orders"
+			 , "row_alias": ["order_date", "customers.name"]		  	
+			 , "fields": {
+					  "id": {
+						  "name": "id"
+						, "type": "INTEGER"
+						, "props": {
+							"order": 0
+						}
 					}
-				}
-				, "order_date": {
-					  "name": "order_date"
-					, "type": "DATE"
-					, "props": {
-						"order": 1
+					, "order_date": {
+						  "name": "order_date"
+						, "type": "DATE"
+						, "props": {
+							"order": 1
+						}
 					}
-				}
-				, "customer_id": {
-					  "name": "customer_id"
-					, "type": "INTEGER"
-					, "fk_table": "customers"
-					, "props": {
-						"order": 2
-					  , "width": 40
+					, "customer_id": {
+						  "name": "customer_id"
+						, "type": "INTEGER"
+						, "fk_table": "customers"
+						, "props": {
+							"order": 2
+						  , "width": 40
+						}
 					}
-				}
-				, "total_amount": {
-					  "name": "total_amount"
-					, "type": "NUMERIC(8,2)"
-					, "props": {
-						"scale": 2
-					  , "width": 12
-					  , "order": 3
+					, "total_amount": {
+						  "name": "total_amount"
+						, "type": "NUMERIC(8,2)"
+						, "props": {
+							"scale": 2
+						  , "width": 12
+						  , "order": 3
+						}
 					}
-				}
-				, "mod_by": {
-					  "name": "mod_by"
-					, "type": "VARCHAR(256)"
-					, "props": {
-						"order": 91
+					, "mod_by": {
+						  "name": "mod_by"
+						, "type": "VARCHAR(256)"
+						, "props": {
+							"order": 91
+						}
 					}
-				}
-				, "mod_on": {
-					  "name": "mod_on"
-					, "type": "DATETIME"
-					, "props": {
-						"order": 92,
-						"width": 10
+					, "mod_on": {
+						  "name": "mod_on"
+						, "type": "DATETIME"
+						, "props": {
+							"order": 92,
+							"width": 10
+						}
 					}
-				}
-			}		
-		 }
-	   , { "name": "products_in_orders"
-		 , "fields": {
-				  "id": {
-					  "name": "id"
-					, "type": "INTEGER"
-					, "props": {
-						"order": 0
+				}		
+			 }
+		   , { "name": "products_in_orders"
+			 , "fields": {
+					  "id": {
+						  "name": "id"
+						, "type": "INTEGER"
+						, "props": {
+							"order": 0
+						}
 					}
-				}
-				, "order_id": {
-					  "name": "order_id"
-					, "type": "INTEGER"
-					, "fk_table": "orders"
-					, "props": {
-						"order": 1
-					  , "width": 40
+					, "order_id": {
+						  "name": "order_id"
+						, "type": "INTEGER"
+						, "fk_table": "orders"
+						, "props": {
+							"order": 1
+						  , "width": 40
+						}
 					}
-				}
-				, "product_id": {
-					  "name": "product_id"
-					, "type": "INTEGER"
-					, "fk_table": "products"
-					, "props": {
-						"order": 2
-					  , "width": 30
+					, "product_id": {
+						  "name": "product_id"
+						, "type": "INTEGER"
+						, "fk_table": "products"
+						, "props": {
+							"order": 2
+						  , "width": 30
+						}
 					}
-				}
-				, "unit_price": {
-					  "name": "unit_price"
-					, "type": "NUMERIC(8,2)"
-					, "props": {
-						"scale": 2
-					  , "order": 3
+					, "unit_price": {
+						  "name": "unit_price"
+						, "type": "NUMERIC(8,2)"
+						, "props": {
+							"scale": 2
+						  , "order": 3
+						}
 					}
-				}
-				, "quantity": {
-					  "name": "quantity"
-					, "type": "INTEGER"
-					, "props": {
-						"order": 4
+					, "quantity": {
+						  "name": "quantity"
+						, "type": "INTEGER"
+						, "props": {
+							"order": 4
+						}
 					}
-				}
-				, "mod_by": {
-					  "name": "mod_by"
-					, "type": "VARCHAR(256)"
-					, "props": {
-						"order": 91
+					, "mod_by": {
+						  "name": "mod_by"
+						, "type": "VARCHAR(256)"
+						, "props": {
+							"order": 91
+						}
 					}
-				}
-				, "mod_on": {
-					  "name": "mod_on"
-					, "type": "DATETIME"
-					, "props": {
-						"order": 92,
-						"width": 10
+					, "mod_on": {
+						  "name": "mod_on"
+						, "type": "DATETIME"
+						, "props": {
+							"order": 92,
+							"width": 10
+						}
 					}
-				}
-			}		
-		 }
-	];
+				}		
+			 }
+		]
+	};		
 
 	describe('Sales', function() {
 		var dbFile = "./sales.sqlite";

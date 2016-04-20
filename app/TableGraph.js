@@ -184,6 +184,32 @@ TableGraph.prototype.tableJoins = function(fromTable, joinTables) {
 	return result;
 }
 
+TableGraph.prototype.toJSON = function() {
+
+	var tables = _.map(this.graph.nodes(), function(tn) {
+		return this.tableJSON(tn);
+	}, this);
+	tables = _.object(_.pluck(tables, 'name'), tables);
+	
+	var trees = _.map(this.trees, function(tree) {
+		return this.joinTreeJSON(tree);
+	}, this);
+	
+	return {
+		tables: tables,
+		join_trees: trees
+	}
+}
+
+TableGraph.prototype.joinTreeJSON = function(tree) {
+	var tables = tree.nodes();
+	var joins = _.map(tree.edges(), function(e) { return [e.v, e.w]; });
+	return { 
+		tables: tables,
+		joins: joins
+	}
+}
+
 TableGraph.prototype.tableJSON = function(table) {
 	var me = this;
 	var tableName = _.isObject(table) ? table.name : table;

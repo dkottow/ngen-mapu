@@ -17,236 +17,268 @@ var log = global.log;
 
 describe('Schema', function() {
 
-	var soccerSchema = [
-	   { "name": "Team"
-		 , "row_alias": ["Name"]		  	
-		 , "fields": {
-				  "id": {
-					  "name": "id"
-					, "type": "INTEGER"
-					, "order": 0
-				}
-				, "Name": {
-					  "name": "Name"
-					, "type": "VARCHAR"
-					, "order": 1
-				}
-				, "Country": {
-					  "name": "Country"
-					, "type": "VARCHAR"
-					, "order": 1
-				}
-				, "mod_by": {
-					  "name": "mod_by"
-					, "type": "VARCHAR(64)"
-					, "order": 91
-				}
-				, "mod_on": {
-					  "name": "mod_on"
-					, "type": "DATETIME"
-					, "order": 92
-				}
-			}		
-		 }
-		 , { "name": "Player"
-		 , "row_alias": ["Name"]
-		 , "fields": {
-				  "id": {
-					  "name": "id"
-					, "type": "INTEGER"
-					, "order": 0
-				}
-				, "Name": {
-					  "name": "Name"
-					, "type": "VARCHAR"
-					, "order": 10
-				}
-				, "Country": {
-					  "name": "Country"
-					, "type": "VARCHAR"
-					, "order": 20
-				}
-				, "DateOfBirth": {
-					  "name": "DateOfBirth"
-					, "type": "DATE"
-					, "order": 20
-				}
-				, "Team_id": {
-					  "name": "Team_id"
-					, "type": "INTEGER"
-					, "order": 30
-					, "fk_table": "Team"
-				}
-				, "Role": {
-					  "name": "Role"
-					, "type": "VARCHAR(20)"
-					, "order": 31
-				}
-				, "PreferredPosition_id": {
-					  "name": "PreferredPosition_id"
-					, "type": "INTEGER"
-					, "fk_table": "Position"
-					, "order": 10
-				}
-				, "mod_by": {
-					  "name": "mod_by"
-					, "type": "VARCHAR(64)"
-					, "order": 91
-				}
-				, "mod_on": {
-					  "name": "mod_on"
-					, "type": "DATETIME"
-					, "order": 92
-				}
-			}		
-		 }
-	   , { "name": "Game"
-		 , "row_alias": ["EventDate", "Venue.Name"]		  	
-		 , "fields": {
-				  "id": {
-					  "name": "id"
-					, "type": "INTEGER"
-					, "order": 0
-				}
-				, "EventDate": {
-					  "name": "EventDate"
-					, "type": "DATE"
-					, "order": 1
-				}
-				, "EventTime": {
-					  "name": "EventTime"
-					, "type": "VARCHAR(4)"
-					, "order": 2
-				}
-				, "Venue_id": {
-					  "name": "Venue_id"
-					, "type": "INTEGER"
-					, "fk_table": "Venue"
-					, "order": 10
-				}
-				, "Team1_id": {
-					  "name": "Team1_id"
-					, "type": "INTEGER"
-					, "fk_table": "Team"
-					, "order": 20
-				}
-				, "Team2_id": {
-					  "name": "Team2_id"
-					, "type": "INTEGER"
-					, "fk_table": "Team"
-					, "order": 21
-				}
-				, "mod_by": {
-					  "name": "mod_by"
-					, "type": "VARCHAR(256)"
-					, "order": 91
-				}
-				, "mod_on": {
-					  "name": "mod_on"
-					, "type": "DATETIME"
-					, "order": 92
-				}
-			}		
-		 }
-	   , { "name": "Formation"
-		 , "row_alias": ["Player.Name", "Game.EventDate"]		  	
-		 , "fields": {
-				  "id": {
-					  "name": "id"
-					, "type": "INTEGER"
-					, "order": 0
-				}
-				, "Player_id": {
-					  "name": "Player_id"
-					, "type": "INTEGER"
-					, "fk_table": "Player"
-					, "order": 2
-				}
-				, "Position_id": {
-					  "name": "Position_id"
-					, "type": "INTEGER"
-					, "fk_table": "Position"
-					, "order": 10
-				}
-				, "Game_id": {
-					  "name": "Game_id"
-					, "type": "INTEGER"
-					, "fk_table": "Game"
-					, "order": 2
-				}
-				, "mod_by": {
-					  "name": "mod_by"
-					, "type": "VARCHAR(256)"
-					, "order": 91
-				}
-				, "mod_on": {
-					  "name": "mod_on"
-					, "type": "DATETIME"
-					, "order": 92
-				}
-			}		
-		 }
-	   , { "name": "Position"
-		 , "row_alias": ["Code"]		  	
-		 , "fields": {
-				  "id": {
-					  "name": "id"
-					, "type": "INTEGER"
-					, "order": 0
-				}
-				, "Code": {
-					  "name": "Code"
-					, "type": "VARCHAR(2)"
-					, "order": 10
-				}
-				, "Name": {
-					  "name": "Name"
-					, "type": "VARCHAR"
-					, "order": 11
-				}
-				, "mod_by": {
-					  "name": "mod_by"
-					, "type": "VARCHAR(256)"
-					, "order": 91
-				}
-				, "mod_on": {
-					  "name": "mod_on"
-					, "type": "DATETIME"
-					, "order": 92
-				}
-			}		
-		 }
-	   , { "name": "Venue"
-		 , "row_alias": ["Name"]		  	
-		 , "fields": {
-				  "id": {
-					  "name": "id"
-					, "type": "INTEGER"
-					, "order": 0
-				}
-				, "Name": {
-					  "name": "Name"
-					, "type": "VARCHAR"
-					, "order": 1
-				}
-				, "mod_by": {
-					  "name": "mod_by"
-					, "type": "VARCHAR(256)"
-					, "order": 91
-				}
-				, "mod_on": {
-					  "name": "mod_on"
-					, "type": "DATETIME"
-					, "order": 92
-				}
-			}		
-		 }
-	];
+	var soccerSchema = {
+		tables: [
+		   { "name": "Team"
+			 , "row_alias": ["Name"]		  	
+			 , "fields": {
+					  "id": {
+						  "name": "id"
+						, "type": "INTEGER"
+						, "order": 0
+					}
+					, "Name": {
+						  "name": "Name"
+						, "type": "VARCHAR"
+						, "order": 1
+					}
+					, "Country": {
+						  "name": "Country"
+						, "type": "VARCHAR"
+						, "order": 1
+					}
+					, "mod_by": {
+						  "name": "mod_by"
+						, "type": "VARCHAR(64)"
+						, "order": 91
+					}
+					, "mod_on": {
+						  "name": "mod_on"
+						, "type": "DATETIME"
+						, "order": 92
+					}
+				}		
+			 }
+			 , { "name": "Player"
+			 , "row_alias": ["Name"]
+			 , "fields": {
+					  "id": {
+						  "name": "id"
+						, "type": "INTEGER"
+						, "order": 0
+					}
+					, "Name": {
+						  "name": "Name"
+						, "type": "VARCHAR"
+						, "order": 10
+					}
+					, "Country": {
+						  "name": "Country"
+						, "type": "VARCHAR"
+						, "order": 20
+					}
+					, "DateOfBirth": {
+						  "name": "DateOfBirth"
+						, "type": "DATE"
+						, "order": 20
+					}
+					, "Team_id": {
+						  "name": "Team_id"
+						, "type": "INTEGER"
+						, "order": 30
+						, "fk_table": "Team"
+					}
+					, "Role": {
+						  "name": "Role"
+						, "type": "VARCHAR(20)"
+						, "order": 31
+					}
+					, "PreferredPosition_id": {
+						  "name": "PreferredPosition_id"
+						, "type": "INTEGER"
+						, "fk_table": "Position"
+						, "order": 10
+					}
+					, "mod_by": {
+						  "name": "mod_by"
+						, "type": "VARCHAR(64)"
+						, "order": 91
+					}
+					, "mod_on": {
+						  "name": "mod_on"
+						, "type": "DATETIME"
+						, "order": 92
+					}
+				}		
+			 }
+		   , { "name": "Game"
+			 , "row_alias": ["EventDate", "Venue.Name"]		  	
+			 , "fields": {
+					  "id": {
+						  "name": "id"
+						, "type": "INTEGER"
+						, "order": 0
+					}
+					, "EventDate": {
+						  "name": "EventDate"
+						, "type": "DATE"
+						, "order": 1
+					}
+					, "EventTime": {
+						  "name": "EventTime"
+						, "type": "VARCHAR(4)"
+						, "order": 2
+					}
+					, "Venue_id": {
+						  "name": "Venue_id"
+						, "type": "INTEGER"
+						, "fk_table": "Venue"
+						, "order": 10
+					}
+					, "Team1_id": {
+						  "name": "Team1_id"
+						, "type": "INTEGER"
+						, "fk_table": "Team"
+						, "order": 20
+					}
+					, "Team2_id": {
+						  "name": "Team2_id"
+						, "type": "INTEGER"
+						, "fk_table": "Team"
+						, "order": 21
+					}
+					, "mod_by": {
+						  "name": "mod_by"
+						, "type": "VARCHAR(256)"
+						, "order": 91
+					}
+					, "mod_on": {
+						  "name": "mod_on"
+						, "type": "DATETIME"
+						, "order": 92
+					}
+				}		
+			 }
+		   , { "name": "Formation"
+			 , "row_alias": ["Player.Name", "Game.EventDate"]		  	
+			 , "fields": {
+					  "id": {
+						  "name": "id"
+						, "type": "INTEGER"
+						, "order": 0
+					}
+					, "Player_id": {
+						  "name": "Player_id"
+						, "type": "INTEGER"
+						, "fk_table": "Player"
+						, "order": 2
+					}
+					, "Position_id": {
+						  "name": "Position_id"
+						, "type": "INTEGER"
+						, "fk_table": "Position"
+						, "order": 10
+					}
+					, "Game_id": {
+						  "name": "Game_id"
+						, "type": "INTEGER"
+						, "fk_table": "Game"
+						, "order": 2
+					}
+					, "mod_by": {
+						  "name": "mod_by"
+						, "type": "VARCHAR(256)"
+						, "order": 91
+					}
+					, "mod_on": {
+						  "name": "mod_on"
+						, "type": "DATETIME"
+						, "order": 92
+					}
+				}		
+			 }
+		   , { "name": "Position"
+			 , "row_alias": ["Code"]		  	
+			 , "fields": {
+					  "id": {
+						  "name": "id"
+						, "type": "INTEGER"
+						, "order": 0
+					}
+					, "Code": {
+						  "name": "Code"
+						, "type": "VARCHAR(2)"
+						, "order": 10
+					}
+					, "Name": {
+						  "name": "Name"
+						, "type": "VARCHAR"
+						, "order": 11
+					}
+					, "mod_by": {
+						  "name": "mod_by"
+						, "type": "VARCHAR(256)"
+						, "order": 91
+					}
+					, "mod_on": {
+						  "name": "mod_on"
+						, "type": "DATETIME"
+						, "order": 92
+					}
+				}		
+			 }
+		   , { "name": "Venue"
+			 , "row_alias": ["Name"]		  	
+			 , "fields": {
+					  "id": {
+						  "name": "id"
+						, "type": "INTEGER"
+						, "order": 0
+					}
+					, "Name": {
+						  "name": "Name"
+						, "type": "VARCHAR"
+						, "order": 1
+					}
+					, "mod_by": {
+						  "name": "mod_by"
+						, "type": "VARCHAR(256)"
+						, "order": 91
+					}
+					, "mod_on": {
+						  "name": "mod_on"
+						, "type": "DATETIME"
+						, "order": 92
+					}
+				}		
+			 }
+		],
+		join_trees: [
+			{
+				tables: [
+					'Position'
+					, 'Player'
+					, 'Team'
+				]
+				, joins: [
+					['Player', 'Position']
+					, ['Player', 'Team']
+				]
+			}
+			, {
+				tables: [
+					'Position'
+					, 'Player'
+					, 'Team'
+					, 'Game'
+					, 'Formation'
+					, 'Venue'
+				]
+				, joins: [
+					['Formation', 'Player']
+					, ['Formation', 'Position']
+					, ['Formation', 'Game']
+					, ['Game', 'Team']
+					, ['Game', 'Venue']
+				]
+			}
+		]
+	};
 
 	function loadUserTrees() {
 		var trees = [];
 
-		tree = new graphlib.Graph();
+		var tree = new graphlib.Graph();
 		tree.setNode('Position');
 		tree.setNode('Player');
 		tree.setNode('Team');

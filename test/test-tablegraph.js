@@ -94,8 +94,8 @@ describe('Sandwiches DB', function() {
 			var joins = tableGraph.tableJoins(tables.fromTable, 
 				tables.joinTables);
 
-			log.info({tables, tables}, 'tables');
-			log.info({joins, joins}, 'joins');
+			log.info({tables: tables}, 'tables');
+			log.info({joins: joins}, 'joins');
 /*
 			var sql = tableGraph.joinSQL(tables);
 			log.info('join SQL');

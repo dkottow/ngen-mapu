@@ -21,18 +21,28 @@ var Schema = function() {
 	this.graph = null;
 }
 
-Schema.prototype.init = function(tableDefs) {
+Schema.EMPTY = {
+	tables: [],
+	join_trees: []
+}
+
+Schema.prototype.init = function(schemaData) {
 	try {
+		log.debug({data: schemaData}, 'Schema.init()...');
 		
-		var tables = _.map(tableDefs, function(tableDef) {
+		schemaData = schemaData || Schema.EMPTY;
+		
+		var tables = _.map(schemaData.tables, function(tableDef) {
 			return new Table(tableDef);
 		});
 
 		this.graph = new TableGraph(tables);
 		this.sqlBuilder = new SqlBuilder(this.graph);
 
+		log.debug({tables: tables}, '...Schema.init()');
+
 	} catch(err) {
-		log.error({err: err, tables: tableDefs}, "Schema.init() exception.");
+		log.error({err: err, data: schemaData}, "Schema.init() exception.");
 		throw err;
 	}
 }
@@ -63,16 +73,9 @@ Schema.prototype.table = function(name) {
 Schema.prototype.get = function() {
 
 	try {
-		var tableDefs = _.map(this.tables(), function(table) {
-			return this.graph.tableJSON(table);
-		}, this);
-
-		tableDefs = _.object(_.pluck(tableDefs, 'name'), tableDefs);
-		return {
-			'tables': tableDefs,
-			'joins': []
-		};		
-
+		
+		return this.graph.toJSON();
+		
 	} catch(err) {
 		log.error({err: err}, "Schema.get() exception.");
 		throw err;
@@ -223,7 +226,7 @@ Schema.prototype.read = function(dbFile, cbAfter) {
 				//handle empty schema
 				if (rows.length == 0) {
 					db.close(function() {
-						me.init([]);
+						me.init();
 						cbAfter();
 						return;
 					});
@@ -272,7 +275,7 @@ Schema.prototype.read = function(dbFile, cbAfter) {
 					var doAfter = _.after(2*tableNames.length, function() {
 						//after executing two SQL statements per table
 						db.close(function () {
-							me.init(tables);
+							me.init({ tables: tables });
 							cbAfter();
 						});
 					});
@@ -322,7 +325,7 @@ Schema.prototype.read = function(dbFile, cbAfter) {
 
 Schema.prototype.jsonWrite = function(fileName, cbAfter) {
 	try {
-		var data = _.pick(this.get(), 'tables');
+		var data = _.pick(this.get(), _.keys(Schema.EMPTY));
 		fs.writeFile(fileName, JSON.stringify(data), function(err) {
 			if (err) {
 				log.error({data: data, error: err}
@@ -353,9 +356,8 @@ Schema.prototype.jsonRead = function(fileName, cbAfter) {
 				return;
 			}
 
-			var tableDefs = undefined;
 			try {
-				tableDefs = _.values(JSON.parse(data)['tables']);
+				data = JSON.parse(data);
 
 			} catch(err) {
 				log.error({err: err, data: data}, 
@@ -364,7 +366,7 @@ Schema.prototype.jsonRead = function(fileName, cbAfter) {
 				return;
 			}
 
-			me.init(tableDefs);
+			me.init(data);
 			cbAfter();
 			
 		});

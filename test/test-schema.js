@@ -18,9 +18,9 @@ describe('Schema', function() {
 	describe('Schema.init()', function() {
 		it('ctor guards tableDef', function() {
 			var schema = new Schema();
-			var tableDefs = [ {"name": "table_foo"} ];
+			var schemaData = { tables: [ {"name": "table_foo"} ]};
 			try {
-				schema.init(tableDefs);
+				schema.init(schemaData);
 				assert(false); //init() should throw before here
 
 			} catch(err) {
@@ -30,7 +30,8 @@ describe('Schema', function() {
 		});
 		it('ctor guards fieldDef', function() {
 			var schema = new Schema();
-			var tableDefs = [
+			var schemaData = {
+				tables: [
 					 { "name": "test"
 					 , "fields": {
 							"id": {
@@ -39,9 +40,10 @@ describe('Schema', function() {
 							}
 						}		
 					 }
-			];
+				]
+			};					
 			try {
-				schema.init(tableDefs);
+				schema.init(schemaData);
 				assert(false); //init() should throw before here
 
 			} catch(err) {
@@ -51,7 +53,8 @@ describe('Schema', function() {
 		});
 		it('ctor guards opbligatory fields', function() {
 			var schema = new Schema();
-			var tableDefs = [
+			var schemaData = { 
+				tables: [
 					 { "name": "test"
 					 , "fields": {
 							  "id": {
@@ -66,9 +69,10 @@ describe('Schema', function() {
 							}
 						}		
 					 }
-			];
+				]
+			};
 			try {
-				schema.init(tableDefs);
+				schema.init(schemaData);
 				assert(false);
 
 			} catch(err) {

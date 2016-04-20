@@ -183,8 +183,6 @@ describe('Database', function() {
 				formations = formations.concat(fs);
 			});
 
-console.dir(formations);
-
 			db.insert('Formation', formations, function(err, ids) {
 				if (err) throw new Error(err);
 				done();	

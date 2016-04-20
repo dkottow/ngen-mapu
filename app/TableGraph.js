@@ -15,78 +15,38 @@ var TableGraph = function(tables) {
 	init(tables);
 
 	function init(tables) {	
-		log.debug(_.pluck(tables, 'name'), 'init...');
+		log.debug({tables: _.pluck(tables, 'name')}, 'TableGraph.init()...');
 
 		_.each(tables, function(table) {
 			me.graph.setNode(table.name, table);					
 		});
 
 		_.each(tables, function(table) {
-			var fks = _.filter(table.fields, function(f) {
-				return f.fk == 1;
-			});
 
-			_.each(fks, function(fk) {			
-				var fkFullName = table.name + "." + fk.name;
-				//console.log('fk ' + fkFullName);
-				me.graph.setNode(fkFullName);
-				me.graph.setEdge(fkFullName, fk.fk_table);
-				me.graph.setEdge(table.name, fkFullName);
-			});
+			var fks = _.where(table.fields, {fk: 1});
+			var fkGroups = _.groupBy(fks, 'fk_table');
 
+			_.each(fkGroups, function(fkGroup, fk_table) {
+				var fkNames = _.pluck(fkGroup, 'name');
+				me.graph.setEdge(table.name, fk_table, fkNames);
+			});
 		});
 
 		/** build table trees **/
-
+		
 		var weightFn = function(e) {
 			return 1; 
 		}
 
-		var hashFn = function(tree) { 
-			var keys = _.filter(tree.nodes(), function(v) {
-				return ! nodeIsTable(v);
-			});
-			return keys.sort().join(' '); 
-		}
+		var mst = buildTableTree(me.graph, weightFn);
+		me.trees = [mst];
 
-		var distinctTrees = {};
+		//TODO check if we have user-defined trees
+		// eventually replace the mst by them
 
-		var tree = buildTableTree(me.graph, weightFn);
-		distinctTrees[hashFn(tree)] = tree;
+		me.trees.sort(function(tree) { return tree.length; });
 
-		var cycles = graphutil.FindAllCycles(me.graph).cycles;
-		var cycleKeys = _.uniq(_.filter(_.flatten(cycles), function(v) {
-			return ! nodeIsTable(v);
-		}));
-
-		log.trace(cycleKeys);
-		//console.log('cycleKeys');
-		//console.log(cycleKeys);
-
-		var weightCombinations = powerset(cycleKeys);
-		//TODO powerset might become quickly very large - take care!
-
-		_.each(weightCombinations, function(weights) {
-			weightFn = function(e) {
-				if (_.contains(weights, e.v)) return 0;
-				if (_.contains(weights, e.w)) return 0;
-				return 1;
-			}
-
-			tree = buildTableTree(me.graph, weightFn);
-			distinctTrees[hashFn(tree)] = tree;
-
-		});
-
-		me.trees = _.values(distinctTrees);
-
-		log.debug('tree count = ' + me.trees.length);
-
-		_.each(me.trees, function(tree) {
-			log.debug(tree.nodes(), 'tree nodes');
-			log.debug(tree.edges(), 'tree edges');
-		});
-		log.debug('...init');
+		log.debug('...TableGraph.init().');
 	}
 
 }
@@ -102,7 +62,7 @@ TableGraph.prototype.tables = function() {
 TableGraph.prototype.tablesByDependencies = function() {
 
 	var me = this;
-	var getDepTables = function(table) {
+	var dependentTablesFn = function(table) {
 		return _.map(table.foreignKeys(), function(fk) {
 			return me.table(fk.fk_table);
 		});
@@ -117,7 +77,7 @@ TableGraph.prototype.tablesByDependencies = function() {
 		var doneInsert = false;
 		_.each(remainingTables, function(t) {
 
-			var depTables = getDepTables(t);
+			var depTables = dependentTablesFn(t);
 			var pos = 0;
 			var doInsert = true;
 			for(var i = 0;i < depTables.length; ++i) {
@@ -136,10 +96,16 @@ TableGraph.prototype.tablesByDependencies = function() {
 			}
 		});
 		
-		//TODO if we cant resolve it, push it
+		//TODO we cant resolve it
 		if ( ! doneInsert) {
+			log.error({graph: me.graph}, 
+				'TableGraph.dependentTables() failed.');
+			throw(new Error('TableGraph Error. Unsupported graph topology.'));
+
+			/*
 			log.warn("TabelGraph.tablesByDependency. Found interdependent tables, forcing result"); 
 			result.push(remainingTables[0]);
+			*/
 		}
 	}
 
@@ -153,75 +119,106 @@ TableGraph.prototype.table = function(name) {
 TableGraph.prototype.tableJoins = function(fromTable, joinTables) {
 
 	log.debug({fromTable: fromTable, joinTables: joinTables},
-		"tableJoins...");
+		"TableGraph.tableJoins()...");
+
+	/* pick first tree having all table nodes to join 
+	   we sorted our trees previously by size
+	*/
+	var tables = [fromTable].concat(joinTables);
+	var joinTree = _.find(this.trees, function(tree) {
+		for(var i = 0; i < tables.length; ++i) {
+			log.trace({
+				table: tables[i], 
+				found: tree.hasNode(tables[i])
+			});
+			if ( ! tree.hasNode(tables[i])) return false;
+		}
+		return true;
+	});
+
+	var paths = graphlib.alg.dijkstra(joinTree, fromTable, 
+			function(e) { return 1; },
+			function(v) { return joinTree.nodeEdges(v); } 
+	);
 	
-	var shortestPathTrees = _.map(this.trees, function(tree) { 
-
-		var paths = graphlib.alg.dijkstra(tree, fromTable, 
-				function(e) { return 1; },
-				function(v) { return tree.nodeEdges(v); } 
-		);
-
-		return {
-			tree: tree,
-			paths: paths
-		}
-
-	});
+	var result = {};
+	for(var i = 0; i < joinTables.length; ++i) {
+		var path = this.shortestPath(fromTable, joinTables[i], paths);
+		_.extend(result, path);
+	}
 		
-	var joinPaths = _.map(shortestPathTrees, function(paths) {
-
-		var result = {};
-		for(var i = 0; i < joinTables.length; ++i) {
-
-			//TODO get join path instead calculating it
-			//var r = getJoinPath(fromTable, joinTables[i], paths.tree);
-
-			var r = shortestPath(fromTable, joinTables[i], paths.paths); 
-
-			result = _.extend(result, r);
-		}
-
-		log.debug({fromTable: fromTable, path: result});
-		return result;
-	});
-
-	//TODO dk BUG I now believe the following is wrong, but helps in general take out nonsense join combinations
-	//filter out invalid join paths (rhs of joinPath has duplicates)
-	joinPaths = _.filter(joinPaths, function(joinPath) {
-		var idTables = _.pluck(joinPath, 'idTable');
-		return _.uniq(idTables).length == idTables.length;
-	});
-
-	var distinctJoins = {};
-	_.each(joinPaths, function(joinPath) {
-		var pathKey = _.keys(joinPath).sort().join(' ');
-		distinctJoins[pathKey] = joinPath;
-	});
-
-	log.trace(distinctJoins, 'distinctJoins');
-
-	var result = _.values(distinctJoins);
-
-	log.debug(result, '...tableJoins');
+	log.debug({path: result}, '...TableGraph.tableJoins()');
 	return result;
 }
 
 TableGraph.prototype.tableJSON = function(table) {
+	var me = this;
 	var tableName = _.isObject(table) ? table.name : table;
+
 	table = this.graph.node(tableName);
 	var json = table.toJSON();
-	json.referencing = _.map(this.graph.successors(tableName), 
-						function(fkFullName) {
-		var fk = table.fields[fkFullName.split('.')[1]];
-		return { fk: fk.name, fk_table: fk.fk_table };
-	});
-	json.referenced = _.map(this.graph.predecessors(tableName), 
-						function(fkFullName) {
-		var fk = fkFullName.split('.');
-		return { table: fk[0], fk: fk[1] };
-	});
+
+	json.referencing = _.flatten(
+		_.map(me.graph.outEdges(tableName), function(e) {
+			return _.map(me.graph.edge(e), function(fk) {
+				fk = table.fields[fk];
+				return { fk: fk.name, fk_table: fk.fk_table };
+			});
+		})
+	);
+
+	json.referenced = _.flatten(
+		_.map(me.graph.inEdges(tableName), function(e) {
+			return _.map(me.graph.edge(e), function(fk) {
+				fk = me.graph.node(e.v).fields[fk];
+				return { table: e.v, fk: fk.name };
+			});
+		})
+	);
+
 	return json;
+}
+
+TableGraph.prototype.shortestPath = function(fromTable, joinTable, paths) {
+	log.trace({
+		fromTable: fromTable, 
+		joinTable: joinTable,
+	}, 'shortestPath...');
+
+	var me = this;
+	var joinFn = function(j1, j2) { 
+		if (me.graph.edge(j1, j2)) {
+			return {
+				join_table: j1
+				, fk_table: j1
+				, id_table: j2
+				, fk: me.graph.edge(j1, j2)
+			};
+		} else if (me.graph.edge(j2, j1)) {
+			return {
+				join_table: j1
+				, fk_table: j2
+				, id_table: j1
+				, fk: me.graph.edge(j2, j1)
+			}; 
+		}
+		throw new Error('Internal Error. TableGraph.shortestPath() failed.');
+	};	
+
+	var result = {};
+
+	var j1 = joinTable;
+	var j2 = paths[j1].predecessor;
+	result[[j2, j1]] = joinFn(j1, j2);
+
+	while(j2 != fromTable) {
+		j1 = j2;
+		j2 = paths[j1].predecessor;
+		result[[j2, j1]] = joinFn(j1, j2);
+	}
+
+	log.trace(result, '...shortestPath');
+	return result;
 }
 
 function nodeIsTable(node) {
@@ -230,50 +227,8 @@ function nodeIsTable(node) {
 
 function buildTableTree(graph, weightFn) {
 	var tree = graphlib.alg.prim(graph, weightFn);
-
-	var keyNodes = _.filter(tree.nodes(), function(v) {
-		return ! nodeIsTable(v) && tree.nodeEdges(v).length <= 1;
-	});
-	_.each(keyNodes, function(v) { tree.removeNode(v); });
-
 	tree = graphutil.DirectTreeEdgesAsGraph(tree, graph);
-
 	return tree;
-}
-
-function shortestPath(fromTable, joinTable, pathTree) {
-	log.debug({
-		fromTable: fromTable, 
-		joinTable: joinTable,
-	}, 'shortestPath...');
-
-	var joinFn = function(fk, j1, j2) {
-		var fkTable = fk.split('.')[0];
-		var idTable = (fkTable == j1) ? j2 : j1;
-
-		return {
-			idTable: idTable,
-			fkTable: fkTable,
-			joinTable: j1
-		}	
-	}
-
-	var result = {};
-
-	var j1 = joinTable;
-	var fk = pathTree[j1].predecessor;
-	var j2 = pathTree[fk].predecessor;
-	result[fk] = joinFn(fk, j1, j2);
-
-	while(j2 != fromTable) {
-		j1 = j2;
-		fk = pathTree[j1].predecessor;
-		j2 = pathTree[fk].predecessor;
-		result[fk] = joinFn(fk, j1, j2);
-	}
-
-	log.debug(result, '...shortestPath');
-	return result;
 }
 
 

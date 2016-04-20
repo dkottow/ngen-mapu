@@ -47,7 +47,9 @@ var Table = function(tableDef) {
 		//row alias
 		me.row_alias = tableDef.row_alias || [];
 
-		me.disbled = tableDef.disabled || false;
+		//dont show falsy disable prop
+		if (tableDef.disabled) me.disabled = true;
+
 		//property values
 		me.props = {};
 

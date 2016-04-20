@@ -74,13 +74,11 @@ describe('Sandwiches DB', function() {
 
 
 	it('TableGraph.init', function() {
-		log.info('\n*** nodes ***');
-		log.info(tableGraph.graph.nodes());
-		log.info('*** edges ***');
-		log.info(tableGraph.graph.edges());
-		log.info('\n*** spanning trees ***');
+		log.info({nodes: tableGraph.graph.nodes()});
+		log.info({edges: tableGraph.graph.edges()});
 		_.each(tableGraph.trees, function(tree) {
-			log.info(tree.edges());
+			log.info({nodes: tree.nodes()}, 'soccer tree nodes');
+			log.info({edges: tree.edges()}, 'soccer tree edges');
 		});
 		log.info('\n*** joins ***');
 		_.each([
@@ -96,9 +94,8 @@ describe('Sandwiches DB', function() {
 			var joins = tableGraph.tableJoins(tables.fromTable, 
 				tables.joinTables);
 
-			log.info('tables ' + tables);
-			log.info('joins count ' + joins.length);
-			log.info(joins);
+			log.info({tables, tables}, 'tables');
+			log.info({joins, joins}, 'joins');
 /*
 			var sql = tableGraph.joinSQL(tables);
 			log.info('join SQL');
@@ -118,10 +115,38 @@ describe('Sandwiches DB', function() {
 });
 
 
-describe('AthleteTeam DB', function() {
+describe('Soccer DB', function() {
 
 	var jsonFile = "test/soccer.json";
 	var tableGraph;
+
+	function loadUserTrees() {
+		var trees = [];
+
+		tree = new graphlib.Graph();
+		tree.setNode('Position');
+		tree.setNode('Player');
+		tree.setNode('Team');
+		tree.setEdge('Player', 'Position');
+		tree.setEdge('Player', 'Team');
+		trees.push(tree);
+
+		tree = new graphlib.Graph();
+		tree.setNode('Player');
+		tree.setNode('Formation');
+		tree.setNode('Position');
+		tree.setNode('Game');
+		tree.setNode('Team');
+		tree.setNode('Venue');
+		tree.setEdge('Formation', 'Player');
+		tree.setEdge('Formation', 'Position');
+		tree.setEdge('Formation', 'Game');
+		tree.setEdge('Game', 'Team');
+		tree.setEdge('Game', 'Venue');
+		trees.push(tree);
+
+		return trees;
+	}
 
 	beforeEach(function(done) {		
 		var schema = new Schema();
@@ -129,21 +154,24 @@ describe('AthleteTeam DB', function() {
 			log.info(err);
 			assert(err == null, err);
 			tableGraph = schema.graph;
+		
+			//replace trees = [mst] by user def trees
+			tableGraph.trees = loadUserTrees();
+
 			done();
 		});
 	});	
 
 
 	it('TableGraph.init', function() {
-		log.info('\n*** nodes ***');
-		log.info(tableGraph.graph.nodes());
-		log.info('*** edges ***');
-		log.info(tableGraph.graph.edges());
-		log.info('\n*** spanning trees ***');
+		log.info({nodes: tableGraph.graph.nodes()}, 'soccer nodes');
+		log.info({edges: tableGraph.graph.edges()}, 'soccer edges');
+//console.log(tableGraph.graph.edge('Game', 'Team'));
 		_.each(tableGraph.trees, function(tree) {
-			log.info(tree.edges());
+			log.info({nodes: tree.nodes()}, 'soccer tree nodes');
+			log.info({edges: tree.edges()}, 'soccer tree edges');
 		});
-		log.info('\n*** joins ***');
+
 		_.each([
 			  { fromTable: 'Game', joinTables: ['Venue'] }
 			, { fromTable: 'Team', joinTables: ['Player'] }
@@ -154,12 +182,13 @@ describe('AthleteTeam DB', function() {
 
 		], function(tables) {
 
+			log.info({from: tables.fromTable, to: tables.joinTables}, 
+				'test.getJoins()...');
+
 			var joins = tableGraph.tableJoins(tables.fromTable, 
 				tables.joinTables);
 
-			log.info({from: tables.fromTable, to: tables.joinTables}, 
-				'TableGraph.getJoins()...');
-			log.info({joins: joins}, '...TableGraph.getJoins()');
+			log.info({joins: joins}, '...test.getJoins()');
 		});
 	});
 

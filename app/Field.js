@@ -44,7 +44,8 @@ var Field = function(fieldDef) {
 			me.notnull = fieldDef.notnull || 0;
 		}
 
-		me.disabled = fieldDef.disabled || false;
+		//dont show falsy disable prop
+		if (fieldDef.disabled) me.disabled = true;
 
 		//property values
 		me.props = {};

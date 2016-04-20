@@ -56,11 +56,10 @@ describe('Sandwiches DB', function() {
 			, ['customers', 'products_in_orders']
 			, _.pluck(sqlBuilder.graph.tables(), 'name')
 		], function(tables) {
-			log.info('\ntables ' + tables);
+			log.info({tables: tables});
 
 			var sql = sqlBuilder.joinSQL(tables[0], tables);
-			log.info('sql');
-			log.info(sql);
+			log.info({sql: sql});
 
 		});
 	});

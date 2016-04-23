@@ -251,8 +251,8 @@ describe('Schema', function() {
 					, 'Team'
 				]
 				, joins: [
-					['Player', 'Position']
-					, ['Player', 'Team']
+					{v: 'Player', w: 'Position'}
+					, {v: 'Player', w: 'Team'}
 				]
 			}
 			, {
@@ -265,43 +265,15 @@ describe('Schema', function() {
 					, 'Venue'
 				]
 				, joins: [
-					['Formation', 'Player']
-					, ['Formation', 'Position']
-					, ['Formation', 'Game']
-					, ['Game', 'Team']
-					, ['Game', 'Venue']
+					{v: 'Player', w: 'Team'}
+					, {v: 'Formation', w: 'Player'}
+					, {v: 'Formation', w: 'Position'}
+					, {v: 'Formation', w: 'Game'}
+					, {v: 'Game', w: 'Venue'}
 				]
 			}
 		]
 	};
-
-	function loadUserTrees() {
-		var trees = [];
-
-		var tree = new graphlib.Graph();
-		tree.setNode('Position');
-		tree.setNode('Player');
-		tree.setNode('Team');
-		tree.setEdge('Player', 'Position');
-		tree.setEdge('Player', 'Team');
-		trees.push(tree);
-
-		tree = new graphlib.Graph();
-		tree.setNode('Player');
-		tree.setNode('Formation');
-		tree.setNode('Position');
-		tree.setNode('Game');
-		tree.setNode('Team');
-		tree.setNode('Venue');
-		tree.setEdge('Formation', 'Player');
-		tree.setEdge('Formation', 'Position');
-		tree.setEdge('Formation', 'Game');
-		tree.setEdge('Game', 'Team');
-		tree.setEdge('Game', 'Venue');
-		trees.push(tree);
-
-		return trees;
-	}
 
 	describe('Soccer', function() {
 		var dbFile = "./soccer.sqlite";
@@ -318,7 +290,6 @@ describe('Schema', function() {
 	
 			var db = new Schema();
 			db.init(soccerSchema);
-			db.graph.trees = loadUserTrees();
 
 			var allDone = _.after(2, function() {
 				done();

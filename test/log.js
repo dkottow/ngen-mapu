@@ -3,7 +3,7 @@ var bunyan = require('bunyan');
 
 var log = bunyan.createLogger({
 	name: 'g6.mocha',
-	level: 'debug',
+	level: 'trace',
 	serializers: bunyan.stdSerializers,
 	src: true,
 	streams: [{

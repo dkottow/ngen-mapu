@@ -36,7 +36,8 @@ Schema.prototype.init = function(schemaData) {
 			return new Table(tableDef);
 		});
 
-		this.graph = new TableGraph(tables);
+		var options = _.pick(schemaData, 'join_trees');
+		this.graph = new TableGraph(tables, options);
 		this.sqlBuilder = new SqlBuilder(this.graph);
 
 		log.debug({tables: tables}, '...Schema.init()');
@@ -146,7 +147,7 @@ Schema.prototype.patch = function(patch) {
 Schema.prototype.create = function(dbFile, cbAfter) {
 
 	try {
-		var createSQL = this.sqlBuilder.createSQL();
+		var createSQL = this.sqlBuilder.createSQL(this);
 
 		var tmpFile = path.join(global.tmp_dir,
 						tmp.tmpNameSync({template: 'dl-XXXXXX.sqlite'}));
@@ -212,106 +213,125 @@ Schema.prototype.read = function(dbFile, cbAfter) {
 				}
 			}
 
-			var fields = _.map(Table.TABLE_FIELDS, function(f) {
+			var fields = _.map(Schema.TABLE_FIELDS, function(f) {
 				return '"' + f + '"';
 			});
 			var sql = 'SELECT ' + fields.join(',') 
-					+ ' FROM ' + Table.TABLE;
+					+ ' FROM ' + Schema.TABLE;
 
-			//read table properties 
+			//read schema properties 
 			db.all(sql, function(err ,rows) {
-
 				dbErrorHandlerFn(err);
 
-				//handle empty schema
-				if (rows.length == 0) {
-					db.close(function() {
-						me.init();
-						cbAfter();
-						return;
-					});
-				}
-
-				var tables = _.map(rows, function(r) {
-					var table = { 
-						name: r.name
-						, disabled: r.disabled
-					};
-					table.row_alias = JSON.parse(r.row_alias);
-					table.props = JSON.parse(r.props);
-					return table;
+				var schemaProps = {};
+				_.each(rows, function(r) {
+					schemaProps[r.name] = JSON.parse(r.value);
 				});
-
-				//console.dir(rows);
-				tables = _.object(_.pluck(tables, 'name'), tables);
-					
-				var fields = _.map(Field.TABLE_FIELDS, function(f) {
+				var fields = _.map(Table.TABLE_FIELDS, function(f) {
 					return '"' + f + '"';
 				});
 				var sql = 'SELECT ' + fields.join(',') 
-						+ ' FROM ' + Field.TABLE;
+						+ ' FROM ' + Table.TABLE;
 
-				//read field properties 
+				//read table properties 
 				db.all(sql, function(err ,rows) {
-					
+
 					dbErrorHandlerFn(err);
 
-					var tableNames = _.uniq(_.pluck(rows, 'table_name'));
+					//handle empty schema
+					if (rows.length == 0) {
+						db.close(function() {
+							me.init();
+							cbAfter();
+							return;
+						});
+					}
 
-					_.each(tableNames, function(tn) {
-						tables[tn]['fields'] = {};
-					});
-
-					_.each(rows, function(r) {
-						var field = { 
+					var tables = _.map(rows, function(r) {
+						var table = { 
 							name: r.name
 							, disabled: r.disabled
 						};
-						field.props = JSON.parse(r.props);
-
-						tables[r.table_name].fields[r.name] = field;
+						table.row_alias = JSON.parse(r.row_alias);
+						table.props = JSON.parse(r.props);
+						return table;
 					});
 
-					var doAfter = _.after(2*tableNames.length, function() {
-						//after executing two SQL statements per table
-						db.close(function () {
-							me.init({ tables: tables });
-							cbAfter();
+					//console.dir(rows);
+					tables = _.object(_.pluck(tables, 'name'), tables);
+						
+					var fields = _.map(Field.TABLE_FIELDS, function(f) {
+						return '"' + f + '"';
+					});
+					var sql = 'SELECT ' + fields.join(',') 
+							+ ' FROM ' + Field.TABLE;
+
+					//read field properties 
+					db.all(sql, function(err ,rows) {
+						
+						dbErrorHandlerFn(err);
+
+						var tableNames = _.uniq(_.pluck(rows, 'table_name'));
+
+						_.each(tableNames, function(tn) {
+							tables[tn]['fields'] = {};
 						});
-					});
 
-					//read field sql definition 
-					_.each(tableNames, function(tn) {
-						var sql = util.format("PRAGMA table_info(%s)", tn);
-						//console.log(sql);
-						db.all(sql, function(err, rows) {
+						_.each(rows, function(r) {
+							var field = { 
+								name: r.name
+								, disabled: r.disabled
+							};
+							field.props = JSON.parse(r.props);
 
-							dbErrorHandlerFn(err);
+							tables[r.table_name].fields[r.name] = field;
+						});
 
-							_.each(rows, function(r) {
-								//console.log(r);
-								_.extend(tables[tn].fields[r.name], r);	
+						var doAfter = _.after(2*tableNames.length, function() {
+							//after executing two SQL statements per table
+							db.close(function () {
+								var data = {
+									tables: tables
+								};
+								_.extend(data, schemaProps);
+								me.init(data);
+								cbAfter();
 							});
-							doAfter();
 						});
-					});
 
-					//read fk sql definition 
-					_.each(tableNames, function(tn) {
-						var sql = util.format("PRAGMA foreign_key_list(%s)", tn);
-						db.all(sql, function(err, rows) {
+						//read field sql definition 
+						_.each(tableNames, function(tn) {
+							var sql = util.format("PRAGMA table_info(%s)", tn);
+							//console.log(sql);
+							db.all(sql, function(err, rows) {
 
-							dbErrorHandlerFn(err);
+								dbErrorHandlerFn(err);
 
-							_.each(rows, function(r) {
-								//console.log(r);
-								_.extend(tables[tn].fields[r.from], {
-									fk: 1,
-									fk_table: r.table,
-									fk_field: r.to
+								_.each(rows, function(r) {
+									//console.log(r);
+									_.extend(tables[tn].fields[r.name], r);	
 								});
+								doAfter();
 							});
-							doAfter();
+						});
+
+						//read fk sql definition 
+						_.each(tableNames, function(tn) {
+							var sql = util.format("PRAGMA foreign_key_list(%s)", tn);
+							db.all(sql, function(err, rows) {
+
+								dbErrorHandlerFn(err);
+
+								_.each(rows, function(r) {
+									//console.log(r);
+									_.extend(tables[tn].fields[r.from], {
+										fk: 1,
+										fk_table: r.table,
+										fk_field: r.to
+									});
+								});
+								doAfter();
+							});
 						});
 					});
 				});
@@ -389,6 +409,7 @@ Schema.prototype.writePatches = function(dbFile, patchDefs, cbAfter) {
 			return p.op == 'set_prop';
 		}, this);
 
+//TODO add Schema.updatePropSQL
 		var sql = this.sqlBuilder.updatePropSQL(propPatches);
 		log.debug({sql: sql});
 
@@ -422,6 +443,47 @@ Schema.prototype.writePatches = function(dbFile, patchDefs, cbAfter) {
 	}
 }
 
+Schema.TABLE = "__schemaprops__";
+Schema.TABLE_FIELDS = ['name', 'value'];
+
+//Schema.PROPERTIES = ['join_trees'];
+
+Schema.prototype.props = function() {
+	var props = { 
+		join_trees: this.graph.joinTreesJSON() 
+	};
+	return props;
+}
+
+Schema.prototype.updatePropSQL = function() {
+
+	var sql = _.map(this.props(), function(v, k) {
+		return "UPDATE " + Schema.TABLE 
+			+ " SET value = '" + JSON.stringify(v) + "'"
+			+ " WHERE name = '" + k + "'; ";		
+	}).join('\n');
+
+	log.debug({sql: sql}, "Schema.updatePropSQL()");
+	return sql;
+}
+
+Schema.prototype.insertPropSQL = function() {
+
+	var values = _.map(this.props(), function(v, k) {
+		return "('" + k + "', '" + JSON.stringify(v) + "')";
+	});
+
+	var fields = _.map(Schema.TABLE_FIELDS, function(f) {
+		return '"' + f + '"';
+	});
+
+	var sql = 'INSERT INTO ' + Schema.TABLE
+			+ ' (' + fields.join(',') + ') ' 
+			+ ' VALUES ' + values.join(',') + '; ';
+
+	log.debug({sql: sql}, "Schema.insertPropSQL()");
+	return sql;
+}
 
 exports.Schema = Schema;
 

@@ -120,34 +120,6 @@ describe('Soccer DB', function() {
 	var jsonFile = "test/soccer.json";
 	var tableGraph;
 
-	function loadUserTrees() {
-		var trees = [];
-
-		tree = new graphlib.Graph();
-		tree.setNode('Position');
-		tree.setNode('Player');
-		tree.setNode('Team');
-		tree.setEdge('Player', 'Position');
-		tree.setEdge('Player', 'Team');
-		trees.push(tree);
-
-		tree = new graphlib.Graph();
-		tree.setNode('Player');
-		tree.setNode('Formation');
-		tree.setNode('Position');
-		tree.setNode('Game');
-		tree.setNode('Team');
-		tree.setNode('Venue');
-		tree.setEdge('Formation', 'Player');
-		tree.setEdge('Formation', 'Position');
-		tree.setEdge('Formation', 'Game');
-		tree.setEdge('Game', 'Team');
-		tree.setEdge('Game', 'Venue');
-		trees.push(tree);
-
-		return trees;
-	}
-
 	beforeEach(function(done) {		
 		var schema = new Schema();
 		schema.jsonRead(jsonFile, function(err) {
@@ -155,9 +127,6 @@ describe('Soccer DB', function() {
 			assert(err == null, err);
 			tableGraph = schema.graph;
 		
-			//replace trees = [mst] by user def trees
-			tableGraph.trees = loadUserTrees();
-
 			done();
 		});
 	});	

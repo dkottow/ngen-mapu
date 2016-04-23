@@ -5,12 +5,21 @@ var assert = require('assert');
 var Field = require('./Field.js').Field;
 var Table = require('./Table.js').Table;
 
+//ugly but avoids circular requires with Schema..
+var Schema = { TABLE: "__schemaprops__" };
+Schema.CreateTableSQL = "CREATE TABLE " + Schema.TABLE + " ("
+		+ " name VARCHAR NOT NULL, "
+		+ "	value VARCHAR, "
+		+ "	PRIMARY KEY (name) "
+		+ ");\n\n";
+
+
+
 var log = global.log.child({'mod': 'g6.SqlBuilder.js'});
 
 var SqlBuilder = function(tableGraph) {
 	this.graph = tableGraph;
 }
-
 
 SqlBuilder.prototype.selectSQL 
 	= function(table, fields, filterClauses, orderClauses, limit, offset) 
@@ -60,13 +69,17 @@ SqlBuilder.prototype.statsSQL = function(table, fields, filterClauses)
 	return result;
 }
 
-SqlBuilder.prototype.createSQL = function() {
-	var createSysTablesSQL = Table.CreateTableSQL
-					+ Field.CreateTableSQL;
+SqlBuilder.prototype.createSQL = function(schema) {
+	var createSysTablesSQL = Schema.CreateTableSQL
+			+ Table.CreateTableSQL
+			+ Field.CreateTableSQL;
 
 	var sysTablesInsertSQL = _.map(this.graph.tables(), function(t) {
 		return t.insertPropSQL();
 	}).join('\n');
+
+	sysTablesInsertSQL = sysTablesInsertSQL + '\n'
+		+ schema.insertPropSQL(); 
 
 	var tables = this.graph.tablesByDependencies();
 

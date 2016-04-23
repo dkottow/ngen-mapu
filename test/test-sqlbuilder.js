@@ -29,9 +29,10 @@ describe('Sandwiches DB', function() {
 
 	var jsonFile = "test/sales.json";
 	var sqlBuilder;
+	var schema;
 
 	beforeEach(function(done) {		
-		var schema = new Schema();
+		schema = new Schema();
 		schema.jsonRead(jsonFile, function(err) {
 			log.info(err);
 			assert(err == null, err);
@@ -138,7 +139,7 @@ describe('Sandwiches DB', function() {
 
 	it('SqlBuilder.createSQL', function() {
 		//var table = sqlBuilder.graph.table('products_in_orders');
-		var result = sqlBuilder.createSQL();
+		var result = sqlBuilder.createSQL(schema);
 		fs.writeFile('create.sql', result);
 		log.info(result);
 	});

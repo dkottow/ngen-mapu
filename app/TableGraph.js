@@ -6,45 +6,17 @@ var graphutil = require('./graph_util.js');
 
 var log = global.log.child({'mod': 'g6.TableGraph.js'});
 
-	function loadUserTrees() {
-log.info('loadUserTrees');
-		var trees = [];
-
-		tree = new graphlib.Graph();
-		tree.setNode('Position');
-		tree.setNode('Player');
-		tree.setNode('Team');
-		tree.setEdge('Player', 'Position');
-		tree.setEdge('Player', 'Team');
-		trees.push(tree);
-
-		tree = new graphlib.Graph();
-		tree.setNode('Team');
-		tree.setNode('Player');
-		tree.setNode('Formation');
-		tree.setNode('Position');
-		tree.setNode('Game');
-		tree.setNode('Venue');
-		tree.setEdge('Formation', 'Player');
-		tree.setEdge('Formation', 'Position');
-		tree.setEdge('Formation', 'Game');
-		tree.setEdge('Player', 'Team');
-		tree.setEdge('Game', 'Venue');
-		trees.push(tree);
-
-		return trees;
-	}
-
-var TableGraph = function(tables) {
+var TableGraph = function(tables, options) {
 
 	this.graph = new graphlib.Graph({ directed: true });
 	this.trees = [];
 
 	var me = this;
-	init(tables);
+	init(tables, options);
 
-	function init(tables) {	
-		log.debug({tables: _.pluck(tables, 'name')}, 'TableGraph.init()...');
+	function init(tables, options) {	
+		log.debug({tables: _.pluck(tables, 'name'),
+			options: options}, 'TableGraph.init()...');
 
 		_.each(tables, function(table) {
 			me.graph.setNode(table.name, table);					
@@ -62,34 +34,52 @@ var TableGraph = function(tables) {
 		});
 
 		/** build table trees **/
-		
-		var weightFn = function(e) {
-			return 1; 
+		if (options.join_trees) {
+			me.trees = me.initJoinTrees(options.join_trees);
+		} else {
+			me.trees = me.minimumSpanningTree();
 		}
 
-		var mst = buildTableTree(me.graph, weightFn);
-		me.trees = [mst];
-
-		//TODO check if we have user-defined trees
-		// eventually replace the mst by them
-
+/*
 if (_.find(tables, function(t) { return t.name == 'Formation'; })) {
 	me.trees = loadUserTrees();
 }
-
-		me.trees.sort(function(tree) { return tree.length; });
-
+*/
+		log.debug({trees: me.trees}, 'TableGraph.init()');
 		log.debug('...TableGraph.init().');
 	}
 
 }
 
+TableGraph.prototype.initJoinTrees = function(trees) {
+	return _.map(trees, function(tree) {
+		var g = new graphlib.Graph();
+		_.each(tree.table, function(t) { g.setNode(t); });
+		_.each(tree.joins, function(j) { g.setEdge(j.v, j.w); });
+		return g;
+	});
+}
+
+TableGraph.prototype.minimumSpanningTree = function() {
+	var weightFn = function(e) {
+		return 1; 
+	}
+	var tree = graphlib.alg.prim(this.graph, weightFn);
+	tree = graphutil.DirectTreeEdgesAsGraph(tree, this.graph);
+	return [ tree ];
+}
+
 TableGraph.prototype.tables = function() {
+	return _.map(this.graph.nodes(), function(node) {
+		return this.table(node);
+	}, this);
+/*
 	return _.map(_.filter(this.graph.nodes(), function(node) {
 			return nodeIsTable(node);
 		}), function(name) {
 			return this.table(name);
 	}, this);
+*/
 }
 
 TableGraph.prototype.tablesByDependencies = function() {
@@ -154,8 +144,7 @@ TableGraph.prototype.tableJoins = function(fromTable, joinTables) {
 	log.debug({fromTable: fromTable, joinTables: joinTables},
 		"TableGraph.tableJoins()...");
 
-	/* pick first tree having all table nodes to join 
-	   we sorted our trees previously by size
+	/* pick first tree that covers all tables 
 	*/
 	var tables = [fromTable].concat(joinTables);
 	var joinTree = _.find(this.trees, function(tree) {
@@ -191,19 +180,26 @@ TableGraph.prototype.toJSON = function() {
 	}, this);
 	tables = _.object(_.pluck(tables, 'name'), tables);
 	
-	var trees = _.map(this.trees, function(tree) {
-		return this.joinTreeJSON(tree);
-	}, this);
+	var trees = this.joinTreesJSON();
 	
-	return {
+	var result = {
 		tables: tables,
 		join_trees: trees
-	}
+	};
+	log.debug({result: result}, 'TableGraph.toJSON()');
+	return result;
+}
+
+TableGraph.prototype.joinTreesJSON = function() {
+	return _.map(this.trees, function(tree) {
+		return this.joinTreeJSON(tree);
+	}, this);
 }
 
 TableGraph.prototype.joinTreeJSON = function(tree) {
+	log.trace({tree: tree}, 'TableGraph.joinTreeJSON()');
 	var tables = tree.nodes();
-	var joins = _.map(tree.edges(), function(e) { return [e.v, e.w]; });
+	var joins = tree.edges();
 	return { 
 		tables: tables,
 		joins: joins
@@ -282,12 +278,6 @@ TableGraph.prototype.shortestPath = function(fromTable, joinTable, paths) {
 
 function nodeIsTable(node) {
 	return node.indexOf('.') < 0;
-}
-
-function buildTableTree(graph, weightFn) {
-	var tree = graphlib.alg.prim(graph, weightFn);
-	tree = graphutil.DirectTreeEdgesAsGraph(tree, graph);
-	return tree;
 }
 
 

@@ -249,11 +249,12 @@ Schema.prototype.read = function(dbFile, cbAfter) {
 
 					var tables = _.map(rows, function(r) {
 						var table = { 
-							name: r.name
-							, disabled: r.disabled
+							name: r.name,
+							disabled: r.disabled
 						};
-						table.row_alias = JSON.parse(r.row_alias);
-						table.props = JSON.parse(r.props);
+						var props =  JSON.parse(r.props);
+						table.row_alias = props.row_alias;
+						table.props = _.pick(props, Table.PROPERTIES);
 						return table;
 					});
 
@@ -279,10 +280,11 @@ Schema.prototype.read = function(dbFile, cbAfter) {
 
 						_.each(rows, function(r) {
 							var field = { 
-								name: r.name
-								, disabled: r.disabled
+								name: r.name,
+								disabled: r.disabled
 							};
-							field.props = JSON.parse(r.props);
+							var props = JSON.parse(r.props);
+							field.props = _.pick(props, Field.PROPERTIES);
 
 							tables[r.table_name].fields[r.name] = field;
 						});

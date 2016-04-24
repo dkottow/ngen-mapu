@@ -5,9 +5,8 @@ var assert = require('assert');
 var Field = require('./Field.js').Field;
 var Table = require('./Table.js').Table;
 
-//ugly but avoids circular requires with Schema..
-var Schema = { TABLE: "__schemaprops__" };
-Schema.CreateTableSQL = "CREATE TABLE " + Schema.TABLE + " ("
+//ugly but avoids circular requires with Schema.js
+var Schema_CreateTableSQL = "CREATE TABLE __schemaprops__ ("
 		+ " name VARCHAR NOT NULL, "
 		+ "	value VARCHAR, "
 		+ "	PRIMARY KEY (name) "
@@ -70,7 +69,7 @@ SqlBuilder.prototype.statsSQL = function(table, fields, filterClauses)
 }
 
 SqlBuilder.prototype.createSQL = function(schema) {
-	var createSysTablesSQL = Schema.CreateTableSQL
+	var createSysTablesSQL = Schema_CreateTableSQL
 			+ Table.CreateTableSQL
 			+ Field.CreateTableSQL;
 

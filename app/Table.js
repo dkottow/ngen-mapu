@@ -60,7 +60,7 @@ var Table = function(tableDef) {
 }
 
 Table.TABLE = '__tableprops__';
-Table.TABLE_FIELDS = ['name', 'row_alias', 'props', 'disabled'];
+Table.TABLE_FIELDS = ['name', 'props', 'disabled'];
 
 Table.PROPERTIES = ['order', 'label'];
 
@@ -74,7 +74,6 @@ Table.prototype.setProp = function(name, value) {
 
 Table.CreateTableSQL = "CREATE TABLE " + Table.TABLE + " ("
 		+ " name VARCHAR NOT NULL, "
-		+ " row_alias VARCHAR, "
 		+ "	props VARCHAR, "
 		+ " disabled INTEGER DEFAULT 0, "
 		+ "	PRIMARY KEY (name) "
@@ -82,8 +81,13 @@ Table.CreateTableSQL = "CREATE TABLE " + Table.TABLE + " ("
 
 Table.prototype.updatePropSQL = function() {
 
+	var dbProps = {
+		row_alias: this.row_alias
+	};
+	_.extend(dbProps, this.props);
+
 	var sql = "UPDATE " + Table.TABLE 
-			+ " SET props = '" + JSON.stringify(this.props) + "'"
+			+ " SET props = '" + JSON.stringify(dbProps) + "'"
 			+ " , disabled = " + (this.disabled ? 1 : 0)
 			+ " WHERE name = '" + this.name + "'; ";
 
@@ -97,10 +101,14 @@ Table.prototype.updatePropSQL = function() {
 
 Table.prototype.insertPropSQL = function() {
 
+	var dbProps = {
+		row_alias: this.row_alias
+	};
+	_.extend(dbProps, this.props);
+
 	var values = _.map([
 			this.name, 
-			JSON.stringify(this.row_alias), 
-			JSON.stringify(this.props),
+			JSON.stringify(dbProps),
 		], function(v) {
 		return "'" + v + "'";
 	}).concat([

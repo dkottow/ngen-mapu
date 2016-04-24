@@ -67,8 +67,8 @@ Field.PROPERTIES = ['order', 'width', 'scale', 'label'];
 
 Field.CreateTableSQL 
 	= " CREATE TABLE " + Field.TABLE + " ("
-		+ ' name VARCHAR NOT NULL, '
 		+ ' table_name VARCHAR NOT NULL, '
+		+ ' name VARCHAR NOT NULL, '
 		+ ' props VARCHAR, '
 		+ ' disabled INTEGER DEFAULT 0, '
 		+ ' PRIMARY KEY (name, table_name) '

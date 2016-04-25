@@ -32,7 +32,7 @@ SqlBuilder.prototype.selectSQL
 	var orderSQL = this.orderSQL(table, orderClauses);
 
 	var selectSQL = 'SELECT * FROM (' + query.sql + ')'
-					+ ' ORDER BY ' + orderSQL
+					+ orderSQL
 					+ ' LIMIT ' + limit
 					+ ' OFFSET ' + offset;
 
@@ -462,10 +462,10 @@ SqlBuilder.prototype.fieldSQL = function(table, fields) {
 
 SqlBuilder.prototype.orderSQL = function(table, orderClauses) {
 
-	var orderSQL;
+	var orderSQL = '';
 	if ( ! _.isEmpty(orderClauses)) {	
 		
-		var orderSQL = _.reduce(orderClauses, function(memo, order, idx) {
+		orderSQL = _.reduce(orderClauses, function(memo, order, idx) {
 			var orderField = _.keys(order)[0];
 			var orderDir = _.values(order)[0].toUpperCase();
 			
@@ -479,12 +479,9 @@ SqlBuilder.prototype.orderSQL = function(table, orderClauses) {
 			if (idx < orderClauses.length-1) result = result + ',';
 			return result;
 			
-		}, '');
+		}, 'ORDER BY ');
 		
-	} else {
-		//most recently created first
-		orderSQL = 'id DESC';
-	}
+	} 
 	return orderSQL;
 }
 

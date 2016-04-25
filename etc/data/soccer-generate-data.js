@@ -25,51 +25,46 @@ describe('Database', function() {
 		var rand =  new Random(Random.engines.mt19937().autoSeed());
 
 		const tournamentStartDate = new Date('2016-06-01');
-
-		var teams, coaches, players;
 		var qualifiedTeams;
 
-		var positions, fieldPositions;
-		
-		var venues;
-		var games, formations;
-		
+		var soccerData = {
+		};
+
+
 		before(function(done) {
 			db.init(function(err) {
 				if (err) {
 					log.info(err);
 				} else {
 					var allDone = _.after(4, function() {
+						log.info({soccerData: soccerData}, "before.init()");
 						done();
 					});
 					db.all('Venue', function(err, result) {
 						if (err) throw new Error(err);
 						log.info('got ' + result.rows.length + ' venues');
-						venues = result.rows;
+						soccerData.venues = result.rows;
 						allDone();
 					});
 					db.all('Team', function(err, result) {
 						if (err) throw new Error(err);
 						log.info('got ' + result.rows.length + ' teams');
-						teams = result.rows;
+						soccerData.teams = result.rows;
 						allDone();
 					});
 					db.all('Player', function(err, result) {
 						if (err) throw new Error(err);
 						log.info('got ' + result.rows.length + ' players');
-						players = _.filter(result.rows, function(r) {
+						soccerData.players = _.filter(result.rows, function(r) {
 							return r.Role == 'Player';
-						});
-						coaches = _.filter(result.rows, function(r) {
-							return r.Role == 'Coach';
 						});
 						allDone();
 					});
 					db.all('Position', function(err, result) {
 						if (err) throw new Error(err);
 						log.info('got ' + result.rows.length + ' positions');
-						positions = result.rows;
-						fieldPositions = _.filter(positions, function(p) { return p.id < 20; });
+						soccerData.positions = _.object(_.pluck(result.rows, 'id'), result.rows);
+						soccerData.fieldPositions = _.filter(soccerData.positions, function(p) { return p.id < 20; });
 						allDone();
 					});
 				}
@@ -79,57 +74,45 @@ describe('Database', function() {
 		it('Qualifications. Assign all players to qualified teams. Delete unqualified coaches.', function(done) {
 			this.timeout(5000);
 
+			var players = soccerData.players;
+			var teams = soccerData.teams;
+			var fieldPos = soccerData.fieldPositions;
+
 			//Qualify teams.
 			const qualifiedTeamCount = 8;
 			qualifiedTeams = rand.sample(teams, qualifiedTeamCount);
 
-			log.info(_.pluck(qualifiedTeams, 'Name'));
+			log.info({qualifiedTeams: _.pluck(qualifiedTeams, 'Name')});
 			var qualIds = _.pluck(qualifiedTeams, 'id');
 
-			//assign an equal number of players to qual teams
-			rand.shuffle(players);
-			for (var i = 0;i < players.length; ++i) {
-				players[i].Team_id = qualIds[i % qualIds.length];
-			}
+			var groupPlayers = _.groupBy(players, 'PreferredPosition_id');
 
-			//delete disqualified
-			var disqualifiedTeams = _.filter(teams, function(t) {
-				return ! _.contains(qualIds, t.id);
+			_.each(groupPlayers, function(posPlayers, pos) {
+				rand.shuffle(posPlayers);
+				for (var i = 0;i < posPlayers.length; ++i) {
+					posPlayers[i].Team_id = qualIds[i % qualIds.length];
+				}
 			});
 
-			var disqualifiedCoaches = _.filter(coaches, function(c) {
-				return ! _.contains(qualIds, c.Team_id);
-			});
-			
 			//update DB
 			db.update('Player', players, function(err, c) {
 				if (err) throw new Error(err);
-
-				var ids = _.pluck(disqualifiedCoaches, 'id');
-				db.delete('Player', ids, function(err, c) {
-					if (err) throw new Error(err);
-
-					var ids = _.pluck(disqualifiedTeams, 'id');
-					db.delete('Team', ids, function(err, c) {
-						if (err) throw new Error(err);
-						done();	
-					});
-				});
-
+				done();
 			});
 		});
 
 		it('Games. Start the tournament. Generate games.', function(done) {
 			//TODO
-			games = [];
+			var games = [];
+			var venues = soccerData.venues;
 			var winners;
-			var round = qualifiedTeams;
+			var teams = qualifiedTeams;
 			var eventDate = tournamentStartDate;
 			var eventTimes = ['21:00', '19:00'];
-			while (round.length >= 2) {
+			while (teams.length >= 2) {
 				winners = [];
 				var roundStartDate = new Date(eventDate);
-				for(var gc = 0;gc < round.length / 2; ++gc) {
+				for(var gc = 0;gc < teams.length / 2; ++gc) {
 					if (gc % eventTimes.length == 0 && gc > 0) {
 						eventDate.setDate(eventDate.getDate() + 1);
 					} 
@@ -139,22 +122,23 @@ describe('Database', function() {
 						EventDate: eventDate.toISOString().split('T')[0]
 						, EventTime: eventTimes[gc % eventTimes.length]
 						, Venue_id: 1 + (games.length % venues.length)
-						, Team1_id: round[i].id
-						, Team2_id: round[i+1].id
+						, Team1_id: teams[i].id
+						, Team2_id: teams[i+1].id
 					};
 					
 					games.push(game);
 
 					//play.. all we care about is the winner
-					var winner = round[i];
+					var winner = teams[i];
 
 					winners.push(winner);
 				}
-				round = winners;
+				teams = winners;
 				eventDate.setDate(roundStartDate.getDate() + 7);
 			}
 
 			log.debug(games);
+			soccerData.games = games;
 
 			//update DB
 			db.insert('Game', games, function(err, result) {
@@ -169,20 +153,19 @@ describe('Database', function() {
 
 
 		it('Formations. Pick 11 players from each team and each game.', function(done) {
-			formations = [];
+			var teams = soccerData.teams;
+			var games = soccerData.games;
+			var formations = [];
 
 			_.each(games, function(game) {
-				var team1 = _.find(teams, function(t) { 
-					return t.id == game.Team1_id; 
-				});
-				var team2 = _.find(teams, function(t) { 
-					return t.id == game.Team2_id; 
-				});
+				var team1 = _.findWhere(teams, {id: game.Team1_id});
+				var team2 = _.findWhere(teams, {id: game.Team2_id});
 				
 				var fs = get_formations(game, team1, team2);
 				formations = formations.concat(fs);
 			});
 
+			soccerData.formations = formations;
 			db.insert('Formation', formations, function(err, ids) {
 				if (err) throw new Error(err);
 				done();	
@@ -191,34 +174,59 @@ describe('Database', function() {
 		});
 
 		function get_formation(game, team) {
+			console.log(game.EventDate + " " + team.Name);
+			var players = soccerData.players;
+			var allPos = soccerData.positions;
+			var fieldPos = soccerData.fieldPositions;
+			var posMatrix = {
+				  'GK' : ['GK']
+				, 'LB' : ['LB', 'DF', 'MF']
+				, 'CB' : ['CB', 'DF', 'MF']
+				, 'RB' : ['RB', 'DF', 'MF']
+				, 'LM' : ['LM', 'MF', 'DF']
+				, 'CM' : ['CM', 'MF', 'DF']
+				, 'RM' : ['RM', 'MF', 'DF']
+				, 'LW' : ['LW', 'FW']
+				, 'RW' : ['RW', 'FW']
+				, 'CF' : ['CF', 'FW']
+				, 'SW' : ['SW', 'DF', 'MF']
+			};
 			var formation = [];
+			var teamPlayers = _.where(players, {Team_id: team.id});
 
-			var i = 0;
-			_.each(fieldPositions, function(p) {
+			_.each(fieldPos, function(pos) {
 
-				for(; i < players.length; ++i) {
-					
-					//TODO something more fancy, e.g. find a player who is close to position p
-					if (players[i].Team_id == team.id) {
-						
-						formation.push({
-							Player_id: players[i].id
-							, Position_id: p.id
+				var posOpts = posMatrix[pos.Code];
+				var candidates = _.filter(teamPlayers, function(player) {
+					var playerPos = allPos[player.PreferredPosition_id];
+					return _.contains(posOpts, playerPos.Code);
+				});
+				rand.shuffle(candidates);
+				var pickPlayer = _.find(candidates, function(player) {
+					return ! _.find(formation, function(f) {
+						return f.Player_id == player.id;
+					});
+				});
+
+				if (pickPlayer) {
+
+console.log(pos.Code + " - " + pickPlayer.Name + " " + allPos[pickPlayer.PreferredPosition_id]);
+					formation.push({
+							Player_id: pickPlayer.id
+							, Position_id: pos.id
 							, Game_id: game.id
-						});
-						break;
-					}
-				}
+					});
 
-				++i; //move on to next player
-				
+				} else {
+					log.error({position: pos.Code, team: team.Name}, " no player found.");
+				}
 			});
 			
 			return formation;			
 		}
 
 		function get_formations(game, team1, team2) {
-
+			//console.log(team1.Name + " vs " + team2.Name);
 			var form1 = get_formation(game, team1);
 			var form2 = get_formation(game, team2);
 

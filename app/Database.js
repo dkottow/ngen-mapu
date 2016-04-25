@@ -262,13 +262,6 @@ Database.prototype.insert = function(tableName, rows, options, cbResult) {
 
 	try {
 
-		var table = this.table(tableName);
-
-		if (rows.length == 0) {
-			cbResult(null, []);
-			return;
-		}
-
 		if (! cbResult) {
 			//shift fn args
 			cbResult = options;
@@ -276,7 +269,15 @@ Database.prototype.insert = function(tableName, rows, options, cbResult) {
 		}
 
 		options = options || {};		
+
 		var returnModifiedRows = options.retmod || false;
+
+		var table = this.table(tableName);
+
+		if (rows.length == 0) {
+			cbResult(null, []);
+			return;
+		}
 
 		var fieldNames = _.filter(_.keys(rows[0]), function(fn) { 
 				//filter out any non-field key

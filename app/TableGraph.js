@@ -33,8 +33,9 @@ var TableGraph = function(tables, options) {
 			});
 		});
 
+
 		/** build table trees **/
-		if (options.join_trees) {
+		if (options.join_trees && options.join_trees.length > 0) {
 			me.trees = me.initJoinTrees(options.join_trees);
 		} else {
 			me.trees = me.minimumSpanningTree();
@@ -64,9 +65,19 @@ TableGraph.prototype.minimumSpanningTree = function() {
 	var weightFn = function(e) {
 		return 1; 
 	}
-	var tree = graphlib.alg.prim(this.graph, weightFn);
-	tree = graphutil.DirectTreeEdgesAsGraph(tree, this.graph);
-	return [ tree ];
+
+	var components = graphlib.alg.components(this.graph);
+
+	if (components.length == 1) {
+		var tree = graphlib.alg.prim(this.graph, weightFn);
+		tree = graphutil.DirectTreeEdgesAsGraph(tree, this.graph);
+		return [ tree ];
+
+	} else {
+		//TODO build trees out of components
+		log.warn("Graph is not connected. " + components.length);
+		return [];
+	}
 }
 
 TableGraph.prototype.tables = function() {

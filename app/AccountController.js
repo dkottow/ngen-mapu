@@ -11,6 +11,17 @@ var DatabaseController = require('./DatabaseController.js')
 
 var log = global.log.child({'mod': 'g6.AccountController.js'});
 
+function fileExists(path) {
+	try {
+		var stat = fs.statSync(path);
+		return true;
+
+	} catch(err) {
+		if (err.code == 'ENOENT') return false;
+		else throw new Error(err);
+	}
+}
+
 function sendError(req, res, err) {
 	log.error(err);
 	log.warn(req.method + " " + req.url + " failed.");
@@ -106,8 +117,16 @@ function AccountController(router, baseUrl, baseDir) {
 			var dbFile = util.format('%s/%s', me.baseDir,
 								schema.name + global.sqlite_ext);
 
+			var dbUrl = util.format('%s/%s', me.url, schema.name);
+
 			var db = new Schema();
-			db.init(schema.tables);
+			db.init(schema);
+
+			if (fileExists(dbFile)) {
+				var err = new Error("Database " + dbUrl + " exists.");
+				sendError(req, res, err);
+				return;
+			}
 
 			db.create(dbFile, function(err) {
 				if (err) {
@@ -115,10 +134,6 @@ function AccountController(router, baseUrl, baseDir) {
 					return;
 				}
 				log.info(req.method + " " + req.url + " OK.");
-				var dbUrl = util.format('%s/%s'
-							, me.url
-							, schema.name
-				);
 
 				var model = new Database(dbFile);
 				var controller = new DatabaseController(router, dbUrl, model);
@@ -133,7 +148,7 @@ function AccountController(router, baseUrl, baseDir) {
 		}
 
 		router.post(this.url, postSchemaHandler);	
-		router.post(this.url + '.prj', postSchemaHandler);	
+		router.post(this.url + '.db', postSchemaHandler);	
 
 		//serve put database
 		var putSchemaHandler = function(req, res) {
@@ -160,13 +175,13 @@ function AccountController(router, baseUrl, baseDir) {
 				0);
 				log.debug("total rows " + totalRowCount);
 				if (totalRowCount > 0) {
-					err = new Error("Database " + req.url + " not empty.");
+					var err = new Error("Database " + req.url + " not empty.");
 					sendError(req, res, err);
 					return;
 				}
 				var dbFile = meCtrl.model.dbFile;	
 				var db = new Schema();
-				db.init(schema.tables);
+				db.init(schema);
 				db.create(dbFile, function(err) {
 					if (err) {
 						sendError(req, res, err);
@@ -185,7 +200,7 @@ function AccountController(router, baseUrl, baseDir) {
 		}
 
 		router.put(this.url + "/:schema", putSchemaHandler);	
-		router.put(this.url + '"/:schema.prj', putSchemaHandler);	
+		router.put(this.url + '"/:schema.db', putSchemaHandler);	
 
 
 		//serve delete database
@@ -232,18 +247,8 @@ function AccountController(router, baseUrl, baseDir) {
 		}
 
 		router.delete(this.url + "/:schema", deleteSchemaHandler);	
-		router.delete(this.url + '"/:schema.prj', deleteSchemaHandler);	
+		router.delete(this.url + '"/:schema.db', deleteSchemaHandler);	
 
-		//serve patch database
-		var patchSchemaHandler = function(req, res) {
-			log.info(req.method + " " + req.url);
-			log.info({'req.body': req.body});
-
-			var patches = req.body;
-		}
-
-		router.patch(this.url + "/:schema", patchSchemaHandler);	
-		router.patch(this.url + '"/:schema.prj', patchSchemaHandler);	
 	}
 
 

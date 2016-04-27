@@ -147,6 +147,7 @@ Schema.prototype.patch = function(patch) {
 Schema.prototype.create = function(dbFile, cbAfter) {
 
 	try {
+
 		var createSQL = this.sqlBuilder.createSQL(this);
 
 		var tmpFile = path.join(global.tmp_dir,
@@ -162,7 +163,7 @@ Schema.prototype.create = function(dbFile, cbAfter) {
 			db.exec(createSQL, function(err) {
 				db.close();
 				if (err) {
-					log.warn("Schema.create() failed. " + err);	
+					log.error("Schema.create() failed. " + err);	
 					fs.unlink(tmpFile);
 					cbAfter(err);
 					return;

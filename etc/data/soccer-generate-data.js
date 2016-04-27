@@ -24,7 +24,7 @@ describe('Database', function() {
 		var db = new Database(dbFile);
 		var rand =  new Random(Random.engines.mt19937().autoSeed());
 
-		const tournamentStartDate = new Date('2016-06-01');
+		const tournamentStartDate = new Date('2016-06-02');
 		var qualifiedTeams;
 
 		var soccerData = {
@@ -117,6 +117,7 @@ describe('Database', function() {
 						eventDate.setDate(eventDate.getDate() + 1);
 					} 
 
+console.log(eventDate);
 					var i = gc * 2;
 					var game = {
 						EventDate: eventDate.toISOString().split('T')[0]

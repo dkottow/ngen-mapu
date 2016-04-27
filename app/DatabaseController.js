@@ -1,4 +1,5 @@
 var _ = require('underscore');
+var url = require('url');
 
 var log = global.log.child({'mod': 'g6.DatabaseController.js'});
 var parser = require('./QueryParser.js');
@@ -43,7 +44,7 @@ function DatabaseController(router, restBase, model)
 		
 		var rowsExt = ".rows";
 		_.each(me.model.tables(), function(table) {
-			var url = me.base + "/" + table['name'];
+			var tableUrl = me.base + "/" + table['name'];
 
 			var getRowsHandler = function(req, res) {
 				log.info({req: req}, 'DatabaseController.get()...');
@@ -73,6 +74,16 @@ function DatabaseController(router, restBase, model)
 							sendError(req, res, err);
 							return;
 						}
+
+						//add nextUrl if nextOffset
+						if (result.nextOffset) {
+							var urlObj = url.parse(req.url, true);
+							urlObj.search = undefined;
+							urlObj.query['$skip'] = result.nextOffset;
+							result.nextUrl = url.format(urlObj)
+							delete result.nextOffset;
+						}
+
 						log.trace(result);
 						res.send(result); 
 						log.info({res: res}, '...DatabaseController.get().');
@@ -81,11 +92,11 @@ function DatabaseController(router, restBase, model)
 
 			}		
 
-			me.router.get(url, getRowsHandler);	
-			me.router.get(url + rowsExt, getRowsHandler);	
+			me.router.get(tableUrl, getRowsHandler);	
+			me.router.get(tableUrl + rowsExt, getRowsHandler);	
 
 			var statsExt = ".stats";
-			me.router.get(url + statsExt, function(req, res) {
+			me.router.get(tableUrl + statsExt, function(req, res) {
 
 				log.info({req: req}, 'DatabaseController.getStats()...');
 				var params = {};
@@ -115,32 +126,6 @@ function DatabaseController(router, restBase, model)
 
 			});	
 
-
-			//select one specific 'root' row
-			//and include recursively all children / supertypes 
-			//upto depth levels  
-			var getDeepHandler = function(req, res) {
-				log.info(req.method + " " + req.url);
-				var filters = [{ 'field': 'id', 
-							   'op': 'eq', 
-							   'value' : req.param('id')
-					}];
-				me.model.getDeep(table.name, {
-									filter: filters,
-									depth: req.query['depth'] 
-								}
-								, function(err, result) { 
-					if (err) {
-						sendError(req, res, err);
-						return;
-					}
-					log.debug(result);
-					res.send(result); 
-				});
-			}		
-			me.router.get(url + "/:id", getDeepHandler);
-			me.router.get(url + rowsExt + "/:id", getDeepHandler);
-
 			//insert a row into table
 			var postRowHandler = function(req, res) {
 				log.info({req: req}, 'DatabaseController.post()...');
@@ -157,8 +142,8 @@ function DatabaseController(router, restBase, model)
 					log.info({res: res}, '...DatabaseController.post().');
 				});
 			}
-			me.router.post(url, postRowHandler);
-			me.router.post(url + rowsExt, postRowHandler);
+			me.router.post(tableUrl, postRowHandler);
+			me.router.post(tableUrl + rowsExt, postRowHandler);
 
 			//update row in table
 			var putRowHandler = function(req, res) {
@@ -177,8 +162,8 @@ function DatabaseController(router, restBase, model)
 					log.info({res: res}, '...DatabaseController.put().');
 				});
 			}
-			me.router.put(url + "/:id", putRowHandler);
-			me.router.put(url + rowsExt + "/:id", putRowHandler);
+			me.router.put(tableUrl + "/:id", putRowHandler);
+			me.router.put(tableUrl + rowsExt + "/:id", putRowHandler);
 
 			//delete row in table
 			var deleteRowHandler = function(req, res) {
@@ -193,8 +178,8 @@ function DatabaseController(router, restBase, model)
 					log.info({res: res}, '...DatabaseController.delete().');
 				});
 			}
-			me.router.delete(url + "/:id", deleteRowHandler);
-			me.router.delete(url + rowsExt + "/:id", deleteRowHandler);
+			me.router.delete(tableUrl + "/:id", deleteRowHandler);
+			me.router.delete(tableUrl + rowsExt + "/:id", deleteRowHandler);
 
 		});
 

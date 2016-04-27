@@ -189,11 +189,18 @@ Database.prototype.all = function(tableName, options, cbResult) {
 								"Database.all() failed. ");	
 							cbResult(err, null);
 						} else {
+							var expectedCount = countRows[0].count - offset;
+
 							var result = { 
 								rows: rows, 
 								count: countRows[0].count,
 								totalCount: countRows[1].count
 							}
+
+							if (rows.length < expectedCount) {
+								result.nextOffset = offset + limit;
+							}
+
 							if (debug) {
 								result.sql = sql.query;
 								result.sqlParams = sql.params;

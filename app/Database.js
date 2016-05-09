@@ -177,7 +177,7 @@ Database.prototype.all = function(tableName, options, cbResult) {
 					cbResult(err, null);
 				});
 			} else {
-				//console.dir(rows);
+				log.debug({rows : rows});
 				
 				var countSql = sql.countSql 
 					+ ' UNION ALL SELECT COUNT(*) as count FROM ' + table.name; 

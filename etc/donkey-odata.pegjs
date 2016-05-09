@@ -1,6 +1,7 @@
-/* run me from root dir
-   > node_modules/pegjs/bin/pegjs 
-   > mv etc/donkey-odata.pegjs app/QueryParser.js
+/* to generate app/QueryParser.js from this spec run from root dir as follows
+
+   > node_modules/pegjs/bin/pegjs etc/donkey-odata.pegjs app/QueryParser.js
+
    also copy parser to www app
 */
 
@@ -13,7 +14,6 @@ param
  / paramOrderBy
  / paramFilter
  / paramSelect
- / paramDistinct
 
 paramSkip
  = "$skip=" a:$int 
@@ -24,20 +24,16 @@ paramTop
    {return {name: '$top', value: parseInt(a) }; }
 
 paramOrderBy
- = "$orderby=" expr:orderByExpr 
-   { return {name: '$orderby', value: expr}; }
+ = "$orderby=" orderby:orderByExpr 
+   { return {name: '$orderby', value: orderby}; }
 
 paramSelect
- = "$select=" fields:fields 
+ = "$select=" fields:fieldExpr 
    { return {name: '$select', value: fields}; }
 
 paramFilter
  = "$filter=" filters:filterExpr 
    { return {name: '$filter', value: filters}; }
-
-paramDistinct
- = "$distinct=" distinct:("true" / "false")
-   { return {name: '$distinct', value: (distinct == "true") }; }
 
 orderByExpr
  = first:orderByTerm
@@ -50,7 +46,7 @@ orderByTerm
    
 filterExpr
  = first:filterTerm 
-   rest:(ws "and" ws term:filterTerm { return term; })*	
+   rest:("\t" ws? term:filterTerm { return term; })*	
    { return [first].concat(rest); }
 
 filterTerm
@@ -79,10 +75,14 @@ vecop "vector operator"
  = "in"
  / "btwn"
 
-fields
- = first:field
-   rest:("," ws? field:field { return field; })*
+fieldExpr
+ = first:fieldTerm
+   rest:("," ws? term:fieldTerm { return term; })*
    { return [first].concat(rest); }
+
+fieldTerm
+ = table:(table ".")? field:field
+   { return table ? table[0] + "." + field : field; }
 
 table
  = identifier

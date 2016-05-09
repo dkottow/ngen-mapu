@@ -33,7 +33,7 @@ describe('Parser.parser', function() {
 
 	it('filter eq ne', function() {		
 		try {
-			var q = "$filter=foo eq 'foo' and bar.bar ne 6";
+			var q = "$filter=foo eq 'foo'\tbar.bar ne 6";
 			var result = parser.parse(q);			
 			log.info(result);
 		} catch(e) {

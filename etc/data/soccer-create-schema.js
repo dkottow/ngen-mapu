@@ -257,6 +257,17 @@ describe('Schema', function() {
 			}
 			, {
 				tables: [
+					'Venue'
+					, 'Game'
+					, 'Team'
+				]
+				, joins: [
+					{v: 'Game', w: 'Venue'}
+					, {v: 'Game', w: 'Team'}
+				]
+			}
+			, {
+				tables: [
 					'Position'
 					, 'Player'
 					, 'Team'

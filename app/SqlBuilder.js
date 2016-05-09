@@ -128,16 +128,26 @@ SqlBuilder.prototype.querySQL = function(table, fields, filterClauses) {
 	assert(fields == '*' || _.isArray(fields), "arg 'fields' is '*' or array");
 	assert(_.isArray(filterClauses), "arg 'filterClauses' is array");
 	
-	//sanitize filterClauses
+	//full qualify filterClauses
 	_.each(filterClauses, function(fc) {
 		if ( ! fc.table) fc.table = table.name;
 	});
 
-	var filterTables = _.map(filterClauses, function(fc) {
+	//collect filter tables
+	var joinTables = _.map(filterClauses, function(fc) {
 			return fc.table;
-	});
+	})
 
-	var joinSQL = this.joinSQL(table.name, filterTables, { joinViews: true });
+	//collect additional field tables
+	if (fields != '*') {
+		var fieldTables = _.map(fields, function(f) {
+			if (f.indexOf('.') < 0) return table.name;
+			else return f.split('.')[0];
+		});
+		joinTables = joinTables.concat(fieldTables);
+	}	
+
+	var joinSQL = this.joinSQL(table.name, joinTables, { joinViews: true });
 
 	var joinSearchSQL = this.joinSearchSQL(filterClauses);
 	var filterSQL = this.filterSQL(filterClauses);
@@ -443,21 +453,24 @@ SqlBuilder.prototype.fieldSQL = function(table, fields) {
 	if (fields == '*') {
 		fields = table.viewFields();
 	} else {
-		table.assertFields(fields);
+		//TODO
+		//table.assertFields(fields);
 	}
 
-	fields = _.filter(fields, function(fieldName) {
-		//viewFields cannot be disabled
-		if (_.contains(table.fields, fieldName) && table.field(fieldName).disabled) return false;
-		return true;
-	});
+	var result = _.map(fields, function(field) {
+		var f = field;
+		if (field.indexOf('.') > 0) {
+			var t = this.graph.table(field.split('.')[0]);
+			var f = field.split('.')[1];
+			return util.format('%s."%s" AS %s$%s',
+					t.viewName(), f, t.name, f);
+		} else {
+			return util.format('%s."%s" AS "%s"',
+					table.viewName(), field, field);
+		}
+	}, this);
 
-	fields = _.map(fields, function(fieldName) {
-		return util.format('%s."%s" AS "%s"', table.viewName(), fieldName, 
-			fieldName);
-	});
-
-	return fields.join(",");
+	return result.join(",");
 }
 
 SqlBuilder.prototype.orderSQL = function(table, orderClauses) {

@@ -156,8 +156,13 @@ Table.prototype.virtualFields = function() {
 }
 
 Table.prototype.viewFields = function() {
+
+	var enabledFields = _.filter(this.fields, function(f) {
+		return f.disabled != true;
+	});
+
 	return [Field.REF_NAME]
-			.concat( _.pluck(_.values(this.fields), 'name'))
+			.concat( _.pluck(enabledFields, 'name'))
 			.concat(this.virtualFields());
 }
 

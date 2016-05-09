@@ -11,6 +11,7 @@
 	, "node-dir": "*"
 	, "underscore": "*"
 	, "bunyan": "*"
+	, "bunyan-loggly": "*"
 	, "express-session": "*"
 	, "passport": "*"
 	, "passport-oauth2": "*"

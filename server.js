@@ -2,21 +2,37 @@
 var url = require('url');
 var bunyan = require('bunyan');
 
+/*
+var BunyanLoggly = require('bunyan-loggly');
+var loggly_stream = new BunyanLoggly({
+	subdomain: 'dkottow'
+	, token: 'ea829b15-4675-49a7-8c42-f227d0b9313f'
+}, 5, 500);
+*/
+
 global.log = bunyan.createLogger({
-	name: 'g6.server',
-	src: true,
-	serializers: bunyan.stdSerializers,
-	streams: [
-	{
-		stream: process.stdout,
-		level: 'info'
-	}, 
-	{
-		type: 'rotating-file',
-		path: 'logs/g6.rest-server.json',
-		level: 'debug',
-		period: '1d'
-	}]
+	name: 'g6.server'
+	, src: true
+	, serializers: bunyan.stdSerializers
+	, streams: [
+		{
+			stream: process.stdout
+			, level: 'info'
+		} 
+		, {
+			type: 'rotating-file'
+			, path: 'logs/g6.rest-server.json'
+			, level: 'debug'
+			, period: '1d'
+		}
+/*
+		, {
+			stream: loggly_stream
+			, type: 'raw'
+			, level: 'debug'
+		} 
+*/
+	]
 });
 
 var app = require('./app/app.js').app;

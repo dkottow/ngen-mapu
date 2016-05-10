@@ -108,9 +108,7 @@ Database.prototype.getStats = function(tableName, options, cbResult) {
 
 		options = options || {};		
 		var filterClauses = options.filter || [];
-
 		var fields = options.fields || '*'; 
-		if (fields == '*') fields = table.viewFields();
 
 		var sql = this.schema.sqlBuilder.statsSQL(table, fields, filterClauses);
 		

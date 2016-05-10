@@ -133,9 +133,7 @@ Table.prototype.insertPropSQL = function() {
 
 Table.prototype.field = function(name) {
 	var field = this.fields[name];
-	if ( ! field) {
-		throw new Error(util.format('field %s not found.', name));
-	}
+	if ( ! field) throw new Error(util.format('field %s not found.', name));
 	return field;
 }
 
@@ -166,13 +164,11 @@ Table.prototype.viewFields = function() {
 			.concat(this.virtualFields());
 }
 
-Table.prototype.assertFields = function(fieldNames) {
-	var me = this;
-	_.each(fieldNames, function(f) {
-		if ( ! _.contains(me.viewFields(), f)) {
-			throw new Error("unknown field '" + f + "'");
-		}			
-	});		
+Table.prototype.assertQueryField = function(fieldName) {
+	//must be a view field or the name of the table (for search filter)
+	if ( ! _.contains(this.viewFields(), fieldName) && fieldName != this.name) {
+		throw new Error("unknown field '" + fieldName + "'");
+	}			
 }
 
 Table.prototype.createSQL = function() {

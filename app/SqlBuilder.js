@@ -21,15 +21,16 @@ var SqlBuilder = function(tableGraph) {
 }
 
 SqlBuilder.prototype.selectSQL 
-	= function(table, fields, filterClauses, orderClauses, limit, offset) 
+	= function(table, fieldClauses, filterClauses, orderClauses, limit, offset) 
 {
-	assert(_.isArray(orderClauses), "arg 'orderClauses' is array");
-	assert(_.isNumber(limit), "arg limit must be integer");
-	assert(_.isNumber(offset), "arg offset must be integer");
+	var s = {};
+	s.fields = this.sanitizeFieldClauses(table, fieldClauses);
+	s.filters = this.sanitizeFieldClauses(table, filterClauses);
+	s.orders = this.sanitizeFieldClauses(table, orderClauses);
+	
+	var query = this.querySQL(table, s.fields, s.filters);
 
-	var query = this.querySQL(table, fields, filterClauses);
-
-	var orderSQL = this.orderSQL(table, orderClauses);
+	var orderSQL = this.orderSQL(table, s.orders);
 
 	var selectSQL = 'SELECT * FROM (' + query.sql + ')'
 					+ orderSQL
@@ -47,14 +48,18 @@ SqlBuilder.prototype.selectSQL
 	return result;
 }
 
-SqlBuilder.prototype.statsSQL = function(table, fields, filterClauses) 
+SqlBuilder.prototype.statsSQL = function(table, fieldClauses, filterClauses) 
 {
-	var query = this.querySQL(table, fields, filterClauses);
+	var s = {};
+	s.fields = this.sanitizeFieldClauses(table, fieldClauses);
+	s.filters = this.sanitizeFieldClauses(table, filterClauses);
+
+	var query = this.querySQL(table, s.fields, s.filters);
 
 
-	var outerSQL = _.reduce(fields, function(memo, f) {
+	var outerSQL = _.reduce(s.fields, function(memo, f) {
 		var s = util.format("min(%s) as min_%s, max(%s) as max_%s ",
-							f, f, f, f);
+							f.alias, f.alias, f.alias, f.alias);
 		return (memo.length == 0) ? s : memo + ', ' + s;
 	}, '');
 
@@ -121,32 +126,54 @@ SqlBuilder.prototype.updatePropSQL = function(patches) {
 
 // private methods...
 
+SqlBuilder.prototype.sanitizeFieldClauses = function(table, fieldClauses) {
+
+	var result;
+
+	if (fieldClauses == '*') {
+		result = _.map(table.viewFields(), function(vf) {
+			return { table: table.name, field: vf, alias: vf  }
+		});
+		
+	} else {
+		result = _.map(fieldClauses, function(fc) {
+			var item = {};
+			if (_.isString(fc)) {
+				item = { table: table.name, field: fc, alias: fc };
+			} else {
+				item = _.clone(fc);
+				item.table = item.table || table.name;
+				item.alias = item.table == table.name
+							? item.field
+							: item.table + '$' + item.field;
+			}
+
+			//validate
+			if (item.table != table.name) {
+				this.graph.assertTable(item.table);
+				var t = this.graph.table(item.table);
+				t.assertQueryField(item.field);
+			} else {
+				table.assertQueryField(item.field);
+			}
+			
+			return item;
+		}, this);
+	}
+	
+	return result;		
+}
 
 SqlBuilder.prototype.querySQL = function(table, fields, filterClauses) {
 
-	assert(_.isObject(table), "arg 'table' is object");
-	assert(fields == '*' || _.isArray(fields), "arg 'fields' is '*' or array");
-	assert(_.isArray(filterClauses), "arg 'filterClauses' is array");
-	
-	//full qualify filterClauses
-	_.each(filterClauses, function(fc) {
-		if ( ! fc.table) fc.table = table.name;
-	});
-
-	//collect filter tables
+	//collect filter and field tables
 	var joinTables = _.map(filterClauses, function(fc) {
 			return fc.table;
-	})
-
-	//collect additional field tables
-	if (fields != '*') {
-		var fieldTables = _.map(fields, function(f) {
-			if (f.indexOf('.') < 0) return table.name;
-			else return f.split('.')[0];
-		});
-		joinTables = joinTables.concat(fieldTables);
-	}	
-
+			
+	}).concat(_.map(fields, function(fc) {
+		return fc.table;
+	}));
+	
 	var joinSQL = this.joinSQL(table.name, joinTables, { joinViews: true });
 
 	var joinSearchSQL = this.joinSearchSQL(filterClauses);
@@ -303,28 +330,7 @@ SqlBuilder.prototype.joinSQL = function(fromTable, tables, options) {
 	log.debug({result: result}, '...SqlBuilder.joinSQL()');
 	return result;
 
-/*
-	var result = _.reduce(joinPath, function(memo, join) {
 
-		var joinTable = join.join_table;
-		var idTable = join.id_table;
-		var fkTable = join.fk_table;
-
-		if (joinViews) {
-			joinTable = me.graph.table(joinTable).viewName();
-			fkTable = me.graph.table(fkTable).viewName();
-			idTable = me.graph.table(idTable).viewName();
-		}			
-
-		var fk = join.fk[0]; //TODO
-
-		return memo + util.format(' INNER JOIN %s ON %s.id = %s.%s ',
-						joinTable, idTable, fkTable, fk); 
-	}, '');
-		
-//console.log(result);
-	return result;
-*/
 }
 
 SqlBuilder.prototype.filterSQL = function(filterClauses) {
@@ -335,13 +341,6 @@ SqlBuilder.prototype.filterSQL = function(filterClauses) {
 
 	_.each(filterClauses, function(filter) {
 		var table = me.graph.table(filter.table);
-
-		assert(table, util.format('filter.table %s unknown', filter.table));
-		//if ( ! (filter.op == 'search' && filter.field == '*')) 
-		if ( ! (filter.op == 'search' && filter.field == filter.table)) {
-			//check field exists		
-			table.assertFields([filter.field]);
-		}
 
 		var comparatorOperators = {
 			'eq' : '=', 
@@ -448,26 +447,14 @@ SqlBuilder.prototype.joinSearchSQL = function(filterClauses) {
 	}
 }
 
-SqlBuilder.prototype.fieldSQL = function(table, fields) {
+SqlBuilder.prototype.fieldSQL = function(table, fieldClauses) {
 
-	if (fields == '*') {
-		fields = table.viewFields();
-	} else {
-		//TODO
-		//table.assertFields(fields);
-	}
+	var result = _.map(fieldClauses, function(field) {
+		
+		var t = this.graph.table(field.table);	
+		return util.format('%s."%s" AS "%s"',
+				t.viewName(), field.field, field.alias);
 
-	var result = _.map(fields, function(field) {
-		var f = field;
-		if (field.indexOf('.') > 0) {
-			var t = this.graph.table(field.split('.')[0]);
-			var f = field.split('.')[1];
-			return util.format('%s."%s" AS %s$%s',
-					t.viewName(), f, t.name, f);
-		} else {
-			return util.format('%s."%s" AS "%s"',
-					table.viewName(), field, field);
-		}
 	}, this);
 
 	return result.join(",");
@@ -479,15 +466,13 @@ SqlBuilder.prototype.orderSQL = function(table, orderClauses) {
 	if ( ! _.isEmpty(orderClauses)) {	
 		
 		orderSQL = _.reduce(orderClauses, function(memo, order, idx) {
-			var orderField = _.keys(order)[0];
-			var orderDir = _.values(order)[0].toUpperCase();
+			var dir = order.order.toUpperCase();
 			
-			table.assertFields([orderField]);
-
-			assert(_.contains(['ASC', 'DESC'], orderDir),
-				  util.format("order dir '%s' invalid", orderDir));
+			if ( ! _.contains(['ASC', 'DESC'], dir)) {
+				throw new Error(util.format("order dir '%s' invalid", dir));
+			}
 			
-			var result = memo + util.format('"%s" %s', orderField, orderDir);
+			var result = memo + util.format('"%s" %s', order.alias, dir);
 
 			if (idx < orderClauses.length-1) result = result + ',';
 			return result;

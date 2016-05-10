@@ -23,12 +23,14 @@ describe('Parser.parser', function() {
 		try {
 			var q = '$orderby=foo DESC, bar';
 			var result = parser.parse(q);			
-	log.info(result);
+			log.info(result);
 		} catch(e) {
 			console.log(e);
 		}
 		assert.equal(result.value.length, 2);
-		assert.equal(result.value[1]['bar'], 'asc');
+		assert.equal(result.value[0].order, 'DESC');
+		assert.equal(result.value[1].field, 'bar');
+		assert.equal(result.value[1].order, 'asc');
 	});
 
 	it('filter eq ne', function() {		
@@ -40,6 +42,7 @@ describe('Parser.parser', function() {
 			console.log(e);
 		}
 		assert.equal(result.value.length, 2);
+		assert.equal(result.value[1].table, 'bar');
 		assert.equal(result.value[1].field, 'bar');
 		assert.equal(result.value[1].value, 6);
 	});

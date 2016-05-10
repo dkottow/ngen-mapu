@@ -41,8 +41,15 @@ orderByExpr
    { return [first].concat(rest); }
 
 orderByTerm
- = field:field ws? ord:('asc'i / 'desc'i)?
-   { var result = {}; result[field] = ord || 'asc';  return result; }
+ = table:(table ".")? field:field ws? order:('asc'i / 'desc'i)?
+   { 
+     var result = { 
+       table: table ? table[0] : undefined, 
+       field: field, 
+       order: order || 'asc' 
+     };  
+     return result; 
+   }
    
 filterExpr
  = first:filterTerm 
@@ -53,13 +60,13 @@ filterTerm
  = table:(table ".")? field:field ws 
    op:((op ws value) / (vecop ws values))
    { 
-	 var result = {
-		field: field,
-		op: op[0],
-		value: op[2]     
+   	 var result = {
+    		table: table ? table[0] : undefined,
+    		field: field,
+    		op: op[0],
+    		value: op[2]
      };	  
-     if (table) result.table = table[0];
-	 return result;
+	    return result;
    }
 
 op "operator"
@@ -82,7 +89,13 @@ fieldExpr
 
 fieldTerm
  = table:(table ".")? field:field
-   { return table ? table[0] + "." + field : field; }
+   { 
+     var result = { 
+      table: table ? table[0] : undefined, 
+      field: field 
+     }; 
+     return result; 
+   }
 
 table
  = identifier

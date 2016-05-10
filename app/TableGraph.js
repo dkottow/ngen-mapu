@@ -146,8 +146,14 @@ TableGraph.prototype.tablesByDependencies = function() {
 	return result;
 }
 
+TableGraph.prototype.assertTable = function(name) {
+	this.table(name);
+}
+
 TableGraph.prototype.table = function(name) {
-	return this.graph.node(name);
+	var table = this.graph.node(name);
+	if ( ! table) throw new Error(util.format('table %s not found.', name));
+	return table;
 }
 
 TableGraph.prototype.tableJoins = function(fromTable, joinTables) {

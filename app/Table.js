@@ -166,7 +166,7 @@ Table.prototype.viewFields = function() {
 
 Table.prototype.assertQueryField = function(fieldName) {
 	//must be a view field or the name of the table (for search filter)
-	if ( ! _.contains(this.viewFields(), fieldName) && fieldName != this.name) {
+	if ( ! _.contains(this.viewFields(), fieldName) && fieldName != '*') {
 		throw new Error("unknown field '" + fieldName + "'");
 	}			
 }
@@ -190,6 +190,12 @@ function tableAlias(name, idx) {
 
 Table.prototype.alias = function(idx) {
 	return tableAlias(this.name, idx);
+}
+
+Table.prototype.allFieldClauses = function() {
+	return _.map(this.viewFields(), function(vf) {
+		return { table: this.name, field: vf };
+	}, this);
 }
 
 /* 

@@ -21,9 +21,12 @@ var SqlBuilder = function(tableGraph) {
 }
 
 SqlBuilder.prototype.selectSQL 
-	= function(table, fieldClauses, filterClauses, orderClauses, limit, offset) 
+	= function(table, fieldExpr, filterClauses, orderClauses, limit, offset) 
 {
 	var s = {};
+
+	var fieldClauses = fieldExpr == '*' ? table.allFieldClauses() : fieldExpr;
+
 	s.fields = this.sanitizeFieldClauses(table, fieldClauses);
 	s.filters = this.sanitizeFieldClauses(table, filterClauses);
 	s.orders = this.sanitizeFieldClauses(table, orderClauses);
@@ -48,8 +51,11 @@ SqlBuilder.prototype.selectSQL
 	return result;
 }
 
-SqlBuilder.prototype.statsSQL = function(table, fieldClauses, filterClauses) 
+SqlBuilder.prototype.statsSQL = function(table, fieldExpr, filterClauses) 
 {
+
+	var fieldClauses = fieldExpr == '*' ? table.allFieldClauses() : fieldExpr;
+
 	var s = {};
 	s.fields = this.sanitizeFieldClauses(table, fieldClauses);
 	s.filters = this.sanitizeFieldClauses(table, filterClauses);
@@ -128,38 +134,29 @@ SqlBuilder.prototype.updatePropSQL = function(patches) {
 
 SqlBuilder.prototype.sanitizeFieldClauses = function(table, fieldClauses) {
 
-	var result;
+	var result = _.map(fieldClauses, function(fc) {
+		var item = {};
+		if (_.isString(fc)) {
+			item = { table: table.name, field: fc, alias: fc };
+		} else {
+			item = _.clone(fc);
+			item.table = item.table || table.name;
+			item.alias = item.table == table.name
+						? item.field
+						: item.table + '$' + item.field;
+		}
 
-	if (fieldClauses == '*') {
-		result = _.map(table.viewFields(), function(vf) {
-			return { table: table.name, field: vf, alias: vf  }
-		});
+		//validate
+		if (item.table != table.name) {
+			this.graph.assertTable(item.table);
+			var t = this.graph.table(item.table);
+			t.assertQueryField(item.field);
+		} else {
+			table.assertQueryField(item.field);
+		}
 		
-	} else {
-		result = _.map(fieldClauses, function(fc) {
-			var item = {};
-			if (_.isString(fc)) {
-				item = { table: table.name, field: fc, alias: fc };
-			} else {
-				item = _.clone(fc);
-				item.table = item.table || table.name;
-				item.alias = item.table == table.name
-							? item.field
-							: item.table + '$' + item.field;
-			}
-
-			//validate
-			if (item.table != table.name) {
-				this.graph.assertTable(item.table);
-				var t = this.graph.table(item.table);
-				t.assertQueryField(item.field);
-			} else {
-				table.assertQueryField(item.field);
-			}
-			
-			return item;
-		}, this);
-	}
+		return item;
+	}, this);
 	
 	return result;		
 }
@@ -394,8 +391,8 @@ SqlBuilder.prototype.filterSQL = function(filterClauses) {
 			var clause = util.format('(%s."%s" MATCH ?)', 
 							table.ftsName(),
 							//check if full row search
-							//filter.field == '*'
-							filter.field == filter.table
+							//filter.field == filter.table
+							filter.field == '*'
 								? table.ftsName()
 								: filter.field
 						); 	

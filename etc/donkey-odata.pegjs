@@ -40,6 +40,16 @@ orderByExpr
    rest:("," ws? term:orderByTerm { return term; })*
    { return [first].concat(rest); }
 
+filterExpr
+ = first:filterTerm 
+   rest:("\t" ws? term:filterTerm { return term; })*	
+   { return [first].concat(rest); }
+
+fieldExpr
+ = first:fieldTerm
+   rest:("," ws? term:fieldTerm { return term; })*
+   { return [first].concat(rest); }
+
 orderByTerm
  = table:(table ".")? field:field ws? order:('asc'i / 'desc'i)?
    { 
@@ -51,11 +61,6 @@ orderByTerm
      return result; 
    }
    
-filterExpr
- = first:filterTerm 
-   rest:("\t" ws? term:filterTerm { return term; })*	
-   { return [first].concat(rest); }
-
 filterTerm
  = table:(table ".")? field:field ws 
    op:((op ws value) / (vecop ws values))
@@ -68,24 +73,6 @@ filterTerm
      };	  
 	    return result;
    }
-
-op "operator"
- = "eq" 
- / "ne" 
- / "ge" 
- / "gt"
- / "le"
- / "lt"
- / "search"
-
-vecop "vector operator"
- = "in"
- / "btwn"
-
-fieldExpr
- = first:fieldTerm
-   rest:("," ws? term:fieldTerm { return term; })*
-   { return [first].concat(rest); }
 
 fieldTerm
  = table:(table ".")? field:field
@@ -101,7 +88,20 @@ table
  = identifier
 
 field
- = identifier
+ = identifier / "*"
+
+op "operator"
+ = "eq" 
+ / "ne" 
+ / "ge" 
+ / "gt"
+ / "le"
+ / "lt"
+ / "search"
+
+vecop "vector operator"
+ = "in"
+ / "btwn"
 
 identifier "identifier"
  = first:[a-z]i chars:fchar* 

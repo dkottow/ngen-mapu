@@ -1,3 +1,19 @@
+/*
+   Copyright 2016 Daniel Kottow
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+*/
+
 var express = require('express');
 var bodyParser = require('body-parser');
 var _ = require('underscore');
@@ -34,7 +50,6 @@ var accountControllers = {};
 
 app.init = function(cbAfter) {
 	log.info('app.init()...');
-	app.use(bodyParser.json()); //json parsing 
 
 	//enable CORS
 	app.use(function(req, res, next) {
@@ -43,6 +58,8 @@ app.init = function(cbAfter) {
 	  res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
 	  next();
 	});
+
+	app.use(bodyParser.json()); //json parsing 
 
 	//make sure tmp dir exists
 	try { fs.mkdirSync(global.tmp_dir); } 
@@ -58,8 +75,12 @@ app.init = function(cbAfter) {
 	serveAccounts(global.data_dir, cbAfter);
 
 	app.use(function(err, req, res, next) {
-		log.error(err);
-		res.send(500, err.stack);
+		log.error({req: req, err: err}, 'Internal server error...');
+		if (res.headersSent) {
+		    return next(err);
+		}
+		res.send(500, {error: 'Internal server error'});
+		log.info({res: res}, '...Internal server error');
 	});
 
 }

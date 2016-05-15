@@ -1,3 +1,19 @@
+/*
+   Copyright 2016 Daniel Kottow
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+*/
+
 
 //var sqlite3 = require('sqlite3');
 var sqlite3 = require('sqlite3').verbose();
@@ -10,6 +26,7 @@ var util = require('util');
 
 
 var Schema = require('./Schema.js').Schema;
+var DateTimeField = require('./Field.js').DateTimeField;
 
 var log = global.log.child({'mod': 'g6.Database.js'});
 
@@ -377,6 +394,8 @@ Database.prototype.update = function(tableName, rows, options, cbResult) {
 				return _.has(table.fields, fn) && fn != 'id'; 
 		});
 
+		if ( ! rows[0].mod_on) fieldNames.push('mod_on');
+
 		var sql = "UPDATE " + table.name
 				+ ' SET "' + fieldNames.join('" = ?, "') + '" = ?'
 				+ " WHERE id = ?"; 
@@ -397,6 +416,8 @@ Database.prototype.update = function(tableName, rows, options, cbResult) {
 			});
 
 			_.each(rows, function(r) {
+
+				r.mod_on = DateTimeField.toString(new Date());
 
 				if (err == null) {					
 					var params = _.map(fieldNames, function(fn) { return r[fn]; });

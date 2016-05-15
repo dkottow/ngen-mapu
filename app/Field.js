@@ -1,3 +1,19 @@
+/*
+   Copyright 2016 Daniel Kottow
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+*/
+
 var _ = require('underscore');
 var util = require('util');
 var assert = require('assert');
@@ -88,7 +104,7 @@ Field.create = function(fieldDef) {
 	} else if (fieldDef.type.indexOf("NUMERIC") == 0) {
 		return new NumericField(fieldDef);
 	} else if (fieldDef.type == "DATETIME" || fieldDef.type == "DATE") {
-		return new DatetimeField(fieldDef);
+		return new DateTimeField(fieldDef);
 	}
 
 	throw new Error(util.format("Field.create(%s) failed. Unknown type.", util.inspect(fieldDef)));
@@ -172,7 +188,7 @@ Field.prototype.defaultWidth = function() {
 	if (this instanceof IntegerField) return 4;
 	if (this instanceof NumericField) return 8;
 	if (this instanceof TextField) return 20;
-	if (this instanceof DatetimeField) return 16;
+	if (this instanceof DateTimeField) return 16;
 	return 16;
 }
 
@@ -241,19 +257,23 @@ NumericField.prototype.constraintSQL = function() {
 	return sql;
 }
 
-var DatetimeField = function(fieldDef) {
+var DateTimeField = function(fieldDef) {
 	Field.call(this, fieldDef);
 }
 
-DatetimeField.prototype = new Field;	
+DateTimeField.prototype = new Field;	
 
-DatetimeField.prototype.constraintSQL = function() {
+DateTimeField.prototype.constraintSQL = function() {
 	var sql = "CONSTRAINT chk_" + this.name + " CHECK ("
 			+ 'julianday("' + this.name + '") is not null'
 			+ ' or "' + this.name + '" is null)';
 	return sql;
 }
 
+DateTimeField.toString = function(date) {
+	return date.toISOString().replace('T', ' ').substr(0, 19); //up to secs
+}
 
 exports.Field = Field;
+exports.DateTimeField = DateTimeField;
 

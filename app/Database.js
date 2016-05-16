@@ -139,11 +139,11 @@ Database.prototype.getStats = function(tableName, options, cbResult) {
 					return;
 				}
 				var result = {};
-				_.each(fields, function(f) {
-					var min_key = 'min_' + f;
-					var max_key = 'max_' + f;
-					result[f] = { 
-						field: f,
+				_.each(sql.sanitized.fields, function(f) {
+					var min_key = 'min_' + f.alias;
+					var max_key = 'max_' + f.alias;
+					result[f.alias] = { 
+						field: f.alias,
 						min: row[min_key],
 						max: row[max_key]
 					};

@@ -61,7 +61,8 @@ SqlBuilder.prototype.selectSQL
 	var result = {
 		'query': selectSQL, 
 		'params': query.params,
-		'countSql': countSQL
+		'countSql': countSQL,
+		'sanitized': s
 	}
 	log.debug({result: result}, "SqlBuilder.selectSQL");
 	return result;
@@ -89,7 +90,8 @@ SqlBuilder.prototype.statsSQL = function(table, fieldExpr, filterClauses)
 
 	var result = {
 		'query': statsSQL, 
-		'params': query.params
+		'params': query.params,
+		'sanitized': s
 	}
 	log.debug({result: result}, "SqlBuilder.statsSQL");
 	return result;

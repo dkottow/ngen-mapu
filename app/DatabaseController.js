@@ -142,7 +142,7 @@ function DatabaseController(router, restBase, model)
 
 			});	
 
-			//insert a row into table
+			//insert rows into table
 			var postRowHandler = function(req, res) {
 				log.info({req: req}, 'DatabaseController.post()...');
 				log.info({'req.body': req.body});
@@ -180,31 +180,11 @@ function DatabaseController(router, restBase, model)
 			me.router.put(tableUrl, putRowHandler);
 			me.router.put(tableUrl + rowsExt, putRowHandler);
 
-			//update single row in table
-			var putRowHandler = function(req, res) {
-				log.info({req: req}, 'DatabaseController.put()...');
-				log.info({'req.body': req.body});
-				var row = req.body;
-				row.id = req.param('id');
-				var params = req.query;
-				me.model.update(table.name, [row], params, function(err, result) {
-					if (err) {
-						sendError(req, res, err);
-						return;
-					}
-					log.debug({'res.body': result});
-					res.send(result);  
-					log.info({res: res}, '...DatabaseController.put().');
-				});
-			}
-			me.router.put(tableUrl + "/:id", putRowHandler);
-			me.router.put(tableUrl + rowsExt + "/:id", putRowHandler);
-
-			//delete row in table
+			//delete rows from table
 			var deleteRowHandler = function(req, res) {
 				log.info({req: req}, 'DatabaseController.delete()...');
-				var id = req.param('id');
-				me.model.delete(table.name, [id], function(err, result) {
+				var rowIds = req.body;
+				me.model.delete(table.name, rowIds, function(err, result) {
 					if (err) {
 						sendError(req, res, err);
 						return;
@@ -213,8 +193,8 @@ function DatabaseController(router, restBase, model)
 					log.info({res: res}, '...DatabaseController.delete().');
 				});
 			}
-			me.router.delete(tableUrl + "/:id", deleteRowHandler);
-			me.router.delete(tableUrl + rowsExt + "/:id", deleteRowHandler);
+			me.router.delete(tableUrl, deleteRowHandler);
+			me.router.delete(tableUrl + rowsExt, deleteRowHandler);
 
 		});
 

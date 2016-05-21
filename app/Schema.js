@@ -44,7 +44,8 @@ Schema.EMPTY = {
 
 Schema.prototype.init = function(schemaData) {
 	try {
-		log.debug({data: schemaData}, 'Schema.init()...');
+		log.debug('Schema.init()...');
+		log.trace({data: schemaData});
 		
 		schemaData = schemaData || Schema.EMPTY;
 		
@@ -56,7 +57,7 @@ Schema.prototype.init = function(schemaData) {
 		this.graph = new TableGraph(tables, options);
 		this.sqlBuilder = new SqlBuilder(this.graph);
 
-		log.debug({tables: tables}, '...Schema.init()');
+		log.debug('...Schema.init()');
 
 	} catch(err) {
 		log.error({err: err, data: schemaData}, "Schema.init() exception.");
@@ -91,7 +92,9 @@ Schema.prototype.get = function() {
 
 	try {
 		
-		return this.graph.toJSON();
+		var result = this.graph.toJSON();
+		result.name = this.name;
+		return result;
 		
 	} catch(err) {
 		log.error({err: err}, "Schema.get() exception.");
@@ -114,7 +117,7 @@ Schema.prototype.patch = function(patch) {
 /******* start file ops *******/
 
 Schema.prototype.write = function(dbFile, cbAfter) {
-
+	var me = this;
 	try {
 
 		var createSQL = this.sqlBuilder.createSQL(this);
@@ -137,8 +140,9 @@ Schema.prototype.write = function(dbFile, cbAfter) {
 					cbAfter(err);
 					return;
 				}
-				log.debug('rename ' + tmpFile + ' to ' + dbFile);
-				fs.rename(tmpFile, dbFile, function(err) {
+				me.setName(dbFile);
+				log.debug('rename ' + tmpFile + ' to ' + dbFile);	
+				fs.rename(tmpFile, dbFile, function(err) {						
 					cbAfter(err);
 				});
 			});
@@ -267,6 +271,7 @@ Schema.prototype.read = function(dbFile, cbAfter) {
 								};
 								_.extend(data, schemaProps);
 								me.init(data);
+								me.setName(dbFile);
 								cbAfter();
 							});
 						});
@@ -327,6 +332,7 @@ Schema.prototype.jsonWrite = function(fileName, cbAfter) {
 				return;
 			}
 
+			me.setName(fileName);
 			cbAfter();
 		});
 
@@ -359,6 +365,7 @@ Schema.prototype.jsonRead = function(fileName, cbAfter) {
 			}
 
 			me.init(data);
+			me.setName(fileName);
 			cbAfter();
 			
 		});
@@ -371,6 +378,11 @@ Schema.prototype.jsonRead = function(fileName, cbAfter) {
 }
 
 // private methods..
+
+Schema.prototype.setName = function(fileName) {
+	var fn = path.basename(fileName);
+	this.name = fn.substr(0, fn.lastIndexOf('.')) || fn;
+}
 
 Schema.PATCH_OPS = {
 	SET_PROP: 'set_prop', 

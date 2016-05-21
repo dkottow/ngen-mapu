@@ -41,12 +41,12 @@ describe('Database', function() {
 		});
 	});
 	
-  	describe('getSchema()', function() {		
+  	describe('getInfo()', function() {		
 
 		var defs;
 		
 		before(function(done) {
-			db.getSchema(function(err, result) {
+			db.getInfo(function(err, result) {
 				defs = result;
 				log.info(defs);
 				done();

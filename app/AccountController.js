@@ -20,23 +20,11 @@ var fs = require('fs');
 var path = require('path');
 var util = require('util');
 
-var Schema = require('./Schema.js').Schema;
-var Database = require('./Database.js').Database;
+var Account = require('./Account.js').Account;
 var DatabaseController = require('./DatabaseController.js')
 								.DatabaseController;
 
 var log = global.log.child({'mod': 'g6.AccountController.js'});
-
-function fileExists(path) {
-	try {
-		var stat = fs.statSync(path);
-		return true;
-
-	} catch(err) {
-		if (err.code == 'ENOENT') return false;
-		else throw new Error(err);
-	}
-}
 
 function sendError(req, res, err) {
 	log.error(err);
@@ -45,80 +33,54 @@ function sendError(req, res, err) {
 }
 
 function AccountController(router, baseUrl, baseDir) {
-	this.baseDir = baseDir;
-	this.name = path.basename(baseDir);
 	this.url = baseUrl;
+	this.account = new Account(baseDir);
 	this.databaseControllers = {};
 	log.info("new AccountController @ " + this.url);
 
 	this.init = function(cbAfter) {
 		var me = this;
+		log.debug("AccountController.init()...");		
 
-		//serve each database
-		fs.readdir(baseDir, function(err, files) {
-			log.info('Scanning ' + baseDir);
+		me.account.init(function(err) {
 
-			if (err) {
-				throw err;
-			}
-
-			var dbFiles = files.filter(function (file) {
-				return (path.extname(file) == global.sqlite_ext);
+			var doAfter = _.after(_.size(me.account.databases), function() {
+				log.debug("...AccountController.init()");		
+				cbAfter();
 			});
 
-			dbFiles.forEach(function (file, i, files) {
-				log.debug(file + " from " + files);
-				var dbUrl = util.format('%s/%s' 
-				  , me.url
-				  , path.basename(file, global.sqlite_ext)
-				);
-				var dbFile = path.join(me.baseDir, file);					
-				var model = new Database(dbFile);
-				log.info('Serving ' + model.dbFile + " @ " + dbUrl);
-				var controller = new DatabaseController(router, dbUrl, model);
+			_.each(me.account.databases, function(db) {
+				var dbUrl = me.url + "/" + db.name();
+				log.info('Serving ' + db.name() + " @ " + dbUrl);
 
-				model.init(function() { 
-					controller.init(function() {
-						if (i == files.length - 1) cbAfter();
-					}); 
+				var ctrl = new DatabaseController(router, dbUrl, db);
+				me.databaseControllers[dbUrl] = ctrl;
+				ctrl.init(function(err) {
+					doAfter();
 				});
-
-				me.databaseControllers[dbUrl] = controller;
 			});
-
-			//handle empty dir
-			if (_.isEmpty(dbFiles)) cbAfter();
-
 		});
 
 		//serve list databases
 		var getSchemaListHandler = function(req, res) {
-			log.info(req.method + " " + req.url);
+			log.info({req: req}, 'AccountController.get()...');
 
-			var resBody = {
-				name: me.name,
-				databases: {}
-			};
-
-			var schemaDefs = {};
-			var doAfter = _.after(_.size(me.databaseControllers), function() {
-				res.send(resBody);
-			});
-
-			_.each(me.databaseControllers, function(c) {
-				c.model.getSchema(function(err, schemaDef) {
-					_.each(schemaDef.tables, function(t) { 
-						delete t.fields; 
-					});
-					schemaDef.url = me.url + '/' + schemaDef.name;
-					resBody.databases[schemaDef.name] = schemaDef;
-					//schemaDefs[c.base] = schemaDef;
-					doAfter();
+			me.account.getInfo(function(err, result) {
+				if (err) {
+					sendError(req, res, err);
+					return;
+				}
+				
+				result.url = me.url; 
+				_.each(me.databaseControllers, function(ctrl) {
+					result.databases[ctrl.db.name()].url = ctrl.url;
 				});
-			});
 
-			//handle empty account
-			if (_.size(me.databaseControllers) == 0) res.send(resBody);
+				log.trace(result);
+				res.send(result); 
+				log.info({res: res}, '...AccountController.get().');
+				
+			});
 		}
 			
 		router.get(this.url, getSchemaListHandler);	
@@ -126,139 +88,49 @@ function AccountController(router, baseUrl, baseDir) {
 
 		//serve add database
 		var postSchemaHandler = function(req, res) {
-			log.info(req.method + " " + req.url);
-			log.info({'req.body': req.body});
+			log.info({req: req}, 'DatabaseController.postSchemaHandler()...');
 
 			var schema = req.body;
-			var dbFile = util.format('%s/%s', me.baseDir,
-								schema.name + global.sqlite_ext);
+			var dbUrl = me.url + "/" + schema.name;
 
-			var dbUrl = util.format('%s/%s', me.url, schema.name);
-
-			var db = new Schema();
-			db.init(schema);
-
-			if (fileExists(dbFile)) {
-				var err = new Error("Database " + dbUrl + " exists.");
-				sendError(req, res, err);
-				return;
-			}
-
-			db.create(dbFile, function(err) {
+			me.account.writeSchema(schema, function(err, db) {
 				if (err) {
 					sendError(req, res, err);
 					return;
 				}
-				log.info(req.method + " " + req.url + " OK.");
-
-				var model = new Database(dbFile);
-				var controller = new DatabaseController(router, dbUrl, model);
-				model.init(function() { 
-					controller.init(function() {
-						res.send({name: schema.name}); //return url of new database
-					}); 
+				var ctrl = new DatabaseController(router, dbUrl, db);
+				me.databaseControllers[dbUrl] = ctrl;
+				ctrl.init(function(err) {					
+					db.getInfo(function(err, result) {
+						res.send(result);
+					});
+					log.info({res: res}, '...AccountController.post().');
 				});
-
-				me.databaseControllers[dbUrl] = controller;
 			});
 		}
 
 		router.post(this.url, postSchemaHandler);	
 		router.post(this.url + '.db', postSchemaHandler);	
 
-		//serve put database
-		var putSchemaHandler = function(req, res) {
-			log.info(req.method + " " + req.url);
-			log.info({'req.body': req.body});
-
-			var schema = req.body;
-
-			var meCtrl = me.databaseControllers[req.url];
-			if ( ! meCtrl) {
-				log.warn("schema " + req.url + " not found.");
-				res.send(404, "schema " + req.url + " not found.");
-				return;
-			}
-			meCtrl.model.getCounts(function(err, result) {
-				if (err) {
-					sendError(req, res, err);
-					return;					
-				}
-				var totalRowCount = _.reduce(result, 
-					function(memo, rows) { 
-						return memo + rows; 
-					}, 
-				0);
-				log.debug("total rows " + totalRowCount);
-				if (totalRowCount > 0) {
-					var err = new Error("Database " + req.url + " not empty.");
-					sendError(req, res, err);
-					return;
-				}
-				var dbFile = meCtrl.model.dbFile;	
-				var db = new Schema();
-				db.init(schema);
-				db.create(dbFile, function(err) {
-					if (err) {
-						sendError(req, res, err);
-						return;
-					}
-
-					log.info(req.method + " " + req.url + " OK.");
-					meCtrl.model = new Database(dbFile);
-					meCtrl.model.init(function() { 
-						meCtrl.init( function() {
-							res.send({}); 
-						});
-					});
-				});
-			});
-		}
-
-		router.put(this.url + "/:schema", putSchemaHandler);	
-		router.put(this.url + '"/:schema.db', putSchemaHandler);	
-
-
 		//serve delete database
 		var deleteSchemaHandler = function(req, res) {
 			log.info(req.method + " " + req.url);
 
-			var meCtrl = me.databaseControllers[req.url];
-			if ( ! meCtrl) {
-				log.warn("schema " + req.url + " not found.");
-				res.send(404, "schema " + req.url + " not found.");
+			var ctrl = me.databaseControllers[req.url];
+			if ( ! ctrl) {
+				var err = new Error(req.url + " not found.");
+				sendError(req, res, err);	
 				return;
 			}
 
-			meCtrl.model.getCounts(function(err, result) {
+			me.account.removeDatabase(ctrl.db.name(), function(err, sucess) {
 				if (err) {
 					sendError(req, res, err);
 					return;
-					
 				}
-				var totalRowCount = _.reduce(result, 
-					function(memo, rows) { 
-						return memo + rows; 
-					}, 
-				0);
-				log.debug("total rows " + totalRowCount);
-			
-				if (totalRowCount > 0) {
-					err = new Error("Database " + req.url + " not empty.");	
-					sendError(req, res, err);
-					return;
-				}
-
-				var dbFile = meCtrl.model.dbFile;	
-				Schema.remove(dbFile, function(err) {
-					if (err) {
-						sendError(req, res, err);
-						return;
-					}
-					log.info(req.method + " " + req.url + " OK.");
-					delete me.databaseControllers[req.url];
-					res.send({});
-				});
+				
+				delete me.databaseControllers[req.url];
+				res.send({});
 			});
 		}
 

@@ -128,7 +128,7 @@ function serveAccounts(rootDir, cbAfter) {
 					router.get('/', function(req, res) {
 						log.info(req.method + ' ' + req.url);
 						var accounts = _.map(accountControllers, function(ac) {
-							return { name: ac.name,
+							return { name: ac.account.name,
 									 url: ac.url
 							};
 						});

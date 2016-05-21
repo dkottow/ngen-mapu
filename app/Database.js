@@ -47,6 +47,10 @@ Database.prototype.init = function(cbAfter) {
 	this.schema.read(this.dbFile, cbAfter);
 }
 
+Database.prototype.name = function() { 
+	return this.schema.name;
+}
+
 Database.prototype.table = function(name) { 
 	return this.schema.table(name);
 }
@@ -56,19 +60,14 @@ Database.prototype.tables = function() {
 	return _.object(_.pluck(tables, 'name'), tables); 
 };
 
-Database.prototype.getSchema = function(options, cbResult) {
+Database.prototype.getInfo = function(options, cbResult) {
 
-	if (! cbResult) {
-		//shift fn args
-		cbResult = options;
-		options = {};
-	}
+	cbResult = cbResult || arguments[arguments.length - 1];	
+	options = typeof options == 'object' ? options : {};		
 
-	options = options || {};		
 	var skipCounts = options.skipCounts || false;
 
 	var result = this.schema.get();
-	result.name = path.basename(this.dbFile, global.sqlite_ext);
 
 	if (skipCounts) {
 		cbResult(null, result);
@@ -147,13 +146,9 @@ Database.prototype.getStats = function(tableName, options, cbResult) {
 
 		var table = this.table(tableName);
 
-		if (! cbResult) {
-			//shift fn args
-			cbResult = options;
-			options = {};
-		}
+		cbResult = cbResult || arguments[arguments.length - 1];	
+		options = typeof options == 'object' ? options : {};		
 
-		options = options || {};		
 		var filterClauses = options.filter || [];
 		var fields = options.fields || '*'; 
 
@@ -193,11 +188,9 @@ Database.prototype.all = function(tableName, options, cbResult) {
 	try {
 
 		var table = this.table(tableName);
-		if (! cbResult) {
-			cbResult = options;
-			options = {};
-		}
-		options = options || {};		
+
+		cbResult = cbResult || arguments[arguments.length - 1];	
+		options = typeof options == 'object' ? options : {};		
 
 		var filterClauses = options.filter || [];
 		var fields = options.fields || '*'; 
@@ -207,7 +200,7 @@ Database.prototype.all = function(tableName, options, cbResult) {
 
 		var debug = options.debug || false;
 
-		log.debug(fields + " from " + table.name 
+		log.trace(fields + " from " + table.name 
 				+ " filtered by " + util.inspect(filterClauses));
 
 		var sql = this.schema.sqlBuilder.selectSQL(table, fields, filterClauses, order, limit, offset);
@@ -222,7 +215,7 @@ Database.prototype.all = function(tableName, options, cbResult) {
 					cbResult(err, null);
 				});
 			} else {
-				log.debug({rows : rows});
+				log.trace({rows : rows});
 				
 				var countSql = sql.countSql 
 					+ ' UNION ALL SELECT COUNT(*) as count FROM ' + table.name; 
@@ -268,11 +261,9 @@ Database.prototype.get = function(tableName, options, cbResult) {
 	try {
 
 		var table = this.table(tableName);
-		if (! cbResult) {
-			cbResult = options;
-			options = {};
-		}
-		options = options || {};		
+
+		cbResult = cbResult || arguments[arguments.length - 1];	
+		options = typeof options == 'object' ? options : {};		
 
 		var filterClauses = options.filter || [];
 		var fields = options.fields || '*'; 
@@ -314,13 +305,8 @@ Database.prototype.insert = function(tableName, rows, options, cbResult) {
 
 	try {
 
-		if (! cbResult) {
-			//shift fn args
-			cbResult = options;
-			options = {};
-		}
-
-		options = options || {};		
+		cbResult = cbResult || arguments[arguments.length - 1];	
+		options = typeof options == 'object' ? options : {};		
 
 		var returnModifiedRows = options.retmod || false;
 
@@ -403,20 +389,16 @@ Database.prototype.update = function(tableName, rows, options, cbResult) {
 
 	try {
 
-		var table = this.table(tableName);
-
 		if (rows.length == 0) {
 			cbResult(null, []);
 			return;
 		}
 
-		if (! cbResult) {
-			//shift fn args
-			cbResult = options;
-			options = {};
-		}
+		var table = this.table(tableName);
 
-		options = options || {};		
+		cbResult = cbResult || arguments[arguments.length - 1];	
+		options = typeof options == 'object' ? options : {};		
+
 		var returnModifiedRows = options.retmod || false;
 
 		var fieldNames = _.filter(_.keys(rows[0]) 

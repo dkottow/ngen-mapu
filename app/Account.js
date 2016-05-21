@@ -27,17 +27,6 @@ var log = global.log.child({'mod': 'g6.Account.js'});
 
 global.sqlite_ext = global.sqlite_ext || '.sqlite';
 
-function fileExists(path) {
-	try {
-		var stat = fs.statSync(path);
-		return true;
-
-	} catch(err) {
-		if (err.code == 'ENOENT') return false;
-		else throw new Error(err);
-	}
-}
-
 function Account(baseDir) {
 	this.baseDir = baseDir;
 	this.name = path.basename(baseDir);
@@ -67,6 +56,12 @@ Account.prototype.init = function(cbAfter) {
 
 		log.debug({dbFiles: dbFiles});
 
+		var doAfter = _.after(dbFiles.length, function() {
+			log.debug("...Account.init()");
+			cbAfter();
+			return;
+		});
+
 		dbFiles.forEach(function (file, i, files) {
 			log.debug({dbFile: file}, "init");
 
@@ -76,11 +71,7 @@ Account.prototype.init = function(cbAfter) {
 			me.databases[name] = new Database(dbFile);
 
 			me.databases[name].init(function() { 
-				if (i == files.length - 1) {
-					log.debug("...Account.init()");
-					cbAfter();
-					return;
-				}
+				doAfter();
 			});
 		});
 
@@ -89,12 +80,14 @@ Account.prototype.init = function(cbAfter) {
 			log.debug("Account is empty.");
 			cbAfter();
 		}
-		
-
 	});
 }
 
-Account.prototype.get = function(cbAfter) {
+Account.prototype.database = function(name) { 
+	return this.databases[name];
+}
+
+Account.prototype.getInfo = function(cbResult) {
 	var me = this;
 
 	var result = {
@@ -103,11 +96,11 @@ Account.prototype.get = function(cbAfter) {
 	};
 
 	var doAfter = _.after(_.size(me.databases), function() {
-		cbAfter(null, result);
+		cbResult(null, result);
 	});
 
 	_.each(this.databases, function(db) {
-		db.getSchema({skipCounts: true}, function(err, schemaData) {
+		db.getInfo({skipCounts: true}, function(err, schemaData) {
 			_.each(schemaData.tables, function(t) { 
 				delete t.fields; 
 			});
@@ -118,19 +111,16 @@ Account.prototype.get = function(cbAfter) {
 
 	//handle empty account
 	if (_.size(me.databases) == 0) {
-		cbAfter(null, result);
+		cbResult(null, result);
 	};
 }
 
-Account.prototype.writeSchema = function(schemaData, options, cbAfter) {
+Account.prototype.writeSchema = function(schemaData, options, cbResult) {
 	var me = this;
 	var name = schemaData.name;
 
-	if (! cbAfter) {
-		cbAfter = options;
-		options = {};
-	}
-	options = options || {};		
+	cbResult = cbResult || arguments[arguments.length - 1];	
+	options = typeof options == 'object' ? options : {};		
 
 	var createSchemaFn = function() {
 		var dbFile = util.format('%s/%s', me.baseDir, 
@@ -141,13 +131,13 @@ Account.prototype.writeSchema = function(schemaData, options, cbAfter) {
 
 		newSchema.write(dbFile, function(err) {
 			if (err) {
-				cbAfter(err, null);
+				cbResult(err, null);
 				return;
 			} 
 			log.info("Created database file " + dbFile);
 			var newDb = new Database(dbFile, {schema: newSchema});	
 			me.databases[name] = newDb;
-			cbAfter(null, newDb);
+			cbResult(null, newDb);
 		});
 	}
 
@@ -163,7 +153,8 @@ Account.prototype.writeSchema = function(schemaData, options, cbAfter) {
 				var err = new Error(util.format(
 					"Database %s exists and is not empty.", name
 				));
-				cbAfter(err, null);
+				log.warn({err: err}, "Account.writeSchema()");
+				cbResult(err, null);
 			}	
 		});
 
@@ -172,26 +163,24 @@ Account.prototype.writeSchema = function(schemaData, options, cbAfter) {
 	}
 }
 
-Account.prototype.removeDatabase = function(name, options, cbAfter) {
+Account.prototype.removeDatabase = function(name, options, cbResult) {
 	var me = this;
 
-	if (! cbAfter) {
-		cbAfter = options;
-		options = {};
-	}
-	options = options || {};		
+	cbResult = cbResult || arguments[arguments.length - 1];	
+	options = typeof options == 'object' ? options : {};		
+
 	var checkEmpty = ! options.force; 
 
 	var removeDatabaseFn = function() {
 		var dbFile = me.databases[name].dbFile;
 		Schema.remove(dbFile, function(err) {
 			if (err) {
-				cbAfter(err, false);
+				cbResult(err, false);
 				return;
 			}
 			log.info("Deleted database file " + dbFile);
 			delete me.databases[name];
-			cbAfter(null, true);
+			cbResult(null, true);
 		});
 	}
 
@@ -207,7 +196,8 @@ Account.prototype.removeDatabase = function(name, options, cbAfter) {
 					var err = new Error(util.format(
 						"Database %s is not empty.", name
 					));
-					cbAfter(err, false);
+					log.warn({err: err}, "Account.removeDatabase()");
+					cbResult(err, false);
 				}	
 			});
 		} else {
@@ -217,7 +207,19 @@ Account.prototype.removeDatabase = function(name, options, cbAfter) {
 		var err = new Error(util.format(
 			"Database %s not found.", name
 		));
-		cbAfter(err, false);
+		log.warn({err: err}, "Account.removeDatabase()");
+		cbResult(err, false);
+	}
+}
+
+function fileExists(path) {
+	try {
+		var stat = fs.statSync(path);
+		return true;
+
+	} catch(err) {
+		if (err.code == 'ENOENT') return false;
+		else throw new Error(err);
 	}
 }
 

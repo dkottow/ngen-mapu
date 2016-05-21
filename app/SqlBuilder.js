@@ -64,7 +64,7 @@ SqlBuilder.prototype.selectSQL
 		'countSql': countSQL,
 		'sanitized': s
 	}
-	log.debug({result: result}, "SqlBuilder.selectSQL");
+	log.trace({result: result}, "SqlBuilder.selectSQL");
 	return result;
 }
 
@@ -93,7 +93,7 @@ SqlBuilder.prototype.statsSQL = function(table, fieldExpr, filterClauses)
 		'params': query.params,
 		'sanitized': s
 	}
-	log.debug({result: result}, "SqlBuilder.statsSQL");
+	log.trace({result: result}, "SqlBuilder.statsSQL");
 	return result;
 }
 
@@ -131,7 +131,7 @@ SqlBuilder.prototype.createSQL = function(schema) {
 			+ createViewSQL + '\n\n'
 			+ createSearchSQL + '\n\n';
 	
-	log.debug({sql: sql}, 'SqlBuilder.createSQL');
+	log.trace({sql: sql}, 'SqlBuilder.createSQL');
 	return sql;
 }
 
@@ -143,7 +143,7 @@ SqlBuilder.prototype.updatePropSQL = function(patches) {
 	var sql = _.reduce(tables, function(memo, patches) {
 		return memo + patches[0].table.updatePropSQL();
 	}, '');
-	log.debug({sql: sql}, "SqlBuilder.updatePropSQL");
+	log.trace({sql: sql}, "SqlBuilder.updatePropSQL");
 
 	return sql;
 }
@@ -303,7 +303,8 @@ SqlBuilder.prototype.createViewSQL = function(table) {
 
 SqlBuilder.prototype.joinSQL = function(fromTable, tables, options) {
 
-	log.debug({from: fromTable, join: tables}, 'SqlBuilder.joinSQL()...');
+	log.debug('SqlBuilder.joinSQL()...');
+	log.trace({from: fromTable, join: tables});
 	options = options || {};
 
 	var joinTables = _.without(_.uniq(tables), fromTable).sort();
@@ -342,7 +343,8 @@ SqlBuilder.prototype.joinSQL = function(fromTable, tables, options) {
 		query: ' AND ' + sql_clauses.join(' AND ')
 	};
 		
-	log.debug({result: result}, '...SqlBuilder.joinSQL()');
+	log.trace({result: result});
+	log.debug('...SqlBuilder.joinSQL()');
 	return result;
 
 

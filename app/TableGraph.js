@@ -31,8 +31,8 @@ var TableGraph = function(tables, options) {
 	init(tables, options);
 
 	function init(tables, options) {	
-		log.debug({tables: _.pluck(tables, 'name'),
-			options: options}, 'TableGraph.init()...');
+		log.debug('TableGraph.init()...');
+		log.trace({tables: _.pluck(tables, 'name'), options: options});
 
 		_.each(tables, function(table) {
 			me.graph.setNode(table.name, table);					
@@ -62,7 +62,7 @@ if (_.find(tables, function(t) { return t.name == 'Formation'; })) {
 	me.trees = loadUserTrees();
 }
 */
-		log.debug({trees: me.trees}, 'TableGraph.init()');
+		log.trace({trees: me.trees}, 'TableGraph.init()');
 		log.debug('...TableGraph.init().');
 	}
 
@@ -219,7 +219,7 @@ TableGraph.prototype.toJSON = function() {
 		tables: tables,
 		join_trees: trees
 	};
-	log.debug({result: result}, 'TableGraph.toJSON()');
+	log.trace({result: result}, 'TableGraph.toJSON()');
 	return result;
 }
 

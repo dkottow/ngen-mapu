@@ -111,7 +111,7 @@ Table.prototype.updatePropSQL = function() {
 		sql += "\n" + f.updatePropSQL(this);
 	}, this);
 
-	log.debug({sql: sql}, "Table.updatePropSQL()");
+	log.trace({sql: sql}, "Table.updatePropSQL()");
 	return sql;
 }
 
@@ -143,7 +143,7 @@ Table.prototype.insertPropSQL = function() {
 		sql += "\n" + f.insertPropSQL(this);
 	}, this);
 
-	log.debug({sql: sql}, "Table.insertPropSQL()");
+	log.trace({sql: sql}, "Table.insertPropSQL()");
 	return sql;
 }
 

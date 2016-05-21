@@ -22,6 +22,7 @@
   , "devDependencies": {
 	"mocha": "*",
 	"request": "*",
+	"fs-extra": "*",
 	"probdist": "*",
 	"random-js": "*"
   }

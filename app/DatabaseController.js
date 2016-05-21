@@ -25,14 +25,14 @@ function sendError(req, res, err) {
 	res.send(400, err.message);
 }
 
-function DatabaseController(router, restBase, model)
+function DatabaseController(router, baseUrl, db)
 {	
 	this.router = router;
-	this.base = restBase;
-	this.model = model;
+	this.url = baseUrl;
+	this.db = db;
 	//this.seed = Math.random();
 	//console.log("created DatabaseController " + this.seed);
-	log.info("new DatabaseController @ " + restBase);
+	log.info("new DatabaseController @ " + baseUrl);
 
 	this.init = function(cbAfter) {
 		var me = this;
@@ -40,27 +40,28 @@ function DatabaseController(router, restBase, model)
 		//get schema 
 		var getSchemaHandler = function(req, res) {
 			log.info({req: req}, 'DatabaseController.getSchemaHandler()...');
-			me.model.getSchema(function(err, result) {
+			me.db.getInfo(function(err, result) {
 				if (err) {
 					sendError(req, res, err);
 					return;
 				}
+				result.url = me.url;
 				_.each(result.tables, function(t) {
-					t['url'] = me.base + "/" + t['name'];
+					t.url = me.url + "/" + t.name;
 				});
-				log.debug(result);
+				log.trace(result);
 				res.send(result); 
 				log.info({res: res}, '...DatabaseController.getSchema().');
 			});
 			//log.info(" served by " + me.seed);
 			//res.send(defs);
 		}
-		this.router.get(me.base, getSchemaHandler);
-		this.router.get(me.base + ".db", getSchemaHandler);
+		this.router.get(me.url, getSchemaHandler);
+		this.router.get(me.url + ".db", getSchemaHandler);
 		
 		var rowsExt = ".rows";
-		_.each(me.model.tables(), function(table) {
-			var tableUrl = me.base + "/" + table['name'];
+		_.each(me.db.tables(), function(table) {
+			var tableUrl = me.url + "/" + table['name'];
 
 			var getRowsHandler = function(req, res) {
 				log.info({req: req}, 'DatabaseController.get()...');
@@ -76,7 +77,7 @@ function DatabaseController(router, restBase, model)
 				});
 				log.debug({params: params});
 
-				me.model.all(table.name, {
+				me.db.all(table.name, {
 						filter: params['$filter'] 
 						, fields: params['$select'] 
 						, order: params['$orderby'] 
@@ -125,7 +126,7 @@ function DatabaseController(router, restBase, model)
 					}
 				});
 
-				me.model.getStats(table.name, { 
+				me.db.getStats(table.name, { 
 						filter: params['$filter'], 
 						fields: params['$select'] 
 					}, 
@@ -148,7 +149,7 @@ function DatabaseController(router, restBase, model)
 				log.info({'req.body': req.body});
 				var rows = req.body;
 				var params = req.query;
-				me.model.insert(table.name, rows, params, function(err, result) {
+				me.db.insert(table.name, rows, params, function(err, result) {
 					if (err) {
 						sendError(req, res, err);
 						return;
@@ -167,7 +168,7 @@ function DatabaseController(router, restBase, model)
 				log.info({'req.body': req.body});
 				var rows = req.body;
 				var params = req.query;
-				me.model.update(table.name, rows, params, function(err, result) {
+				me.db.update(table.name, rows, params, function(err, result) {
 					if (err) {
 						sendError(req, res, err);
 						return;
@@ -184,7 +185,7 @@ function DatabaseController(router, restBase, model)
 			var deleteRowHandler = function(req, res) {
 				log.info({req: req}, 'DatabaseController.delete()...');
 				var rowIds = req.body;
-				me.model.delete(table.name, rowIds, function(err, result) {
+				me.db.delete(table.name, rowIds, function(err, result) {
 					if (err) {
 						sendError(req, res, err);
 						return;
@@ -202,7 +203,7 @@ function DatabaseController(router, restBase, model)
 		var patchSchemaHandler = function(req, res) {
 			log.info({req: req}, 'DatabaseController.patchSchema()...');
 			var patches = req.body;
-			me.model.patchSchema(patches, function(err, result) {
+			me.db.patchSchema(patches, function(err, result) {
 				if (err) {
 					sendError(req, res, err);
 					return;
@@ -214,8 +215,8 @@ function DatabaseController(router, restBase, model)
 			//log.info(" served by " + me.seed);
 			//res.send(defs);
 		}
-		this.router.patch(me.base, patchSchemaHandler);
-		this.router.patch(me.base + ".db", patchSchemaHandler);
+		this.router.patch(me.url, patchSchemaHandler);
+		this.router.patch(me.url + ".db", patchSchemaHandler);
 
 		if (cbAfter) cbAfter();
 	}

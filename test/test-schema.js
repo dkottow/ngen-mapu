@@ -4,16 +4,15 @@ var assert = require('assert')
 	, util = require('util')
 	, sqlite3 = require('sqlite3').verbose();
 	
-global.log = require('./log.js').log;
+global.log = require('./create_log.js').log;
 	
-var Schema = require('../app/Schema').Schema
-	, Model = require('../app/Database').Database;
+var Schema = require('../app/Schema').Schema;
 	
 var log = global.log.child({'mod': 'mocha.test-schema.js'});
 
 describe('Schema', function() {
-	var jsonSalesFile = "test/sales.json";
-	var dbFile = "test/test-create.sqlite";
+	var jsonSalesFile = "test/data/json/sales.json";
+	var dbFile = "test/data/sqlite/test-create.sqlite";
 
 	describe('Schema.init()', function() {
 		it('ctor guards tableDef', function() {
@@ -82,7 +81,7 @@ describe('Schema', function() {
 		});
 	});
 	
-	describe('Schema.create()', function() {
+	describe('Schema.write()', function() {
 		
 		before(function(done) {
 			Schema.remove(dbFile, function(err) {
@@ -90,13 +89,13 @@ describe('Schema', function() {
 			});
 		});	
 
-		it('create example', function(done) {
+		it('write example', function(done) {
 	
 			var schema = new Schema();
 			schema.jsonRead(jsonSalesFile, function(err) {
 				log.info(err);
 				assert(err == null, err);
-				schema.create(dbFile, function(err) {
+				schema.write(dbFile, function(err) {
 					log.info(err);
 					done();	
 				});

@@ -6,7 +6,7 @@ var assert = require('assert')
 	, _ = require('underscore')
 	, util = require('util');
 	
-global.log = require('./log.js').log;
+global.log = require('./create_log.js').log;
 
 var parser = require('../app/QueryParser');
 

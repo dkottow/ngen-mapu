@@ -4,7 +4,7 @@ var assert = require('assert')
 	, util = require('util')
 	, request = require('request');
 	
-global.log = require('./log.js').log;
+global.log = require('./create_log.js').log;
 
 var app = require('../app/app.js').app;
 

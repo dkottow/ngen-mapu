@@ -17,7 +17,6 @@
 
 //var sqlite3 = require('sqlite3');
 var sqlite3 = require('sqlite3').verbose();
-var dir = require('node-dir');
 var _ = require('underscore');
 
 var fs = require('fs');
@@ -31,16 +30,16 @@ var DateTimeField = require('./Field.js').DateTimeField;
 var log = global.log.child({'mod': 'g6.Database.js'});
 
 global.row_max_count = global.row_count || 1000;
+global.sqlite_ext = global.sqlite_ext || '.sqlite';
 
-var Database = function(dbFile) 
+var Database = function(dbFile, options) 
 {
 	log.debug('new Database ' + dbFile);
 
-	//destroy cached DBs with this name
-	//delete sqlite3.cached.objects[path.resolve(dbFile)];
+	options = options || {};
 
 	this.dbFile = dbFile;
-	this.schema = null;
+	this.schema = options.schema || null;
 }
 	
 Database.prototype.init = function(cbAfter) {
@@ -57,9 +56,25 @@ Database.prototype.tables = function() {
 	return _.object(_.pluck(tables, 'name'), tables); 
 };
 
-Database.prototype.getSchema = function(cbResult) {
+Database.prototype.getSchema = function(options, cbResult) {
+
+	if (! cbResult) {
+		//shift fn args
+		cbResult = options;
+		options = {};
+	}
+
+	options = options || {};		
+	var skipCounts = options.skipCounts || false;
+
 	var result = this.schema.get();
 	result.name = path.basename(this.dbFile, global.sqlite_ext);
+
+	if (skipCounts) {
+		cbResult(null, result);
+		return;
+	}
+	
 	this.getCounts(function(err, counts) {
 		if (err) {
 			cbResult(err, null);
@@ -72,8 +87,22 @@ Database.prototype.getSchema = function(cbResult) {
 	});
 }
 
-Database.prototype.getCounts = function(cbResult) {
+Database.prototype.isEmpty = function(cbResult) {
+	this.getCounts(function(err, result) {
+		if (err) cbResult(err, null);
+		
+		var totalRowCount = _.reduce(result, 
+			function(memo, tableRowCount) { 
+				return memo + tableRowCount; 
+			}, 
+		0);
 
+		cbResult(null, totalRowCount == 0);
+	});
+}
+
+Database.prototype.getCounts = function(cbResult) {
+	log.debug("Database.getCounts()...");
 	try {
 		//add row counts
 		var sql = _.map(_.keys(this.tables()), function(tn) {
@@ -101,6 +130,7 @@ Database.prototype.getCounts = function(cbResult) {
 				_.each(rows, function(r) {
 					result[r.table_name] = r.count;
 				});
+				log.debug("...Database.getCounts()");
 				cbResult(null, result);
 			});
 		});

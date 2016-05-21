@@ -4,7 +4,7 @@ var assert = require('assert')
 	, util = require('util')
 	, graphlib = require('graphlib');
 	
-global.log = require('./log.js').log;
+global.log = require('./create_log.js').log;
 	
 var Table = require('../app/Table.js').Table
 	, TableGraph = require('../app/TableGraph.js').TableGraph
@@ -57,9 +57,11 @@ describe('GetAllPaths', function() {
 	});
 });
 
+var jsonDir = "test/data/json";
+
 describe('Sandwiches DB', function() {
 
-	var jsonFile = 'test/sales.json';
+	var jsonFile = jsonDir + '/sales.json';
 	var tableGraph;
 	beforeEach(function(done) {	
 
@@ -117,7 +119,7 @@ describe('Sandwiches DB', function() {
 
 describe('Soccer DB', function() {
 
-	var jsonFile = "test/soccer.json";
+	var jsonFile = jsonDir + "/soccer.json";
 	var tableGraph;
 
 	beforeEach(function(done) {		

@@ -24,8 +24,20 @@ var loggly_stream = new BunyanLoggly({
 	, token: 'ea829b15-4675-49a7-8c42-f227d0b9313f'
 }, 5, 500);
 */
+var prodLog = {
+	name: 'g6.server'
+	, serializers: bunyan.stdSerializers
+	, streams: [
+		{
+			type: 'rotating-file'
+			, path: 'logs/g6.rest-server.json'
+			, level: 'info'
+			, period: '1d'
+		}
+	]
+};
 
-global.log = bunyan.createLogger({
+var debugLog = {
 	name: 'g6.server'
 	, src: true
 	, serializers: bunyan.stdSerializers
@@ -48,7 +60,14 @@ global.log = bunyan.createLogger({
 		} 
 */
 	]
-});
+};
+
+
+if (process.env.DONKEYLIFT_LOG == 'prod') {
+	global.log = bunyan.createLogger(prodLog);
+} else {
+	global.log = bunyan.createLogger(debugLog);
+}
 
 var app = require('./app/app.js').app;
 

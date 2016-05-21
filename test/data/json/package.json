@@ -1,0 +1,32 @@
+
+{
+  	"name": "rest-server"
+  , "description": "serves a directory tree of sqlite files through a rest api"
+  , "version": "0.0.1"
+  , "private": true
+  , "dependencies": {
+    "express": "4.x"
+    , "body-parser": "*"
+	, "sqlite3": "*"
+	, "node-dir": "*"
+	, "underscore": "*"
+	, "bunyan": "*"
+	, "express-session": "*"
+	, "passport": "*"
+	, "passport-oauth2": "*"
+	, "pegjs": "*"
+	, "tmp": "*"
+	, "graphlib": "*"
+  }
+  , "devDependencies": {
+	"mocha": "*",
+	"request": "*",
+	"probdist": "*",
+	"random-js": "*"
+  }
+  , "main": "server.js"
+  , "scripts": {
+  	"start": "node server.js | node_modules/bunyan/bin/bunyan -o short"
+  }
+}
+

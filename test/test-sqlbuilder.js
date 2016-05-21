@@ -4,7 +4,7 @@ var assert = require('assert')
 	, util = require('util')
 	, fs = require('fs');
 	
-global.log = require('./log.js').log;
+global.log = require('./create_log.js').log;
 	
 var Table = require('../app/Table.js').Table
 	, Schema = require('../app/Schema.js').Schema //to read json
@@ -25,9 +25,11 @@ function sqlReplaceParams(selectResult) {
 	return sql;
 }
 
+var jsonDir = "test/data/json";
+
 describe('Sandwiches DB', function() {
 
-	var jsonFile = "test/sales.json";
+	var jsonFile = jsonDir + "/sales.json";
 	var sqlBuilder;
 	var schema;
 
@@ -147,7 +149,7 @@ describe('Sandwiches DB', function() {
 
 describe('Soccer DB', function() {
 
-	var jsonFile = "test/soccer.json";
+	var jsonFile = jsonDir + "/soccer.json";
 	var sqlBuilder;
 
 	beforeEach(function(done) {		

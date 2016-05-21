@@ -99,53 +99,6 @@ Schema.prototype.get = function() {
 	}
 }
 
-Schema.PATCH_OPS = {
-	SET_PROP: 'set_prop', 
-	ADD_FIELD: 'add_field', 
-	ADD_TABLE: 'add_table'
-};
-
-Schema.prototype.parsePatch = function(patch) {
-
-	if ( ! _.contains(Schema.PATCH_OPS, patch.op)) {
-		throw new Error("Unknown patch op. " + patch.op);
-	}
-
-	if (patch.op == 'set_prop') {
-
-		var path = patch.path.split('/');
-		if (path[0].length == 0) path.shift();
-
-		var table = this.table(path.shift());
-		var prop = path.pop();
-
-		if (path.length == 0) {			
-			return {
-				op: patch.op,
-				table: table,
-				prop: prop,
-				value: patch.value,
-				apply: function() {
-					table.setProp(prop, patch.value);
-				}							
-			}
-		} else if (path.length == 1) {			
-			var field = table.field(path.shift());
-			return {
-				op: patch.op,
-				table: table,
-				field: field,
-				prop: prop,
-				value: patch.value,
-				apply: function() {
-					field.setProp(prop, patch.value);
-				}							
-			}
-		}
-	}
-	return {};
-}
-
 Schema.prototype.patch = function(patch) {
 	try {	
 		var patchHandler = this.parsePatch(patch);		
@@ -160,7 +113,7 @@ Schema.prototype.patch = function(patch) {
 
 /******* start file ops *******/
 
-Schema.prototype.create = function(dbFile, cbAfter) {
+Schema.prototype.write = function(dbFile, cbAfter) {
 
 	try {
 
@@ -179,7 +132,7 @@ Schema.prototype.create = function(dbFile, cbAfter) {
 			db.exec(createSQL, function(err) {
 				db.close();
 				if (err) {
-					log.error("Schema.create() failed. " + err);	
+					log.error("Schema.write() failed. " + err);	
 					fs.unlink(tmpFile);
 					cbAfter(err);
 					return;
@@ -192,7 +145,7 @@ Schema.prototype.create = function(dbFile, cbAfter) {
 		});
 
 	} catch(err) {
-		log.error({err: err}, "Schema.create() exception.");
+		log.error({err: err}, "Schema.write() exception.");
 		cbAfter(err);
 	}
 }
@@ -415,6 +368,55 @@ Schema.prototype.jsonRead = function(fileName, cbAfter) {
 			"Schema.jsonRead() exception.");
 		cbAfter(err);
 	}
+}
+
+// private methods..
+
+Schema.PATCH_OPS = {
+	SET_PROP: 'set_prop', 
+	ADD_FIELD: 'add_field', 
+	ADD_TABLE: 'add_table'
+};
+
+Schema.prototype.parsePatch = function(patch) {
+
+	if ( ! _.contains(Schema.PATCH_OPS, patch.op)) {
+		throw new Error("Unknown patch op. " + patch.op);
+	}
+
+	if (patch.op == 'set_prop') {
+
+		var path = patch.path.split('/');
+		if (path[0].length == 0) path.shift();
+
+		var table = this.table(path.shift());
+		var prop = path.pop();
+
+		if (path.length == 0) {			
+			return {
+				op: patch.op,
+				table: table,
+				prop: prop,
+				value: patch.value,
+				apply: function() {
+					table.setProp(prop, patch.value);
+				}							
+			}
+		} else if (path.length == 1) {			
+			var field = table.field(path.shift());
+			return {
+				op: patch.op,
+				table: table,
+				field: field,
+				prop: prop,
+				value: patch.value,
+				apply: function() {
+					field.setProp(prop, patch.value);
+				}							
+			}
+		}
+	}
+	return {};
 }
 
 Schema.prototype.writePatches = function(dbFile, patchDefs, cbAfter) {

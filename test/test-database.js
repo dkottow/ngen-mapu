@@ -6,7 +6,7 @@ var assert = require('assert')
 	, util = require('util')
 	, sqlite3 = require('sqlite3').verbose();
 
-global.log = require('./log.js').log;
+global.log = require('./create_log.js').log;
 
 var Database = require('../app/Database').Database;
 var Schema = require('../app/Schema').Schema; //only for some static var
@@ -14,7 +14,7 @@ var Schema = require('../app/Schema').Schema; //only for some static var
 var log = global.log.child({'mod': 'mocha.test-database.js'});
 
 describe('Database', function() {
-	var dbFile = "test/sales.sqlite";
+	var dbFile = "test/data/sqlite/sales.sqlite";
 	var db = new Database(dbFile);
 
 	before(function(done) {

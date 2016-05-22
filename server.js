@@ -49,7 +49,7 @@ var debugLog = {
 		, {
 			type: 'rotating-file'
 			, path: 'logs/g6.rest-server.json'
-			, level: 'debug'
+			, level: 'trace'
 			, period: '1d'
 		}
 /*

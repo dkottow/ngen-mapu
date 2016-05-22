@@ -23,6 +23,7 @@ var path = require('path');
 var util = require('util');
 var url = require('url');
 
+var Account = require('./Account.js').Account;
 var AccountController = require('./AccountController.js').AccountController;
 
 /** globals **/
@@ -46,10 +47,13 @@ if (process.env.OPENSHIFT_DATA_DIR) {
 var app = express();
 var log = global.log.child({'mod': 'g6.app.js'});
 
+var accounts = {};
 var accountControllers = {};
 
 app.init = function(cbAfter) {
 	log.info('app.init()...');
+
+	var router = new express.Router();
 
 	//enable CORS
 	app.use(function(req, res, next) {
@@ -72,7 +76,14 @@ app.init = function(cbAfter) {
 		}
 	} //ignore EEXIST
 
-	serveAccounts(global.data_dir, cbAfter);
+	initAccounts(global.data_dir, function() {
+		initControllers(router);
+		initListAccountHandler(router);
+		log.info('...app.init()');
+		cbAfter();
+	});
+
+	app.use('/', router);
 
 	app.use(function(err, req, res, next) {
 		log.error({req: req, err: err}, 'Internal server error...');
@@ -104,45 +115,58 @@ app.get('/admin/reset', function(req, res) {
 */
 
 
-function serveAccounts(rootDir, cbAfter) {
-	var router = new express.Router();
+function initAccounts(rootDir, cbAfter) {
 	fs.readdir(rootDir, function (err, files) {
     	if (err) {
 			log.error({err: err, rootDir: rootDir}, 
-				'app.init() failed. readdir()');
+				'app.initAccounts() failed. readdir()');
         	cbAfter(err);
 			return;
     	}
 
-	    files.map(function (file) {
+	    var accountDirs = files.map(function (file) {
     	    return path.join(rootDir, file);
 	    }).filter(function (file) {
     	    return fs.statSync(file).isDirectory();
-	    }).forEach(function (dir, i, subDirs) {
+	    });
+
+		var doAfter = _.after(accountDirs.length, function() {
+			log.debug("...app.initAccounts()");
+			cbAfter();
+			return;
+		});
+		
+		accountDirs.forEach(function (dir, i, subDirs) {
 			log.debug(dir + " from " + subDirs);
-			var url = "/" + path.basename(dir)
-			var controller = new AccountController(router, url, dir);
-			controller.init(function() {
-				if (i == subDirs.length - 1) {
 
-					router.get('/', function(req, res) {
-						log.info(req.method + ' ' + req.url);
-						var accounts = _.map(accountControllers, function(ac) {
-							return { name: ac.account.name,
-									 url: ac.url
-							};
-						});
-
-						res.send({ accounts : accounts });
-					});
-					app.use('/', router);
-					log.info('...app.init().');
-					cbAfter();	
-				}
+			var account = new Account(dir);
+			accounts[account.name] = account;	
+			account.init(function(err) {
+				doAfter();
 			});
-			accountControllers[controller.name] = controller;
 		});
 	});
 }
+
+function initControllers(router) {
+	_.each(accounts, function(account) {
+		var ctrl = new AccountController(router, account);		
+		accountControllers[ctrl.url] = ctrl;
+	});
+}
+
+function initListAccountHandler(router) {
+	router.get('/', function(req, res) {
+		log.info(req.method + ' ' + req.url);
+		var accounts = _.map(accountControllers, function(ac) {
+			return { name: ac.account.name,
+					 url: ac.url
+			};
+		});
+
+		res.send({ accounts : accounts });
+	});
+}
+
 
 exports.app = app; //you call app.init / app.listen to start server

@@ -32,113 +32,115 @@ function sendError(req, res, err) {
 	res.send(400, err.message);
 }
 
-function AccountController(router, baseUrl, baseDir) {
-	this.url = baseUrl;
-	this.account = new Account(baseDir);
+function AccountController(router, account) {
+	this.account = account; 
 	this.databaseControllers = {};
+	this.url = "/" + account.name;
+
 	log.info("new AccountController @ " + this.url);
 
-	this.init = function(cbAfter) {
-		var me = this;
-		log.debug("AccountController.init()...");		
+	this.initRoutes(router);
+	this.initDBControllers(router);
+}
 
-		me.account.init(function(err) {
+AccountController.prototype.initDBControllers = function(router) {
+	log.debug("AccountController.initDBControllers()...");		
+	_.each(this.account.databases, function(db) {
+		var dbUrl = this.url + "/" + db.name();
+		log.info('Serving ' + db.name() + " @ " + dbUrl);
 
-			var doAfter = _.after(_.size(me.account.databases), function() {
-				log.debug("...AccountController.init()");		
-				cbAfter();
-			});
+		var ctrl = new DatabaseController(router, dbUrl, db);
+		this.databaseControllers[dbUrl] = ctrl;
+	}, this);
+	log.debug("...AccountController.initDBControllers()");
+}
 
-			_.each(me.account.databases, function(db) {
-				var dbUrl = me.url + "/" + db.name();
-				log.info('Serving ' + db.name() + " @ " + dbUrl);
+AccountController.prototype.initRoutes = function(router) {
+	log.debug("AccountController.initRoutes()...");		
+	var me = this;
 
-				var ctrl = new DatabaseController(router, dbUrl, db);
-				me.databaseControllers[dbUrl] = ctrl;
-				ctrl.init(function(err) {
-					doAfter();
-				});
-			});
-		});
+	//serve list databases
+	var getSchemaListHandler = function(req, res) {
+		log.info({req: req}, 'AccountController.get()...');
 
-		//serve list databases
-		var getSchemaListHandler = function(req, res) {
-			log.info({req: req}, 'AccountController.get()...');
-
-			me.account.getInfo(function(err, result) {
-				if (err) {
-					sendError(req, res, err);
-					return;
-				}
-				
-				result.url = me.url; 
-				_.each(me.databaseControllers, function(ctrl) {
-					result.databases[ctrl.db.name()].url = ctrl.url;
-				});
-
-				log.trace(result);
-				res.send(result); 
-				log.info({res: res}, '...AccountController.get().');
-				
-			});
-		}
+		me.account.getInfo(function(err, result) {
+			if (err) {
+				sendError(req, res, err);
+				return;
+			}
 			
-		router.get(this.url, getSchemaListHandler);	
-		router.get(this.url + '.prj', getSchemaListHandler);	
-
-		//serve add database
-		var postSchemaHandler = function(req, res) {
-			log.info({req: req}, 'DatabaseController.postSchemaHandler()...');
-
-			var schema = req.body;
-			var dbUrl = me.url + "/" + schema.name;
-
-			me.account.writeSchema(schema, function(err, db) {
-				if (err) {
-					sendError(req, res, err);
-					return;
-				}
-				var ctrl = new DatabaseController(router, dbUrl, db);
-				me.databaseControllers[dbUrl] = ctrl;
-				ctrl.init(function(err) {					
-					db.getInfo(function(err, result) {
-						res.send(result);
-					});
-					log.info({res: res}, '...AccountController.post().');
-				});
+			result.url = me.url; 
+			_.each(me.databaseControllers, function(ctrl) {
+				result.databases[ctrl.db.name()].url = ctrl.url;
 			});
+
+			log.trace(result);
+			res.send(result); 
+			log.info({res: res}, '...AccountController.get().');
+			
+		});
+	}
+		
+	router.get(this.url, getSchemaListHandler);	
+	router.get(this.url + '.prj', getSchemaListHandler);	
+
+	//serve write database (adds or replaces if empty)
+	var postSchemaHandler = function(req, res) {
+		log.info({req: req}, 'DatabaseController.postSchemaHandler()...');
+
+		var schema = req.body;
+		var dbUrl = me.url + "/" + schema.name;
+
+		me.account.writeSchema(schema, function(err, db) {
+			if (err) {
+				sendError(req, res, err);
+				return;
+			}
+			
+			var ctrl = me.databaseControllers[dbUrl];
+			if (ctrl) {
+				ctrl.db = db;
+			} else {
+				ctrl = new DatabaseController(router, dbUrl, db);
+			}
+			db.getInfo(function(err, result) {
+				res.send(result);
+			});
+			log.info({res: res}, '...AccountController.post().');
+		});
+	}
+
+	router.post(this.url, postSchemaHandler);	
+	router.post(this.url + '.db', postSchemaHandler);	
+
+	//serve delete database
+	var deleteSchemaHandler = function(req, res) {
+		log.info(req.method + " " + req.url);
+
+		var ctrl = me.databaseControllers[req.url];
+		if ( ! ctrl) {
+			var err = new Error(req.url + " not found.");
+			sendError(req, res, err);	
+			return;
 		}
 
-		router.post(this.url, postSchemaHandler);	
-		router.post(this.url + '.db', postSchemaHandler);	
-
-		//serve delete database
-		var deleteSchemaHandler = function(req, res) {
-			log.info(req.method + " " + req.url);
-
-			var ctrl = me.databaseControllers[req.url];
-			if ( ! ctrl) {
-				var err = new Error(req.url + " not found.");
-				sendError(req, res, err);	
+		me.account.removeDatabase(ctrl.db.name(), function(err, sucess) {
+			if (err) {
+				sendError(req, res, err);
 				return;
 			}
 
-			me.account.removeDatabase(ctrl.db.name(), function(err, sucess) {
-				if (err) {
-					sendError(req, res, err);
-					return;
-				}
-				
-				delete me.databaseControllers[req.url];
-				res.send({});
-			});
-		}
+			delete me.databaseControllers[req.url];
 
-		router.delete(this.url + "/:schema", deleteSchemaHandler);	
-		router.delete(this.url + '"/:schema.db', deleteSchemaHandler);	
+			//TODO after delete, we should recreate all routes - see
+			//https://github.com/expressjs/express/issues/2596
 
+			res.send({});
+		});
 	}
 
+	router.delete(this.url + "/:schema", deleteSchemaHandler);	
+	router.delete(this.url + '"/:schema.db', deleteSchemaHandler);	
 
 }
 

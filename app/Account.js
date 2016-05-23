@@ -119,12 +119,13 @@ Account.prototype.writeSchema = function(schemaData, options, cbResult) {
 	var me = this;
 	var name = schemaData.name;
 
+	var dbFile = util.format('%s/%s', me.baseDir, 
+				name + global.sqlite_ext);
+
 	cbResult = cbResult || arguments[arguments.length - 1];	
 	options = typeof options == 'object' ? options : {};		
 
 	var createSchemaFn = function() {
-		var dbFile = util.format('%s/%s', me.baseDir, 
-					name + global.sqlite_ext);
 
 		var newSchema = new Schema();
 		newSchema.init(schemaData);
@@ -147,7 +148,13 @@ Account.prototype.writeSchema = function(schemaData, options, cbResult) {
 		db.isEmpty(function(err, isEmpty) {
 
 			if (isEmpty) {
-				createSchemaFn();
+				Schema.remove(dbFile, function(err) {
+					if (err) {
+						cbResult(err, null);
+						return;
+					} 
+					createSchemaFn();
+				});
 
 			} else {
 				var err = new Error(util.format(

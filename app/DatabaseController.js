@@ -16,13 +16,14 @@
 
 var _ = require('underscore');
 var url = require('url');
+var path = require('path');
 
 var log = global.log.child({'mod': 'g6.DatabaseController.js'});
 var parser = require('./QueryParser.js');
 
 function sendError(req, res, err) {
 	log.error({err: err, req: req}, "DatabaseController.sendError()");
-	res.send(400, err.message);
+	res.status(400).send(err.message);
 }
 
 function DatabaseController(router, baseUrl, db)
@@ -39,9 +40,9 @@ function DatabaseController(router, baseUrl, db)
 DatabaseController.prototype.initRoutes = function(router) {
 	var me = this;
 
-	//get schema 
-	var getSchemaHandler = function(req, res) {
-		log.info({req: req}, 'DatabaseController.getSchema()...');
+	//get metadata 
+	var getInfoHandler = function(req, res) {
+		log.info({req: req}, 'DatabaseController.getInfoHandler()...');
 		me.db.getInfo(function(err, result) {
 			if (err) {
 				sendError(req, res, err);
@@ -53,14 +54,28 @@ DatabaseController.prototype.initRoutes = function(router) {
 			});
 			log.trace(result);
 			res.send(result); 
-			log.info({res: res}, '...DatabaseController.getSchema().');
+			log.info({res: res}, '...DatabaseController.getInfoHandler().');
 		});
 		//log.info(" served by " + me.seed);
 		//res.send(defs);
 	}
-	router.get(me.url, getSchemaHandler);
-	router.get(me.url + ".db", getSchemaHandler);
+	router.get(me.url, getInfoHandler);
+	router.get(me.url + ".info", getInfoHandler);
 	
+	//get sqlite file 
+	var getFileHandler = function(req, res) {
+		log.info({req: req}, 'DatabaseController.getFileHandler()...');
+		var fn = me.db.dbFile;
+		res.sendFile(fn, function(err) {
+			if (err) {
+				sendError(req, res, err);
+				return;
+			}
+			log.info({res: res}, '...DatabaseController.getFileHandler().');
+		});
+	}
+	router.get(me.url + ".sqlite", getFileHandler);
+
 	var rowsExt = ".rows";
 	_.each(me.db.tables(), function(table) {
 		var tableUrl = me.url + "/" + table['name'];
@@ -150,8 +165,8 @@ DatabaseController.prototype.initRoutes = function(router) {
 			log.info({req: req}, 'DatabaseController.post()...');
 			log.info({'req.body': req.body});
 			var rows = req.body;
-			var params = req.query;
-			me.db.insert(table.name, rows, params, function(err, result) {
+			var opts = req.query;
+			me.db.insert(table.name, rows, opts, function(err, result) {
 				if (err) {
 					sendError(req, res, err);
 					return;
@@ -169,8 +184,8 @@ DatabaseController.prototype.initRoutes = function(router) {
 			log.info({req: req}, 'DatabaseController.put()...');
 			log.info({'req.body': req.body});
 			var rows = req.body;
-			var params = req.query;
-			me.db.update(table.name, rows, params, function(err, result) {
+			var opts = req.query;
+			me.db.update(table.name, rows, opts, function(err, result) {
 				if (err) {
 					sendError(req, res, err);
 					return;

@@ -94,7 +94,7 @@ describe('Account', function() {
 	});
 
 
-	describe('Account.removeDatabase()', function() {
+	describe('Account.delDatabase()', function() {
 		var salesDbFile = "test/data/account/sales.sqlite";
 		var emptySalesFile = "test/data/account/sales_empty.sqlite";
 		var emptyCopySalesFile = "test/data/account/sales_empty_copy.sqlite";
@@ -121,23 +121,23 @@ describe('Account', function() {
 			});
 		});	
 
-		it('remove new_sales', function(done) {
-			account.removeDatabase('sales_empty_copy', function(err, success) {
+		it('delete new_sales', function(done) {
+			account.delDatabase('sales_empty_copy', function(err, success) {
 				assert(success);
 				done();
 			});
 		});
 
-		it('try to remove sales', function(done) {
-			account.removeDatabase('sales_copy', function(err, success) {
+		it('try to delete sales', function(done) {
+			account.delDatabase('sales_copy', function(err, success) {
 				//console.log(err);
 				assert(err instanceof Error && success == false);
 				done();
 			});
 		});
 
-		it('force remove sales', function(done) {
-			account.removeDatabase('sales_copy', {force: true}, function(err, success) {
+		it('force delete sales', function(done) {
+			account.delDatabase('sales_copy', {force: true}, function(err, success) {
 				assert(success);
 				done();
 			});

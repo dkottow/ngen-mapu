@@ -118,7 +118,7 @@ Database.prototype.getCounts = function(cbResult) {
 			return;
 		}
 
-		var db = new sqlite3.Database(this.dbFile);
+		var db = new sqlite3.Database(this.dbFile, sqlite3.OPEN_READONLY);
 		db.all(sql, function(err, rows) {
 			db.close(function() {
 				if (err) {
@@ -154,7 +154,7 @@ Database.prototype.getStats = function(tableName, options, cbResult) {
 
 		var sql = this.schema.sqlBuilder.statsSQL(table, fields, filterClauses);
 		
-		var db = new sqlite3.Database(this.dbFile);
+		var db = new sqlite3.Database(this.dbFile, sqlite3.OPEN_READONLY);
 		db.get(sql.query, sql.params, function(err, row) {
 			db.close(function() {
 				if (err) {
@@ -205,8 +205,7 @@ Database.prototype.all = function(tableName, options, cbResult) {
 
 		var sql = this.schema.sqlBuilder.selectSQL(table, fields, filterClauses, order, limit, offset);
 
-		var db = new sqlite3.Database(this.dbFile);
-
+		var db = new sqlite3.Database(this.dbFile, sqlite3.OPEN_READONLY);
 		db.all(sql.query, sql.params, function(err, rows) {
 			if (err) {
 				db.close(function() {
@@ -270,8 +269,7 @@ Database.prototype.get = function(tableName, options, cbResult) {
 
 		var sql = this.schema.sqlBuilder.selectSQL(table, fields, filterClauses, [], 1, 0, false);
 
-		var db = new sqlite3.Database(this.dbFile);
-
+		var db = new sqlite3.Database(this.dbFile, sqlite3.OPEN_READONLY);
 		db.get(sql.query, sql.params, function(err, row) {
 			db.close(function() {
 				if (err) {
@@ -334,7 +332,7 @@ Database.prototype.insert = function(tableName, rows, options, cbResult) {
 
 		var err = null;
 		var ids = [];
-		var db = new sqlite3.Database(this.dbFile);
+		var db = new sqlite3.Database(this.dbFile, sqlite3.OPEN_READWRITE);
 		var me = this;
 		
 		db.serialize(function() {
@@ -416,7 +414,7 @@ Database.prototype.update = function(tableName, rows, options, cbResult) {
 
 		var err = null;
 		var modCount = 0;	
-		var db = new sqlite3.Database(this.dbFile);
+		var db = new sqlite3.Database(this.dbFile, sqlite3.OPEN_READWRITE);
 		var me = this;
 
 		db.serialize(function() {
@@ -496,7 +494,7 @@ Database.prototype.delete = function(tableName, ids, cbResult) {
 
 		var err = null;
 		var delCount = 0;
-		var db = new sqlite3.Database(this.dbFile);
+		var db = new sqlite3.Database(this.dbFile, sqlite3.OPEN_READWRITE);
 		
 		db.serialize(function() {
 			db.run("PRAGMA foreign_keys = ON;");

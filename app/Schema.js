@@ -169,7 +169,7 @@ Schema.prototype.read = function(dbFile, cbAfter) {
 		log.debug("Schema.prototype.read " + dbFile);
 		var me = this;
 		var db = new sqlite3.Database(dbFile
-							, sqlite3.OPEN_READWRITE
+							, sqlite3.OPEN_READONLY
 							, function(err) {
 			if (err) {
 				log.error({err: err, file: dbFile}, 

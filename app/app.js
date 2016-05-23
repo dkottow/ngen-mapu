@@ -33,12 +33,12 @@ var log = global.log.child({'mod': 'g6.app.js'});
 global.row_max_count = 1000;
 global.sqlite_ext = '.sqlite';
 
-global.tmp_dir = './tmp';
-global.data_dir = './data';
+global.tmp_dir = path.join(process.cwd(), 'tmp');
+global.data_dir = path.join(process.cwd(), 'data');
 
 if (process.env.OPENSHIFT_DATA_DIR) {
-	global.data_dir = process.env.OPENSHIFT_DATA_DIR + global.data_dir;
-	global.tmp_dir = process.env.OPENSHIFT_DATA_DIR + global.tmp_dir;
+	global.tmp_dir = path.join(process.env.OPENSHIFT_DATA_DIR, 'tmp');
+	global.data_dir = path.join(process.env.OPENSHIFT_DATA_DIR, 'data');
 }
 
 

@@ -163,7 +163,7 @@ Account.prototype.writeSchema = function(schemaData, options, cbResult) {
 	}
 }
 
-Account.prototype.removeDatabase = function(name, options, cbResult) {
+Account.prototype.delDatabase = function(name, options, cbResult) {
 	var me = this;
 
 	cbResult = cbResult || arguments[arguments.length - 1];	
@@ -196,7 +196,7 @@ Account.prototype.removeDatabase = function(name, options, cbResult) {
 					var err = new Error(util.format(
 						"Database %s is not empty.", name
 					));
-					log.warn({err: err}, "Account.removeDatabase()");
+					log.warn({err: err}, "Account.delDatabase()");
 					cbResult(err, false);
 				}	
 			});
@@ -207,7 +207,7 @@ Account.prototype.removeDatabase = function(name, options, cbResult) {
 		var err = new Error(util.format(
 			"Database %s not found.", name
 		));
-		log.warn({err: err}, "Account.removeDatabase()");
+		log.warn({err: err}, "Account.delDatabase()");
 		cbResult(err, false);
 	}
 }

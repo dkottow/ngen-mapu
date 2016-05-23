@@ -117,20 +117,21 @@ AccountController.prototype.initRoutes = function(router) {
 	var deleteSchemaHandler = function(req, res) {
 		log.info(req.method + " " + req.url);
 
-		var ctrl = me.databaseControllers[req.url];
+		var ctrl = me.databaseControllers[req.path];
 		if ( ! ctrl) {
 			var err = new Error(req.url + " not found.");
 			sendError(req, res, err);	
 			return;
 		}
 
-		me.account.removeDatabase(ctrl.db.name(), function(err, sucess) {
+		var opts = req.query;
+		me.account.delDatabase(ctrl.db.name(), opts, function(err, sucess) {
 			if (err) {
 				sendError(req, res, err);
 				return;
 			}
 
-			delete me.databaseControllers[req.url];
+			delete me.databaseControllers[req.path];
 
 			//TODO after delete, we should recreate all routes - see
 			//https://github.com/expressjs/express/issues/2596
@@ -142,6 +143,7 @@ AccountController.prototype.initRoutes = function(router) {
 	router.delete(this.url + "/:schema", deleteSchemaHandler);	
 	router.delete(this.url + '"/:schema.db', deleteSchemaHandler);	
 
+	log.debug("...AccountController.initRoutes()");		
 }
 
 exports.AccountController = AccountController;

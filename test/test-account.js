@@ -49,7 +49,7 @@ describe('Account', function() {
 		});
 	});
 
-	describe('Account.writeSchema()', function() {
+	describe('Account.createDatabase()', function() {
 
 		var jsonSalesFile = "test/data/json/sales.json";
 		
@@ -76,7 +76,7 @@ describe('Account', function() {
 		it('write sales to new_sales', function(done) {
 			var schemaData = schema.get();
 			schemaData.name = "new_sales";
-			account.writeSchema(schemaData, function(err, db) {
+			account.createDatabase(schemaData, function(err, db) {
 				assert(db.schema.get().name == "new_sales");
 				done();
 			});
@@ -84,7 +84,7 @@ describe('Account', function() {
 
 		it('try to overwrite sales', function(done) {
 			var schemaData = schema.get();
-			account.writeSchema(schemaData, function(err, db) {
+			account.createDatabase(schemaData, function(err, db) {
 				assert(err instanceof Error && db == null);
 				db = account.database(schemaData.name);
 				assert(db.schema.get().name == "sales");

@@ -115,7 +115,7 @@ Account.prototype.getInfo = function(cbResult) {
 	};
 }
 
-Account.prototype.writeSchema = function(schemaData, options, cbResult) {
+Account.prototype.createDatabase = function(schemaData, options, cbResult) {
 	var me = this;
 	var name = schemaData.name;
 
@@ -160,7 +160,7 @@ Account.prototype.writeSchema = function(schemaData, options, cbResult) {
 				var err = new Error(util.format(
 					"Database %s exists and is not empty.", name
 				));
-				log.warn({err: err}, "Account.writeSchema()");
+				log.warn({err: err}, "Account.createDatabase()");
 				cbResult(err, null);
 			}	
 		});

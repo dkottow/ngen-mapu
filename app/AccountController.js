@@ -85,33 +85,34 @@ AccountController.prototype.initRoutes = function(router) {
 	router.get(this.url + '.prj', getSchemaListHandler);	
 
 	//serve write database (adds or replaces if empty)
-	var postSchemaHandler = function(req, res) {
-		log.info({req: req}, 'DatabaseController.postSchemaHandler()...');
+	var putSchemaHandler = function(req, res) {
+		log.info({req: req}, 'DatabaseController.putSchemaHandler()...');
 
 		var schema = req.body;
-		var dbUrl = me.url + "/" + schema.name;
+		schema.name = req.params.schema;
 
-		me.account.writeSchema(schema, function(err, db) {
+		me.account.createDatabase(schema, function(err, db) {
 			if (err) {
 				sendError(req, res, err);
 				return;
 			}
 			
-			var ctrl = me.databaseControllers[dbUrl];
+			var ctrl = me.databaseControllers[req.path];
 			if (ctrl) {
 				ctrl.db = db;
 			} else {
-				ctrl = new DatabaseController(router, dbUrl, db);
+				ctrl = new DatabaseController(router, req.path, db);
+				me.databaseControllers[req.path] = ctrl;
 			}
 			db.getInfo(function(err, result) {
 				res.send(result);
 			});
-			log.info({res: res}, '...AccountController.post().');
+			log.info({res: res}, '...AccountController.putSchemaHandler().');
 		});
 	}
 
-	router.post(this.url, postSchemaHandler);	
-	router.post(this.url + '.db', postSchemaHandler);	
+	router.put(this.url + "/:schema", putSchemaHandler);	
+	router.put(this.url + "/:schema.db", putSchemaHandler);	
 
 	//serve delete database
 	var deleteSchemaHandler = function(req, res) {

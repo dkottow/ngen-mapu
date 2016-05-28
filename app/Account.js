@@ -177,6 +177,7 @@ Account.prototype.delDatabase = function(name, options, cbResult) {
 	options = typeof options == 'object' ? options : {};		
 
 	var checkEmpty = ! options.force; 
+	if (name == "demo") checkEmpty = true; //do not delete demo data
 
 	var removeDatabaseFn = function() {
 		var dbFile = me.databases[name].dbFile;

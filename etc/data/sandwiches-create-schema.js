@@ -245,7 +245,7 @@ describe('Schema', function() {
 			var allDone = _.after(2, function() {
 				done();
 			});
-			db.create(dbFile, function(err) {
+			db.write(dbFile, function(err) {
 				log.info(err);
 				allDone();	
 			});

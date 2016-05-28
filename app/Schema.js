@@ -67,10 +67,7 @@ Schema.prototype.init = function(schemaData) {
 
 Schema.prototype.tables = function() {
 	try {
-		if ( ! this._tables) {
-			this._tables = this.graph.tables();
-		}
-		return this._tables;
+		return this.graph.tables();
 
 	} catch(err) {
 		log.error({err: err}, "Schema.tables() exception.");
@@ -321,6 +318,7 @@ Schema.prototype.read = function(dbFile, cbAfter) {
 }
 
 Schema.prototype.jsonWrite = function(fileName, cbAfter) {
+	var me = this;
 	try {
 		var data = _.pick(this.get(), _.keys(Schema.EMPTY));
 		fs.writeFile(fileName, JSON.stringify(data), function(err) {

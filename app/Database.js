@@ -540,31 +540,38 @@ Database.prototype.delete = function(tableName, ids, cbResult) {
 
 Database.prototype.patchSchema = function(patches, cbResult) {
 	try {
+		var me = this;
 
-		//apply patches in memory
+		//take a schema copy 
+		var patchedSchema = new Schema();
+		patchedSchema.init(me.schema.get());
+
+		//apply patches to schema copy 
 		_.each(patches, function(patch) {
-			this.schema.patch(patch);
+			patchedSchema.patch(patch);
 		});	
 
 		//write patches to database
-		this.schema.writePatches(this.dbFile, patches, function(err) {
+		patchedSchema.writePatches(this.dbFile, patches, function(err) {
 			if (err) {
 				log.error({err: err, patches: patches}, 
 					"Database.patchSchema() failed.");
 
-				//recover schema from disk
-				this.schema.read(this.dbFile, function(e) {
-					cbResult(err || e, null);
-				});
+				cbResult(err, null);
 				return;
 			}
-			//return new schema
-			this.getSchema(cbResult);
+
+			//apply patches to me
+			me.schema.init(patchSchema.get());
+
+			//return patched schema
+			me.getInfo(cbResult);
 		});
 
 	} catch(err) {
 		log.error({err: err, patches: patches}, 
 			"Database.patchSchema() exception.");	
+
 		cbResult(err, null);
 	}
 }

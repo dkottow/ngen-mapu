@@ -15,7 +15,32 @@
 */
 
 var url = require('url');
+var path = require('path');
 var bunyan = require('bunyan');
+
+var config = {
+	'ip'      : 'localhost',
+	//'ip'    : '192.168.1.38',
+	'port'    : 3000, 
+	'logdir'  : 'logs',
+	'release' : 'debug'
+}
+
+if (process.env.DONKEYLIFT_API) {
+	var u = url.parse(process.env.DONKEYLIFT_API);
+	config.ip = u.hostname;
+	config.port = u.port;
+
+} else if (process.env.OPENSHIFT_DATA_DIR) {
+	config.ip = process.env.OPENSHIFT_NODEJS_IP;
+	config.port = process.env.OPENSHIFT_NODEJS_PORT;
+	config.logdir = process.env.OPENSHIFT_LOG_DIR;
+	//config.release = 'prod';
+
+} else if (process.env.C9_USER) {
+	config.ip = process.env.IP;
+	config.port = process.env.PORT;
+}
 
 /*
 var BunyanLoggly = require('bunyan-loggly');
@@ -30,7 +55,7 @@ var prodLog = {
 	, streams: [
 		{
 			type: 'rotating-file'
-			, path: 'logs/g6.rest-server.json'
+			, path: path.join(config.logdir, 'g6.rest-server.json')
 			, level: 'info'
 			, period: '1d'
 		}
@@ -48,7 +73,7 @@ var debugLog = {
 		} 
 		, {
 			type: 'rotating-file'
-			, path: 'logs/g6.rest-server.json'
+			, path: path.join(config.logdir, 'g6.rest-server.json')
 			, level: 'trace'
 			, period: '1d'
 		}
@@ -63,7 +88,7 @@ var debugLog = {
 };
 
 
-if (process.env.DONKEYLIFT_LOG == 'prod') {
+if (config.release == 'prod') {
 	global.log = bunyan.createLogger(prodLog);
 } else {
 	global.log = bunyan.createLogger(debugLog);
@@ -72,26 +97,6 @@ if (process.env.DONKEYLIFT_LOG == 'prod') {
 var app = require('./app/app.js').app;
 
 var log = global.log.child({'mod': 'g6.server.js'});
-
-var config = {
-	'ip'	:  'localhost',
-	//'ip'	:  '192.168.1.38',
-	'port'	: 3000, 
-}
-
-if (process.env.DONKEYLIFT_API) {
-	var u = url.parse(process.env.DONKEYLIFT_API);
-	config.ip = u.hostname;
-	config.port = u.port;
-
-} else if (process.env.OPENSHIFT_DATA_DIR) {
-	config.ip = process.env.OPENSHIFT_NODEJS_IP;
-	config.port = process.env.OPENSHIFT_NODEJS_PORT;
-
-} else if (process.env.C9_USER) {
-	config.ip = process.env.IP;
-	config.port = process.env.PORT;
-}
 
 app.init(function(err) {
 

@@ -288,12 +288,12 @@ Database.prototype.get = function(tableName, options, cbResult) {
 	}
 }
 
-Database.prototype.allById = function(tableName, ids, cbResult) {
+Database.prototype.allById = function(tableName, rowIds, cbResult) {
 	var options = {
 		filter: [{
 			field: 'id',
 			op: 'in',
-			value: ids
+			value: rowIds
 		}]
 	};	
 	return this.all(tableName, options, cbResult);
@@ -302,6 +302,8 @@ Database.prototype.allById = function(tableName, ids, cbResult) {
 Database.prototype.insert = function(tableName, rows, options, cbResult) {
 
 	try {
+		log.debug('Database.insert()...');
+		log.trace({table: tableName, rows: rows, options: options});
 
 		cbResult = cbResult || arguments[arguments.length - 1];	
 		options = typeof options == 'object' ? options : {};		
@@ -309,6 +311,7 @@ Database.prototype.insert = function(tableName, rows, options, cbResult) {
 		var returnModifiedRows = options.retmod || false;
 
 		var table = this.table(tableName);
+		if ( ! _.isArray(rows)) throw new Error("rows type mismatch");
 
 		if (rows.length == 0) {
 			cbResult(null, []);
@@ -331,7 +334,7 @@ Database.prototype.insert = function(tableName, rows, options, cbResult) {
 		log.debug(sql);
 
 		var err = null;
-		var ids = [];
+		var rowIds = [];
 		var db = new sqlite3.Database(this.dbFile, sqlite3.OPEN_READWRITE);
 		var me = this;
 		
@@ -351,7 +354,7 @@ Database.prototype.insert = function(tableName, rows, options, cbResult) {
 					//console.log(params);
 					stmt.run(params, function(e) { 
 						err = err || e;
-						ids.push(this.lastID);
+						rowIds.push(this.lastID);
 					});
 				}
 			});
@@ -366,9 +369,9 @@ Database.prototype.insert = function(tableName, rows, options, cbResult) {
 				}
 				db.close(function() {
 					if (err == null && returnModifiedRows) {
-						me.allById(tableName, ids, cbResult);
+						me.allById(tableName, rowIds, cbResult);
 					} else {
-						var rows = _.map(ids, function(id) { 
+						var rows = _.map(rowIds, function(id) { 
 							return { id: id };
 						});
 						cbResult(err, { rows: rows }); 
@@ -386,6 +389,8 @@ Database.prototype.insert = function(tableName, rows, options, cbResult) {
 Database.prototype.update = function(tableName, rows, options, cbResult) {
 
 	try {
+		log.debug('Database.update()...');
+		log.trace({table: tableName, rows: rows, options: options});
 
 		if (rows.length == 0) {
 			cbResult(null, []);
@@ -393,6 +398,7 @@ Database.prototype.update = function(tableName, rows, options, cbResult) {
 		}
 
 		var table = this.table(tableName);
+		if ( ! _.isArray(rows)) throw new Error("rows type mismatch");
 
 		cbResult = cbResult || arguments[arguments.length - 1];	
 		options = typeof options == 'object' ? options : {};		
@@ -455,9 +461,9 @@ Database.prototype.update = function(tableName, rows, options, cbResult) {
 					db.run("ROLLBACK TRANSACTION");
 				}
 				db.close(function() {
-					var ids = _.pluck(rows, 'id');
+					var rowIds = _.pluck(rows, 'id');
 					if (err == null && returnModifiedRows) {
-						me.allById(tableName, ids, cbResult);
+						me.allById(tableName, rowIds, cbResult);
 					} else {
 						rows = _.map(rows, function(row) { 
 							return { id: row.id };
@@ -474,18 +480,21 @@ Database.prototype.update = function(tableName, rows, options, cbResult) {
 	}
 }
 
-Database.prototype.delete = function(tableName, ids, cbResult) {
+Database.prototype.delete = function(tableName, rowIds, cbResult) {
 
 	try {
+		log.debug('Database.delete()...');
+		log.trace({table: tableName, rowIds: rowIds});
 
 		var table = this.table(tableName);
+		if ( ! _.isArray(rowIds)) throw new Error("rowIds type mismatch");
 
-		if (ids.length == 0) {
+		if (rowIds.length == 0) {
 			cbResult(null, []);
 			return;
 		}
 
-		var idParams = _.times(ids.length, function(fn) { return "?"; });
+		var idParams = _.times(rowIds.length, function(fn) { return "?"; });
 
 		var sql = "DELETE FROM " + table.name 
 				+ " WHERE id IN (" + idParams.join(', ') + ")";
@@ -506,34 +515,34 @@ Database.prototype.delete = function(tableName, ids, cbResult) {
 
 			if (err == null) 
 			{
-				stmt.run(ids, function(e) { 
+				stmt.run(rowIds, function(e) { 
 					err = err || e;
 					delCount = this.changes;
 				});
 			}
 
 			stmt.finalize(function() { 
-				if (err == null && delCount != ids.length) {
-					//console.log(delCount + " <> " + ids.length);
+				if (err == null && delCount != rowIds.length) {
+					//console.log(delCount + " <> " + rowIds.length);
 					err = new Error("G6_MODEL_ERROR: delete row count mismatch");
 				}
 
 				if (err == null) {
 					db.run("COMMIT TRANSACTION");
 				} else {
-					log.error({err: err, ids: ids, sql: sql}, 
+					log.error({err: err, rowIds: rowIds, sql: sql}, 
 						"Database.delete() failed. Rollback.");
 					db.run("ROLLBACK TRANSACTION");
 				}
 				db.close(function() {
-					cbResult(err, ids); 
+					cbResult(err, rowIds); 
 				});
 			});	
 
 		});
 
 	} catch(err) {
-		log.error({err: err, ids: ids}, "Database.delete() exception.");	
+		log.error({err: err, rowIds: rowIds}, "Database.delete() exception.");	
 		cbResult(err, null);
 	}
 }

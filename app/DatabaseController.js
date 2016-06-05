@@ -163,7 +163,8 @@ DatabaseController.prototype.initRoutes = function(router) {
 		//insert rows into table
 		var postRowHandler = function(req, res) {
 			log.info({req: req}, 'DatabaseController.post()...');
-			log.info({'req.body': req.body});
+			log.debug({'req.body': req.body});
+
 			var rows = req.body;
 			var opts = req.query;
 			me.db.insert(table.name, rows, opts, function(err, result) {
@@ -182,7 +183,8 @@ DatabaseController.prototype.initRoutes = function(router) {
 		//update rows in table
 		var putRowHandler = function(req, res) {
 			log.info({req: req}, 'DatabaseController.put()...');
-			log.info({'req.body': req.body});
+			log.debug({'req.body': req.body});
+
 			var rows = req.body;
 			var opts = req.query;
 			me.db.update(table.name, rows, opts, function(err, result) {
@@ -201,6 +203,8 @@ DatabaseController.prototype.initRoutes = function(router) {
 		//delete rows from table
 		var deleteRowHandler = function(req, res) {
 			log.info({req: req}, 'DatabaseController.delete()...');
+			log.debug({'req.body': req.body});
+
 			var rowIds = req.body;
 			me.db.delete(table.name, rowIds, function(err, result) {
 				if (err) {
@@ -219,6 +223,8 @@ DatabaseController.prototype.initRoutes = function(router) {
 	//patch schema 
 	var patchSchemaHandler = function(req, res) {
 		log.info({req: req}, 'DatabaseController.patchSchema()...');
+		log.debug({'req.body': req.body});
+
 		var patches = req.body;
 		me.db.patchSchema(patches, function(err, result) {
 			if (err) {

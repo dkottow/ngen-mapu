@@ -87,6 +87,7 @@ app.init = function(cbAfter) {
 
 	app.use(function(err, req, res, next) {
 		log.error({req: req, err: err}, 'Internal server error...');
+		log.info({"req.body": req.body}, 'Error payload');
 		if (res.headersSent) {
 		    return next(err);
 		}

@@ -91,7 +91,7 @@ app.init = function(cbAfter) {
 		if (res.headersSent) {
 		    return next(err);
 		}
-		res.send(500, {error: 'Internal server error'});
+		res.send(500, {error: error.message});
 		log.info({res: res}, '...Internal server error');
 	});
 

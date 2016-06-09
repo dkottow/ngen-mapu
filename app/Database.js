@@ -449,7 +449,7 @@ Database.prototype.update = function(tableName, rows, options, cbResult) {
 
 			stmt.finalize(function() { 
 				if (err == null && modCount != rows.length) {
-					err = new Error("G6_MODEL_ERROR: update row count mismatch. Expected " + rows.length + " got " + modCount);
+					err = new Error("G6_MODEL_ERROR: Update row count mismatch. Expected " + rows.length + " got " + modCount);
 				}
 
 				if (err == null) {
@@ -524,7 +524,7 @@ Database.prototype.delete = function(tableName, rowIds, cbResult) {
 			stmt.finalize(function() { 
 				if (err == null && delCount != rowIds.length) {
 					//console.log(delCount + " <> " + rowIds.length);
-					err = new Error("G6_MODEL_ERROR: delete row count mismatch");
+					err = new Error("G6_MODEL_ERROR: Delete row count mismatch. Expected " + rowIds.length + " got " + delCount);
 				}
 
 				if (err == null) {

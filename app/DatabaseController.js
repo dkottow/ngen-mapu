@@ -23,7 +23,9 @@ var parser = require('./QueryParser.js');
 
 function sendError(req, res, err) {
 	log.error({err: err, req: req}, "DatabaseController.sendError()");
-	res.status(400).send(err.message);
+	var msg = err.message;
+	//if (err.code) msg += ' (' + err.code + ')'; 
+	res.status(400).send(msg);
 }
 
 function DatabaseController(router, baseUrl, db)

@@ -99,8 +99,11 @@ AccountController.prototype.initRoutes = function(router) {
 			
 			var ctrl = me.databaseControllers[req.path];
 			if (ctrl) {
+				log.debug('Updating ' + db.name() + " @ " + req.path);
 				ctrl.db = db;
+				ctrl.updateRoutes(router);
 			} else {
+				log.debug('Adding ' + db.name() + " @ " + req.path);
 				ctrl = new DatabaseController(router, req.path, db);
 				me.databaseControllers[req.path] = ctrl;
 			}

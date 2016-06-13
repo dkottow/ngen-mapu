@@ -79,9 +79,11 @@ Schema.prototype.table = function(name) {
 	var table = _.find(this.tables(), function(t) { 
 		return t.name == name; 
 	});
+/*
 	if ( ! table) {
 		throw new Error(util.format('Table %s not found.', name));
 	}
+*/
 	return table;
 }
 

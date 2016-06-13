@@ -24,7 +24,7 @@ var util = require('util');
 var url = require('url');
 
 var Account = require('./Account.js').Account;
-var AccountController = require('./AccountController.js').AccountController;
+var Controller = require('./Controller.js').Controller;
 
 /** globals **/
 var log = global.log.child({'mod': 'g6.app.js'});
@@ -48,12 +48,33 @@ var app = express();
 var log = global.log.child({'mod': 'g6.app.js'});
 
 var accounts = {};
-var accountControllers = {};
+var controller;
 
 app.init = function(cbAfter) {
 	log.info('app.init()...');
 
-	var router = new express.Router();
+
+	//make sure tmp dir exists
+	try { fs.mkdirSync(global.tmp_dir); } 
+	catch(err) { 
+		//ignore EEXIST
+		if (err.code != 'EEXIST') {
+			log.error({err: err, tmp_dir: global.tmp_dir}, 
+				'app.init() failed. mkdirSync()');
+			cbAfter(err);
+			return;
+		}
+	} 
+
+	//scan dir tree for accounts and databases
+	initAccounts(global.data_dir, function() {
+		initRoutes();
+		log.info('...app.init()');
+		cbAfter();
+	});
+}
+
+function initRoutes() {
 
 	//enable CORS
 	app.use(function(req, res, next) {
@@ -63,58 +84,26 @@ app.init = function(cbAfter) {
 	  next();
 	});
 
-	app.use(bodyParser.json()); //json parsing 
+	//json parsing 
+	app.use(bodyParser.json());
 
-	//make sure tmp dir exists
-	try { fs.mkdirSync(global.tmp_dir); } 
-	catch(err) { 
-		if (err.code != 'EEXIST') {
-			log.error({err: err, tmp_dir: global.tmp_dir}, 
-				'app.init() failed. mkdirSync()');
-			cbAfter(err);
-			return;
-		}
-	} //ignore EEXIST
+	//all app routes
+	controller = new Controller(accounts);
+	app.use('/', controller.router);
 
-	initAccounts(global.data_dir, function() {
-		initControllers(router);
-		initListAccountHandler(router);
-		log.info('...app.init()');
-		cbAfter();
-	});
-
-	app.use('/', router);
-
+	//uncaught exception handling 
 	app.use(function(err, req, res, next) {
 		log.error({req: req, err: err}, 'Internal server error...');
 		log.info({"req.body": req.body}, 'Error payload');
 		if (res.headersSent) {
 		    return next(err);
 		}
-		res.send(500, {error: error.message});
+
+		res.status(500).send({error: err.message});
 		log.info({res: res}, '...Internal server error');
 	});
 
 }
-
-/*
-
-not used for long time - useful after changing database files
-
-app.get('/admin/reset', function(req, res) {
-	//replace our express router by a new one calling serveAccounts
-	for(var i = 0;i < app._router.stack.length; ++i) {
-		var route = app._router.stack[i];
-		if (route.handle.name == 'router') {
-			app._router.stack.splice(i, 1);
-			serveAccounts(data_dir);
-			break;
-		}
-	}
-	res.send('done.');
-});
-*/
-
 
 function initAccounts(rootDir, cbAfter) {
 	fs.readdir(rootDir, function (err, files) {
@@ -146,26 +135,6 @@ function initAccounts(rootDir, cbAfter) {
 				doAfter();
 			});
 		});
-	});
-}
-
-function initControllers(router) {
-	_.each(accounts, function(account) {
-		var ctrl = new AccountController(router, account);		
-		accountControllers[ctrl.url] = ctrl;
-	});
-}
-
-function initListAccountHandler(router) {
-	router.get('/', function(req, res) {
-		log.info(req.method + ' ' + req.url);
-		var accounts = _.map(accountControllers, function(ac) {
-			return { name: ac.account.name,
-					 url: ac.url
-			};
-		});
-
-		res.send({ accounts : accounts });
 	});
 }
 

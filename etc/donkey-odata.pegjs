@@ -42,8 +42,12 @@ orderByExpr
 
 filterExpr
  = first:filterTerm 
-   rest:("\t" ws? term:filterTerm { return term; })*	
+   rest:(sep:filterSep term:filterTerm { return term; })*	
    { return [first].concat(rest); }
+
+/* separate filters either by 'and' keyword or \t char */
+filterSep
+ = (ws "and" ws) / ("\t" ws?)
 
 fieldExpr
  = first:fieldTerm

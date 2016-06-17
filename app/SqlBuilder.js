@@ -102,12 +102,16 @@ SqlBuilder.prototype.createSQL = function(schema) {
 			+ Table.CreateTableSQL
 			+ Field.CreateTableSQL;
 
+/*
 	var sysTablesInsertSQL = _.map(this.graph.tables(), function(t) {
 		return t.insertPropSQL();
 	}).join('\n');
 
 	sysTablesInsertSQL = sysTablesInsertSQL + '\n'
 		+ schema.insertPropSQL(); 
+*/
+
+	sysTablesInsertSQL = schema.insertPropSQL({deep: true}); 
 
 	var tables = this.graph.tablesByDependencies();
 

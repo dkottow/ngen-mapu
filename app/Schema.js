@@ -38,8 +38,9 @@ var Schema = function() {
 }
 
 Schema.EMPTY = {
-	tables: [],
-	join_trees: []
+	tables: []
+	, join_trees: []
+	, users: []
 }
 
 Schema.prototype.init = function(schemaData) {
@@ -56,6 +57,7 @@ Schema.prototype.init = function(schemaData) {
 		var options = _.pick(schemaData, 'join_trees');
 		this.graph = new TableGraph(tables, options);
 		this.sqlBuilder = new SqlBuilder(this.graph);
+		this.users = schemaData.users || [];
 
 		log.debug('...Schema.init()');
 
@@ -93,6 +95,7 @@ Schema.prototype.get = function() {
 		
 		var result = this.graph.toJSON();
 		result.name = this.name;
+		result.users = this.users;
 		return result;
 		
 	} catch(err) {
@@ -481,28 +484,41 @@ Schema.TABLE_FIELDS = ['name', 'value'];
 
 //Schema.PROPERTIES = ['join_trees'];
 
-Schema.prototype.props = function() {
+Schema.prototype.persistentProps = function() {
 	var props = { 
-		join_trees: this.graph.joinTreesJSON() 
+		join_trees: this.graph.joinTreesJSON(),
+		users: this.users
 	};
 	return props;
 }
 
-Schema.prototype.updatePropSQL = function() {
+Schema.prototype.updatePropSQL = function(opts) {
 
-	var sql = _.map(this.props(), function(v, k) {
+	opts = opts || {};
+	var deep = opts.deep || false;
+
+	var sql = _.map(this.persistentProps(), function(v, k) {
 		return "UPDATE " + Schema.TABLE 
 			+ " SET value = '" + JSON.stringify(v) + "'"
 			+ " WHERE name = '" + k + "'; ";		
 	}).join('\n');
 
+	if (deep) {
+		_.each(this.tables(), function(t) {
+			sql += "\n" + t.updatePropSQL(opts);
+		}, this);
+	}
+
 	log.debug({sql: sql}, "Schema.updatePropSQL()");
 	return sql;
 }
 
-Schema.prototype.insertPropSQL = function() {
+Schema.prototype.insertPropSQL = function(opts) {
 
-	var values = _.map(this.props(), function(v, k) {
+	opts = opts || {};
+	var deep = opts.deep || false;
+
+	var values = _.map(this.persistentProps(), function(v, k) {
 		return "('" + k + "', '" + JSON.stringify(v) + "')";
 	});
 
@@ -513,6 +529,12 @@ Schema.prototype.insertPropSQL = function() {
 	var sql = 'INSERT INTO ' + Schema.TABLE
 			+ ' (' + fields.join(',') + ') ' 
 			+ ' VALUES ' + values.join(',') + '; ';
+
+	if (deep) {
+		_.each(this.tables(), function(t) {
+			sql += "\n" + t.insertPropSQL(opts);
+		}, this);
+	}
 
 	log.debug({sql: sql}, "Schema.insertPropSQL()");
 	return sql;

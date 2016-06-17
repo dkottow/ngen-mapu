@@ -584,6 +584,10 @@ Database.prototype.patchSchema = function(patches, cbResult) {
 		cbResult(err, null);
 	}
 }
-//}
+
+
+Database.ROLE_OWNER = "owner";
+Database.ROLE_WRITER = "writer";
+Database.ROLE_READER = "reader";
 
 exports.Database = Database;

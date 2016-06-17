@@ -95,36 +95,46 @@ Table.CreateTableSQL = "CREATE TABLE " + Table.TABLE + " ("
 		+ "	PRIMARY KEY (name) "
 		+ ");\n\n";
 
-Table.prototype.updatePropSQL = function() {
-
+Table.prototype.persistentProps = function() {
 	var dbProps = {
 		row_alias: this.row_alias
 	};
 	_.extend(dbProps, this.props);
+	return dbProps;
+}
+
+Table.prototype.updatePropSQL = function(opts) {
+
+	opts = opts || {};
+	var deep = opts.deep || false;
+
+	var props = this.persistentProps();
 
 	var sql = "UPDATE " + Table.TABLE 
-			+ " SET props = '" + JSON.stringify(dbProps) + "'"
+			+ " SET props = '" + JSON.stringify(props) + "'"
 			+ " , disabled = " + (this.disabled ? 1 : 0)
 			+ " WHERE name = '" + this.name + "'; ";
 
-	_.each(this.fields, function(f) {
-		sql += "\n" + f.updatePropSQL(this);
-	}, this);
+	if (deep) {
+		_.each(this.fields, function(f) {
+			sql += "\n" + f.updatePropSQL(this);
+		}, this);
+	}
 
 	log.trace({sql: sql}, "Table.updatePropSQL()");
 	return sql;
 }
 
-Table.prototype.insertPropSQL = function() {
+Table.prototype.insertPropSQL = function(opts) {
 
-	var dbProps = {
-		row_alias: this.row_alias
-	};
-	_.extend(dbProps, this.props);
+	opts = opts || {};
+	var deep = opts.deep || false;
+
+	var props = this.persistentProps();
 
 	var values = _.map([
 			this.name, 
-			JSON.stringify(dbProps),
+			JSON.stringify(props),
 		], function(v) {
 		return "'" + v + "'";
 	}).concat([
@@ -139,9 +149,11 @@ Table.prototype.insertPropSQL = function() {
 			+ ' (' + fields.join(',') + ') ' 
 			+ ' VALUES (' + values.join(',') + '); ';
 
-	_.each(this.fields, function(f) {
-		sql += "\n" + f.insertPropSQL(this);
-	}, this);
+	if (deep) {
+		_.each(this.fields, function(f) {
+			sql += "\n" + f.insertPropSQL(this);
+		}, this);
+	}
 
 	log.trace({sql: sql}, "Table.insertPropSQL()");
 	return sql;

@@ -21,10 +21,17 @@ var path = require('path');
 var util = require('util');
 
 var express = require('express');
+var jwt = require('express-jwt');
 
 var parser = require('./QueryParser.js');
 
 var log = global.log.child({'mod': 'g6.Router.js'});
+
+var auth = jwt({
+  secret: new Buffer(process.env.AUTH0_CLIENT_SECRET, 'base64'),
+  audience: process.env.AUTH0_CLIENT_ID
+});
+//auth = null;
 
 function sendError(req, res, err, code) {
 	log.error({req: req, code: code, err: err}, 'Controller.sendError()');
@@ -40,6 +47,17 @@ function Controller(accounts) {
 Controller.prototype.initRoutes = function() {
 	log.debug("Controller.initRoutes()...");		
 	var me = this;
+
+	if (auth) {
+		this.router.use(auth);
+		this.router.use(function(req, res, next) {
+			req.user.admin = false;
+			if (req.user.app_data && req.user.app_data.admin) {
+				req.user.admin = true;
+			}
+			next();
+		});
+	}
 
 	this.router.get('/', function(req, res) {
 		me.listAccounts(req, res);
@@ -88,55 +106,13 @@ Controller.prototype.initRoutes = function() {
 	log.debug("...Controller.initRoutes()");		
 }
 
-Controller.prototype.account = function(name) {
-	return this.accounts[name];
-}
-
-Controller.prototype.getPathObjects = function(req, objs) {
-
-	log.debug({params: req.params}, 'Controller.getPathObjects...');
-
-	var result = {};
-	if (req.params[0] && objs.account) {
-
-		var account = this.account(req.params[0]);
-		if ( ! account) {
-			result.error = new Error('Account ' 
-				+ req.params[0] + ' not found');
-			return result;
-		} else {
-			result.account = account;
-		}
-	}
-
-	if (req.params[1] && objs.db) {
-		var db = result.account.database(req.params[1]);
-		if ( ! db) {
-			result.error = new Error('Database ' 
-				+ req.params[1] + ' not found');
-			return result;
-		} else {
-			result.db = db;
-		}
-	}
-
-	if (req.params[2] && objs.table) {
-		var table = result.db.table(req.params[2]);
-		if ( ! table) {
-			result.error = new Error('Table ' 
-				+ req.params[2] + ' not found');
-			return result;
-		} else {
-			result.table = table;
-		}
-	}
-
-	log.debug({result: result}, '...Controller.getPathObjects');
-	return result;
-}
-
 Controller.prototype.listAccounts = function(req, res) {
-	log.info({req: req}, 'Controller.listAccounts()...');
+	log.info({req: req, user: req.user}, 'Controller.listAccounts()...');
+
+	if ( ! this.authorized('listAccounts', req, null)) {
+		sendError(req, res, 'Unauthorized', 401);
+		return;
+	}
 
 	var result = {};
 	result.accounts = _.map(this.accounts, function(ac) {
@@ -158,6 +134,11 @@ Controller.prototype.getAccount = function(req, res) {
 		return;
 	}
 
+	if ( ! this.authorized('getAccount', req, path)) {
+		sendError(req, res, 'Unauthorized', 401);
+		return;
+	}
+
 	path.account.getInfo(function(err, result) {
 		if (err) {
 			sendError(req, res, err, 400);
@@ -175,7 +156,7 @@ Controller.prototype.getAccount = function(req, res) {
 		log.info({res: res}, '...Controller.getAccount().');
 	});
 }
-
+	
 Controller.prototype.getDatabase = function(req, res) {
 
 	log.info({req: req}, 'Controller.getDatabase()...');
@@ -183,6 +164,11 @@ Controller.prototype.getDatabase = function(req, res) {
 	var path = this.getPathObjects(req, {account: true, db: true});
 	if (path.error) {
 		sendError(req, res, path.error, 404);
+		return;
+	}
+
+	if ( ! this.authorized('getDatabase', req, path)) {
+		sendError(req, res, 'Unauthorized', 401);
 		return;
 	}
 
@@ -214,6 +200,11 @@ Controller.prototype.putDatabase = function(req, res) {
 		return;
 	}
 
+	if ( ! this.authorized('putDatabase', req, path)) {
+		sendError(req, res, 'Unauthorized', 401);
+		return;
+	}
+
 	var schema = req.body;
 	schema.name = req.params[1];
 
@@ -239,6 +230,11 @@ Controller.prototype.delDatabase = function(req, res) {
 		return;
 	}
 
+	if ( ! this.authorized('delDatabase', req, path)) {
+		sendError(req, res, 'Unauthorized', 401);
+		return;
+	}
+
 	var opts = req.query;
 	path.account.delDatabase(path.db.name(), opts, function(err, sucess) {
 		if (err) {
@@ -258,6 +254,11 @@ Controller.prototype.patchDatabase = function(req, res) {
 	var path = this.getPathObjects(req, {account: true, db: true});
 	if (path.error) {
 		sendError(req, res, path.error, 404);
+		return;
+	}
+
+	if ( ! this.authorized('patchDatabase', req, path)) {
+		sendError(req, res, 'Unauthorized', 401);
 		return;
 	}
 
@@ -283,6 +284,11 @@ Controller.prototype.getDatabaseFile = function(req, res) {
 		return;
 	}
 
+	if ( ! this.authorized('getDatabaseFile', req, path)) {
+		sendError(req, res, 'Unauthorized', 401);
+		return;
+	}
+
 	res.sendFile(path.db.dbFile, function(err) {
 		if (err) {
 			sendError(req, res, err);
@@ -298,6 +304,11 @@ Controller.prototype.getRows = function(req, res) {
 	var path = this.getPathObjects(req, {account: true, db: true, table: true});
 	if (path.error) {
 		sendError(req, res, path.error, 404);
+		return;
+	}
+
+	if ( ! this.authorized('getRows', req, path)) {
+		sendError(req, res, 'Unauthorized', 401);
 		return;
 	}
 
@@ -353,6 +364,11 @@ Controller.prototype.getStats = function(req, res) {
 		return;
 	}
 
+	if ( ! this.authorized('getStats', req, path)) {
+		sendError(req, res, 'Unauthorized', 401);
+		return;
+	}
+
 	var params = {};
 	_.each(req.query, function(v, k) {
 		if (k[0] == '$') {
@@ -390,6 +406,11 @@ Controller.prototype.postRows = function(req, res) {
 		return;
 	}
 
+	if ( ! this.authorized('postRows', req, path)) {
+		sendError(req, res, 'Unauthorized', 401);
+		return;
+	}
+
 	var rows = req.body;
 	var opts = req.query;
 	path.db.insert(path.table.name, rows, opts, function(err, result) {
@@ -411,6 +432,11 @@ Controller.prototype.putRows = function(req, res) {
 	var path = this.getPathObjects(req, {account: true, db: true, table: true});
 	if (path.error) {
 		sendError(req, res, path.error, 404);
+		return;
+	}
+
+	if ( ! this.authorized('putRows', req, path)) {
+		sendError(req, res, 'Unauthorized', 401);
 		return;
 	}
 
@@ -438,6 +464,11 @@ Controller.prototype.delRows = function(req, res) {
 		return;
 	}
 
+	if ( ! this.authorized('delRows', req, path)) {
+		sendError(req, res, 'Unauthorized', 401);
+		return;
+	}
+
 	var rowIds = req.body;
 	path.db.delete(path.table.name, rowIds, function(err, result) {
 		if (err) {
@@ -447,6 +478,121 @@ Controller.prototype.delRows = function(req, res) {
 		res.send(result); 
 		log.info({res: res}, '...Controller.delRows().');
 	});
+}
+
+Controller.prototype.account = function(name) {
+	return this.accounts[name];
+}
+
+Controller.prototype.getPathObjects = function(req, objs) {
+
+	log.debug({params: req.params}, 'Controller.getPathObjects...');
+
+	var result = {};
+	if (req.params[0] && objs.account) {
+
+		var account = this.account(req.params[0]);
+		if ( ! account) {
+			result.error = new Error('Account ' 
+				+ req.params[0] + ' not found');
+			return result;
+		} else {
+			result.account = account;
+		}
+	}
+
+	if (req.params[1] && objs.db) {
+		var db = result.account.database(req.params[1]);
+		if ( ! db) {
+			result.error = new Error('Database ' 
+				+ req.params[1] + ' not found');
+			return result;
+		} else {
+			result.db = db;
+		}
+	}
+
+	if (req.params[2] && objs.table) {
+		var table = result.db.table(req.params[2]);
+		if ( ! table) {
+			result.error = new Error('Table ' 
+				+ req.params[2] + ' not found');
+			return result;
+		} else {
+			result.table = table;
+		}
+	}
+
+	log.debug({result: result}, '...Controller.getPathObjects');
+	return result;
+}
+
+Controller.prototype.authorized = function(op, req, path) {
+	log.debug({op: op, 'req.user': req.user, path: path}, 
+				'Controller.authorized()...'); 
+
+	//sys admin - true
+	if (req.user.account == '*' && req.user.admin) {
+		log.debug({result: true}, '...Controller.authorized()');
+		return true;
+	}
+
+	//path has no account aka global op. e.g. listAccounts() - false
+	if ( ! (path && path.account)) {
+		log.debug({result: false}, '...Controller.authorized()');
+		return false;
+	}
+
+	//user account mismatch - false
+	if (req.user.account != path.account.name) {
+		log.debug({result: false}, '...Controller.authorized()');
+		return false;
+	}
+
+	//user is account admin - true
+	if (req.user.admin) {
+		log.debug({result: true}, '...Controller.authorized()');
+		return true;
+	}
+
+	var dbUser = path.db.user[req.user.name];
+
+	//user is no db user - false
+	if ( ! dbUser) {
+		log.debug({result: false}, '...Controller.authorized()');
+		return false;
+	}
+
+	//user is db owner - true
+	if (dbUser == Database.ROLE_OWNER) {
+		log.debug({result: true}, '...Controller.authorized()');
+		return true;
+	}
+			
+	//user is either db reader / writer. it depends on op now..
+	switch(op) {
+
+		case 'getAccount':			
+		case 'getDatabase':			
+		case 'getRows':			
+		case 'getStats':			
+			log.debug({result: true}, '...Controller.authorized()');
+			return true;
+
+		case 'postRows':			
+		case 'putRows':			
+		case 'delRows':			
+			log.debug({result: dbUser == Database.ROLE_WRITER}, 
+						'...Controller.authorized()');
+			return dbUser == Database.ROLE_WRITER;
+
+		case 'putDatabase':			
+		case 'patchDatabase':			
+		case 'delDatabase':			
+		default:
+			log.debug({result: false}, '...Controller.authorized()');
+			return false;
+	}
 }
 
 exports.Controller = Controller;

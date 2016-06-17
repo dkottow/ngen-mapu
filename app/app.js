@@ -14,14 +14,17 @@
    limitations under the License.
 */
 
-var express = require('express');
-var bodyParser = require('body-parser');
-var _ = require('underscore');
-
 var fs = require('fs');
 var path = require('path');
 var util = require('util');
 var url = require('url');
+
+var _ = require('underscore');
+
+var express = require('express');
+var bodyParser = require('body-parser');
+
+require('dotenv').config();
 
 var Account = require('./Account.js').Account;
 var Controller = require('./Controller.js').Controller;

@@ -19,6 +19,7 @@ var _ = require('underscore');
 var fs = require('fs');
 var path = require('path');
 var util = require('util');
+var url = require('url');
 
 var express = require('express');
 var jwt = require('express-jwt');

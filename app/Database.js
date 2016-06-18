@@ -55,6 +55,10 @@ Database.prototype.table = function(name) {
 	return this.schema.table(name);
 }
 
+Database.prototype.user = function(name) { 
+	return this.schema.user(name);
+}
+
 Database.prototype.tables = function() { 
 	var tables = this.schema.tables();
 	return _.object(_.pluck(tables, 'name'), tables); 
@@ -585,9 +589,5 @@ Database.prototype.patchSchema = function(patches, cbResult) {
 	}
 }
 
-
-Database.ROLE_OWNER = "owner";
-Database.ROLE_WRITER = "writer";
-Database.ROLE_READER = "reader";
 
 exports.Database = Database;

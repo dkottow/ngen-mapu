@@ -22,8 +22,9 @@ var config = {
 	'ip'      : 'localhost',
 	//'ip'    : '192.168.1.38',
 	'port'    : 3000, 
+	'auth'	  : true,
 	'logdir'  : 'logs',
-	'release' : 'debug'
+	'release' : 'debug',
 }
 
 if (process.env.DONKEYLIFT_API) {
@@ -93,6 +94,8 @@ if (config.release == 'prod') {
 } else {
 	global.log = bunyan.createLogger(debugLog);
 }
+
+global.auth = config.auth;
 
 var app = require('./app/app.js').app;
 

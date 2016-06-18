@@ -28,11 +28,12 @@ var parser = require('./QueryParser.js');
 
 var log = global.log.child({'mod': 'g6.Router.js'});
 
+if (global.auth) {
 var auth = jwt({
-  secret: new Buffer(process.env.AUTH0_CLIENT_SECRET, 'base64'),
-  audience: process.env.AUTH0_CLIENT_ID
-});
-//auth = null;
+	  secret: new Buffer(process.env.AUTH0_CLIENT_SECRET, 'base64'),
+	  audience: process.env.AUTH0_CLIENT_ID
+	});
+}
 
 function sendError(req, res, err, code) {
 	log.error({req: req, code: code, err: err}, 'Controller.sendError()');
@@ -49,12 +50,12 @@ Controller.prototype.initRoutes = function() {
 	log.debug("Controller.initRoutes()...");		
 	var me = this;
 
-	if (auth) {
+	if (global.auth) {
 		this.router.use(auth);
 		this.router.use(function(req, res, next) {
-			req.user.admin = false;
-			if (req.user.app_data && req.user.app_data.admin) {
-				req.user.admin = true;
+			if (req.user && req.user.app_metadata) {
+				req.user.account = req.user.app_metadata.account;
+				req.user.admin = req.user.app_metadata.admin;
 			}
 			next();
 		});
@@ -110,8 +111,9 @@ Controller.prototype.initRoutes = function() {
 Controller.prototype.listAccounts = function(req, res) {
 	log.info({req: req, user: req.user}, 'Controller.listAccounts()...');
 
-	if ( ! this.authorized('listAccounts', req, null)) {
-		sendError(req, res, 'Unauthorized', 401);
+	var auth = this.authorized('listAccounts', req, null);
+	if ( ! auth.granted) {
+		sendError(req, res, new Error(auth.message), 401);
 		return;
 	}
 
@@ -135,8 +137,9 @@ Controller.prototype.getAccount = function(req, res) {
 		return;
 	}
 
-	if ( ! this.authorized('getAccount', req, path)) {
-		sendError(req, res, 'Unauthorized', 401);
+	var auth = this.authorized('getAccount', req, path);
+	if ( ! auth.granted) {
+		sendError(req, res, new Error(auth.message), 401);
 		return;
 	}
 
@@ -168,8 +171,9 @@ Controller.prototype.getDatabase = function(req, res) {
 		return;
 	}
 
-	if ( ! this.authorized('getDatabase', req, path)) {
-		sendError(req, res, 'Unauthorized', 401);
+	var auth = this.authorized('getDatabase', req, path);
+	if ( ! auth.granted) {
+		sendError(req, res, new Error(auth.message), 401);
 		return;
 	}
 
@@ -201,8 +205,9 @@ Controller.prototype.putDatabase = function(req, res) {
 		return;
 	}
 
-	if ( ! this.authorized('putDatabase', req, path)) {
-		sendError(req, res, 'Unauthorized', 401);
+	var auth = this.authorized('putDatabase', req, path);
+	if (auth.error) {
+		sendError(req, res, auth.error, 401);
 		return;
 	}
 
@@ -231,8 +236,9 @@ Controller.prototype.delDatabase = function(req, res) {
 		return;
 	}
 
-	if ( ! this.authorized('delDatabase', req, path)) {
-		sendError(req, res, 'Unauthorized', 401);
+	var auth = this.authorized('delDatabase', req, path);
+	if (auth.error) {
+		sendError(req, res, auth.error, 401);
 		return;
 	}
 
@@ -258,8 +264,9 @@ Controller.prototype.patchDatabase = function(req, res) {
 		return;
 	}
 
-	if ( ! this.authorized('patchDatabase', req, path)) {
-		sendError(req, res, 'Unauthorized', 401);
+	var auth = this.authorized('patchDatabase', req, path);
+	if (auth.error) {
+		sendError(req, res, auth.error, 401);
 		return;
 	}
 
@@ -285,8 +292,9 @@ Controller.prototype.getDatabaseFile = function(req, res) {
 		return;
 	}
 
-	if ( ! this.authorized('getDatabaseFile', req, path)) {
-		sendError(req, res, 'Unauthorized', 401);
+	var auth = this.authorized('getDatabaseFile', req, path);
+	if (auth.error) {
+		sendError(req, res, auth.error, 401);
 		return;
 	}
 
@@ -308,8 +316,9 @@ Controller.prototype.getRows = function(req, res) {
 		return;
 	}
 
-	if ( ! this.authorized('getRows', req, path)) {
-		sendError(req, res, 'Unauthorized', 401);
+	var auth = this.authorized('getRows', req, path);
+	if (auth.error) {
+		sendError(req, res, auth.error, 401);
 		return;
 	}
 
@@ -365,8 +374,9 @@ Controller.prototype.getStats = function(req, res) {
 		return;
 	}
 
-	if ( ! this.authorized('getStats', req, path)) {
-		sendError(req, res, 'Unauthorized', 401);
+	var auth = this.authorized('getStats', req, path);
+	if (auth.error) {
+		sendError(req, res, auth.error, 401);
 		return;
 	}
 
@@ -407,8 +417,9 @@ Controller.prototype.postRows = function(req, res) {
 		return;
 	}
 
-	if ( ! this.authorized('postRows', req, path)) {
-		sendError(req, res, 'Unauthorized', 401);
+	var auth = this.authorized('postRows', req, path);
+	if (auth.error) {
+		sendError(req, res, auth.error, 401);
 		return;
 	}
 
@@ -436,8 +447,9 @@ Controller.prototype.putRows = function(req, res) {
 		return;
 	}
 
-	if ( ! this.authorized('putRows', req, path)) {
-		sendError(req, res, 'Unauthorized', 401);
+	var auth = this.authorized('putRows', req, path);
+	if (auth.error) {
+		sendError(req, res, auth.error, 401);
 		return;
 	}
 
@@ -465,8 +477,9 @@ Controller.prototype.delRows = function(req, res) {
 		return;
 	}
 
-	if ( ! this.authorized('delRows', req, path)) {
-		sendError(req, res, 'Unauthorized', 401);
+	var auth = this.authorized('delRows', req, path);
+	if (auth.error) {
+		sendError(req, res, auth.error, 401);
 		return;
 	}
 
@@ -524,50 +537,75 @@ Controller.prototype.getPathObjects = function(req, objs) {
 		}
 	}
 
-	log.debug({result: result}, '...Controller.getPathObjects');
+	log.trace({result: result}, '...Controller.getPathObjects');
 	return result;
 }
 
 Controller.prototype.authorized = function(op, req, path) {
-	log.debug({op: op, 'req.user': req.user, path: path}, 
-				'Controller.authorized()...'); 
+	log.debug({ op: op, 'req.user': req.user }, 'Controller.authorized()...'); 
+	log.trace({ path: path }, 'Controller.authorized()'); 
+
+	//auth disabled
+	if ( ! global.auth) {
+		var result = { granted: true, message:  'auth disabled'};
+		log.debug(result, '...Controller.authorized()');
+		return result;
+	}
 
 	//sys admin - true
 	if (req.user.account == '*' && req.user.admin) {
-		log.debug({result: true}, '...Controller.authorized()');
-		return true;
+		var result = { granted: true, message:  'sysadmin'};
+		log.debug(result, '...Controller.authorized()');
+		return result;
 	}
 
-	//path has no account aka global op. e.g. listAccounts() - false
+	//path has no account aka requires sysadmin - false
 	if ( ! (path && path.account)) {
-		log.debug({result: false}, '...Controller.authorized()');
-		return false;
+		var result = { granted: false, message:  'requires sysadmin'	
+		};
+		result.error = new Error(result.message);
+		log.debug(result, '...Controller.authorized()');
+		return result;
 	}
 
 	//user account mismatch - false
 	if (req.user.account != path.account.name) {
-		log.debug({result: false}, '...Controller.authorized()');
-		return false;
+		var result = { granted: false, message: 'user - account mismatch'};
+		result.error = new Error(result.message);
+		log.debug(result, '...Controller.authorized()');
+		return result;
 	}
 
 	//user is account admin - true
 	if (req.user.admin) {
-		log.debug({result: true}, '...Controller.authorized()');
-		return true;
+		var result = { granted: true, message: 'account admin'};
+		log.debug(result, '...Controller.authorized()');
+		return result;
 	}
 
-	var dbUser = path.db.user[req.user.name];
+	//path has no db aka requires account admin - false
+	if ( ! path.db) {
+		var result = { granted: false, message: 'requires account admin' };
+		result.error = new Error(result.message);
+		log.debug(result, '...Controller.authorized()');
+		return result;
+	}
+
+	var dbUser = path.db.user(req.user.name);
 
 	//user is no db user - false
 	if ( ! dbUser) {
-		log.debug({result: false}, '...Controller.authorized()');
-		return false;
+		var result = { granted: false, message: 'user - db user mismatch'};
+		result.error = new Error(result.message);
+		log.debug(result, '...Controller.authorized()');
+		return result;
 	}
 
 	//user is db owner - true
-	if (dbUser == Database.ROLE_OWNER) {
-		log.debug({result: true}, '...Controller.authorized()');
-		return true;
+	if (dbUser == Schema.ROLE_OWNER) {
+		var result = { granted: true, message: 'db owner'};
+		log.debug(result, '...Controller.authorized()');
+		return result;
 	}
 			
 	//user is either db reader / writer. it depends on op now..
@@ -576,23 +614,41 @@ Controller.prototype.authorized = function(op, req, path) {
 		case 'getAccount':			
 		case 'getDatabase':			
 		case 'getRows':			
-		case 'getStats':			
-			log.debug({result: true}, '...Controller.authorized()');
-			return true;
-
+		case 'getStats':
+		{			
+			var result = { granted: true, message: 'requires db reader'};
+			log.debug(result, '...Controller.authorized()');
+			return result;
+		}
 		case 'postRows':			
 		case 'putRows':			
 		case 'delRows':			
-			log.debug({result: dbUser == Database.ROLE_WRITER}, 
-						'...Controller.authorized()');
-			return dbUser == Database.ROLE_WRITER;
+		{			
+			var result = {
+					granted: dbUser == Schema.ROLE_WRITER, 
+					message: 'requires db writer'
+			};
+			if ( ! result.granted) {
+				result.error = new Error(result.message);
+			}
+			log.debug(result, '...Controller.authorized()');
+			return result;
+		}
 
 		case 'putDatabase':			
 		case 'patchDatabase':			
 		case 'delDatabase':			
+		{
+			var result = { granted: false, message: 'requires db owner'};
+			result.error = new Error(result.message);
+			log.debug(result, '...Controller.authorized()');
+			return result;
+		}
 		default:
-			log.debug({result: false}, '...Controller.authorized()');
-			return false;
+			var result = { granted: false, message: 'unknown op'};
+			result.error = new Error(result.message);
+			log.debug(result, '...Controller.authorized()');
+			return result;
 	}
 }
 

@@ -43,6 +43,16 @@ Schema.EMPTY = {
 	, users: []
 }
 
+Schema.PATCH_OPS = {
+	SET_PROP: 'set_prop', 
+	ADD_FIELD: 'add_field', 
+	ADD_TABLE: 'add_table'
+};
+
+Schema.ROLE_OWNER = "owner";
+Schema.ROLE_WRITER = "writer";
+Schema.ROLE_READER = "reader";
+
 Schema.prototype.init = function(schemaData) {
 	try {
 		log.debug('Schema.init()...');
@@ -116,7 +126,20 @@ Schema.prototype.patch = function(patch) {
 }
 
 
-/******* start file ops *******/
+/******* user ops *******/
+Schema.prototype.user = function(name) {
+	return this.users[name];
+}
+
+Schema.prototype.setUser = function(name, role) {
+	this.users[name] = role;
+}
+
+Schema.prototype.delUser = function(name) {
+	delete this.users[name];
+}
+
+/******* file ops *******/
 
 Schema.prototype.write = function(dbFile, cbAfter) {
 	var me = this;
@@ -386,12 +409,6 @@ Schema.prototype.setName = function(fileName) {
 	var fn = path.basename(fileName);
 	this.name = fn.substr(0, fn.lastIndexOf('.')) || fn;
 }
-
-Schema.PATCH_OPS = {
-	SET_PROP: 'set_prop', 
-	ADD_FIELD: 'add_field', 
-	ADD_TABLE: 'add_table'
-};
 
 Schema.prototype.parsePatch = function(patch) {
 

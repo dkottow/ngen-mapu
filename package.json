@@ -22,7 +22,8 @@
 	"request": "*",
 	"fs-extra": "*",
 	"probdist": "*",
-	"random-js": "*"
+	"random-js": "*",
+	"jsonwebtoken": "*"
   }
   , "main": "server.js"
   , "scripts": {

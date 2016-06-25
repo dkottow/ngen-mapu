@@ -9,18 +9,19 @@ require('dotenv').config();
 
 global.log = require('./create_log.js').log;
 
-global.auth = false;
+global.auth = true;
 var authOptions = {
 	url: 'https://dkottow.auth0.com/oauth/ro',
 	json: true,
 	body: {
 		client_id: process.env.AUTH0_CLIENT_ID // Donkeylift 
-/*
+
 		, username: 'dkottow@gmail.com'
 		, password: 'W3Seguro'
-*/
+/*
 		, username: 'john@doe.com'
 		, password: 'johndoe'
+*/
 		, connection: 'DonkeyliftConnection'
 		, scope: 'openid name app_metadata'
 	} 
@@ -49,18 +50,16 @@ function get(url, cbAfter) {
 		options.auth = { bearer: authToken };
 	}
 	request.get(options,
-		function(error, rsp, body) {
-			if (error) {
-				log.error(error);			
-				throw new Error(error);
-			}
-			if (rsp.statusCode != 200) {
-				//console.log(rsp);
-				log.error(rsp);
-				throw new Error(body);
+		function(err, rsp, body) {
+			if (err || rsp.statusCode != 200) {
+				err = err 
+					|| new Error(rsp.statusCode + ' error.' + rsp.body);
+				log.error(err);			
+				cbAfter(err, null);
+				return;
 			}
 			log.info(body);
-			cbAfter(JSON.parse(body));
+			cbAfter(null, JSON.parse(body));
 		}
 	);
 }
@@ -99,7 +98,8 @@ describe('Server (app)', function() {
 
 		it('listAccounts', function(done) {
 			//this.timeout(10000);
-			get(baseUrl, function(result) {
+			get(baseUrl, function(err, result) {
+				assert(err == null, err ? err.message : "");
 				assert(result.accounts, 'response malformed');
 				assert(_.find(result.accounts, function(a) {
 					return a.name == demoAccount;
@@ -110,7 +110,8 @@ describe('Server (app)', function() {
 
 		it('getAccount', function(done) {		
 			url = baseUrl + '/' + demoAccount;
-			get(url, function(result) {
+			get(url, function(err, result) {
+				assert(err == null, err ? err.message : "");
 				assert(result.databases, 'response malformed');
 				assert(_.find(result.databases, function(db) {
 					return db.name == salesDatabase;
@@ -122,7 +123,8 @@ describe('Server (app)', function() {
 
 		it('getDatabase', function(done) {		
 			url = baseUrl + '/' + demoAccount + '/' + salesDatabase;
-			get(url, function(result) {
+			get(url, function(err, result) {
+				assert(err == null, err ? err.message : "");
 				assert(result.tables, 'response malformed');
 				assert(_.find(result.tables, function(table) {
 					return table.name == 'customers';

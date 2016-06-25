@@ -220,16 +220,5 @@ Account.prototype.delDatabase = function(name, options, cbResult) {
 	}
 }
 
-function fileExists(path) {
-	try {
-		var stat = fs.statSync(path);
-		return true;
-
-	} catch(err) {
-		if (err.code == 'ENOENT') return false;
-		else throw new Error(err);
-	}
-}
-
 exports.Account = Account;
 

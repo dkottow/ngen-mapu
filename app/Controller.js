@@ -25,6 +25,7 @@ var express = require('express');
 var jwt = require('express-jwt');
 
 var parser = require('./QueryParser.js');
+var Schema = require('./Schema.js').Schema;
 
 var log = global.log.child({'mod': 'g6.Router.js'});
 
@@ -40,8 +41,8 @@ function sendError(req, res, err, code) {
 	res.status(code).send({error: err.message});
 }
 
-function Controller(accounts) {
-	this.accounts = accounts;
+function Controller(accountManager) {
+	this.accountManager = accountManager;
 	this.router = new express.Router();
 	this.initRoutes();
 }
@@ -55,14 +56,20 @@ Controller.prototype.initRoutes = function() {
 		this.router.use(function(req, res, next) {
 			if (req.user && req.user.app_metadata) {
 				req.user.account = req.user.app_metadata.account;
-				req.user.admin = req.user.app_metadata.admin;
+				req.user.admin = req.user.app_metadata.admin || false;
+				req.user.name = req.user.email;
 			}
+			log.debug({'req.user': req.user}, 'router.use');
 			next();
 		});
 	}
 
 	this.router.get('/', function(req, res) {
 		me.listAccounts(req, res);
+	});
+
+	this.router.put(/^\/(\w+)$/, function(req, res) {
+		me.putAccount(req, res);
 	});
 
 	this.router.get(/^\/(\w+)$/, function(req, res) {
@@ -112,24 +119,44 @@ Controller.prototype.listAccounts = function(req, res) {
 	log.info({req: req, user: req.user}, 'Controller.listAccounts()...');
 
 	var auth = this.authorized('listAccounts', req, null);
-	if ( ! auth.granted) {
-		sendError(req, res, new Error(auth.message), 401);
+	if (auth.error) {
+		sendError(req, res, auth.error, 401);
 		return;
 	}
 
-	var result = {};
-	result.accounts = _.map(this.accounts, function(ac) {
-		return { name: ac.name,
-				 url: '/' + ac.name
-		};
+	var result = this.accountManager.list();
+
+	_.each(result.accounts, function(account) {
+		account.url = '/' + account.name;
 	});
 
 	res.send(result);
 	log.info({req: req}, '...Controller.listAccounts()');
 }
 
+Controller.prototype.putAccount = function(req, res) {
+	log.info({req: req, user: req.user}, 'Controller.putAccount()...');
+
+	var auth = this.authorized('putAccount', req, null);
+	if (auth.error) {
+		sendError(req, res, auth.error, 401);
+		return;
+	}
+
+	Account.create(req.params[0], function(err, result) {
+		if (err) {
+			sendError(req, res, err, 400);
+			return;
+		}
+		log.trace(result);
+		res.send(result); 
+		log.info({res: res}, '...Controller.putAccount().');
+	});
+
+}
+
 Controller.prototype.getAccount = function(req, res) {
-	log.info({req: req}, 'Controller.getAccount()...');
+	log.info({req: req, user: req.user}, 'Controller.getAccount()...');
 
 	var path = this.getPathObjects(req, {account: true});
 	if (path.error) {
@@ -138,8 +165,8 @@ Controller.prototype.getAccount = function(req, res) {
 	}
 
 	var auth = this.authorized('getAccount', req, path);
-	if ( ! auth.granted) {
-		sendError(req, res, new Error(auth.message), 401);
+	if (auth.error) {
+		sendError(req, res, auth.error, 401);
 		return;
 	}
 
@@ -150,6 +177,13 @@ Controller.prototype.getAccount = function(req, res) {
 		}
 
 		result.url = '/' + path.account.name; 
+
+		if ( ! req.user.admin) {
+			result.databases = _.filter(result.databases, function(db) {
+console.log(db.users);
+				return _.has(db.users, req.user.name);
+			});
+		}
 
 		_.each(result.databases, function(db) {
 			db.url = '/' + path.account.name + '/' + db.name;
@@ -172,8 +206,8 @@ Controller.prototype.getDatabase = function(req, res) {
 	}
 
 	var auth = this.authorized('getDatabase', req, path);
-	if ( ! auth.granted) {
-		sendError(req, res, new Error(auth.message), 401);
+	if (auth.error) {
+		sendError(req, res, auth.error, 401);
 		return;
 	}
 
@@ -354,8 +388,9 @@ Controller.prototype.getRows = function(req, res) {
 				var urlObj = url.parse(req.url, true);
 				urlObj.search = undefined;
 				urlObj.query['$skip'] = result.nextOffset;
+
 				result.nextUrl = url.format(urlObj)
-				delete result.nextOffset;
+				//delete result.nextOffset;
 			}
 
 			log.trace(result);
@@ -495,7 +530,7 @@ Controller.prototype.delRows = function(req, res) {
 }
 
 Controller.prototype.account = function(name) {
-	return this.accounts[name];
+	return this.accountManager.get(name);
 }
 
 Controller.prototype.getPathObjects = function(req, objs) {
@@ -545,67 +580,58 @@ Controller.prototype.authorized = function(op, req, path) {
 	log.debug({ op: op, 'req.user': req.user }, 'Controller.authorized()...'); 
 	log.trace({ path: path }, 'Controller.authorized()'); 
 
-	//auth disabled
-	if ( ! global.auth) {
-		var result = { granted: true, message:  'auth disabled'};
+	var resultFn = function(result) {
+		if ( ! result.granted) {
+			result.error = new Error(result.message);
+		}
 		log.debug(result, '...Controller.authorized()');
 		return result;
+	};
+
+	//auth disabled
+	if ( ! global.auth) {
+		return resultFn({ granted: true, message:  'auth disabled'});
 	}
 
 	//sys admin - true
 	if (req.user.account == '*' && req.user.admin) {
-		var result = { granted: true, message:  'sysadmin'};
-		log.debug(result, '...Controller.authorized()');
-		return result;
+		return resultFn({ granted: true, message:  'sysadmin'});
 	}
 
-	//path has no account aka requires sysadmin - false
+	//path has no account aka global op requires sysadmin - false
 	if ( ! (path && path.account)) {
-		var result = { granted: false, message:  'requires sysadmin'	
-		};
-		result.error = new Error(result.message);
-		log.debug(result, '...Controller.authorized()');
-		return result;
+		return resultFn({ granted: false, message: 'requires sysadmin'});
 	}
 
 	//user account mismatch - false
 	if (req.user.account != path.account.name) {
-		var result = { granted: false, message: 'user - account mismatch'};
-		result.error = new Error(result.message);
-		log.debug(result, '...Controller.authorized()');
-		return result;
+		return resultFn({ granted: false, message: 'user - account mismatch'});
 	}
 
 	//user is account admin - true
 	if (req.user.admin) {
-		var result = { granted: true, message: 'account admin'};
-		log.debug(result, '...Controller.authorized()');
-		return result;
+		return resultFn({ granted: true, message: 'account admin'});
 	}
 
-	//path has no db aka requires account admin - false
+	if (op == 'getAccount') {
+		return resultFn({ granted: true, message: 'requires nothing'});
+	}
+
+	//path has no db aka op requires account admin - false
 	if ( ! path.db) {
-		var result = { granted: false, message: 'requires account admin' };
-		result.error = new Error(result.message);
-		log.debug(result, '...Controller.authorized()');
-		return result;
+		return resultFn({ granted: false, message: 'requires account admin'});
 	}
 
 	var dbUser = path.db.user(req.user.name);
 
 	//user is no db user - false
 	if ( ! dbUser) {
-		var result = { granted: false, message: 'user - db user mismatch'};
-		result.error = new Error(result.message);
-		log.debug(result, '...Controller.authorized()');
-		return result;
+		return resultFn({ granted: false, message: 'user - db user mismatch'});
 	}
 
 	//user is db owner - true
 	if (dbUser == Schema.ROLE_OWNER) {
-		var result = { granted: true, message: 'db owner'};
-		log.debug(result, '...Controller.authorized()');
-		return result;
+		return resultFn({ granted: true, message: 'db owner'});
 	}
 			
 	//user is either db reader / writer. it depends on op now..
@@ -615,40 +641,20 @@ Controller.prototype.authorized = function(op, req, path) {
 		case 'getDatabase':			
 		case 'getRows':			
 		case 'getStats':
-		{			
-			var result = { granted: true, message: 'requires db reader'};
-			log.debug(result, '...Controller.authorized()');
-			return result;
-		}
+			return resultFn({ granted: true, message: 'requires db reader'});
 		case 'postRows':			
 		case 'putRows':			
 		case 'delRows':			
-		{			
-			var result = {
+			return resultFn({
 					granted: dbUser == Schema.ROLE_WRITER, 
 					message: 'requires db writer'
-			};
-			if ( ! result.granted) {
-				result.error = new Error(result.message);
-			}
-			log.debug(result, '...Controller.authorized()');
-			return result;
-		}
-
+			});
 		case 'putDatabase':			
 		case 'patchDatabase':			
 		case 'delDatabase':			
-		{
-			var result = { granted: false, message: 'requires db owner'};
-			result.error = new Error(result.message);
-			log.debug(result, '...Controller.authorized()');
-			return result;
-		}
+			return resultFn({ granted: false, message: 'requires db owner'});
 		default:
-			var result = { granted: false, message: 'unknown op'};
-			result.error = new Error(result.message);
-			log.debug(result, '...Controller.authorized()');
-			return result;
+			return resultFn({ granted: false, message: 'unknown op'});
 	}
 }
 

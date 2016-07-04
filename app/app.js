@@ -22,12 +22,12 @@ var url = require('url');
 var _ = require('underscore');
 
 var express = require('express');
-var bodyParser = require('body-parser');
 
 require('dotenv').config();
 
 var AccountManager = require('./AccountManager.js').AccountManager;
-var Controller = require('./Controller.js').Controller;
+var ApiController = require('./ApiController.js').ApiController;
+var SignupController = require('./SignupController.js').SignupController;
 
 /** globals **/
 var log = global.log.child({'mod': 'g6.app.js'});
@@ -75,11 +75,12 @@ function initRoutes() {
 	  next();
 	});
 
-	//json parsing 
-	app.use(bodyParser.json());
+	//signup
+	var signupController = new SignupController();
+	app.use('/public', signupController.router);
 
-	//all app routes
-	controller = new Controller(accounts);
+	//all api routes
+	controller = new ApiController(accounts);
 	app.use('/', controller.router);
 
 	//uncaught exception handling 

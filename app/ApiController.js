@@ -22,6 +22,7 @@ var util = require('util');
 var url = require('url');
 
 var express = require('express');
+var bodyParser = require('body-parser');
 var jwt = require('express-jwt');
 
 var parser = require('./QueryParser.js');
@@ -50,6 +51,9 @@ function Controller(accountManager) {
 Controller.prototype.initRoutes = function() {
 	log.debug("Controller.initRoutes()...");		
 	var me = this;
+
+	//json parsing 
+	this.router.use(bodyParser.json());
 
 	if (global.auth) {
 		this.router.use(auth);
@@ -143,7 +147,7 @@ Controller.prototype.putAccount = function(req, res) {
 		return;
 	}
 
-	Account.create(req.params[0], function(err, result) {
+	this.accountManager.create(req.params[0], function(err, result) {
 		if (err) {
 			sendError(req, res, err, 400);
 			return;
@@ -179,8 +183,8 @@ Controller.prototype.getAccount = function(req, res) {
 		result.url = '/' + path.account.name; 
 
 		if ( ! req.user.admin) {
+			//list only db's the user has access to
 			result.databases = _.filter(result.databases, function(db) {
-console.log(db.users);
 				return _.has(db.users, req.user.name);
 			});
 		}
@@ -605,6 +609,10 @@ Controller.prototype.authorized = function(op, req, path) {
 
 	//user account mismatch - false
 	if (req.user.account != path.account.name) {
+		log.debug({ 
+            "user.account": req.user.account,
+            "path.account": path.account.name
+		} , 'Controller.authorized()');
 		return resultFn({ granted: false, message: 'user - account mismatch'});
 	}
 
@@ -658,5 +666,5 @@ Controller.prototype.authorized = function(op, req, path) {
 	}
 }
 
-exports.Controller = Controller;
+exports.ApiController = Controller;
 

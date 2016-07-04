@@ -12,18 +12,19 @@
 	, "underscore": "*"
 	, "bunyan": "*"
 	, "express-jwt": "*"
+	, "jsonwebtoken": "*"
 	, "dotenv": "*"
 	, "pegjs": "*"
 	, "tmp": "*"
 	, "graphlib": "*"
+	, "validator": "*"
   }
   , "devDependencies": {
-	"mocha": "*",
-	"request": "*",
-	"fs-extra": "*",
-	"probdist": "*",
-	"random-js": "*",
-	"jsonwebtoken": "*"
+	"mocha": "*"
+	, "request": "*"
+	, "fs-extra": "*"
+	, "probdist": "*"
+	, "random-js": "*"
   }
   , "main": "server.js"
   , "scripts": {

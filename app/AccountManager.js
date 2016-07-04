@@ -89,7 +89,8 @@ AccountManager.prototype.get = function(name) {
 	return this.accounts[name];
 }
 
-AccountManager.create = function(name, cbAfter) {
+AccountManager.prototype.create = function(name, cbAfter) {
+	var me = this;
 	var accountDir = path.join(this.path, name);
 	if (fileExists(accountDir)) {
 		var err = new Error(util.format("Account %s exists.", name));

@@ -6,6 +6,8 @@ var jwt = require('jsonwebtoken');
 
 require('dotenv').config();
 
+var AUTH0_SCOPE = 'openid email app_metadata';
+
 function Controller() {
 	this.router = new express.Router();
 	this.initRoutes();
@@ -13,7 +15,7 @@ function Controller() {
 
 function sendError(req, res, err, code) {
 	log.error({req: req, code: code, err: err}, 'Controller.sendError()');
-	res.status(code).send('Error: ' + err.message);
+	res.status(code).send({error: err.message});
 }
 
 Controller.prototype.initRoutes = function() {
@@ -22,7 +24,7 @@ Controller.prototype.initRoutes = function() {
 	var urlencodedParser = bodyParser.urlencoded({ extended: true });
 
 	this.router.post('/signup', urlencodedParser, function(req, res) {
-		log.info({req: req}, 'Controller.validateSignup()...');
+		log.info({req: req}, 'Controller.signup()...');
 
 		if ( ! req.body) {
 			sendError(req, res, new Error('No form data'), 400);
@@ -45,15 +47,81 @@ Controller.prototype.initRoutes = function() {
 					return;
 				}
 				
-				res.send('ok');
-				log.info({res: res}, '...Controller.validateSignup()');
+				var body = {
+					email: req.body.email, 
+					account: req.body.account
+				};
+
+				res.send(body);
+				log.info({body: body}, 'Controller.signup()');
+				log.info({res: res}, '...Controller.signup()');
 			});
 			
 		});
 	});
+
+	this.router.post('/login', urlencodedParser, function(req, res) {
+		log.info({req: req}, 'Controller.login()...');
+
+		if ( ! req.body) {
+			sendError(req, res, new Error('No form data'), 400);
+			return;
+		}
+
+		var email = req.body.email || req.body.username;
+
+		me.doLogin(email, req.body.password, function(err, rsp) {
+			if (err) {
+				sendError(req, res, err, 400);
+				return;
+			}
+
+			var body = { token: rsp.id_token };
+			res.send(body);
+			log.debug({body: body}, 'Controller.login()');
+			log.info({res: res}, '...Controller.login()');
+		});
+	});
+
+}
+
+Controller.prototype.doLogin = function(email, pass, cbAfter) {
+	log.debug({email: email, pass: pass}, 'Controller.doLogin()...');
+
+	var authRequest = {
+		url: 'https://' + process.env.AUTH0_DOMAIN + '/oauth/ro'
+		, json: true,
+		body: {
+			client_id: process.env.AUTH0_CLIENT_ID // Donkeylift 
+			, username: email
+			, password: pass
+			, connection: process.env.AUTH0_CONNECTION
+			, scope: AUTH0_SCOPE
+		}
+	} 
+
+	log.debug({reqParam: authRequest}, 'Controller.doLogin()');
+	//do login
+	request.post(authRequest, function(err, rsp, body) {
+		if (err) {
+			cbAfter(err, null);
+			return;
+		}
+
+		if (rsp.statusCode != 200) {
+			var err = new Error(rsp.statusMessage);
+			cbAfter(err, null);
+			return;
+		}
+
+		log.debug({"rsp.body": rsp.body}, '...Controller.doLogin()');
+		cbAfter(null, rsp.body);
+	});
+
 }
 
 Controller.prototype.doSignup = function(email, account, pass, cbAfter) {
+	log.debug({email: email, account: account, pass: pass}, 'Controller.doSignup()...');
 	var me = this;
 	var authRequest = {
 		url: 'https://' + process.env.AUTH0_DOMAIN + '/api/v2/users'
@@ -62,13 +130,15 @@ Controller.prototype.doSignup = function(email, account, pass, cbAfter) {
 		}
 		, json: true
 		, body: { 
-			connection: 'DonkeyliftConnection'
+			connection: process.env.AUTH0_CONNECTION
 			, email: email
 			//, username: email
 			, password: pass
 			, app_metadata: { admin: true, account: account }
 		}
 	};
+
+	log.debug({reqParam: authRequest}, 'Controller.doSignup()');
 
 	//create user
 	request.post(authRequest, function(err, rsp, body) {
@@ -116,6 +186,7 @@ Controller.prototype.doSignup = function(email, account, pass, cbAfter) {
 }
 
 Controller.prototype.validateSignup = function(email, account, cbAfter) {
+	log.debug({email: email, account: account}, 'Controller.validateSignup()...');
 	var me = this;
 
 	if ( ! validator.isEmail(email)) {
@@ -125,8 +196,8 @@ Controller.prototype.validateSignup = function(email, account, cbAfter) {
 	}
 
 	if ( ! /^\w+$/.test(account)) {
-		var err = new Error('Account name has invalid caracters. '
-                          + 'Only [A-Za-z0-9_] are allowed.');
+		var err = new Error('Account name has invalid caracters.'
+                          + ' Only [A-Za-z0-9_] are allowed.');
 		cbAfter(err, null);
 		return;
 	}
@@ -141,6 +212,8 @@ Controller.prototype.validateSignup = function(email, account, cbAfter) {
 			, search_engine: 'v2'
 		}
 	};
+
+	log.debug({reqParam: authRequest}, 'Controller.validateSignup()');
 
 	//check if user exists
 	request.get(authRequest, function(err, rsp, body) {
@@ -175,6 +248,8 @@ Controller.prototype.validateSignup = function(email, account, cbAfter) {
 					bearer: apiToken
 				}
 			};
+
+			log.debug({reqParam: apiRequest}, 'Controller.validateSignup()');
 
 			request.get(apiRequest, function(err, rsp, body) {
 				if (err) {
@@ -222,7 +297,7 @@ Controller.prototype.getApiToken = function(cbAfter) {
 			grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer'
 			, client_id: process.env.AUTH0_CLIENT_ID
 			, refresh_token: process.env.AUTH0_REFRESH_TOKEN
-			, scope: 'openid email app_metadata'
+			, scope: AUTH0_SCOPE
 		}
 	}
 

@@ -10,22 +10,6 @@ require('dotenv').config();
 global.log = require('./create_log.js').log;
 
 global.auth = true;
-var authOptions = {
-	url: 'https://dkottow.auth0.com/oauth/ro',
-	json: true,
-	body: {
-		client_id: process.env.AUTH0_CLIENT_ID // Donkeylift 
-
-		, username: 'dkottow@gmail.com'
-		, password: 'W3Seguro'
-/*
-		, username: 'john@doe.com'
-		, password: 'johndoe'
-*/
-		, connection: 'DonkeyliftConnection'
-		, scope: 'openid name app_metadata'
-	} 
-};
 var authToken = null;
 
 var app = require('../app/app.js').app;
@@ -80,8 +64,19 @@ describe('Server (app)', function() {
 				server = app.listen(config.port, config.ip, function() {
 					log.info({config: config}, "server started.");
 					if (global.auth) {
-						request.post(authOptions, function(err, rsp, body) {
-							authToken = body.id_token;
+
+						var loginUrl = baseUrl + '/public/login';
+						var form = { form : {
+							email: "dbreader@donkeylift.com"
+							, password: "dbreader"
+						}};
+
+						request.post(loginUrl, form, function(err, rsp, body) {
+							assert(err == null, "err " + err);
+							//we need to parse json ourselves here, 
+							//since we posted urlencoded :-(
+							authToken = JSON.parse(body).token;
+							assert(authToken, "no auth token. login failed");
 							done();
 						});
 					} else {
@@ -96,6 +91,7 @@ describe('Server (app)', function() {
 		});
 
 
+/*
 		it('listAccounts', function(done) {
 			//this.timeout(10000);
 			get(baseUrl, function(err, result) {
@@ -107,11 +103,13 @@ describe('Server (app)', function() {
 				done();
 			});
 		});
+*/
 
 		it('getAccount', function(done) {		
 			url = baseUrl + '/' + demoAccount;
 			get(url, function(err, result) {
 				assert(err == null, err ? err.message : "");
+				console.log(result.databases);
 				assert(result.databases, 'response malformed');
 				assert(_.find(result.databases, function(db) {
 					return db.name == salesDatabase;

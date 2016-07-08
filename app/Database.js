@@ -64,6 +64,10 @@ Database.prototype.tables = function() {
 	return _.object(_.pluck(tables, 'name'), tables); 
 };
 
+Database.prototype.users = function() { 
+	return this.schema.users;
+}
+
 Database.prototype.getInfo = function(options, cbResult) {
 
 	cbResult = cbResult || arguments[arguments.length - 1];	

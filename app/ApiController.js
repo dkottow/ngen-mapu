@@ -135,7 +135,7 @@ Controller.prototype.listAccounts = function(req, res) {
 	});
 
 	res.send(result);
-	log.info({req: req}, '...Controller.listAccounts()');
+	log.info({res: res}, '...Controller.listAccounts()');
 }
 
 Controller.prototype.putAccount = function(req, res) {
@@ -629,6 +629,11 @@ Controller.prototype.authorized = function(op, req, path) {
 	if ( ! path.db) {
 		return resultFn({ granted: false, message: 'requires account admin'});
 	}
+
+	log.debug({
+			"db.name": path.db.name(), 
+			"db.users": path.db.users() 
+		}, 'Controller.authorized()');
 
 	var dbUser = path.db.user(req.user.name);
 

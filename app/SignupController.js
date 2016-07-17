@@ -15,7 +15,7 @@ function Controller() {
 
 function sendError(req, res, err, code) {
 	log.error({req: req, code: code, err: err}, 'Controller.sendError()');
-	res.status(code).send({error: err.message});
+	res.status(code).send({error: err.message, arg: err.arg});
 }
 
 Controller.prototype.initRoutes = function() {
@@ -191,6 +191,7 @@ Controller.prototype.validateSignup = function(email, account, cbAfter) {
 
 	if ( ! validator.isEmail(email)) {
 		var err = new Error('Username is not a valid email address.');
+		err.arg = 'email';	
 		cbAfter(err, null);
 		return;
 	}
@@ -198,6 +199,7 @@ Controller.prototype.validateSignup = function(email, account, cbAfter) {
 	if ( ! /^\w+$/.test(account)) {
 		var err = new Error('Account name has invalid caracters.'
                           + ' Only [A-Za-z0-9_] are allowed.');
+		err.arg = 'account';	
 		cbAfter(err, null);
 		return;
 	}
@@ -231,6 +233,7 @@ Controller.prototype.validateSignup = function(email, account, cbAfter) {
 		var users = JSON.parse(body);
 		if (users.length > 0) {
 			var err = new Error('User already exists.');
+			err.arg = 'email';	
 			cbAfter(err, null);
 			return;
 		}
@@ -259,6 +262,7 @@ Controller.prototype.validateSignup = function(email, account, cbAfter) {
 
 				if (rsp.statusCode == 200) {
 					var err = new Error('Account already exists.');
+					err.arg = 'account';	
 					cbAfter(err, null);
 					return;
 				} 

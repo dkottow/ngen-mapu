@@ -23,12 +23,6 @@ var _ = require('underscore');
 
 var express = require('express');
 
-require('dotenv').config();
-
-var AccountManager = require('./AccountManager.js').AccountManager;
-var ApiController = require('./ApiController.js').ApiController;
-var SignupController = require('./SignupController.js').SignupController;
-
 /** globals **/
 var log = global.log.child({'mod': 'g6.app.js'});
 
@@ -44,8 +38,11 @@ if (process.env.OPENSHIFT_DATA_DIR) {
 	global.data_dir = path.join(process.env.OPENSHIFT_DATA_DIR, 'data');
 }
 
-
 /*** end globals ***/
+
+var AccountManager = require('./AccountManager.js').AccountManager;
+var ApiController = require('./ApiController.js').ApiController;
+var SignupController = require('./SignupController.js').SignupController;
 
 var app = express();
 var log = global.log.child({'mod': 'g6.app.js'});

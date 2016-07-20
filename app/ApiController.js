@@ -182,7 +182,7 @@ Controller.prototype.getAccount = function(req, res) {
 
 		result.url = '/' + path.account.name; 
 
-		if ( ! req.user.admin) {
+		if (global.auth && ! req.user.admin) {
 			//list only db's the user has access to
 			result.databases = _.filter(result.databases, function(db) {
 				return _.has(db.users, req.user.name);

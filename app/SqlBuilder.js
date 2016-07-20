@@ -51,7 +51,7 @@ SqlBuilder.prototype.selectSQL
 
 	var orderSQL = this.orderSQL(table, s.orders);
 
-	var selectSQL = 'SELECT * FROM (' + query.sql + ')'
+	var selectSQL = 'SELECT * FROM (' + query.sql + ') '
 					+ orderSQL
 					+ ' LIMIT ' + limit
 					+ ' OFFSET ' + offset;

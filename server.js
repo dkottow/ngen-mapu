@@ -27,6 +27,10 @@ var config = {
 	'release' : 'debug',
 }
 
+if (process.env.DONKEYLIFT_AUTH) {
+	config.auth = process.env.AUTH > 0;
+}
+
 if (process.env.DONKEYLIFT_API) {
 	var u = url.parse(process.env.DONKEYLIFT_API);
 	config.ip = u.hostname;
@@ -42,6 +46,8 @@ if (process.env.DONKEYLIFT_API) {
 	config.ip = process.env.IP;
 	config.port = process.env.PORT;
 }
+
+
 
 /*
 var BunyanLoggly = require('bunyan-loggly');

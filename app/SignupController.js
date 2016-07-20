@@ -4,7 +4,12 @@ var express = require('express');
 var bodyParser = require("body-parser");
 var jwt = require('jsonwebtoken');
 
-require('dotenv').config();
+var envPath = './.env'; 
+if (process.env.OPENSHIFT_DATA_DIR) { 
+    envPath = process.env.OPENSHIFT_DATA_DIR + '/.env'; 
+} 
+ 
+require('dotenv').config({path: envPath}); 
 
 var AUTH0_SCOPE = 'openid email app_metadata';
 

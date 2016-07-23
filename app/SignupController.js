@@ -81,7 +81,12 @@ Controller.prototype.initRoutes = function() {
 				return;
 			}
 
-			var body = { token: rsp.id_token };
+			var token_info = jwt.decode(rsp.id_token);
+			var body = { 
+				id_token: rsp.id_token 
+				, account: token_info.app_metadata.account 
+			};
+
 			res.send(body);
 			log.debug({body: body}, 'Controller.login()');
 			log.info({res: res}, '...Controller.login()');
@@ -290,8 +295,8 @@ Controller.prototype.getApiToken = function(cbAfter) {
 
 	var refresh = true;
 	if (this.jwtIdToken) {
-		var token = jwt.decode(this.jwtIdToken);
-		if (token.exp > (Date.now() / 1000)) refresh = false;
+		var token_info = jwt.decode(this.jwtIdToken);
+		if (token_info.exp > (Date.now() / 1000)) refresh = false;
 	}
 
 	if ( ! refresh) {

@@ -30,6 +30,13 @@ var Schema = require('./Schema.js').Schema;
 
 var log = global.log.child({'mod': 'g6.Router.js'});
 
+var envPath = './.env'; 
+if (process.env.OPENSHIFT_DATA_DIR) { 
+    envPath = process.env.OPENSHIFT_DATA_DIR + '/.env'; 
+} 
+ 
+require('dotenv').config({path: envPath}); 
+
 if (global.auth) {
 var auth = jwt({
 	  secret: new Buffer(process.env.AUTH0_CLIENT_SECRET, 'base64'),

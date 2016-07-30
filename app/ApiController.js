@@ -67,6 +67,7 @@ Controller.prototype.initRoutes = function() {
 		this.router.use(function(req, res, next) {
 			if (req.user && req.user.app_metadata) {
 				req.user.account = req.user.app_metadata.account;
+				req.user.root = req.user.app_metadata.root || false;
 				req.user.admin = req.user.app_metadata.admin || false;
 				req.user.name = req.user.email;
 			}
@@ -605,13 +606,13 @@ Controller.prototype.authorized = function(op, req, path) {
 	}
 
 	//sys admin - true
-	if (req.user.account == '*' && req.user.admin) {
-		return resultFn({ granted: true, message:  'sysadmin'});
+	if (req.user.root) {
+		return resultFn({ granted: true, message:  'system admin'});
 	}
 
-	//path has no account aka global op requires sysadmin - false
+	//path has no account aka global op requires system admin - false
 	if ( ! (path && path.account)) {
-		return resultFn({ granted: false, message: 'requires sysadmin'});
+		return resultFn({ granted: false, message: 'requires system admin'});
 	}
 
 	//user account mismatch - false

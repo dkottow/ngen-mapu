@@ -110,16 +110,17 @@ Controller.prototype.doLogin = function(email, pass, cbAfter) {
 		}
 	} 
 
-	log.debug({reqParam: authRequest}, 'Controller.doLogin()');
+	log.debug({reqParam: authRequest}, 'Controller.doLogin(). Auth0 request');
 	//do login
 	request.post(authRequest, function(err, rsp, body) {
+		log.debug({rsp: rsp}, 'Controller.doLogin(). Auth0 response');
 		if (err) {
 			cbAfter(err, null);
 			return;
 		}
 
 		if (rsp.statusCode != 200) {
-			var err = new Error(rsp.statusMessage);
+			var err = new Error('User login failed.');
 			cbAfter(err, null);
 			return;
 		}
@@ -148,17 +149,18 @@ Controller.prototype.doSignup = function(email, account, pass, cbAfter) {
 		}
 	};
 
-	log.debug({reqParam: authRequest}, 'Controller.doSignup()');
+	log.debug({reqParam: authRequest}, 'Controller.doSignup(). Auth0 request');
 
 	//create user
 	request.post(authRequest, function(err, rsp, body) {
+		log.debug({rsp: rsp}, 'Controller.doSignup(). Auth0 response');
 		if (err) {
 			cbAfter(err, null);
 			return;
 		}
 
 		if (rsp.statusCode != 201) {
-			var err = new Error(rsp.statusMessage);
+			var err = new Error('User signup failed.');
 			cbAfter(err, null);
 			return;
 		}
@@ -176,8 +178,10 @@ Controller.prototype.doSignup = function(email, account, pass, cbAfter) {
 					bearer: apiToken
 				}
 			};
+			log.debug({reqParam: apiRequest}, 'Controller.doSignup(). PutAccount request');
 
 			request.put(apiRequest, function(err, rsp, body) {
+				log.debug({rsp: rsp}, 'Controller.doSignup(). PutAccount response');
 				if (err) {
 					cbAfter(err, null);
 					return;
@@ -188,7 +192,7 @@ Controller.prototype.doSignup = function(email, account, pass, cbAfter) {
 					return;
 				} 
 
-				var err = new Error(rsp.body);
+				var err = new Error('Create Account failed.');
 				cbAfter(err, null);
 			});
 		});
@@ -220,22 +224,23 @@ Controller.prototype.validateSignup = function(email, account, cbAfter) {
 			bearer: process.env.AUTH0_API_TOKEN 
 		}
 		, qs: {
-			q: 'name: "' + email + '"'
+			q: 'email: "' + email + '"'
 			, search_engine: 'v2'
 		}
 	};
 
-	log.debug({reqParam: authRequest}, 'Controller.validateSignup()');
+	log.debug({reqParam: authRequest}, 'Controller.validateSignup(). Auth0 request.');
 
 	//check if user exists
 	request.get(authRequest, function(err, rsp, body) {
+		log.debug({rsp: rsp}, 'Controller.validateSignup(). Auth0 response.');
 		if (err) {
 			cbAfter(err, null);
 			return;
 		}
 
 		if (rsp.statusCode != 200) {
-			var err = new Error(rsp.statusMessage);
+			var err = new Error('User validation failed.');
 			cbAfter(err, null);
 			return;
 		}
@@ -262,9 +267,10 @@ Controller.prototype.validateSignup = function(email, account, cbAfter) {
 				}
 			};
 
-			log.debug({reqParam: apiRequest}, 'Controller.validateSignup()');
+			log.debug({reqParam: apiRequest}, 'Controller.validateSignup(). GetAccount request');
 
 			request.get(apiRequest, function(err, rsp, body) {
+				log.debug({rsp: rsp}, 'Controller.validateSignup(). GetAccount response');
 				if (err) {
 					cbAfter(err, null);
 					return;
@@ -283,7 +289,7 @@ Controller.prototype.validateSignup = function(email, account, cbAfter) {
 					return;
 				} 
 
-				var err = new Error(rsp.body);
+				var err = new Error('Account validation failed');
 				cbAfter(err, null);
 			});
 		});

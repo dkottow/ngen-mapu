@@ -100,13 +100,6 @@ TableGraph.prototype.tables = function() {
 	return _.map(this.graph.nodes(), function(node) {
 		return this.table(node);
 	}, this);
-/*
-	return _.map(_.filter(this.graph.nodes(), function(node) {
-			return nodeIsTable(node);
-		}), function(name) {
-			return this.table(name);
-	}, this);
-*/
 }
 
 TableGraph.prototype.tablesByDependencies = function() {

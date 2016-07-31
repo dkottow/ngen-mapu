@@ -105,7 +105,9 @@ Schema.prototype.get = function() {
 		
 		var result = this.graph.toJSON();
 		result.name = this.name;
-		result.users = this.users;
+
+		var users = this.users;
+		result.users = _.object(_.pluck(users, 'name'), users); 
 		return result;
 		
 	} catch(err) {
@@ -127,10 +129,16 @@ Schema.prototype.patch = function(patch) {
 
 
 /******* user ops *******/
+
+
 Schema.prototype.user = function(name) {
-	return this.users[name];
+	var user = _.find(this.users, function(u) { 
+		return u.name == name; 
+	});
+	return user;
 }
 
+/** TODO
 Schema.prototype.setUser = function(name, role) {
 	this.users[name] = role;
 }
@@ -138,6 +146,7 @@ Schema.prototype.setUser = function(name, role) {
 Schema.prototype.delUser = function(name) {
 	delete this.users[name];
 }
+*/
 
 /******* file ops *******/
 

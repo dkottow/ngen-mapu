@@ -143,7 +143,7 @@ Controller.prototype.doSignup = function(email, account, pass, cbAfter) {
 		, body: { 
 			connection: process.env.AUTH0_CONNECTION
 			, email: email
-			//, username: email
+			/*, username: email */
 			, password: pass
 			, app_metadata: { admin: true, account: account }
 		}
@@ -224,7 +224,7 @@ Controller.prototype.validateSignup = function(email, account, cbAfter) {
 			bearer: process.env.AUTH0_API_TOKEN 
 		}
 		, qs: {
-			q: 'email: "' + email + '"'
+			q: 'name: "' + email + '"'
 			, search_engine: 'v2'
 		}
 	};

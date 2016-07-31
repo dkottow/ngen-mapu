@@ -197,6 +197,7 @@ Controller.prototype.getAccount = function(req, res) {
 			});
 		}
 
+console.log(result.databases);
 		_.each(result.databases, function(db) {
 			db.url = '/' + path.account.name + '/' + db.name;
 		});
@@ -651,7 +652,7 @@ Controller.prototype.authorized = function(op, req, path) {
 	}
 
 	//user is db owner - true
-	if (dbUser == Schema.ROLE_OWNER) {
+	if (dbUser.role == Schema.ROLE_OWNER) {
 		return resultFn({ granted: true, message: 'db owner'});
 	}
 			
@@ -667,7 +668,7 @@ Controller.prototype.authorized = function(op, req, path) {
 		case 'putRows':			
 		case 'delRows':			
 			return resultFn({
-					granted: dbUser == Schema.ROLE_WRITER, 
+					granted: dbUser.role == Schema.ROLE_WRITER, 
 					message: 'requires db writer'
 			});
 		case 'putDatabase':			

@@ -65,7 +65,8 @@ Database.prototype.tables = function() {
 };
 
 Database.prototype.users = function() { 
-	return this.schema.users;
+	var users = this.schema.users;
+	return _.object(_.pluck(users, 'name'), users); 
 }
 
 Database.prototype.getInfo = function(options, cbResult) {

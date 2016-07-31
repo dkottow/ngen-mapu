@@ -15,6 +15,7 @@ var log = global.log;
 describe('Schema', function() {
 
 	var salesSchema = {
+		users : [ { "name": "demo@donkeylift.com", "role": "writer" } ],
 		tables: [
 			 { "name": "customers"
 			 , "row_alias": ["name"]

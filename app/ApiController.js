@@ -473,6 +473,8 @@ Controller.prototype.postRows = function(req, res) {
 
 	var rows = req.body;
 	var opts = req.query;
+	opts.mod_by = req.user.name;
+
 	path.db.insert(path.table.name, rows, opts, function(err, result) {
 		if (err) {
 			sendError(req, res, err, 400);
@@ -503,6 +505,8 @@ Controller.prototype.putRows = function(req, res) {
 
 	var rows = req.body;
 	var opts = req.query;
+	opts.mod_by = req.user.name;
+
 	path.db.update(path.table.name, rows, opts, function(err, result) {
 		if (err) {
 			sendError(req, res, err, 400);

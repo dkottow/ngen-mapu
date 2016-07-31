@@ -332,6 +332,11 @@ Database.prototype.insert = function(tableName, rows, options, cbResult) {
 				return _.has(table.fields, fn); // && fn != 'id'; 
 		});
 
+		if ( ! rows[0].mod_on) fieldNames.push('mod_on');
+		if ( ! rows[0].mod_by) fieldNames.push('mod_by');
+
+		var mod_by = options.mod_by || 'noapi';
+
 		var fieldParams = _.times(fieldNames.length, function(fn) { 
 			return "?"; 
 		});
@@ -356,6 +361,10 @@ Database.prototype.insert = function(tableName, rows, options, cbResult) {
 			});
 
 			_.each(rows, function(r) {
+
+				r.mod_on = DateTimeField.toString(new Date());
+				r.mod_by = mod_by;
+
 				if (err == null) {					
 
 					var params = _.map(fieldNames, function(fn) { 
@@ -420,6 +429,9 @@ Database.prototype.update = function(tableName, rows, options, cbResult) {
 		});
 
 		if ( ! rows[0].mod_on) fieldNames.push('mod_on');
+		if ( ! rows[0].mod_by) fieldNames.push('mod_by');
+
+		var mod_by = options.mod_by || 'noapi';
 
 		var sql = "UPDATE " + table.name
 				+ ' SET "' + fieldNames.join('" = ?, "') + '" = ?'
@@ -443,6 +455,7 @@ Database.prototype.update = function(tableName, rows, options, cbResult) {
 			_.each(rows, function(r) {
 
 				r.mod_on = DateTimeField.toString(new Date());
+				r.mod_by = mod_by;
 
 				if (err == null) {					
 					var params = _.map(fieldNames, function(fn) { return r[fn]; });

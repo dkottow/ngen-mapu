@@ -93,6 +93,7 @@ Controller.prototype.initRoutes = function() {
 		});
 	});
 
+
 }
 
 Controller.prototype.doLogin = function(email, pass, cbAfter) {

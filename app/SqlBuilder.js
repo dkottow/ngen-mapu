@@ -140,9 +140,11 @@ SqlBuilder.prototype.createSQL = function(schema) {
 }
 
 SqlBuilder.prototype.updatePropSQL = function(patches) {
+	//only table props or deeper supported
+
 	var me = this;
-	var tables = _.groupBy(patches, function(ph) {
-		return ph.table.name;				
+	var tables = _.groupBy(patches, function(patch) {
+		return patch.table.name;				
 	});
 	var sql = _.reduce(tables, function(memo, patches) {
 		return memo + patches[0].table.updatePropSQL();

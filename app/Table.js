@@ -98,10 +98,19 @@ Table.CreateTableSQL = "CREATE TABLE " + Table.TABLE + " ("
 Table.prototype.persistentProps = function() {
 	var dbProps = {
 		row_alias: this.row_alias
+		//TODO access_control: this.access_control
 	};
 	_.extend(dbProps, this.props);
 	return dbProps;
 }
+
+/*
+access_control: [
+	{ role: 'writer', read_rows: 'all', write_rows': 'own'}, 
+	{ role: 'reader', read_rows: 'all', write_rows': 'none'} 
+]
+
+*/
 
 Table.prototype.updatePropSQL = function(opts) {
 

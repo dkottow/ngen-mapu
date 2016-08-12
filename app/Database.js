@@ -569,6 +569,20 @@ Database.prototype.delete = function(tableName, rowIds, cbResult) {
 	}
 }
 
+/* ex patches 
+[
+	{
+					op: Schema.PATCH_OPS.SET_PROP
+					, path: '/customers/name/width'
+					, value: 20
+	},
+	{
+					op: Schema.PATCH_OPS.SET_USER
+					, path: '/user/demo@donkeylift.com'
+					, value: { role: 'writer' }
+	}
+]
+*/
 Database.prototype.patchSchema = function(patches, cbResult) {
 	try {
 		var me = this;

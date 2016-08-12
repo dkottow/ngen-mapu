@@ -115,7 +115,7 @@ describe('Schema', function() {
 			});
 		});
 
-		it('parse patch', function(done) {
+		it('parse prop patch', function(done) {
 	
 			var patch = {
 				op: Schema.PATCH_OPS.SET_PROP
@@ -128,6 +128,26 @@ describe('Schema', function() {
 				assert(false);				
 
 			} catch(ex) {
+				log.error(ex);
+				assert(ex instanceof Error);
+				done();
+			};
+		});
+
+		it('parse user patch', function(done) {
+	
+			var patch = {
+				op: Schema.PATCH_OPS.SET_USER
+				, path: 'daniel'
+				, value: 'owner'
+			}
+			try {
+				var p = schema.parsePatch(patch);
+				log.info(p);
+				assert(false);				
+
+			} catch(ex) {
+				log.error(ex);
 				assert(ex instanceof Error);
 				done();
 			};
@@ -196,6 +216,23 @@ describe('Schema', function() {
 
 		});
 
+		it('write user patch', function(done) {
+	
+			var patch = {
+				op: Schema.PATCH_OPS.SET_USER
+				, path: '/user/dfw@donkeylift.com'
+				, value: { role: Schema.USER_ROLES.WRITER }
+			}
+
+			schema.patch(patch);
+
+			schema.writePatches(dbFile, [patch], function(err) {
+				assert(err == null, err);
+				log.info({schema: schema}, "schema after writing patches");
+				done();				
+			});
+
+		});
 	});
 
 	describe('Database with selfReferential tables', function() {

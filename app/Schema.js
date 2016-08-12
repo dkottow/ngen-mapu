@@ -19,6 +19,7 @@ var  path = require('path');
 var _ = require('underscore');
 var util = require('util');
 var assert = require('assert');
+var validator = require('validator');
 
 var tmp = require('tmp'); //tmp filenames
 
@@ -45,13 +46,17 @@ Schema.EMPTY = {
 
 Schema.PATCH_OPS = {
 	SET_PROP: 'set_prop', 
+	SET_USER: 'set_user', 
+	//TODO
 	ADD_FIELD: 'add_field', 
 	ADD_TABLE: 'add_table'
 };
 
-Schema.ROLE_OWNER = "owner";
-Schema.ROLE_WRITER = "writer";
-Schema.ROLE_READER = "reader";
+Schema.USER_ROLES = {
+	OWNER: "owner",
+	WRITER: "writer",
+	READER: "reader"
+};
 
 Schema.prototype.init = function(schemaData) {
 	try {
@@ -138,15 +143,15 @@ Schema.prototype.user = function(name) {
 	return user;
 }
 
-/** TODO
 Schema.prototype.setUser = function(name, role) {
-	this.users[name] = role;
+	if (!role) {
+		delete this.users[name];
+		return;
+	}
+	var user = this.user(name);
+	if (user) user.role = role;
+	else this.users.push({name: name, role:role});
 }
-
-Schema.prototype.delUser = function(name) {
-	delete this.users[name];
-}
-*/
 
 /******* file ops *******/
 
@@ -420,15 +425,16 @@ Schema.prototype.setName = function(fileName) {
 }
 
 Schema.prototype.parsePatch = function(patch) {
+	var me = this;
 
 	if ( ! _.contains(Schema.PATCH_OPS, patch.op)) {
 		throw new Error("Unknown patch op. " + patch.op);
 	}
 
-	if (patch.op == 'set_prop') {
+	if (patch.op == Schema.PATCH_OPS.SET_PROP) {
 
 		var path = patch.path.split('/');
-		if (path[0].length == 0) path.shift();
+		if (path[0].length == 0) path.shift(); //remove leading slash
 
 		var table = this.table(path.shift());
 		var prop = path.pop();
@@ -456,7 +462,28 @@ Schema.prototype.parsePatch = function(patch) {
 				}							
 			}
 		}
+
+	} else if (patch.op == Schema.PATCH_OPS.SET_USER) {
+		var user = patch.path.substr('/user/'.length);
+
+		if ( ! validator.isEmail(user)) {
+			throw new Error('Username is not a valid email address. ' + user);
+		}
+
+		if ( ! _.contains(Schema.USER_ROLES, patch.value.role)) {
+			throw new Error("Unknown user role. " + patch.value.role);
+		}
+
+		return {
+			op: patch.op,
+			user: user,
+			role: patch.value,
+			apply: function() {
+				me.setUser(user, patch.value);			
+			}
+		}	
 	}
+
 	return {};
 }
 
@@ -468,12 +495,27 @@ Schema.prototype.writePatches = function(dbFile, patchDefs, cbAfter) {
 		}, this);
 
 		var propPatches = _.filter(patches, function(p) {
-			return p.op == 'set_prop';
-		}, this);
+			return p.op == Schema.PATCH_OPS.SET_PROP;
+		});
 
-//TODO add Schema.updatePropSQL
-		var sql = this.sqlBuilder.updatePropSQL(propPatches);
-		log.debug({sql: sql});
+		var userPatches = _.filter(patches, function(p) {
+			return p.op == Schema.PATCH_OPS.SET_USER;
+		});
+
+		var sql = '';
+
+		if (propPatches.length > 0) {
+			sql += "\n" + this.sqlBuilder.updatePropSQL(propPatches);
+		}
+		if (userPatches.length > 0) {
+			sql += "\n" + this.updatePropSQL();
+		}
+
+		log.debug({sql: sql}, "Schema.writePatches()");
+		if (sql.length == 0) {
+			cbAfter();
+			return;
+		}
 
 		var db = new sqlite3.Database(dbFile);
 		
@@ -508,7 +550,7 @@ Schema.prototype.writePatches = function(dbFile, patchDefs, cbAfter) {
 Schema.TABLE = "__schemaprops__";
 Schema.TABLE_FIELDS = ['name', 'value'];
 
-//Schema.PROPERTIES = ['join_trees'];
+//Schema.PROPERTIES = [];
 
 Schema.prototype.persistentProps = function() {
 	var props = { 

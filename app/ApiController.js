@@ -74,7 +74,16 @@ Controller.prototype.initRoutes = function() {
 			log.debug({'req.user': req.user}, 'router.use');
 			next();
 		});
+	} else {
+		this.router.use(function(req, res, next) {
+			req.user = {
+				account : "demo",
+				name : "demo@donkeylift.com"
+			};
+			next();
+		});
 	}
+	
 
 	this.router.get('/', function(req, res) {
 		me.listAccounts(req, res);

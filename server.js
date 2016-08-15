@@ -22,7 +22,7 @@ var config = {
 	'ip'      : 'localhost',
 	//'ip'    : '192.168.1.38',
 	'port'    : 3000, 
-	'auth'	  : true,
+	'auth'	  : false,
 	'logdir'  : 'logs',
 	'release' : 'debug',
 }

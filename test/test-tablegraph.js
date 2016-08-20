@@ -1,6 +1,7 @@
 
 var assert = require('assert')
 	, _ = require('underscore')
+	, fs = require('fs')
 	, util = require('util')
 	, graphlib = require('graphlib');
 	
@@ -170,6 +171,38 @@ describe('Soccer DB', function() {
 		log.info(_.pluck(tables, 'name'));
 		log.info('by deps');
 		log.info(_.pluck(tablesByDeps, 'name'));
+	});
+});
+
+describe('RowsToObj Sandwiches DB', function() {
+
+	var jsonFile = jsonDir + '/sandwiches.json';
+	var jsonDataFile = jsonDir + '/sandwiches_customers_rows.json';
+	var fromTable = 'customers';
+	//var jsonDataFile = jsonDir + '/sandwiches_orders_rows.json';
+	//var fromTable = 'orders';
+	var tableGraph;
+	var rows;
+
+	before(function(done) {	
+
+		var schema = new Schema();
+		schema.jsonRead(jsonFile, function(err) {
+			log.info(err);
+			assert(err == null, err);
+			tableGraph = schema.graph;
+			rows = JSON.parse(fs.readFileSync(jsonDataFile, 'utf8'));	
+			done();
+		});
+	});	
+
+	it('TableGraph.rowsToObj', function() {
+		var treeObj = tableGraph.rowsToObj(rows, fromTable);
+/*
+		console.log(treeObj);
+		console.log('customer #2');
+		console.log(treeObj[fromTable][2]);
+*/
 	});
 });
 

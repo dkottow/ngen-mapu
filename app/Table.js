@@ -317,5 +317,7 @@ Table.prototype.toJSON = function() {
 	return result;
 }
 
+Table.TABLE_FIELD_SEPARATOR = '$';
+
 exports.Table = Table;
 

@@ -19,6 +19,7 @@ var _ = require('underscore');
 var util = require('util');
 
 var graphutil = require('./graph_util.js');
+var Table = require('./Table.js').Table;
 
 var log = global.log.child({'mod': 'g6.TableGraph.js'});
 
@@ -57,11 +58,6 @@ var TableGraph = function(tables, options) {
 			me.trees = me.minimumSpanningTree();
 		}
 
-/*
-if (_.find(tables, function(t) { return t.name == 'Formation'; })) {
-	me.trees = loadUserTrees();
-}
-*/
 		log.trace({trees: me.trees}, 'TableGraph.init()');
 		log.debug('...TableGraph.init().');
 	}
@@ -144,11 +140,6 @@ TableGraph.prototype.tablesByDependencies = function() {
 			log.error({graph: me.graph}, 
 				'TableGraph.dependentTables() failed.');
 			throw(new Error('TableGraph Error. Unsupported graph topology.'));
-
-			/*
-			log.warn("TabelGraph.tablesByDependency. Found interdependent tables, forcing result"); 
-			result.push(remainingTables[0]);
-			*/
 		}
 	}
 
@@ -165,10 +156,254 @@ TableGraph.prototype.table = function(name) {
 	return table;
 }
 
-TableGraph.prototype.tableJoins = function(fromTable, joinTables) {
+TableGraph.prototype.rowsToObj = function(rows, fromTable) {
+	if (rows.length == 0) return { fromTable: [] };
 
+	var fieldsByTable = _.groupBy(_.keys(rows[0]), function(fqn) {
+		if (fqn.indexOf(Table.TABLE_FIELD_SEPARATOR) > 0) {
+			return fqn.split(Table.TABLE_FIELD_SEPARATOR)[0];
+		} else {
+			return fromTable;
+		}
+	});
+
+	var rowsToObjs = function(rows, tables) {
+		console.log('rowsToObj ' + tables);
+		console.log('**** rows ****');
+//		console.log(rows);
+
+		var fields = [];
+		_.each(tables, function(t) {
+			fields = fields.concat(fieldsByTable[t]);
+		});
+
+		var groups = _.groupBy(rows, function(row) {
+			return _.reduce(fields, function(memo, f) {
+				return memo + row[f];
+			}, '');
+		});
+
+		var result = {};
+		_.each(tables, function(t) {
+			result[t] = _.map(groups, function(rows) {
+				var attrs = {};
+				_.each(fieldsByTable[t], function(fqn) {
+					var f = fqn;
+					if (fqn.indexOf(Table.TABLE_FIELD_SEPARATOR) > 0) {
+						f = fqn.split(Table.TABLE_FIELD_SEPARATOR)[1];
+					}
+					attrs[f] = rows[0][fqn];
+				});
+				return attrs;
+			});			
+		});
+		result.__rows__ = _.map(groups, function(rows) {
+			return _.map(rows, function(row) {
+				return _.omit(row, fields);
+			});
+		});
+/*
+		var result = _.map(groups, function(rows) {
+			var obj = {};
+			_.each(tables, function(t) {
+				var attrs = {};
+				_.each(fieldsByTable[t], function(fqn) {
+					var f = fqn;
+					if (fqn.indexOf(Table.TABLE_FIELD_SEPARATOR) > 0) {
+						f = fqn.split(Table.TABLE_FIELD_SEPARATOR)[1];
+					}
+					attrs[f] = rows[0][fqn];
+				});
+				obj[t] = attrs;
+			});			
+			obj.__rows__ = _.map(rows, function(row) {
+				return _.omit(row, fields);
+			});
+			return obj;
+		});
+*/
+console.log('**** result ****');
+//console.log(result);
+		return result;
+	}
+
+	var tables = _.without(_.keys(fieldsByTable), fromTable);
+	var joinTree = this.joinTree(fromTable, tables);
+
+	//var objs = rowsToObjs(rows, fromTable, { stripQ: false });
+	//addObjs(objs, fromTable);
+
+	
+	var visited = {};
+	var parents = {};
+	var queue = [];
+
+	visited[fromTable] = true;
+	queue.push(fromTable);
+
+
+	while (queue.length > 0) {
+		var cur = queue.shift();
+		_.each(joinTree.neighbors(cur), function(t) {
+			if ( ! _.has(visited, t)) {
+				visited[t] = true;
+				parents[t] = cur;
+				if (_.has(fieldsByTable, t)) {
+					var pt = parents[t];
+					while(pt != fromTable && ! _.has(fieldsByTable, pt)) {
+						pt = parents[pt];
+					}
+					console.log('backtracking from ' + t + ' to ' + pt);
+				}
+				queue.push(t);
+			}
+		});
+	}
+
+	var result = rowsToObjs(rows, ['customers']);
+	console.log('no of customers ' + result.customers.length);
+
+	var orders = rowsToObjs(result.__rows__[0], ['orders']);
+	_.extend(result.customers[0], orders);
+
+	var sandwiches = rowsToObjs(orders.__rows__[0], ['sandwiches']);
+	_.extend(result.customers[0].orders[0], sandwiches);
+
+	delete(result.__rows__);
+	delete(result.customers[0].__rows__);
+	delete(result.customers[0].orders[0].__rows__);
+
+	console.log('result');
+	console.log(result);
+	console.log('result.customers[0]');
+	console.log(result.customers[0]);
+	console.log('result.customers[0].orders[0]');
+	console.log(result.customers[0].orders[0]);
+
+	return result;
+}
+
+
+/*
+	var result = rowsToObjFn(rows, fromTable);
+	
+	var tables = _.without(_.keys(fieldsByTable), fromTable);
+	console.log(tables);
+
+
+	var paths = graphlib.alg.dijkstra(joinTree, fromTable, 
+			function(e) { return 1; },
+			function(v) { return joinTree.nodeEdges(v); } 
+	);
+
+	var parentTables = {};
+
+	for(var i = 0; i < tables.length; ++i) {
+
+		//iterate on path from tables[i] to fromTable
+		var j1 = tables[i];
+		var j2 = paths[j1].predecessor;
+		var many = !! this.graph.edge(j1, j2);
+		while(j2 != fromTable) {
+			j1 = j2;
+			j2 = paths[j1].predecessor;
+			if (this.graph.edge(j1, j2)) many = true;
+
+			//if path table j2 is part of tables, make j2 the parent
+			if (_.contains(_.without(tables, tables[i]), j2)) {
+				parentTables[tables[i]] = { 
+					child: tables[i],
+					parent: j2,
+					many: many
+				};
+				break;
+			}
+		}
+		//if no table on path make fromTable the parent
+		if (j2 == fromTable) {
+			parentTables[tables[i]] = {
+				child: tables[i],
+				parent: fromTable,
+				many: many
+			};
+		}
+	}
+
+	console.log(parentTables);
+
+	var parentTable = fromTable;
+	while(tables.length > 0) {
+
+		//process all immediate children of parentTable
+		var children = _.filter(parentTables, function(r) {
+			return r.parent == parentTable;
+		});
+
+		//TODO general case how to get cur 
+		var cur = result[parentTable];
+		_.each(children, function(r) {
+			for(var i = 0;i < cur.length; ++i) {
+				var childRows = rowsToObjFn(
+						cur[i].__rows__
+						, r.child
+						, { stripQ: true }
+				);
+				if (r.many) {
+					cur[i][r.child] = childRows[r.child];	
+				} else {
+					cur[i][r.child] = childRows[r.child][0];	
+				}
+				//delete cur[i].__rows__;
+			}
+		});
+
+		children = _.pluck(children, 'child');
+
+		tables = _.difference(tables, children);
+		//console.log(tables);
+		tables = [];
+
+		//TODO initialize parentTable
+
+	}
+*/
+
+
+/*
+	//process all immediate children of fromTable
+	var fromChildren = _.filter(parentTables, function(r) {
+		return r.parent == fromTable;
+	});
+
+	var cur = result[fromTable];
+	_.each(fromChildren, function(r) {
+		for(var i = 0;i < cur.length; ++i) {
+			var childRows = rowsToObjFn(
+					cur[i].__rows__
+					, r.child
+					, { stripQ: true }
+			);
+			cur[i][r.child] = childRows[r.child];	
+			delete cur[i].__rows__;
+		}
+	});
+*/
+
+/* iterate over tables: it
+		get path fromTable - it
+		add it rows to closest table on path, usually just fromTable
+		distinguish between referenced (add array) and referencing (single obj)
+*/
+
+//to add all orders rows we need iteration over customers
+/*
+var r2 = rowsToObjFn(result.customers[0].__rows__, 'orders', { stripQ: true });
+console.log(r2);
+*/
+
+TableGraph.prototype.joinTree = function(fromTable, joinTables) {
 	log.debug({fromTable: fromTable, joinTables: joinTables},
-		"TableGraph.tableJoins()...");
+		"TableGraph.joinTree()...");
 
 	/* pick first tree that covers all tables 
 	*/
@@ -183,6 +418,17 @@ TableGraph.prototype.tableJoins = function(fromTable, joinTables) {
 		}
 		return true;
 	});
+
+	log.debug({joinTree: joinTree}, '...TableGraph.joinTree()');
+	return joinTree;
+}
+
+TableGraph.prototype.tableJoins = function(fromTable, joinTables) {
+
+	log.debug({fromTable: fromTable, joinTables: joinTables},
+		"TableGraph.tableJoins()...");
+
+	var joinTree = this.joinTree(fromTable, joinTables);
 
 	var paths = graphlib.alg.dijkstra(joinTree, fromTable, 
 			function(e) { return 1; },

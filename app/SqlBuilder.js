@@ -167,7 +167,9 @@ SqlBuilder.prototype.sanitizeFieldClauses = function(table, fieldClauses) {
 			item.table = item.table || table.name;
 			item.alias = item.table == table.name
 						? item.field
-						: item.table + '$' + item.field;
+						: item.table 
+							+ Table.TABLE_FIELD_SEPARATOR 
+							+ item.field;
 		}
 
 		//validate

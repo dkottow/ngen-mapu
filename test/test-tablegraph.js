@@ -197,12 +197,8 @@ describe('RowsToObj Sandwiches DB', function() {
 	});	
 
 	it('TableGraph.rowsToObj', function() {
-		var treeObj = tableGraph.rowsToObj(rows, fromTable);
-/*
-		console.log(treeObj);
-		console.log('customer #2');
-		console.log(treeObj[fromTable][2]);
-*/
+		var obj = tableGraph.rowsToObj(rows, fromTable);
+		console.log(util.inspect(obj, false, null));
 	});
 });
 

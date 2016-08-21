@@ -62,12 +62,12 @@ var jsonDir = "test/data/json";
 
 describe('Sandwiches DB', function() {
 
-	var jsonFile = jsonDir + '/sales.json';
+	var schemaFile = jsonDir + '/sales.json';
 	var tableGraph;
 	beforeEach(function(done) {	
 
 		var schema = new Schema();
-		schema.jsonRead(jsonFile, function(err) {
+		schema.jsonRead(schemaFile, function(err) {
 			log.info(err);
 			assert(err == null, err);
 			tableGraph = schema.graph;
@@ -120,12 +120,12 @@ describe('Sandwiches DB', function() {
 
 describe('Soccer DB', function() {
 
-	var jsonFile = jsonDir + "/soccer.json";
+	var schemaFile = jsonDir + "/soccer.json";
 	var tableGraph;
 
 	beforeEach(function(done) {		
 		var schema = new Schema();
-		schema.jsonRead(jsonFile, function(err) {
+		schema.jsonRead(schemaFile, function(err) {
 			log.info(err);
 			assert(err == null, err);
 			tableGraph = schema.graph;
@@ -176,29 +176,77 @@ describe('Soccer DB', function() {
 
 describe('RowsToObj Sandwiches DB', function() {
 
-	var jsonFile = jsonDir + '/sandwiches.json';
-	var jsonDataFile = jsonDir + '/sandwiches_customers_rows.json';
-	var fromTable = 'customers';
-	//var jsonDataFile = jsonDir + '/sandwiches_orders_rows.json';
-	//var fromTable = 'orders';
+	var schemaFile = jsonDir + '/sandwiches.json';
 	var tableGraph;
 	var rows;
 
 	before(function(done) {	
 
 		var schema = new Schema();
-		schema.jsonRead(jsonFile, function(err) {
+		schema.jsonRead(schemaFile, function(err) {
 			log.info(err);
 			assert(err == null, err);
 			tableGraph = schema.graph;
-			rows = JSON.parse(fs.readFileSync(jsonDataFile, 'utf8'));	
 			done();
 		});
 	});	
 
-	it('TableGraph.rowsToObj', function() {
-		var obj = tableGraph.rowsToObj(rows, fromTable);
-		console.log(util.inspect(obj, false, null));
+	it('TableGraph.rowsToObj customers', function() {
+
+		this.timeout(5000);
+
+		var jsonDataFile = jsonDir + '/sandwiches_customers_rows.json';
+		var jsonDataFile = jsonDir + '/sandwiches_customers_1000rows.json';
+		var rows = JSON.parse(fs.readFileSync(jsonDataFile, 'utf8'));	
+		var obj = tableGraph.rowsToObj(rows, 'customers');
+		//console.log(util.inspect(obj, false, null));
+		//console.log('got ' + obj['customers'].length + ' objects');
 	});
+
+	it('TableGraph.rowsToObj orders', function() {
+		var jsonDataFile = jsonDir + '/sandwiches_orders_rows.json';
+		var rows = JSON.parse(fs.readFileSync(jsonDataFile, 'utf8'));	
+		var obj = tableGraph.rowsToObj(rows, 'orders');
+		//console.log(util.inspect(obj, false, null));
+		//console.log('got ' + obj['orders'].length + ' objects');
+	});
+
+});
+
+describe('RowsToObj Soccer DB', function() {
+
+	var schemaFile = jsonDir + '/soccer.json';
+	var tableGraph;
+	var rows;
+
+	before(function(done) {	
+
+		var schema = new Schema();
+		schema.jsonRead(schemaFile, function(err) {
+			log.info(err);
+			assert(err == null, err);
+			tableGraph = schema.graph;
+			done();
+		});
+	});	
+
+	it('TableGraph.rowsToObj games', function() {
+
+		var jsonDataFile = jsonDir + '/soccer_games_rows.json';
+		var rows = JSON.parse(fs.readFileSync(jsonDataFile, 'utf8'));	
+		var obj = tableGraph.rowsToObj(rows, 'Game');
+		//console.log(util.inspect(obj, false, null));
+		//console.log('got ' + obj['Game'].length + ' objects');
+	});
+
+	it('TableGraph.rowsToObj teams', function() {
+
+		var jsonDataFile = jsonDir + '/soccer_teams_rows.json';
+		var rows = JSON.parse(fs.readFileSync(jsonDataFile, 'utf8'));	
+		var obj = tableGraph.rowsToObj(rows, 'Team');
+		console.log(util.inspect(obj, false, null));
+		console.log('got ' + obj['Team'].length + ' objects');
+	});
+
 });
 

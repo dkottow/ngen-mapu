@@ -157,9 +157,11 @@ TableGraph.prototype.table = function(name) {
 }
 
 TableGraph.prototype.rowsToObj = function(rows, fromTable) {
+	var me = this;
+
 	if (rows.length == 0) return { fromTable: [] };
 
-	var fieldsByTable = _.groupBy(_.keys(rows[0]), function(fqn) {
+	var fieldQNsByTable = _.groupBy(_.keys(rows[0]), function(fqn) {
 		if (fqn.indexOf(Table.TABLE_FIELD_SEPARATOR) > 0) {
 			return fqn.split(Table.TABLE_FIELD_SEPARATOR)[0];
 		} else {
@@ -167,45 +169,7 @@ TableGraph.prototype.rowsToObj = function(rows, fromTable) {
 		}
 	});
 
-	var rowsToObjs = function(rows, tables) {
-		log.trace({ rows: rows, tables: tables}, 'rowsToObjs');
-
-		var fields = [];
-		_.each(tables, function(t) {
-			fields = fields.concat(fieldsByTable[t]);
-		});
-
-		var groups = _.groupBy(rows, function(row) {
-			return _.reduce(fields, function(memo, f) {
-				return memo + row[f];
-			}, '');
-		});
-
-		var result = {};
-		_.each(tables, function(t) {
-			result[t] = _.map(groups, function(rows) {
-				var attrs = {};
-				_.each(fieldsByTable[t], function(fqn) {
-					var f = fqn;
-					if (fqn.indexOf(Table.TABLE_FIELD_SEPARATOR) > 0) {
-						f = fqn.split(Table.TABLE_FIELD_SEPARATOR)[1];
-					}
-					attrs[f] = rows[0][fqn];
-				});
-				return attrs;
-			});			
-		});
-		result.__rows__ = _.map(groups, function(rows) {
-			return _.map(rows, function(row) {
-				return _.omit(row, fields);
-			});
-		});
-
-		log.trace({ result: result}, 'rowsToObjs');
-		return result;
-	}
-
-	var tables = _.without(_.keys(fieldsByTable), fromTable);
+	var tables = _.without(_.keys(fieldQNsByTable), fromTable);
 	var joinTree = this.joinTree(fromTable, tables);
 
 	var objGraph = new graphlib.Graph();
@@ -224,105 +188,132 @@ TableGraph.prototype.rowsToObj = function(rows, fromTable) {
 			if ( ! _.has(visited, t)) {
 				visited[t] = true;
 				parents[t] = cur;
-				if (_.has(fieldsByTable, t)) {
+				if (_.has(fieldQNsByTable, t)) {
 					var pt = parents[t];
-					while(pt != fromTable && ! _.has(fieldsByTable, pt)) {
+					var multi = ! me.graph.edge(pt, t);
+					while(pt != fromTable && ! _.has(fieldQNsByTable, pt)) {
+						multi = multi ||  (! me.graph.edge(parents[pt], pt));
 						pt = parents[pt];
 					}
-					objGraph.setEdge(t, pt);
-					//console.log('backtracking from ' + t + ' to ' + pt);
+					objGraph.setEdge(t, pt, {multi: multi});
+					log.trace({table: t, parentTable: pt, multi: multi}, 
+							'TableGraph.rowsToObj() backtracking');
 				}
 				queue.push(t);
 			}
 		});
 	}
 
+	var rowsToObjs = function(rows, tables, parentTable) {
+		log.trace({ rows: rows, tables: tables, parent: parentTable}, 'rowsToObjs');
+
+		var fields = [];
+		_.each(tables, function(t) {
+			fields = fields.concat(fieldQNsByTable[t]);
+		});
+
+		var groups = _.groupBy(rows, function(row) {
+			return _.reduce(fields, function(memo, f) {
+				return memo + row[f];
+			}, '');
+		});
+
+		var result = {};
+		_.each(tables, function(t) {
+
+			var tableFields = _.map(fieldQNsByTable[t], function(fqn) {
+				if (fqn.indexOf(Table.TABLE_FIELD_SEPARATOR) > 0) {
+					return fqn.split(Table.TABLE_FIELD_SEPARATOR)[1];
+				} else {
+					return fqn;
+				}
+			});
+
+			var tableGroups = groups;
+
+			if (tables.length > 1) {
+				tableGroups = _.groupBy(rows, function(row) {
+					return _.reduce(fieldQNsByTable[t], function(memo, f) {
+						return memo + row[f];
+					}, '');
+				});
+			}
+
+			var multi = true;
+			if (parentTable) multi = objGraph.edge(t, parentTable).multi;
+
+			var tableAttrs = _.map(tableGroups, function(rows) {
+				var attrs = {};
+				for(var i = 0; i < fieldQNsByTable[t].length; ++i) {
+					attrs[tableFields[i]] = rows[0][fieldQNsByTable[t][i]];
+				}
+				return attrs;
+			});			
+
+			result[t] = multi ? tableAttrs : tableAttrs[0];
+
+		});
+
+		result.__rows__ = _.map(groups, function(rows) {
+			return _.map(rows, function(row) {
+				return _.omit(row, fields);
+			});
+		});
+
+		log.trace({ result: result}, 'rowsToObjs');
+		return result;
+	}
+
+	/*
+     * iterate through all tables in objGraph starting at fromTable. 
+	 * processes all childTables with common parent at once
+	 * we may visit a table twice, but inf loops are impossible 
+	 * since we traverse the (directed) graph only looking at predecessors
+     *
+     */
 
 	queue = [];
-	visited = {};
 
 	var result = rowsToObjs(rows, [ fromTable ]);
 	queue.push({ table: fromTable, obj: result });
-	visited[fromTable] = true;
 
 	while (queue.length > 0) {
 		var item = queue.shift();
-		var childTables = objGraph.predecessors(item.table);
 
+		var childTables = objGraph.predecessors(item.table);
 		if (childTables.length == 0) continue;
 		
 		for(var i = 0;i < item.obj.__rows__.length; ++i) {
-			log.trace({item: item, i: i});
+			//log.trace({item: item, i: i});
 
-			var childObj = rowsToObjs(item.obj.__rows__[i], childTables);
-			_.extend(item.obj[item.table][i], childObj);
-			delete(item.obj[item.table][i].__rows__);
+			var childObj = rowsToObjs(item.obj.__rows__[i], 
+							childTables, item.table);
+
+/*
+console.log("item i = " + i);
+console.log(util.inspect(item));
+console.log("**** childObj ***");
+console.log(util.inspect(childObj));
+*/
+
+			if (item.obj[item.table][i]) {
+				//multi
+				_.extend(item.obj[item.table][i], childObj);
+				delete(item.obj[item.table][i].__rows__);
+
+			} else if (item.obj[item.table]) {
+				//single
+				_.extend(item.obj[item.table], childObj);
+				delete(item.obj[item.table].__rows__);
+			}
 
 			_.each(childTables, function(ct) {
-				if ( ! _.has(visited, ct)) {
-					queue.push({ table: ct, obj: childObj });
-				}
+				queue.push({ table: ct, obj: childObj });
 			});
 		}
-
-		_.each(childTables, function(ct) {
-			visited[ct] = true;
-		});
 	}
-
 	delete result.__rows__;
 	
-/*
-	var customers = rowsToObjs(rows, ['customers']);
-	for(var i = 0;i < customers.__rows__.length; ++i) {
-		var orders = rowsToObjs(customers.__rows__[i], ['orders']);
-		_.extend(customers.customers[i], orders);
-		for(var j = 0;j < orders.__rows__.length; ++j) {
-//debugger;
-			var sandwiches = rowsToObjs(orders.__rows__[j], ['sandwiches']);
-			_.extend(orders.orders[j], sandwiches);
-			delete(orders.orders[j].__rows__);
-		}
-		delete(customers.customers[i].__rows__);
-	}
-	delete(customers.__rows__);
-
-	var result = customers;
-	console.log('no of customers ' + result.customers.length);
-
-	console.log('result');
-	console.log(result);
-	console.log('result.customers[0]');
-	console.log(result.customers[0]);
-	console.log('result.customers[0].orders[0]');
-	console.log(result.customers[0].orders[0]);
-	console.log('result.customers[2].orders[4]');
-	console.log(result.customers[2].orders[4]);
-*/
-
-/*
-	var result = rowsToObjs(rows, [fromTable]);
-	console.log('no of root objs ' + result[fromTable].length);
-
-	var cur = 'customers', childTables = [ 'orders' ];
-	var children = rowsToObjs(result.__rows__[0], childTables);
-	_.extend(result[cur][0], children);
-
-	var cur = 'orders', childTables = [ 'sandwiches' ];
-	var sandwiches = rowsToObjs(children.__rows__[0], ['sandwiches']);
-	_.extend(result.customers[0].orders[0], sandwiches);
-
-	delete(result.__rows__);
-	delete(result.customers[0].__rows__);
-	delete(result.customers[0].orders[0].__rows__);
-
-	console.log('result');
-	console.log(result);
-	console.log('result.customers[0]');
-	console.log(result.customers[0]);
-	console.log('result.customers[0].orders[0]');
-	console.log(result.customers[0].orders[0]);
-*/
 	return result;
 }
 

@@ -22,7 +22,7 @@ var config = {
 	'ip'      : 'localhost',
 	//'ip'    : '192.168.1.38',
 	'port'    : 3000, 
-	'auth'	  : false,
+	'auth'	  : true,
 	'logdir'  : 'logs',
 	'release' : 'debug',
 }
@@ -81,7 +81,7 @@ var debugLog = {
 		, {
 			type: 'rotating-file'
 			, path: path.join(config.logdir, 'g6.rest-server.json')
-			, level: 'trace'
+			, level: 'debug'
 			, period: '1d'
 		}
 /*

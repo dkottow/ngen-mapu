@@ -133,6 +133,10 @@ Controller.prototype.initRoutes = function() {
 		me.getStats(req, res);
 	});
 
+	this.router.get(/^\/(\w+)\/(\w+)\/(\w+).objs$/, function(req, res) {
+		me.getRows(req, res, { obj: true });
+	});
+
 	log.debug("...Controller.initRoutes()");		
 }
 
@@ -363,8 +367,10 @@ Controller.prototype.getDatabaseFile = function(req, res) {
 	});
 }
 
-Controller.prototype.getRows = function(req, res) {
+Controller.prototype.getRows = function(req, res, opts) {
 	log.info({req: req}, 'Controller.getRows()...');
+
+	opts = opts || { obj: false };	
 
 	var path = this.getPathObjects(req, {account: true, db: true, table: true});
 	if (path.error) {
@@ -413,6 +419,13 @@ Controller.prototype.getRows = function(req, res) {
 
 				result.nextUrl = url.format(urlObj)
 				//delete result.nextOffset;
+			}
+
+			if (opts.obj) {
+				var objs = path.db.schema.graph
+							.rowsToObj(result.rows, path.table.name);
+				result.objs = objs;
+				delete(result.rows);
 			}
 
 			log.trace(result);

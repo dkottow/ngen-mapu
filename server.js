@@ -28,7 +28,7 @@ var config = {
 }
 
 if (process.env.DONKEYLIFT_AUTH) {
-	config.auth = process.env.AUTH > 0;
+	config.auth = process.env.DONKEYLIFT_AUTH > 0;
 }
 
 if (process.env.DONKEYLIFT_API) {

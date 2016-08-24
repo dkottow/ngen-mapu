@@ -121,10 +121,10 @@ Field.prototype.setProp = function(name, value) {
 
 Field.prototype.defaultSQL = function() {
 
-	if (this.name == 'mod_on') {
+	if (_.contains(['mod_on', 'add_on'], this.name)) {
 		return "DEFAULT(datetime('now'))";
 
-	} else if (this.name == 'mod_by') {
+	} else if (_.contains(['mod_by', 'add_by'], this.name)) {
 		return "DEFAULT 'sql'";
 
 	} else {

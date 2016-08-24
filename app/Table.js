@@ -39,20 +39,18 @@ var Table = function(tableDef) {
 		assert(_.isObject(tableDef.fields), errMsg);
 
 		if ( ! /^\w+$/.test(tableDef.name)) {
-			throw new Error(errMsg 
+			log.error({ tableDef: tableDef }, "Table.init() failed.");
+			throw new Error("Table.init() failed. "
 					+ " Table names can only have word-type characters.");
 		}
 
-		if( ! _.has(tableDef.fields, "id")) {
-			throw new Error(errMsg + " id field missing.");
-		}
-
-		if( ! _.has(tableDef.fields, "mod_by")) {
-			throw new Error(errMsg + " mod_by field missing.");
-		}
-		if( ! _.has(tableDef.fields, "mod_on")) {
-			throw new Error(errMsg + " mod_on field missing.");
-		}
+		var fieldNames = _.pluck(tableDef.fields, 'name');
+		_.each(Table.MANDATORY_FIELDS, function(mf) {
+			if( ! _.contains(fieldNames, mf)) {
+				log.error({ tableDef: tableDef }, "Table.init() failed.");
+				throw new Error("Table.init() failed. Field " + mf + " missing.");
+			}
+		});
 
 		_.each(tableDef.fields, function(f) {
 			me.fields[f.name] = Field.create(f);
@@ -74,6 +72,8 @@ var Table = function(tableDef) {
 
 	}
 }
+
+Table.MANDATORY_FIELDS = ['id', 'add_by', 'add_on', 'mod_by', 'mod_on'];
 
 Table.TABLE = '__tableprops__';
 Table.TABLE_FIELDS = ['name', 'props', 'disabled'];

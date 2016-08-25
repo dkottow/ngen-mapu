@@ -60,9 +60,9 @@ describe('Database', function() {
 		});
 
 		it('sales.sqlite has products table with some fields', function() {
-			var products = defs.tables["products"];
+			var products = _.find(defs.tables, function(t) { return t.name == "products" });
 			assert(products, 'table exists');
-			assert(_.values(products.fields).length > 3, 'fields exists');
+			assert(products.fields.length > 3, 'fields exists');
 			assert.equal(products.referenced.length, 1, 'one referenced table');
 		});
 

@@ -12,7 +12,7 @@ var Account = require('../app/Account').Account
 var log = global.log.child({'mod': 'mocha.test-account.js'});
 
 describe('Account', function() {
-	var accountDir = "test/data/account";
+	var accountDir = "test/data/sqlite";
 
 	describe('Account.init()', function() {
 		it('account init', function(done) {
@@ -95,10 +95,10 @@ describe('Account', function() {
 
 
 	describe('Account.delDatabase()', function() {
-		var salesDbFile = "test/data/account/sales.sqlite";
-		var emptySalesFile = "test/data/account/sales_empty.sqlite";
-		var emptyCopySalesFile = "test/data/account/sales_empty_copy.sqlite";
-		var copySalesFile = "test/data/account/sales_copy.sqlite";
+		var salesDbFile = accountDir + "/sales.sqlite";
+		var emptySalesFile = accountDir + "/sales_empty.sqlite";
+		var emptyCopySalesFile = accountDir + "/sales_empty_copy.sqlite";
+		var copySalesFile = accountDir + "/sales_copy.sqlite";
 		
 		var account = new Account(accountDir);
 		var schema = new Schema();

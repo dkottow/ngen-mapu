@@ -110,9 +110,7 @@ Schema.prototype.get = function() {
 		
 		var result = this.graph.toJSON();
 		result.name = this.name;
-
-		var users = this.users;
-		result.users = _.object(_.pluck(users, 'name'), users); 
+		result.users = this.users; 
 		return result;
 		
 	} catch(err) {

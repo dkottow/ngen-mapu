@@ -19,15 +19,15 @@ describe('Schema', function() {
 		tables : [
 			 { "name": "customers"
 			 , "row_alias": ["name", "email"]
-			 , "fields": {
-					  "id": {
+			 , "fields": [
+					{
 						  "name": "id"
 						, "type": "INTEGER"
 						, "props": {
 							"order": 0
 						}
 					}
-					, "name": {
+					, {
 						  "name": "name"
 						, "type": "VARCHAR"
 						, "props": {
@@ -35,7 +35,7 @@ describe('Schema', function() {
 						  , "order": 1
 						}
 					}
-					, "email": {
+					, {
 						  "name": "email"
 						, "type": "VARCHAR(256)"
 						, "props": {
@@ -43,34 +43,49 @@ describe('Schema', function() {
 						  , "order": 2
 						}
 					}
-					, "mod_by": {
+					, {
 						  "name": "mod_by"
 						, "type": "VARCHAR(64)"
 						, "props": {
 							"order": 91
 						}
 					}
-					, "mod_on": {
+					, {
 						  "name": "mod_on"
 						, "type": "DATETIME"
 						, "props": {
 							"order": 92,
-							"width": 10
+							"width": 12
 						}
 					}
-				}		
+					, {
+						  "name": "add_by"
+						, "type": "VARCHAR(64)"
+						, "props": {
+							"order": 93
+						}
+					}
+					, {
+						  "name": "add_on"
+						, "type": "DATETIME"
+						, "props": {
+							"order": 94,
+							"width": 12
+						}
+					}
+				 ]
 			 }
 		   , { "name": "products"
 			 , "row_alias": ["name"]		  	
-			 , "fields": {
-					  "id": {
+			 , "fields": [
+					{
 						  "name": "id"
 						, "type": "INTEGER"
 						, "props": {
 							"order": 0
 						}
 					}
-					, "name": {
+					, {
 						  "name": "name"
 						, "type": "VARCHAR"
 						, "props": {
@@ -78,7 +93,7 @@ describe('Schema', function() {
 						  , "order": 1
 						}
 					}
-					, "price": {
+					, {
 						  "name": "price"
 						, "type": "NUMERIC(8,2)"
 						, "props": {
@@ -86,41 +101,56 @@ describe('Schema', function() {
 						  , "order": 2
 						}
 					}
-					, "mod_by": {
+					, {
 						  "name": "mod_by"
 						, "type": "VARCHAR(64)"
 						, "props": {
-							"order": 3
+							"order": 91
 						}
 					}
-					, "mod_on": {
+					, {
 						  "name": "mod_on"
 						, "type": "DATETIME"
 						, "props": {
-							"order": 4,
-							"width": 10
+							"order": 92,
+							"width": 12
 						}
 					}
-				}		
+					, {
+						  "name": "add_by"
+						, "type": "VARCHAR(64)"
+						, "props": {
+							"order": 93
+						}
+					}
+					, {
+						  "name": "add_on"
+						, "type": "DATETIME"
+						, "props": {
+							"order": 94,
+							"width": 12
+						}
+					}
+				]		
 			 }
 		   , { "name": "orders"
 			 , "row_alias": ["order_date", "customers.name"]		  	
-			 , "fields": {
-					  "id": {
+			 , "fields": [
+					{
 						  "name": "id"
 						, "type": "INTEGER"
 						, "props": {
 							"order": 0
 						}
 					}
-					, "order_date": {
+					, {
 						  "name": "order_date"
 						, "type": "DATE"
 						, "props": {
 							"order": 1
 						}
 					}
-					, "customer_id": {
+					, {
 						  "name": "customer_id"
 						, "type": "INTEGER"
 						, "fk_table": "customers"
@@ -129,7 +159,7 @@ describe('Schema', function() {
 						  , "width": 40
 						}
 					}
-					, "total_amount": {
+					, {
 						  "name": "total_amount"
 						, "type": "NUMERIC(8,2)"
 						, "props": {
@@ -138,33 +168,48 @@ describe('Schema', function() {
 						  , "order": 3
 						}
 					}
-					, "mod_by": {
+					, {
 						  "name": "mod_by"
-						, "type": "VARCHAR(256)"
+						, "type": "VARCHAR(64)"
 						, "props": {
 							"order": 91
 						}
 					}
-					, "mod_on": {
+					, {
 						  "name": "mod_on"
 						, "type": "DATETIME"
 						, "props": {
 							"order": 92,
-							"width": 10
+							"width": 12
 						}
 					}
-				}		
+					, {
+						  "name": "add_by"
+						, "type": "VARCHAR(64)"
+						, "props": {
+							"order": 93
+						}
+					}
+					, {
+						  "name": "add_on"
+						, "type": "DATETIME"
+						, "props": {
+							"order": 94,
+							"width": 12
+						}
+					}
+				]		
 			 }
 		   , { "name": "products_in_orders"
-			 , "fields": {
-					  "id": {
+			 , "fields": [
+					{
 						  "name": "id"
 						, "type": "INTEGER"
 						, "props": {
 							"order": 0
 						}
 					}
-					, "order_id": {
+					, {
 						  "name": "order_id"
 						, "type": "INTEGER"
 						, "fk_table": "orders"
@@ -173,7 +218,7 @@ describe('Schema', function() {
 						  , "width": 40
 						}
 					}
-					, "product_id": {
+					, {
 						  "name": "product_id"
 						, "type": "INTEGER"
 						, "fk_table": "products"
@@ -182,7 +227,7 @@ describe('Schema', function() {
 						  , "width": 30
 						}
 					}
-					, "unit_price": {
+					, {
 						  "name": "unit_price"
 						, "type": "NUMERIC(8,2)"
 						, "props": {
@@ -190,29 +235,44 @@ describe('Schema', function() {
 						  , "order": 3
 						}
 					}
-					, "quantity": {
+					, {
 						  "name": "quantity"
 						, "type": "INTEGER"
 						, "props": {
 							"order": 4
 						}
 					}
-					, "mod_by": {
+					, {
 						  "name": "mod_by"
-						, "type": "VARCHAR(256)"
+						, "type": "VARCHAR(64)"
 						, "props": {
 							"order": 91
 						}
 					}
-					, "mod_on": {
+					, {
 						  "name": "mod_on"
 						, "type": "DATETIME"
 						, "props": {
 							"order": 92,
-							"width": 10
+							"width": 12
 						}
 					}
-				}		
+					, {
+						  "name": "add_by"
+						, "type": "VARCHAR(64)"
+						, "props": {
+							"order": 93
+						}
+					}
+					, {
+						  "name": "add_on"
+						, "type": "DATETIME"
+						, "props": {
+							"order": 94,
+							"width": 12
+						}
+					}
+				]		
 			 }
 		]
 	};		

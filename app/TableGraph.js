@@ -366,8 +366,7 @@ TableGraph.prototype.toJSON = function() {
 	var tables = _.map(this.graph.nodes(), function(tn) {
 		return this.tableJSON(tn);
 	}, this);
-	tables = _.object(_.pluck(tables, 'name'), tables);
-	
+
 	var trees = this.joinTreesJSON();
 	
 	var result = {

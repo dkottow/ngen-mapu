@@ -24,6 +24,7 @@ var path = require('path');
 var util = require('util');
 
 
+var Table = require('./Table.js').Table;
 var Schema = require('./Schema.js').Schema;
 var DateTimeField = require('./Field.js').DateTimeField;
 
@@ -97,7 +98,10 @@ Database.prototype.getInfo = function(options, cbResult) {
 
 Database.prototype.isEmpty = function(cbResult) {
 	this.getCounts(function(err, result) {
-		if (err) cbResult(err, null);
+		if (err) {
+			cbResult(err, null);
+			return;	
+		}
 		
 		var totalRowCount = _.reduce(result, 
 			function(memo, tableRowCount) { 
@@ -332,10 +336,10 @@ Database.prototype.insert = function(tableName, rows, options, cbResult) {
 				return _.has(table.fields, fn); // && fn != 'id'; 
 		});
 
-		if ( ! rows[0].mod_on) fieldNames.push('mod_on');
-		if ( ! rows[0].mod_by) fieldNames.push('mod_by');
+		fieldNames = _.union(fieldNames, Table.MANDATORY_FIELDS);
 
-		var mod_by = options.mod_by || 'noapi';
+		var add_by = options.user || 'unk';
+		var mod_by = options.user || 'unk';
 
 		var fieldParams = _.times(fieldNames.length, function(fn) { 
 			return "?"; 
@@ -362,8 +366,8 @@ Database.prototype.insert = function(tableName, rows, options, cbResult) {
 
 			_.each(rows, function(r) {
 
-				r.mod_on = DateTimeField.toString(new Date());
-				r.mod_by = mod_by;
+				r.add_on = r.mod_on = DateTimeField.toString(new Date());
+				r.add_by = r.mod_by = mod_by;
 
 				if (err == null) {					
 
@@ -428,10 +432,9 @@ Database.prototype.update = function(tableName, rows, options, cbResult) {
 				return _.has(table.fields, fn) && fn != 'id'; 
 		});
 
-		if ( ! rows[0].mod_on) fieldNames.push('mod_on');
-		if ( ! rows[0].mod_by) fieldNames.push('mod_by');
+		fieldNames = _.union(fieldNames, ['mod_on', 'mod_by']);
 
-		var mod_by = options.mod_by || 'noapi';
+		var mod_by = options.user || 'unk';
 
 		var sql = "UPDATE " + table.name
 				+ ' SET "' + fieldNames.join('" = ?, "') + '" = ?'
@@ -607,7 +610,7 @@ Database.prototype.patchSchema = function(patches, cbResult) {
 			}
 
 			//apply patches to me
-			me.schema.init(patchSchema.get());
+			me.schema.init(patchedSchema.get());
 
 			//return patched schema
 			me.getInfo(cbResult);

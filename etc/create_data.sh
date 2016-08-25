@@ -11,6 +11,6 @@ mocha $DATA_DIR/soccer-create-schema.js
 sqlite3 soccer.sqlite < $DATA_DIR/soccer-dim-data.sql
 mocha $DATA_DIR/soccer-generate-data.js
 
-cp sales.json soccer.json test/
-cp sales.sqlite test/
+cp sales.json sandwiches.json soccer.json test/data/json
+cp sales.sqlite test/data/sqlite
 cp sales.sqlite sandwiches.sqlite soccer.sqlite data/demo

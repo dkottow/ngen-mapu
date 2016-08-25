@@ -133,8 +133,6 @@ describe('Database', function() {
 						sandwich_id: p.id,
 						unit_price: p.price,
 						quantity: randBetweenGauss(1, 3, 0.5),
-						modified_by: 'www',
-						modified_on: modDate
 					}
 					order_items.push(po);
 				});
@@ -147,8 +145,6 @@ describe('Database', function() {
 					order_date: date.toISOString().substr(0,10),
 					customer_id: c.id,
 					total_amount: total,
-					modified_by: 'www',
-					modified_on: modDate
 				}
 				
 				order.sandwiches = order_items;

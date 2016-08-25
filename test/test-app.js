@@ -9,7 +9,7 @@ require('dotenv').config();
 
 global.log = require('./create_log.js').log;
 
-global.auth = true;
+global.auth = false;
 var authToken = null;
 
 var app = require('../app/app.js').app;

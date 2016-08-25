@@ -311,8 +311,6 @@ Table.prototype.toJSON = function() {
 		return f.toJSON();
 	});
 
-	result.fields = _.object(_.pluck(result.fields, 'name'), result.fields);
-
 	//console.log(result);
 	return result;
 }

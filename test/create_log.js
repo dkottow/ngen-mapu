@@ -6,11 +6,13 @@ var log = bunyan.createLogger({
 	level: 'debug',
 	serializers: bunyan.stdSerializers,
 	src: true,
+	
 	streams: [{
 		type: 'rotating-file',
 		path: 'test/log.json',
 		period: '10000ms'
 	}]
+	
 });
 
 exports.log = log;

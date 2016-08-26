@@ -50,7 +50,7 @@ describe('Schema', function() {
 						, "type": "DATETIME"
 						, "props": {
 							"order": 92,
-							"width": 12
+							"width": 11
 						}
 					}
 					, {
@@ -65,7 +65,7 @@ describe('Schema', function() {
 						, "type": "DATETIME"
 						, "props": {
 							"order": 94,
-							"width": 12
+							"width": 11
 						}
 					}
 				]		
@@ -122,7 +122,7 @@ describe('Schema', function() {
 						, "type": "DATETIME"
 						, "props": {
 							"order": 92,
-							"width": 12
+							"width": 11
 						}
 					}
 					, {
@@ -137,7 +137,7 @@ describe('Schema', function() {
 						, "type": "DATETIME"
 						, "props": {
 							"order": 94,
-							"width": 12
+							"width": 11
 						}
 					}
 				]		
@@ -190,7 +190,7 @@ describe('Schema', function() {
 						, "type": "DATETIME"
 						, "props": {
 							"order": 92,
-							"width": 12
+							"width": 11
 						}
 					}
 					, {
@@ -205,7 +205,7 @@ describe('Schema', function() {
 						, "type": "DATETIME"
 						, "props": {
 							"order": 94,
-							"width": 12
+							"width": 11
 						}
 					}
 				]		
@@ -248,7 +248,7 @@ describe('Schema', function() {
 						, "type": "DATETIME"
 						, "props": {
 							"order": 92,
-							"width": 12
+							"width": 11
 						}
 					}
 					, {
@@ -263,7 +263,7 @@ describe('Schema', function() {
 						, "type": "DATETIME"
 						, "props": {
 							"order": 94,
-							"width": 12
+							"width": 11
 						}
 					}
 				]		
@@ -298,7 +298,7 @@ describe('Schema', function() {
 						, "type": "DATETIME"
 						, "props": {
 							"order": 92,
-							"width": 12
+							"width": 11
 						}
 					}
 					, {
@@ -313,7 +313,7 @@ describe('Schema', function() {
 						, "type": "DATETIME"
 						, "props": {
 							"order": 94,
-							"width": 12
+							"width": 11
 						}
 					}
 				]		
@@ -343,7 +343,7 @@ describe('Schema', function() {
 						, "type": "DATETIME"
 						, "props": {
 							"order": 92,
-							"width": 12
+							"width": 11
 						}
 					}
 					, {
@@ -358,7 +358,7 @@ describe('Schema', function() {
 						, "type": "DATETIME"
 						, "props": {
 							"order": 94,
-							"width": 12
+							"width": 11
 						}
 					}
 				]		

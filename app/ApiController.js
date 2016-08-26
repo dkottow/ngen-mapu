@@ -210,7 +210,6 @@ Controller.prototype.getAccount = function(req, res) {
 			});
 		}
 
-console.log(result.databases);
 		_.each(result.databases, function(db) {
 			db.url = '/' + path.account.name + '/' + db.name;
 		});
@@ -495,7 +494,7 @@ Controller.prototype.postRows = function(req, res) {
 
 	var rows = req.body;
 	var opts = req.query;
-	opts.mod_by = req.user.name;
+	opts.user = req.user.name;
 
 	path.db.insert(path.table.name, rows, opts, function(err, result) {
 		if (err) {
@@ -527,7 +526,7 @@ Controller.prototype.putRows = function(req, res) {
 
 	var rows = req.body;
 	var opts = req.query;
-	opts.mod_by = req.user.name;
+	opts.user = req.user.name;
 
 	path.db.update(path.table.name, rows, opts, function(err, result) {
 		if (err) {

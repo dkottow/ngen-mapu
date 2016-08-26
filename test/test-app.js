@@ -42,7 +42,7 @@ function get(url, cbAfter) {
 				cbAfter(err, null);
 				return;
 			}
-			log.info(body);
+			log.debug(body);
 			cbAfter(null, JSON.parse(body));
 		}
 	);
@@ -109,7 +109,7 @@ describe('Server (app)', function() {
 			url = baseUrl + '/' + demoAccount;
 			get(url, function(err, result) {
 				assert(err == null, err ? err.message : "");
-				console.log(result.databases);
+				//console.log(result.databases);
 				assert(result.databases, 'response malformed');
 				assert(_.find(result.databases, function(db) {
 					return db.name == salesDatabase;

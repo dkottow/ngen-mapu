@@ -39,6 +39,14 @@ var SqlBuilder = function(tableGraph) {
 SqlBuilder.prototype.selectSQL 
 	= function(table, fieldExpr, filterClauses, orderClauses, limit, offset) 
 {
+	log.trace({
+		table: table
+		, fieldExpr: fieldExpr
+		, filterClauses: filterClauses
+		, orderClauses: orderClauses
+		, limit: limit, offfset: offset
+	}, "SqlBuilder.selectSQL");
+	
 	var s = {};
 
 	var fieldClauses = fieldExpr == '*' ? table.allFieldClauses() : fieldExpr;
@@ -162,7 +170,7 @@ SqlBuilder.prototype.sanitizeFieldClauses = function(table, fieldClauses) {
 		var item = {};
 		if (_.isString(fc)) {
 			item = { table: table.name, field: fc, alias: fc };
-		} else {
+		} else if (_.isObject(fc) && fc.field) {
 			item = _.clone(fc);
 			item.table = item.table || table.name;
 			item.alias = item.table == table.name
@@ -170,6 +178,8 @@ SqlBuilder.prototype.sanitizeFieldClauses = function(table, fieldClauses) {
 						: item.table 
 							+ Table.TABLE_FIELD_SEPARATOR 
 							+ item.field;
+		} else {
+			throw new Error("malformed filter item '" + util.inspect(fc) + "'");
 		}
 
 		//validate

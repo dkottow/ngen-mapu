@@ -172,6 +172,12 @@ TableGraph.prototype.rowsToObj = function(rows, fromTable) {
 	var tables = _.without(_.keys(fieldQNsByTable), fromTable);
 	var joinTree = this.joinTree(fromTable, tables);
 
+	log.trace({
+		row0: rows[0]
+		, fieldQNsByTable: fieldQNsByTable
+		, tables: tables
+	}, 'TableGraph.rowsToObj()');
+
 	var objGraph = new graphlib.Graph();
 	
 	var visited = {};
@@ -204,8 +210,8 @@ TableGraph.prototype.rowsToObj = function(rows, fromTable) {
 		});
 	}
 
-	var rowsToObjs = function(rows, tables, parentTable) {
-		log.trace({ rows: rows, tables: tables, parent: parentTable}, 'rowsToObjs');
+	var rowsToObjsFn = function(rows, tables, parentTable) {
+		log.trace({ rows: rows, tables: tables, parent: parentTable}, 'TableGraph.rowsToObj() rowsToObjsFn');
 
 		var fields = [];
 		_.each(tables, function(t) {
@@ -274,7 +280,7 @@ TableGraph.prototype.rowsToObj = function(rows, fromTable) {
 
 	queue = [];
 
-	var result = rowsToObjs(rows, [ fromTable ]);
+	var result = rowsToObjsFn(rows, [ fromTable ]);
 	queue.push({ table: fromTable, obj: result });
 
 	while (queue.length > 0) {
@@ -286,7 +292,7 @@ TableGraph.prototype.rowsToObj = function(rows, fromTable) {
 		for(var i = 0;i < item.obj.__rows__.length; ++i) {
 			//log.trace({item: item, i: i});
 
-			var childObj = rowsToObjs(item.obj.__rows__[i], 
+			var childObj = rowsToObjsFn(item.obj.__rows__[i], 
 							childTables, item.table);
 
 /*

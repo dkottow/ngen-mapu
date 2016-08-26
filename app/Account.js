@@ -148,13 +148,7 @@ Account.prototype.createDatabase = function(schemaData, options, cbResult) {
 		db.isEmpty(function(err, isEmpty) {
 
 			if (isEmpty) {
-				Schema.remove(dbFile, function(err) {
-					if (err) {
-						cbResult(err, null);
-						return;
-					} 
-					createSchemaFn();
-				});
+				createSchemaFn();
 
 			} else {
 				var err = new Error(util.format(

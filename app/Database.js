@@ -302,26 +302,28 @@ Database.prototype.get = function(tableName, options, cbResult) {
 	}
 }
 
-Database.prototype.allById = function(tableName, rowIds, cbResult) {
-	var options = {
-		filter: [{
-			field: 'id',
-			op: 'in',
-			value: rowIds
-		}]
-	};	
+Database.prototype.allById = function(tableName, rowIds, options, cbResult) {
+
+	cbResult = cbResult || arguments[arguments.length - 1];	
+	options = typeof options == 'object' ? options : {};		
+
+	options.filter = options.filter || [];
+
+	options.filter.push({
+		field: 'id',
+		op: 'in',
+		value: rowIds
+	});
+	
 	return this.all(tableName, options, cbResult);
 } 
 
-Database.prototype.rowsOwned = function(tableName, rows, user, cbResult) {
+Database.prototype.rowsOwned = function(tableName, rowIds, user, cbResult) {
 	log.debug({table: tableName, user: user}, 'Database.rowsOwned()...');
-	log.trace({rows: rows},  'Database.rowsOwned()');
-	var rowIds = _.pluck(rows, 'id');
-	if (rowIds.length < rows.length) {
-		cbResult(new Error("rows with missing id"), null);
-		return;
-	}
-	this.allById(tableName, rowIds, function(err, result) {
+	log.trace({rowIds: rowIds},  'Database.rowsOwned()');
+	
+	var fields = ['id', 'add_by'];
+	this.allById(tableName, rowIds, { fields: fields }, function(err, result) {
 		if (err) {
 			cbResult(err, null);
 			return;

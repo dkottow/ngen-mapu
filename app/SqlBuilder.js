@@ -200,12 +200,8 @@ SqlBuilder.prototype.sanitizeFieldClauses = function(table, fieldClauses) {
 SqlBuilder.prototype.querySQL = function(table, fields, filterClauses) {
 
 	//collect filter and field tables
-	var joinTables = _.map(filterClauses, function(fc) {
-			return fc.table;
-			
-	}).concat(_.map(fields, function(fc) {
-		return fc.table;
-	}));
+	var joinTables = _.pluck(filterClauses, 'table')
+		.concat(_.pluck(fields, 'table'));
 	
 	var joinSQL = this.joinSQL(table.name, joinTables, { joinViews: true });
 

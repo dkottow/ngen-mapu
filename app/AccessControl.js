@@ -109,17 +109,23 @@ AccessControl.prototype.authRequest = function(op, req, path, cbResult) {
 
 		case 'getAccount':			
 		case 'getDatabase':			
+			resultFn({ granted: true });
+			return;
+
 		case 'getRows':			
 		case 'getStats':
-			resultFn({ granted: true });
+			var table_access = path.table.access(req.user);
+			var result = { 
+				granted: table_access.read != Table.ROW_SCOPES.NONE
+				, message: 'Table read access is none.'
+			} 
+			resultFn(result);
 			return;
 			
 		case 'postRows':			
 			var table_access = path.table.access(req.user);
 			var result = { 
-				granted: 
-					table_access.write == Table.ROW_SCOPES.ALL
-				 || table_access.write == Table.ROW_SCOPES.OWN
+				granted: table_access.write != Table.ROW_SCOPES.NONE
 				, message: 'Table write access is none.'
 			} 
 			resultFn(result);
@@ -127,7 +133,8 @@ AccessControl.prototype.authRequest = function(op, req, path, cbResult) {
 
 		case 'putRows':			
 		case 'delRows':
-			var owned = path.db.rowsOwned(path.table.name, req.body, req.user, 
+			var rowIds = op == 'delRows' ? req.body : _.pluck(req.body, 'id');
+			var owned = path.db.rowsOwned(path.table.name, rowIds, req.user, 
 				function(err, owned) {
 					if (err) {
 						cbResult(err, null);
@@ -150,6 +157,79 @@ AccessControl.prototype.authRequest = function(op, req, path, cbResult) {
 		default:
 			resultFn({ granted: false, message: 'unknown op'});
 	}
+}
+
+AccessControl.prototype.filterQuery = function(path, query, user) {
+	log.debug({ query: query, user: user }, 'AccessControl.filterQuery()...'); 
+
+	var sb = path.db.schema.sqlBuilder;
+	var queryFields = sb.sanitizeFieldClauses(path.table, query.fields);
+	var queryTables = _.uniq(_.pluck(queryFields, 'table'));
+
+	var acFilters = [];
+	_.each(queryTables, function(t) {
+
+		var table = path.db.table(t);
+		var access = table.access(user);
+
+		if (access.read == Table.ROW_SCOPES.ALL) {
+			; //pass through
+			
+		} else if (access.read == Table.ROW_SCOPES.OWN) {
+			acFilters.push({
+				table: t
+				, field: 'add_by'
+				, op: 'eq'
+				, value: user.name
+			});		
+			
+		} else { //access.read == Table.ROW_SCOPES.NONE
+			return {
+				error: new Error('Table read access is none')
+			};			
+		}
+
+	});
+	
+	var queryFilter = query.filter || [];
+	var result = {
+		filter: queryFilter.concat(acFilters)
+	};
+	
+	log.debug({ result: result }, '...AccessControl.filterQuery()'); 
+	return result;
+	
+}
+
+AccessControl.prototype.filterDatabases = function(path, databases, user) {
+	log.debug({ user: user }, 'AccessControl.filterDatabases()...'); 
+	log.trace({ databases: databases }, 'AccessControl.filterDatabases()');
+
+	if ( ! global.auth) return databases;
+	if (user.admin) return databases;
+	
+	var result =  _.filter(databases, function(db) {
+		return _.find(db.users, function(dbUser) {
+			return dbUser.name == user.name;
+		});
+	});
+	log.debug({ result: result }, '...AccessControl.filterDatabases()'); 
+	return result;
+}
+
+AccessControl.prototype.filterTables = function(path, tables, user) {
+	log.debug({ user: user }, 'AccessControl.filterTables()...'); 
+	log.trace({ tables: tables }, 'AccessControl.filterTables()');
+
+	if ( ! global.auth) return tables;
+	//if (user.admin || user.role == Schema.USER_ROLES.OWNER) return tables;
+	
+	var result =  _.filter(tables, function(t) {
+		var access = path.db.table(t.name).access(user);
+		return access.read != Table.ROW_SCOPES.NONE;
+	});
+	log.debug({ result: result }, '...AccessControl.filterTables()'); 
+	return result;
 }
 
 exports.AccessControl = AccessControl;

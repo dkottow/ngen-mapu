@@ -194,7 +194,7 @@ Controller.prototype.putAccount = function(req, res) {
 
 Controller.prototype.getAccount = function(req, res) {
 	log.info({req: req, user: req.user}, 'Controller.getAccount()...');
-
+	var me = this;
 	var path = this.getPathObjects(req, {account: true});
 	if (path.error) {
 		sendError(req, res, path.error, 404);
@@ -220,16 +220,8 @@ Controller.prototype.getAccount = function(req, res) {
 	
 			result.url = '/' + path.account.name; 
 
-			//TODO move me to AccessControl	
-			if (global.auth && ! req.user.admin) {
-				//list only db's the user has access to
-				result.databases = _.filter(result.databases, function(db) {
-					return _.find(db.users, function(user) {
-						return user.name == req.user.name;
-					});
-				});
-			}
-	
+			result.databases = me.access.filterDatabases(path, result.databases, req.user);
+
 			_.each(result.databases, function(db) {
 				db.url = '/' + path.account.name + '/' + db.name;
 			});
@@ -243,9 +235,8 @@ Controller.prototype.getAccount = function(req, res) {
 }
 	
 Controller.prototype.getDatabase = function(req, res) {
-
 	log.info({req: req}, 'Controller.getDatabase()...');
-
+	var me = this;
 	var path = this.getPathObjects(req, {account: true, db: true});
 	if (path.error) {
 		sendError(req, res, path.error, 404);
@@ -271,6 +262,8 @@ Controller.prototype.getDatabase = function(req, res) {
 	
 			result.url = '/' + path.account.name + '/' + path.db.name();
 	
+			result.tables = me.access.filterTables(path, result.tables, req.user);
+
 			_.each(result.tables, function(t) {
 				t.url = '/' + path.account.name 
 						+ '/' + path.db.name() + '/' + t.name;
@@ -420,7 +413,7 @@ Controller.prototype.getDatabaseFile = function(req, res) {
 
 Controller.prototype.getRows = function(req, res, opts) {
 	log.info({req: req}, 'Controller.getRows()...');
-
+	var me = this;
 	opts = opts || { obj: false };	
 
 	var path = this.getPathObjects(req, {account: true, db: true, table: true});
@@ -449,9 +442,16 @@ Controller.prototype.getRows = function(req, res, opts) {
 			}
 		});
 		log.debug({params: params});
-	
+
+		var q = { filter: params['$filter'], fields: params['$select'] };
+		var auth2 = me.access.filterQuery(path, q, req.user);
+		if (auth2.error) {
+			sendError(req, res, auth2.error, 401);
+			return;
+		}
+
 		path.db.all(path.table.name, {
-				filter: params['$filter'] 
+				filter: auth2.filter 
 				, fields: params['$select'] 
 				, order: params['$orderby'] 
 				, limit: params['$top'] 
@@ -520,6 +520,8 @@ Controller.prototype.getStats = function(req, res) {
 				params[k] = v;
 			}
 		});
+	
+		//TODO add access control filter
 	
 		path.db.getStats(path.table.name, { 
 				filter: params['$filter'], 

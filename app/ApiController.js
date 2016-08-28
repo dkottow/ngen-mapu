@@ -16,9 +16,6 @@
 
 var _ = require('underscore');
 
-var fs = require('fs');
-var path = require('path');
-var util = require('util');
 var url = require('url');
 
 var express = require('express');
@@ -26,16 +23,18 @@ var bodyParser = require('body-parser');
 var jwt = require('express-jwt');
 
 var parser = require('./QueryParser.js');
-var Schema = require('./Schema.js').Schema;
+var AccessControl = require('./AccessControl.js').AccessControl;
 
-var log = global.log.child({'mod': 'g6.Router.js'});
+var log = global.log.child({'mod': 'g6.ApiController.js'});
 
+/*
 var envPath = './.env'; 
 if (process.env.OPENSHIFT_DATA_DIR) { 
     envPath = process.env.OPENSHIFT_DATA_DIR + '/.env'; 
 } 
  
 require('dotenv').config({path: envPath}); 
+*/
 
 if (global.auth) {
 var auth = jwt({
@@ -52,6 +51,7 @@ function sendError(req, res, err, code) {
 function Controller(accountManager) {
 	this.accountManager = accountManager;
 	this.router = new express.Router();
+	this.access = new AccessControl();
 	this.initRoutes();
 }
 
@@ -143,41 +143,53 @@ Controller.prototype.initRoutes = function() {
 Controller.prototype.listAccounts = function(req, res) {
 	log.info({req: req, user: req.user}, 'Controller.listAccounts()...');
 
-	var auth = this.authorized('listAccounts', req, null);
-	if (auth.error) {
-		sendError(req, res, auth.error, 401);
-		return;
-	}
-
-	var result = this.accountManager.list();
-
-	_.each(result.accounts, function(account) {
-		account.url = '/' + account.name;
+	this.access.authRequest('listAccounts', req, null, function(err, auth) {
+		if (err) {
+			sendError(req, res, err, 400);
+			return;
+		}
+		
+		if (auth.error) {
+			sendError(req, res, auth.error, 401);
+			return;
+		}
+		
+		var result = this.accountManager.list();
+	
+		_.each(result.accounts, function(account) {
+			account.url = '/' + account.name;
+		});
+	
+		res.send(result);
+		log.info({res: res}, '...Controller.listAccounts()');
 	});
 
-	res.send(result);
-	log.info({res: res}, '...Controller.listAccounts()');
 }
 
 Controller.prototype.putAccount = function(req, res) {
 	log.info({req: req, user: req.user}, 'Controller.putAccount()...');
 
-	var auth = this.authorized('putAccount', req, null);
-	if (auth.error) {
-		sendError(req, res, auth.error, 401);
-		return;
-	}
-
-	this.accountManager.create(req.params[0], function(err, result) {
+	this.access.authRequest('putAccount', req, null, function(err, auth) {
 		if (err) {
 			sendError(req, res, err, 400);
 			return;
 		}
-		log.trace(result);
-		res.send(result); 
-		log.info({res: res}, '...Controller.putAccount().');
-	});
 
+		if (auth.error) {
+			sendError(req, res, auth.error, 401);
+			return;
+		}
+	
+		this.accountManager.create(req.params[0], function(err, result) {
+			if (err) {
+				sendError(req, res, err, 400);
+				return;
+			}
+			log.trace(result);
+			res.send(result); 
+			log.info({res: res}, '...Controller.putAccount().');
+		});
+	});
 }
 
 Controller.prototype.getAccount = function(req, res) {
@@ -189,35 +201,45 @@ Controller.prototype.getAccount = function(req, res) {
 		return;
 	}
 
-	var auth = this.authorized('getAccount', req, path);
-	if (auth.error) {
-		sendError(req, res, auth.error, 401);
-		return;
-	}
-
-	path.account.getInfo(function(err, result) {
+	this.access.authRequest('getAccount', req, path, function(err, auth) {
 		if (err) {
 			sendError(req, res, err, 400);
 			return;
 		}
 
-		result.url = '/' + path.account.name; 
-
-		if (global.auth && ! req.user.admin) {
-			//list only db's the user has access to
-			result.databases = _.filter(result.databases, function(db) {
-				return _.has(db.users, req.user.name);
-			});
+		if (auth.error) {
+			sendError(req, res, auth.error, 401);
+			return;
 		}
+	
+		path.account.getInfo(function(err, result) {
+			if (err) {
+				sendError(req, res, err, 400);
+				return;
+			}
+	
+			result.url = '/' + path.account.name; 
 
-		_.each(result.databases, function(db) {
-			db.url = '/' + path.account.name + '/' + db.name;
+			//TODO move me to AccessControl	
+			if (global.auth && ! req.user.admin) {
+				//list only db's the user has access to
+				result.databases = _.filter(result.databases, function(db) {
+					return _.find(db.users, function(user) {
+						return user.name == req.user.name;
+					});
+				});
+			}
+	
+			_.each(result.databases, function(db) {
+				db.url = '/' + path.account.name + '/' + db.name;
+			});
+	
+			log.trace(result);
+			res.send(result); 
+			log.info({res: res}, '...Controller.getAccount().');
 		});
 
-		log.trace(result);
-		res.send(result); 
-		log.info({res: res}, '...Controller.getAccount().');
-	});
+	});		
 }
 	
 Controller.prototype.getDatabase = function(req, res) {
@@ -230,28 +252,34 @@ Controller.prototype.getDatabase = function(req, res) {
 		return;
 	}
 
-	var auth = this.authorized('getDatabase', req, path);
-	if (auth.error) {
-		sendError(req, res, auth.error, 401);
-		return;
-	}
-
-	path.db.getInfo(function(err, result) {
+	this.access.authRequest('getDatabase', req, path, function(err, auth) {
 		if (err) {
-			sendError(req, res, err);
+			sendError(req, res, err, 400);
 			return;
 		}
 
-		result.url = '/' + path.account.name + '/' + path.db.name();
-
-		_.each(result.tables, function(t) {
-			t.url = '/' + path.account.name 
-					+ '/' + path.db.name() + '/' + t.name;
+		if (auth.error) {
+			sendError(req, res, auth.error, 401);
+			return;
+		}
+	
+		path.db.getInfo(function(err, result) {
+			if (err) {
+				sendError(req, res, err);
+				return;
+			}
+	
+			result.url = '/' + path.account.name + '/' + path.db.name();
+	
+			_.each(result.tables, function(t) {
+				t.url = '/' + path.account.name 
+						+ '/' + path.db.name() + '/' + t.name;
+			});
+	
+			log.trace(result);
+			res.send(result); 
+			log.info({res: res}, '...Controller.getDatabase().');
 		});
-
-		log.trace(result);
-		res.send(result); 
-		log.info({res: res}, '...Controller.getDatabase().');
 	});
 }
 
@@ -264,25 +292,31 @@ Controller.prototype.putDatabase = function(req, res) {
 		return;
 	}
 
-	var auth = this.authorized('putDatabase', req, path);
-	if (auth.error) {
-		sendError(req, res, auth.error, 401);
-		return;
-	}
-
-	var schema = req.body;
-	schema.name = req.params[1];
-
-	path.account.createDatabase(schema, function(err, db) {
+	this.access.authRequest('putDatabase', req, path, function(err, auth) {
 		if (err) {
 			sendError(req, res, err, 400);
 			return;
 		}
-		
-		db.getInfo(function(err, result) {
-			res.send(result);
+
+		if (auth.error) {
+			sendError(req, res, auth.error, 401);
+			return;
+		}
+	
+		var schema = req.body;
+		schema.name = req.params[1];
+	
+		path.account.createDatabase(schema, function(err, db) {
+			if (err) {
+				sendError(req, res, err, 400);
+				return;
+			}
+			
+			db.getInfo(function(err, result) {
+				res.send(result);
+			});
+			log.info({res: res}, '...Controller.putDatabase().');
 		});
-		log.info({res: res}, '...Controller.putDatabase().');
 	});
 }
 
@@ -295,21 +329,27 @@ Controller.prototype.delDatabase = function(req, res) {
 		return;
 	}
 
-	var auth = this.authorized('delDatabase', req, path);
-	if (auth.error) {
-		sendError(req, res, auth.error, 401);
-		return;
-	}
-
-	var opts = req.query;
-	path.account.delDatabase(path.db.name(), opts, function(err, sucess) {
+	this.access.authRequest('delDatabase', req, path, function(err, auth) {
 		if (err) {
 			sendError(req, res, err, 400);
 			return;
 		}
-
-		res.send({});
-		log.info('...Controller.delDatabase().');
+		
+		if (auth.error) {
+			sendError(req, res, auth.error, 401);
+			return;
+		}
+	
+		var opts = req.query;
+		path.account.delDatabase(path.db.name(), opts, function(err, sucess) {
+			if (err) {
+				sendError(req, res, err, 400);
+				return;
+			}
+	
+			res.send({});
+			log.info('...Controller.delDatabase().');
+		});
 	});
 }
 
@@ -323,21 +363,27 @@ Controller.prototype.patchDatabase = function(req, res) {
 		return;
 	}
 
-	var auth = this.authorized('patchDatabase', req, path);
-	if (auth.error) {
-		sendError(req, res, auth.error, 401);
-		return;
-	}
-
-	var patches = req.body;
-	path.db.patchSchema(patches, function(err, result) {
+	this.accesss.authRequest('patchDatabase', req, path, function(err, auth) {
 		if (err) {
 			sendError(req, res, err, 400);
 			return;
 		}
-		log.debug({'res.body': result});
-		res.send(result); 
-		log.info({res: res}, '...Controller.patchDatabase().');
+
+		if (auth.error) {
+			sendError(req, res, auth.error, 401);
+			return;
+		}
+	
+		var patches = req.body;
+		path.db.patchSchema(patches, function(err, result) {
+			if (err) {
+				sendError(req, res, err, 400);
+				return;
+			}
+			log.debug({'res.body': result});
+			res.send(result); 
+			log.info({res: res}, '...Controller.patchDatabase().');
+		});
 	});
 }
 
@@ -351,19 +397,25 @@ Controller.prototype.getDatabaseFile = function(req, res) {
 		return;
 	}
 
-	var auth = this.authorized('getDatabaseFile', req, path);
-	if (auth.error) {
-		sendError(req, res, auth.error, 401);
-		return;
-	}
-
-	res.sendFile(path.db.dbFile, function(err) {
+	this.authRequest('getDatabaseFile', req, path, function(err, auth) {
 		if (err) {
-			sendError(req, res, err);
+			sendError(req, res, err, 400);
 			return;
 		}
-		log.info({res: res}, '...Controller.getDatabaseFile().');
-	});
+		if (auth.error) {
+			sendError(req, res, auth.error, 401);
+			return;
+		}
+	
+		res.sendFile(path.db.dbFile, function(err) {
+			if (err) {
+				sendError(req, res, err);
+				return;
+			}
+			log.info({res: res}, '...Controller.getDatabaseFile().');
+		});
+
+	});	
 }
 
 Controller.prototype.getRows = function(req, res, opts) {
@@ -377,61 +429,66 @@ Controller.prototype.getRows = function(req, res, opts) {
 		return;
 	}
 
-	var auth = this.authorized('getRows', req, path);
-	if (auth.error) {
-		sendError(req, res, auth.error, 401);
-		return;
-	}
-
-	var params = {};
-	_.each(req.query, function(v, k) {
-		if (k[0] == '$') {
-			var param = parser.parse(k + "=" + v);	
-			params[param.name] = param.value;
-		} else {
-			params[k] = v;
+	this.access.authRequest('getRows', req, path, function(err, auth) {
+		if (err) {
+			sendError(req, res, err, 400);
+			return;
 		}
+		if (auth.error) {
+			sendError(req, res, auth.error, 401);
+			return;
+		}
+	
+		var params = {};
+		_.each(req.query, function(v, k) {
+			if (k[0] == '$') {
+				var param = parser.parse(k + "=" + v);	
+				params[param.name] = param.value;
+			} else {
+				params[k] = v;
+			}
+		});
+		log.debug({params: params});
+	
+		path.db.all(path.table.name, {
+				filter: params['$filter'] 
+				, fields: params['$select'] 
+				, order: params['$orderby'] 
+				, limit: params['$top'] 
+				, offset: params['$skip'] 
+				, distinct: params['$distinct'] 
+				, debug: params['debug']	
+			},
+	
+			function(err, result) { 
+				if (err) {
+					sendError(req, res, err, 400);
+					return;
+				}
+	
+				//add nextUrl if nextOffset
+				if (result.nextOffset) {
+					var urlObj = url.parse(req.url, true);
+					urlObj.search = undefined;
+					urlObj.query['$skip'] = result.nextOffset;
+	
+					result.nextUrl = url.format(urlObj)
+					//delete result.nextOffset;
+				}
+	
+				if (opts.obj) {
+					var objs = path.db.schema.graph
+								.rowsToObj(result.rows, path.table.name);
+					result.objs = objs;
+					delete(result.rows);
+				}
+	
+				log.trace(result);
+				res.send(result); 
+				log.info({res: res}, '...Controller.getRows().');
+			}
+		);
 	});
-	log.debug({params: params});
-
-	path.db.all(path.table.name, {
-			filter: params['$filter'] 
-			, fields: params['$select'] 
-			, order: params['$orderby'] 
-			, limit: params['$top'] 
-			, offset: params['$skip'] 
-			, distinct: params['$distinct'] 
-			, debug: params['debug']	
-		},
-
-		function(err, result) { 
-			if (err) {
-				sendError(req, res, err, 400);
-				return;
-			}
-
-			//add nextUrl if nextOffset
-			if (result.nextOffset) {
-				var urlObj = url.parse(req.url, true);
-				urlObj.search = undefined;
-				urlObj.query['$skip'] = result.nextOffset;
-
-				result.nextUrl = url.format(urlObj)
-				//delete result.nextOffset;
-			}
-
-			if (opts.obj) {
-				var objs = path.db.schema.graph
-							.rowsToObj(result.rows, path.table.name);
-				result.objs = objs;
-				delete(result.rows);
-			}
-
-			log.trace(result);
-			res.send(result); 
-			log.info({res: res}, '...Controller.getRows().');
-		}
-	);
 }
 
 Controller.prototype.getStats = function(req, res) {
@@ -443,36 +500,42 @@ Controller.prototype.getStats = function(req, res) {
 		return;
 	}
 
-	var auth = this.authorized('getStats', req, path);
-	if (auth.error) {
-		sendError(req, res, auth.error, 401);
-		return;
-	}
-
-	var params = {};
-	_.each(req.query, function(v, k) {
-		if (k[0] == '$') {
-			var param = parser.parse(k + "=" + v);	
-			params[param.name] = param.value;
-		} else {
-			params[k] = v;
+	this.access.authRequest('getStats', req, path, function(err, auth) {
+		if (err) {
+			sendError(req, res, err, 400);
+			return;
 		}
-	});
 
-	path.db.getStats(path.table.name, { 
-			filter: params['$filter'], 
-			fields: params['$select'] 
-		}, 
-		function(err, result) {
-			if (err) {
-				sendError(req, res, err, 400);
-				return;
+		if (auth.error) {
+			sendError(req, res, auth.error, 401);
+			return;
+		}
+	
+		var params = {};
+		_.each(req.query, function(v, k) {
+			if (k[0] == '$') {
+				var param = parser.parse(k + "=" + v);	
+				params[param.name] = param.value;
+			} else {
+				params[k] = v;
 			}
-			log.debug(result);
-			res.send(result); 
-			log.info({res: res}, '...Controller.getStats().');
-		}
-	);
+		});
+	
+		path.db.getStats(path.table.name, { 
+				filter: params['$filter'], 
+				fields: params['$select'] 
+			}, 
+			function(err, result) {
+				if (err) {
+					sendError(req, res, err, 400);
+					return;
+				}
+				log.debug(result);
+				res.send(result); 
+				log.info({res: res}, '...Controller.getStats().');
+			}
+		);
+	});
 }
 
 //insert rows into table
@@ -486,24 +549,31 @@ Controller.prototype.postRows = function(req, res) {
 		return;
 	}
 
-	var auth = this.authorized('postRows', req, path);
-	if (auth.error) {
-		sendError(req, res, auth.error, 401);
-		return;
-	}
-
-	var rows = req.body;
-	var opts = req.query;
-	opts.user = req.user.name;
-
-	path.db.insert(path.table.name, rows, opts, function(err, result) {
+	this.access.authRequest('postRows', req, path, function(err, auth) {
+	    
 		if (err) {
 			sendError(req, res, err, 400);
 			return;
 		}
-		log.debug({'res.body': result});
-		res.send(result); 
-		log.info({res: res}, '...Controller.postRows().');
+
+		if (auth.error) {
+			sendError(req, res, auth.error, 401);
+			return;
+		}
+	
+		var rows = req.body;
+		var opts = req.query;
+		opts.user = req.user;
+	
+		path.db.insert(path.table.name, rows, opts, function(err, result) {
+			if (err) {
+				sendError(req, res, err, 400);
+				return;
+			}
+			log.debug({'res.body': result});
+			res.send(result); 
+			log.info({res: res}, '...Controller.postRows().');
+		});
 	});
 }
 
@@ -518,24 +588,31 @@ Controller.prototype.putRows = function(req, res) {
 		return;
 	}
 
-	var auth = this.authorized('putRows', req, path);
-	if (auth.error) {
-		sendError(req, res, auth.error, 401);
-		return;
-	}
-
-	var rows = req.body;
-	var opts = req.query;
-	opts.user = req.user.name;
-
-	path.db.update(path.table.name, rows, opts, function(err, result) {
+	this.access.authRequest('putRows', req, path, function(err, auth) {
+	    
 		if (err) {
 			sendError(req, res, err, 400);
 			return;
 		}
-		log.debug({'res.body': result});
-		res.send(result);  
-		log.info({res: res}, '...Controller.putRows().');
+		
+		if (auth.error) {
+			sendError(req, res, auth.error, 401);
+			return;
+		}
+	
+		var rows = req.body;
+		var opts = req.query;
+		opts.user = req.user;
+	
+		path.db.update(path.table.name, rows, opts, function(err, result) {
+			if (err) {
+				sendError(req, res, err, 400);
+				return;
+			}
+			log.debug({'res.body': result});
+			res.send(result);  
+			log.info({res: res}, '...Controller.putRows().');
+		});
 	});
 }
 
@@ -550,20 +627,26 @@ Controller.prototype.delRows = function(req, res) {
 		return;
 	}
 
-	var auth = this.authorized('delRows', req, path);
-	if (auth.error) {
-		sendError(req, res, auth.error, 401);
-		return;
-	}
-
-	var rowIds = req.body;
-	path.db.delete(path.table.name, rowIds, function(err, result) {
+	this.access.authRequest('delRows', req, path, function(err, auth) {
 		if (err) {
 			sendError(req, res, err, 400);
 			return;
 		}
-		res.send(result); 
-		log.info({res: res}, '...Controller.delRows().');
+	
+		if (auth.error) {
+			sendError(req, res, auth.error, 401);
+			return;
+		}
+	
+		var rowIds = req.body;
+		path.db.delete(path.table.name, rowIds, function(err, result) {
+			if (err) {
+				sendError(req, res, err, 400);
+				return;
+			}
+			res.send(result); 
+			log.info({res: res}, '...Controller.delRows().');
+		});
 	});
 }
 
@@ -614,6 +697,7 @@ Controller.prototype.getPathObjects = function(req, objs) {
 	return result;
 }
 
+/*
 Controller.prototype.authorized = function(op, req, path) {
 	log.debug({ op: op, 'req.user': req.user }, 'Controller.authorized()...'); 
 	log.trace({ path: path }, 'Controller.authorized()'); 
@@ -656,7 +740,7 @@ Controller.prototype.authorized = function(op, req, path) {
 	}
 
 	if (op == 'getAccount') {
-		return resultFn({ granted: true, message: 'requires nothing'});
+		return resultFn({ granted: true });
 	}
 
 	//path has no db aka op requires account admin - false
@@ -676,25 +760,41 @@ Controller.prototype.authorized = function(op, req, path) {
 		return resultFn({ granted: false, message: 'user - db user mismatch'});
 	}
 
+	_.extend(req.user, dbUser);
+
 	//user is db owner - true
-	if (dbUser.role == Schema.ROLE_OWNER) {
+	if (dbUser.role == Schema.USER_ROLES.OWNER) {
 		return resultFn({ granted: true, message: 'db owner'});
 	}
 			
-	//user is either db reader / writer. it depends on op now..
+	//user is either db reader / writer. most ops depend on table access control now..
 	switch(op) {
 
 		case 'getAccount':			
 		case 'getDatabase':			
 		case 'getRows':			
 		case 'getStats':
-			return resultFn({ granted: true, message: 'requires db reader'});
+			return resultFn({ granted: true });
 		case 'postRows':			
+			var table_access = path.table.access(req.user);
+			if ( table_access.write == Table.ROW_SCOPES.ALL
+			  || table_access.write == Table.ROW_SCOPES.OWN)
+			{
+				return resultFn({ granted: true });
+			} else {
+				return resultFn({ 
+					granted: false, 
+					message: 'Table write access is none.' 
+				});
+			}
+
 		case 'putRows':			
-		case 'delRows':			
-			return resultFn({
-					granted: dbUser.role == Schema.ROLE_WRITER, 
-					message: 'requires db writer'
+		case 'delRows':
+			var owned = path.db.rowsOwned(path.table.name, req.body, req.user, function(err, result) {
+				return resultFn({
+					granted: owned,
+					message: 'Table write access is own.'
+				});
 			});
 		case 'putDatabase':			
 		case 'patchDatabase':			
@@ -704,6 +804,7 @@ Controller.prototype.authorized = function(op, req, path) {
 			return resultFn({ granted: false, message: 'unknown op'});
 	}
 }
+*/
 
 exports.ApiController = Controller;
 

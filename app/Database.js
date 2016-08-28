@@ -32,6 +32,7 @@ var log = global.log.child({'mod': 'g6.Database.js'});
 
 global.row_max_count = global.row_count || 1000;
 global.sqlite_ext = global.sqlite_ext || '.sqlite';
+global.auth = global.auth || false;
 
 var Database = function(dbFile, options) 
 {
@@ -312,6 +313,28 @@ Database.prototype.allById = function(tableName, rowIds, cbResult) {
 	return this.all(tableName, options, cbResult);
 } 
 
+Database.prototype.rowsOwned = function(tableName, rows, user, cbResult) {
+	log.debug({table: tableName, user: user}, 'Database.rowsOwned()...');
+	log.trace({rows: rows},  'Database.rowsOwned()');
+	var rowIds = _.pluck(rows, 'id');
+	if (rowIds.length < rows.length) {
+		cbResult(new Error("rows with missing id"), null);
+		return;
+	}
+	this.allById(tableName, rowIds, function(err, result) {
+		if (err) {
+			cbResult(err, null);
+			return;
+		}
+		var notOwned = _.find(result.rows, function(row) {
+			return row.add_by != user.name;	
+		});
+
+		log.debug({notOwned: notOwned}, '...Database.rowsOwned()');
+		cbResult(null,  ! notOwned);	
+	});
+}
+
 Database.prototype.insert = function(tableName, rows, options, cbResult) {
 
 	try {
@@ -337,9 +360,9 @@ Database.prototype.insert = function(tableName, rows, options, cbResult) {
 		});
 
 		fieldNames = _.union(fieldNames, Table.MANDATORY_FIELDS);
-
-		var add_by = options.user || 'unk';
-		var mod_by = options.user || 'unk';
+	
+		var add_by = options.user ? options.user.name : 'unk';
+		var mod_by = add_by;
 
 		var fieldParams = _.times(fieldNames.length, function(fn) { 
 			return "?"; 
@@ -427,14 +450,18 @@ Database.prototype.update = function(tableName, rows, options, cbResult) {
 
 		var returnModifiedRows = options.retmod || false;
 
+		var fieldNames = _.intersection(_.keys(rows[0]), _.keys(table.fields));
+		fieldNames = _.without(fieldNames, ['id', 'add_by', 'add_on']);
+		fieldNames = _.union(fieldNames, ['mod_on', 'mod_by']);
+/*
 		var fieldNames = _.filter(_.keys(rows[0]) 
 							, function(fn) { 
 				return _.has(table.fields, fn) && fn != 'id'; 
 		});
-
 		fieldNames = _.union(fieldNames, ['mod_on', 'mod_by']);
+*/
 
-		var mod_by = options.user || 'unk';
+		var mod_by = options.user ? options.user.name : 'unk';
 
 		var sql = "UPDATE " + table.name
 				+ ' SET "' + fieldNames.join('" = ?, "') + '" = ?'

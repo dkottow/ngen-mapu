@@ -18,6 +18,13 @@ var url = require('url');
 var path = require('path');
 var bunyan = require('bunyan');
 
+var envPath = './.env'; 
+if (process.env.OPENSHIFT_DATA_DIR) { 
+    envPath = process.env.OPENSHIFT_DATA_DIR + '/.env'; 
+} 
+ 
+require('dotenv').config({path: envPath}); 
+
 var config = {
 	'ip'      : 'localhost',
 	//'ip'    : '192.168.1.38',
@@ -28,7 +35,7 @@ var config = {
 }
 
 if (process.env.DONKEYLIFT_AUTH) {
-	config.auth = process.env.DONKEYLIFT_AUTH > 0;
+	config.auth = parseInt(process.env.DONKEYLIFT_AUTH) > 0;
 }
 
 if (process.env.DONKEYLIFT_API) {

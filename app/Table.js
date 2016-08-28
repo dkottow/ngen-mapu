@@ -61,6 +61,8 @@ var Table = function(tableDef) {
 		//row alias
 		me.row_alias = tableDef.row_alias || [];
 
+		me.access_control = tableDef.access_control || Table.DEFAULT_ACCESS_CONTROL;
+
 		//dont show falsy disable prop
 		if (tableDef.disabled) me.disabled = true;
 
@@ -75,6 +77,24 @@ var Table = function(tableDef) {
 
 Table.MANDATORY_FIELDS = ['id', 'add_by', 'add_on', 'mod_by', 'mod_on'];
 
+Table.ROW_SCOPES = {
+	NONE: "none",
+	OWN: "own",
+	ALL: "all" 
+}
+
+//TODO must match Schema.js
+var USER_ROLES = {
+	OWNER: "owner",
+	WRITER: "writer",
+	READER: "reader"
+};
+
+Table.DEFAULT_ACCESS_CONTROL = [
+    { "role": USER_ROLES.READER, "write": Table.ROW_SCOPES.NONE, "read": Table.ROW_SCOPES.ALL }
+    , { "role": USER_ROLES.WRITER, "write": Table.ROW_SCOPES.OWN, "read": Table.ROW_SCOPES.ALL }
+];
+
 Table.TABLE = '__tableprops__';
 Table.TABLE_FIELDS = ['name', 'props', 'disabled'];
 
@@ -88,6 +108,21 @@ Table.prototype.setProp = function(name, value) {
 	}
 }
 
+Table.prototype.access = function(user) {
+	if (user.admin || user.role == USER_ROLES.OWNER) {
+	    return { 
+	    	read: Table.ROW_SCOPES.ALL 
+	    	, write: Table.ROW_SCOPES.ALL
+	    }
+	} else {
+		var match = _.find(this.access_control, function(ac) {
+			return ac.role == user.role;
+		});
+		return _.pick(match, ["read", "write"]);
+	}
+	
+}
+
 Table.CreateTableSQL = "CREATE TABLE " + Table.TABLE + " ("
 		+ " name VARCHAR NOT NULL, "
 		+ "	props VARCHAR, "
@@ -98,19 +133,12 @@ Table.CreateTableSQL = "CREATE TABLE " + Table.TABLE + " ("
 Table.prototype.persistentProps = function() {
 	var dbProps = {
 		row_alias: this.row_alias
-		//TODO access_control: this.access_control
+		, access_control: this.access_control
 	};
 	_.extend(dbProps, this.props);
 	return dbProps;
 }
 
-/*
-access_control: [
-	{ role: 'writer', read_rows: 'all', write_rows': 'own'}, 
-	{ role: 'reader', read_rows: 'all', write_rows': 'none'} 
-]
-
-*/
 
 Table.prototype.updatePropSQL = function(opts) {
 
@@ -301,10 +329,11 @@ Table.prototype.deleteSQL = function() {
 Table.prototype.toJSON = function() {
 
 	var result = {
-		name: this.name, 
-		row_alias: this.row_alias,
-		props: this.props,
-		disabled: this.disabled
+		name: this.name 
+		, row_alias: this.row_alias
+		, access_control: this.access_control
+		, props: this.props
+		, disabled: this.disabled
 	};
 
 	result.fields = _.map(this.fields, function(f) {

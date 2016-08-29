@@ -92,7 +92,7 @@ Account.prototype.getInfo = function(cbResult) {
 
 	var result = {
 		name: me.name,
-		databases: {}
+		databases: []
 	};
 
 	var doAfter = _.after(_.size(me.databases), function() {
@@ -104,7 +104,7 @@ Account.prototype.getInfo = function(cbResult) {
 			_.each(schemaData.tables, function(t) { 
 				delete t.fields; 
 			});
-			result.databases[schemaData.name] = schemaData;
+			result.databases.push(schemaData);
 			doAfter();
 		});
 	});

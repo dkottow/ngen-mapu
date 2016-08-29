@@ -50,19 +50,19 @@ var log = global.log.child({'mod': 'g6.app.js'});
 var accounts;
 var controller;
 
-app.init = function(cbAfter) {
+app.init = function(options, cbAfter) {
 	log.info('app.init()...');
 
 	accounts = new AccountManager();
 
 	accounts.init(function() {
-		initRoutes();
+		initRoutes(options);
 		log.info('...app.init()');
 		cbAfter();
 	});
 }
 
-function initRoutes() {
+function initRoutes(options) {
 
 	//enable CORS
 	app.use(function(req, res, next) {
@@ -77,7 +77,7 @@ function initRoutes() {
 	app.use('/public', signupController.router);
 
 	//all api routes
-	controller = new ApiController(accounts);
+	controller = new ApiController(accounts, options);
 	app.use('/', controller.router);
 
 	//uncaught exception handling 

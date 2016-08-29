@@ -108,13 +108,16 @@ if (config.release == 'prod') {
 	global.log = bunyan.createLogger(debugLog);
 }
 
-global.auth = config.auth;
+var log = global.log.child({'mod': 'g6.server.js'});
+log.info({config: config}, "*********** DONKEYLIFT RESET DONKEYLIFT ***********.");
 
 var app = require('./app/app.js').app;
 
-var log = global.log.child({'mod': 'g6.server.js'});
 
-app.init(function(err) {
+var options = {
+	auth: config.auth
+};
+app.init(options, function(err) {
 
 	if (err) throw err;
 

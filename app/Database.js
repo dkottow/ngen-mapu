@@ -32,7 +32,6 @@ var log = global.log.child({'mod': 'g6.Database.js'});
 
 global.row_max_count = global.row_count || 1000;
 global.sqlite_ext = global.sqlite_ext || '.sqlite';
-global.auth = global.auth || false;
 
 var Database = function(dbFile, options) 
 {

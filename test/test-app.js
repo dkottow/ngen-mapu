@@ -9,7 +9,7 @@ require('dotenv').config();
 
 global.log = require('./create_log.js').log;
 
-global.auth = false;
+var useAuth = true;
 var authToken = null;
 
 var app = require('../app/app.js').app;
@@ -30,14 +30,13 @@ function get(url, cbAfter) {
 	var options = {
 		url: url
 	};
-	if (global.auth) {
+	if (useAuth) {
 		options.auth = { bearer: authToken };
 	}
 	request.get(options,
 		function(err, rsp, body) {
 			if (err || rsp.statusCode != 200) {
-				err = err 
-					|| new Error(rsp.statusCode + ' error.' + rsp.body);
+				err = err || new Error(rsp.statusCode + ' error.' + rsp.body);
 				log.error(err);			
 				cbAfter(err, null);
 				return;
@@ -58,24 +57,26 @@ describe('Server (app)', function() {
 		var demoAccount = 'demo';
 		var salesDatabase = 'sales';
 
+		var options = { auth: useAuth };
+
 		before(function(done) {
 			this.timeout(10000);
-			app.init(function(err) {
+			app.init(options, function(err) {
 				server = app.listen(config.port, config.ip, function() {
 					log.info({config: config}, "server started.");
-					if (global.auth) {
+					if (useAuth) {
 
 						var loginUrl = baseUrl + '/public/login';
 						var form = { form : {
-							email: "dbreader@donkeylift.com"
-							, password: "dbreader"
+							email: "demo@donkeylift.com"
+							, password: "demo"
 						}};
 
 						request.post(loginUrl, form, function(err, rsp, body) {
 							assert(err == null, "err " + err);
 							//we need to parse json ourselves here, 
 							//since we posted urlencoded :-(
-							authToken = JSON.parse(body).token;
+							authToken = JSON.parse(body).id_token;
 							assert(authToken, "no auth token. login failed");
 							done();
 						});

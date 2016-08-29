@@ -49,9 +49,7 @@ SqlBuilder.prototype.selectSQL
 	
 	var s = {};
 
-	var fieldClauses = fieldExpr == '*' ? table.allFieldClauses() : fieldExpr;
-
-	s.fields = this.sanitizeFieldClauses(table, fieldClauses);
+	s.fields = this.sanitizeFieldClauses(table, fieldExpr);
 	s.filters = this.sanitizeFieldClauses(table, filterClauses);
 	s.orders = this.sanitizeFieldClauses(table, orderClauses);
 	
@@ -79,10 +77,8 @@ SqlBuilder.prototype.selectSQL
 SqlBuilder.prototype.statsSQL = function(table, fieldExpr, filterClauses) 
 {
 
-	var fieldClauses = fieldExpr == '*' ? table.allFieldClauses() : fieldExpr;
-
 	var s = {};
-	s.fields = this.sanitizeFieldClauses(table, fieldClauses);
+	s.fields = this.sanitizeFieldClauses(table, fieldExpr);
 	s.filters = this.sanitizeFieldClauses(table, filterClauses);
 
 	var query = this.querySQL(table, s.fields, s.filters);
@@ -119,7 +115,7 @@ SqlBuilder.prototype.createSQL = function(schema) {
 		+ schema.insertPropSQL(); 
 */
 
-	sysTablesInsertSQL = schema.insertPropSQL({deep: true}); 
+	var sysTablesInsertSQL = schema.insertPropSQL({deep: true}); 
 
 	var tables = this.graph.tablesByDependencies();
 
@@ -165,6 +161,8 @@ SqlBuilder.prototype.updatePropSQL = function(patches) {
 // private methods...
 
 SqlBuilder.prototype.sanitizeFieldClauses = function(table, fieldClauses) {
+
+	fieldClauses = fieldClauses == '*' ? table.allFieldClauses() : fieldClauses;
 
 	var result = _.map(fieldClauses, function(fc) {
 		var item = {};

@@ -22,7 +22,9 @@ var Table = require('./Table.js').Table;
 var log = global.log.child({'mod': 'g6.AccessControl.js'});
 
 
-function AccessControl() {
+function AccessControl(options) {
+	options = options || {};
+	this.auth = options.auth || false;
 }
 
 
@@ -39,7 +41,7 @@ AccessControl.prototype.authRequest = function(op, req, path, cbResult) {
 	};
 
 	//auth disabled
-	if ( ! global.auth) {
+	if ( ! this.auth) {
 		resultFn({ granted: true, message:  'auth disabled'});
 		return;
 	}
@@ -167,9 +169,9 @@ AccessControl.prototype.filterQuery = function(path, query, user) {
 	var queryTables = _.uniq(_.pluck(queryFields, 'table'));
 
 	var acFilters = [];
-	_.each(queryTables, function(t) {
+	for(var i = 0;i < queryTables.length; ++i) {
 
-		var table = path.db.table(t);
+		var table = path.db.table(queryTables[i]);
 		var access = table.access(user);
 
 		if (access.read == Table.ROW_SCOPES.ALL) {
@@ -177,23 +179,26 @@ AccessControl.prototype.filterQuery = function(path, query, user) {
 			
 		} else if (access.read == Table.ROW_SCOPES.OWN) {
 			acFilters.push({
-				table: t
+				table: table.name
 				, field: 'add_by'
 				, op: 'eq'
 				, value: user.name
 			});		
 			
 		} else { //access.read == Table.ROW_SCOPES.NONE
+			var msg = 'Table read access is none';
+			log.info({ table: table.name, access: access }, msg + ' AccessControl.filterQuery()'); 
 			return {
-				error: new Error('Table read access is none')
+				error: new Error(msg),
+				filter: []
 			};			
 		}
-
-	});
+	}
 	
 	var queryFilter = query.filter || [];
 	var result = {
-		filter: queryFilter.concat(acFilters)
+		filter: queryFilter.concat(acFilters),
+		error: null
 	};
 	
 	log.debug({ result: result }, '...AccessControl.filterQuery()'); 
@@ -205,7 +210,7 @@ AccessControl.prototype.filterDatabases = function(path, databases, user) {
 	log.debug({ user: user }, 'AccessControl.filterDatabases()...'); 
 	log.trace({ databases: databases }, 'AccessControl.filterDatabases()');
 
-	if ( ! global.auth) return databases;
+	if ( ! this.auth) return databases;
 	if (user.admin) return databases;
 	
 	var result =  _.filter(databases, function(db) {
@@ -221,7 +226,7 @@ AccessControl.prototype.filterTables = function(path, tables, user) {
 	log.debug({ user: user }, 'AccessControl.filterTables()...'); 
 	log.trace({ tables: tables }, 'AccessControl.filterTables()');
 
-	if ( ! global.auth) return tables;
+	if ( ! this.auth) return tables;
 	//if (user.admin || user.role == Schema.USER_ROLES.OWNER) return tables;
 	
 	var result =  _.filter(tables, function(t) {

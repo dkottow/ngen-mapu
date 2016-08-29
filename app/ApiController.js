@@ -36,22 +36,17 @@ if (process.env.OPENSHIFT_DATA_DIR) {
 require('dotenv').config({path: envPath}); 
 */
 
-if (global.auth) {
-var auth = jwt({
-	  secret: new Buffer(process.env.AUTH0_CLIENT_SECRET, 'base64'),
-	  audience: process.env.AUTH0_CLIENT_ID
-	});
-}
-
 function sendError(req, res, err, code) {
 	log.error({req: req, code: code, err: err}, 'Controller.sendError()');
 	res.status(code).send({error: err.message});
 }
 
-function Controller(accountManager) {
+function Controller(accountManager, options) {
+	options = options || {};
+	this.auth = options.auth || false;
 	this.accountManager = accountManager;
 	this.router = new express.Router();
-	this.access = new AccessControl();
+	this.access = new AccessControl({ auth: this.auth });
 	this.initRoutes();
 }
 
@@ -62,8 +57,14 @@ Controller.prototype.initRoutes = function() {
 	//json parsing 
 	this.router.use(bodyParser.json());
 
-	if (global.auth) {
-		this.router.use(auth);
+	if (this.auth) {
+
+		var auth_token = jwt({
+			  secret: new Buffer(process.env.AUTH0_CLIENT_SECRET, 'base64'),
+			  audience: process.env.AUTH0_CLIENT_ID
+		});
+
+		this.router.use(auth_token);
 		this.router.use(function(req, res, next) {
 			if (req.user && req.user.app_metadata) {
 				req.user.account = req.user.app_metadata.account;
@@ -143,6 +144,7 @@ Controller.prototype.initRoutes = function() {
 Controller.prototype.listAccounts = function(req, res) {
 	log.info({req: req, user: req.user}, 'Controller.listAccounts()...');
 
+	var me = this;
 	this.access.authRequest('listAccounts', req, null, function(err, auth) {
 		if (err) {
 			sendError(req, res, err, 400);
@@ -154,7 +156,7 @@ Controller.prototype.listAccounts = function(req, res) {
 			return;
 		}
 		
-		var result = this.accountManager.list();
+		var result = me.accountManager.list();
 	
 		_.each(result.accounts, function(account) {
 			account.url = '/' + account.name;
@@ -168,7 +170,7 @@ Controller.prototype.listAccounts = function(req, res) {
 
 Controller.prototype.putAccount = function(req, res) {
 	log.info({req: req, user: req.user}, 'Controller.putAccount()...');
-
+	var me = this;
 	this.access.authRequest('putAccount', req, null, function(err, auth) {
 		if (err) {
 			sendError(req, res, err, 400);
@@ -180,7 +182,7 @@ Controller.prototype.putAccount = function(req, res) {
 			return;
 		}
 	
-		this.accountManager.create(req.params[0], function(err, result) {
+		me.accountManager.create(req.params[0], function(err, result) {
 			if (err) {
 				sendError(req, res, err, 400);
 				return;
@@ -698,115 +700,6 @@ Controller.prototype.getPathObjects = function(req, objs) {
 	log.trace({result: result}, '...Controller.getPathObjects');
 	return result;
 }
-
-/*
-Controller.prototype.authorized = function(op, req, path) {
-	log.debug({ op: op, 'req.user': req.user }, 'Controller.authorized()...'); 
-	log.trace({ path: path }, 'Controller.authorized()'); 
-
-	var resultFn = function(result) {
-		if ( ! result.granted) {
-			result.error = new Error(result.message);
-		}
-		log.debug(result, '...Controller.authorized()');
-		return result;
-	};
-
-	//auth disabled
-	if ( ! global.auth) {
-		return resultFn({ granted: true, message:  'auth disabled'});
-	}
-
-	//sys admin - true
-	if (req.user.root) {
-		return resultFn({ granted: true, message:  'system admin'});
-	}
-
-	//path has no account aka global op requires system admin - false
-	if ( ! (path && path.account)) {
-		return resultFn({ granted: false, message: 'requires system admin'});
-	}
-
-	//user account mismatch - false
-	if (req.user.account != path.account.name) {
-		log.debug({ 
-            "user.account": req.user.account,
-            "path.account": path.account.name
-		} , 'Controller.authorized()');
-		return resultFn({ granted: false, message: 'user - account mismatch'});
-	}
-
-	//user is account admin - true
-	if (req.user.admin) {
-		return resultFn({ granted: true, message: 'account admin'});
-	}
-
-	if (op == 'getAccount') {
-		return resultFn({ granted: true });
-	}
-
-	//path has no db aka op requires account admin - false
-	if ( ! path.db) {
-		return resultFn({ granted: false, message: 'requires account admin'});
-	}
-
-	log.debug({
-			"db.name": path.db.name(), 
-			"db.users": path.db.users() 
-		}, 'Controller.authorized()');
-
-	var dbUser = path.db.user(req.user.name);
-
-	//user is no db user - false
-	if ( ! dbUser) {
-		return resultFn({ granted: false, message: 'user - db user mismatch'});
-	}
-
-	_.extend(req.user, dbUser);
-
-	//user is db owner - true
-	if (dbUser.role == Schema.USER_ROLES.OWNER) {
-		return resultFn({ granted: true, message: 'db owner'});
-	}
-			
-	//user is either db reader / writer. most ops depend on table access control now..
-	switch(op) {
-
-		case 'getAccount':			
-		case 'getDatabase':			
-		case 'getRows':			
-		case 'getStats':
-			return resultFn({ granted: true });
-		case 'postRows':			
-			var table_access = path.table.access(req.user);
-			if ( table_access.write == Table.ROW_SCOPES.ALL
-			  || table_access.write == Table.ROW_SCOPES.OWN)
-			{
-				return resultFn({ granted: true });
-			} else {
-				return resultFn({ 
-					granted: false, 
-					message: 'Table write access is none.' 
-				});
-			}
-
-		case 'putRows':			
-		case 'delRows':
-			var owned = path.db.rowsOwned(path.table.name, req.body, req.user, function(err, result) {
-				return resultFn({
-					granted: owned,
-					message: 'Table write access is own.'
-				});
-			});
-		case 'putDatabase':			
-		case 'patchDatabase':			
-		case 'delDatabase':			
-			return resultFn({ granted: false, message: 'requires db owner'});
-		default:
-			return resultFn({ granted: false, message: 'unknown op'});
-	}
-}
-*/
 
 exports.ApiController = Controller;
 

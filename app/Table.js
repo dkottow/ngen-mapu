@@ -61,7 +61,13 @@ var Table = function(tableDef) {
 		//row alias
 		me.row_alias = tableDef.row_alias || [];
 
-		me.access_control = tableDef.access_control || Table.DEFAULT_ACCESS_CONTROL;
+		if (tableDef.access_control) {
+			me.access_control = tableDef.access_control;
+		} else {
+			me.access_control = _.map(Table.DEFAULT_ACCESS_CONTROL, function(ac) {
+				return _.clone(ac);	
+			});
+		}
 
 		//dont show falsy disable prop
 		if (tableDef.disabled) me.disabled = true;
@@ -118,6 +124,13 @@ Table.prototype.access = function(user) {
 		var match = _.find(this.access_control, function(ac) {
 			return ac.role == user.role;
 		});
+		if ( ! match) {
+		    return { 
+		    	read: Table.ROW_SCOPES.NONE
+		    	, write: Table.ROW_SCOPES.NONE
+		    }
+		}
+
 		return _.pick(match, ["read", "write"]);
 	}
 	

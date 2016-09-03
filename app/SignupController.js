@@ -8,6 +8,8 @@ var envPath = './.env';
 if (process.env.OPENSHIFT_DATA_DIR) { 
     envPath = process.env.OPENSHIFT_DATA_DIR + '/.env'; 
 } 
+
+var log = global.log.child({'mod': 'g6.SignupController.js'});
  
 require('dotenv').config({path: envPath}); 
 

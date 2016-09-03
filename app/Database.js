@@ -155,6 +155,7 @@ Database.prototype.getCounts = function(cbResult) {
 
 Database.prototype.getStats = function(tableName, options, cbResult) {
 
+	log.debug("Database.getStats()...");
 	try {
 
 		var table = this.table(tableName);
@@ -186,6 +187,7 @@ Database.prototype.getStats = function(tableName, options, cbResult) {
 						max: row[max_key]
 					};
 				});
+				log.debug("...Database.getCounts()");
 				cbResult(null, result);
 			});
 		});
@@ -198,6 +200,7 @@ Database.prototype.getStats = function(tableName, options, cbResult) {
 
 Database.prototype.all = function(tableName, options, cbResult) {
 
+	log.debug("Database.all()...");
 	try {
 
 		var table = this.table(tableName);
@@ -255,6 +258,7 @@ Database.prototype.all = function(tableName, options, cbResult) {
 								result.sql = sql.query;
 								result.sqlParams = sql.params;
 							}		
+							log.debug("...Database.all()");
 							cbResult(null, result);
 						}
 					});

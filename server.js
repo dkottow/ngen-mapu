@@ -68,11 +68,9 @@ var prodLog = {
 	, serializers: bunyan.stdSerializers
 	, streams: [
 		{
-			type: 'rotating-file'
-			, path: path.join(config.logdir, 'g6.rest-server.json')
+			stream: process.stdout
 			, level: 'info'
-			, period: '1d'
-		}
+		} 
 	]
 };
 
@@ -83,15 +81,16 @@ var debugLog = {
 	, streams: [
 		{
 			stream: process.stdout
-			, level: 'info'
+			, level: 'debug'
 		} 
+/*		
 		, {
 			type: 'rotating-file'
 			, path: path.join(config.logdir, 'g6.rest-server.json')
 			, level: 'debug'
 			, period: '1d'
 		}
-/*
+
 		, {
 			stream: loggly_stream
 			, type: 'raw'

@@ -125,7 +125,7 @@ SqlBuilder.prototype.createSQL = function(schema) {
 
 	var createViewSQL = _.map(tables, function(t) {
 		var viewSQL = this.createViewSQL(t);
-		log.debug(viewSQL);
+		//log.debug(viewSQL);
 		return viewSQL;
 	}, this).join('\n');
 

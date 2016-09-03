@@ -29,8 +29,8 @@ function AccessControl(options) {
 
 
 AccessControl.prototype.authRequest = function(op, req, path, cbResult) {
-	log.debug({ op: op, 'req.user': req.user }, 'AccessControl.authRequest()...'); 
-	log.trace({ path: path }, 'AccessControl.authRequest()'); 
+	log.debug({ op: op}, 'AccessControl.authRequest()...'); 
+	log.trace({ 'req.user': req.user, path: path }, 'AccessControl.authRequest()'); 
 
 	var resultFn = function(result) {
 		if ( ! result.granted) {
@@ -162,7 +162,10 @@ AccessControl.prototype.authRequest = function(op, req, path, cbResult) {
 }
 
 AccessControl.prototype.filterQuery = function(path, query, user) {
-	log.debug({ query: query, user: user }, 'AccessControl.filterQuery()...'); 
+	log.debug('AccessControl.filterQuery()...'); 
+	log.trace({ query: query, user: user }, 'AccessControl.filterQuery()...'); 
+
+	if ( ! this.auth) return { filter: query.filter };
 
 	var sb = path.db.schema.sqlBuilder;
 	var queryFields = sb.sanitizeFieldClauses(path.table, query.fields);
@@ -201,13 +204,14 @@ AccessControl.prototype.filterQuery = function(path, query, user) {
 		error: null
 	};
 	
-	log.debug({ result: result }, '...AccessControl.filterQuery()'); 
+	log.trace({ result: result }, '...AccessControl.filterQuery()'); 
+	log.debug('...AccessControl.filterQuery()'); 
 	return result;
 	
 }
 
 AccessControl.prototype.filterDatabases = function(path, databases, user) {
-	log.debug({ user: user }, 'AccessControl.filterDatabases()...'); 
+	log.trace({ user: user }, 'AccessControl.filterDatabases()...'); 
 	log.trace({ databases: databases }, 'AccessControl.filterDatabases()');
 
 	if ( ! this.auth) return databases;
@@ -218,13 +222,13 @@ AccessControl.prototype.filterDatabases = function(path, databases, user) {
 			return dbUser.name == user.name;
 		});
 	});
-	log.debug({ result: result }, '...AccessControl.filterDatabases()'); 
+	log.trace({ result: result }, '...AccessControl.filterDatabases()'); 
 	return result;
 }
 
 AccessControl.prototype.filterTables = function(path, tables, user) {
-	log.debug({ user: user }, 'AccessControl.filterTables()...'); 
-	log.trace({ tables: tables }, 'AccessControl.filterTables()');
+	log.debug('AccessControl.filterTables()...'); 
+	log.trace({ user: user, tables: tables }, 'AccessControl.filterTables()');
 
 	if ( ! this.auth) return tables;
 	//if (user.admin || user.role == Schema.USER_ROLES.OWNER) return tables;
@@ -233,7 +237,9 @@ AccessControl.prototype.filterTables = function(path, tables, user) {
 		var access = path.db.table(t.name).access(user);
 		return access.read != Table.ROW_SCOPES.NONE;
 	});
-	log.debug({ result: result }, '...AccessControl.filterTables()'); 
+
+	log.trace({ result: result }, '...AccessControl.filterTables()'); 
+	log.debug('...AccessControl.filterTables()'); 
 	return result;
 }
 

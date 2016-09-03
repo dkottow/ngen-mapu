@@ -697,7 +697,8 @@ Controller.prototype.getPathObjects = function(req, objs) {
 		}
 	}
 
-	log.trace({result: result}, '...Controller.getPathObjects');
+	log.trace({result: result}, 'Controller.getPathObjects');
+	log.debug('...Controller.getPathObjects');
 	return result;
 }
 

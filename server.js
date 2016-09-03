@@ -112,7 +112,6 @@ log.info({config: config}, "*********** DONKEYLIFT RESET DONKEYLIFT ***********.
 
 var app = require('./app/app.js').app;
 
-
 var options = {
 	auth: config.auth
 };

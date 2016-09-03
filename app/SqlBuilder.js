@@ -39,6 +39,7 @@ var SqlBuilder = function(tableGraph) {
 SqlBuilder.prototype.selectSQL 
 	= function(table, fieldExpr, filterClauses, orderClauses, limit, offset) 
 {
+	log.debug('SqlBuilder.selectSQL...');
 	log.trace({
 		table: table
 		, fieldExpr: fieldExpr
@@ -71,6 +72,7 @@ SqlBuilder.prototype.selectSQL
 		'sanitized': s
 	}
 	log.trace({result: result}, "SqlBuilder.selectSQL");
+	log.debug('...SqlBuilder.selectSQL');
 	return result;
 }
 
@@ -315,7 +317,7 @@ SqlBuilder.prototype.createViewSQL = function(table) {
 
 SqlBuilder.prototype.joinSQL = function(fromTable, tables, options) {
 
-	log.debug('SqlBuilder.joinSQL()...');
+	log.trace('SqlBuilder.joinSQL()...');
 	log.trace({from: fromTable, join: tables});
 	options = options || {};
 

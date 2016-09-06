@@ -18,7 +18,7 @@ var log = global.log;
 describe('Schema', function() {
 
 	var soccerSchema = {
-		users : [ { "name": "demo@donkeylift.com", "role": "reader" } ],
+		users : [ { "name": "demo@donkeylift.com", "role": "writer" } ],
  		tables: [
 		   { "name": "Team"
 			 , "row_alias": ["Name"]		  	

@@ -16,4 +16,4 @@ mocha $DATA_DIR/soccer-generate-data.js
 cp sales.json sandwiches.json soccer.json test/data/json
 cp sales.sqlite sandwiches.sqlite soccer.sqlite test/data/sqlite
 cp sales.sqlite sandwiches.sqlite soccer.sqlite data/demo
-rm sales.json sandwiches.json soccer.json sales.sqlite sandwiches.sqlite soccer.sqlite 
+#rm sales.json sandwiches.json soccer.json sales.sqlite sandwiches.sqlite soccer.sqlite 

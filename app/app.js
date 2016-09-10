@@ -75,6 +75,7 @@ function initRoutes(options) {
 	//signup
 	var signupController = new SignupController();
 	app.use('/public', signupController.router);
+	app.use('/public', express.static('./public'));
 
 	//all api routes
 	controller = new ApiController(accounts, options);

@@ -69,13 +69,14 @@ function initRoutes(options) {
 	  res.header("Access-Control-Allow-Origin", "*");
 	  res.header('Access-Control-Allow-Methods', 'GET, PUT, POST, DELETE, PATCH, OPTIONS'); 
 	  res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization, Access-Control-Request-Method, Access-Control-Request-Headers");
-	  next();
+	  if (req.method == 'OPTIONS') res.status(200).send();
+	  else next();
 	});
 
 	//signup
 	var signupController = new SignupController();
 	app.use('/public', signupController.router);
-	app.use('/public', express.static('./public'));
+	app.use('/public', express.static('./public', { fallthrough: false }));
 
 	//all api routes
 	controller = new ApiController(accounts, options);

@@ -115,6 +115,7 @@ AccessControl.prototype.authRequest = function(op, req, path, cbResult) {
 			return;
 
 		case 'getRows':			
+		case 'getObjs':			
 		case 'getStats':
 			var table_access = path.table.access(req.user);
 			var result = { 

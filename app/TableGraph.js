@@ -324,7 +324,7 @@ console.log(util.inspect(childObj));
 }
 
 TableGraph.prototype.joinTree = function(fromTable, joinTables) {
-	log.debug({fromTable: fromTable, joinTables: joinTables},
+	log.trace({fromTable: fromTable, joinTables: joinTables},
 		"TableGraph.joinTree()...");
 
 	/* pick first tree that covers all tables 
@@ -341,7 +341,7 @@ TableGraph.prototype.joinTree = function(fromTable, joinTables) {
 		return true;
 	});
 
-	log.debug({joinTree: joinTree}, '...TableGraph.joinTree()');
+	log.trace({joinTree: joinTree}, '...TableGraph.joinTree()');
 	return joinTree;
 }
 

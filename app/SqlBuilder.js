@@ -71,7 +71,7 @@ SqlBuilder.prototype.selectSQL
 		'countSql': countSQL,
 		'sanitized': s
 	}
-	log.trace({result: result}, "SqlBuilder.selectSQL");
+	log.info({result: result}, "SqlBuilder.selectSQL");
 	log.debug('...SqlBuilder.selectSQL');
 	return result;
 }

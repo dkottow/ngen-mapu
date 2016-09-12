@@ -226,7 +226,7 @@ describe('RowsToObj Sandwiches DB', function() {
 
 			var rows = result.rows;
 			var obj = tableGraph.rowsToObj(rows, 'customers');
-			console.log(util.inspect(obj, false, null));
+			//console.log(util.inspect(obj, false, null));
 
 			assert(obj.customers.length == 5, 'Expected 5 customers got ' + obj.customers.length);
 			done();
@@ -268,7 +268,7 @@ describe('RowsToObj Sandwiches DB', function() {
 
 			var rows = result.rows;
 			var obj = tableGraph.rowsToObj(rows, 'orders');
-			console.log(util.inspect(obj, false, null));
+			//console.log(util.inspect(obj, false, null));
 
 			var customers = {};
 			_.each(obj.orders, function(order) {

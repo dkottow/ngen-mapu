@@ -15,6 +15,7 @@
 */
 
 var _ = require('underscore');
+var util = require('util');
 
 var url = require('url');
 
@@ -135,7 +136,7 @@ Controller.prototype.initRoutes = function() {
 	});
 
 	this.router.get(/^\/(\w+)\/(\w+)\/(\w+).objs$/, function(req, res) {
-		me.getRows(req, res, { obj: true });
+		me.getObjs(req, res);
 	});
 
 	log.debug("...Controller.initRoutes()");		
@@ -413,6 +414,27 @@ Controller.prototype.getDatabaseFile = function(req, res) {
 	});	
 }
 
+Controller.prototype.parseQueryParameters = function(req) {
+	var params = {};
+	_.each(req.query, function(v, k) {
+		if (k[0] == '$') {
+			var param = parser.parse(k + "=" + v);	
+			params[param.name] = param.value;
+		} else {
+			params[k] = v;
+		}
+	});
+	log.trace({params: params});
+	return params;
+}
+
+Controller.prototype.nextUrl = function(req, offset) {
+	var urlObj = url.parse(req.url, true);
+	urlObj.search = undefined;
+	urlObj.query['$skip'] = offset;
+	return url.format(urlObj)
+}
+
 Controller.prototype.getRows = function(req, res, opts) {
 	log.info({req: req}, 'Controller.getRows()...');
 	var me = this;
@@ -434,16 +456,7 @@ Controller.prototype.getRows = function(req, res, opts) {
 			return;
 		}
 	
-		var params = {};
-		_.each(req.query, function(v, k) {
-			if (k[0] == '$') {
-				var param = parser.parse(k + "=" + v);	
-				params[param.name] = param.value;
-			} else {
-				params[k] = v;
-			}
-		});
-		log.debug({params: params});
+		var params = me.parseQueryParameters(req);
 
 		var q = { filter: params['$filter'], fields: params['$select'] };
 		var auth2 = me.access.filterQuery(path, q, req.user);
@@ -470,19 +483,7 @@ Controller.prototype.getRows = function(req, res, opts) {
 	
 				//add nextUrl if nextOffset
 				if (result.nextOffset) {
-					var urlObj = url.parse(req.url, true);
-					urlObj.search = undefined;
-					urlObj.query['$skip'] = result.nextOffset;
-	
-					result.nextUrl = url.format(urlObj)
-					//delete result.nextOffset;
-				}
-	
-				if (opts.obj) {
-					var objs = path.db.schema.graph
-								.rowsToObj(result.rows, path.table.name);
-					result.objs = objs;
-					delete(result.rows);
+					result.nextUrl = me.nextUrl(req, result.nextOffset);
 				}
 	
 				log.trace(result);
@@ -493,8 +494,93 @@ Controller.prototype.getRows = function(req, res, opts) {
 	});
 }
 
+Controller.prototype.getObjs = function(req, res, opts) {
+	log.info({req: req}, 'Controller.getObjs()...');
+	var me = this;
+
+	var path = this.getPathObjects(req, {account: true, db: true, table: true});
+	if (path.error) {
+		sendError(req, res, path.error, 404);
+		return;
+	}
+
+	this.access.authRequest('getObjs', req, path, function(err, auth) {
+		if (err) {
+			sendError(req, res, err, 400);
+			return;
+		}
+		if (auth.error) {
+			sendError(req, res, auth.error, 401);
+			return;
+		}
+
+		var params = me.parseQueryParameters(req);
+
+		var q = { filter: params['$filter'], fields: params['$select'] };
+		var auth2 = me.access.filterQuery(path, q, req.user);
+		if (auth2.error) {
+			sendError(req, res, auth2.error, 401);
+			return;
+		}
+
+		//TODO make sure fields include path table id
+
+		var orderObj = { field: 'id', order: 'asc' };
+		var orderBy = [ orderObj ].concat(params['$orderby']);
+
+		path.db.all(path.table.name, {
+				filter: auth2.filter 
+				, fields: params['$select'] 
+				, order: orderBy 
+				, limit: params['$top'] 
+				, offset: params['$skip'] 
+				, distinct: params['$distinct'] 
+				, debug: params['debug']	
+			},
+	
+			function(err, result) { 
+				if (err) {
+					sendError(req, res, err, 400);
+					return;
+				}
+	
+				//remove rows of probably incomplete last object
+				if (result.nextOffset) {
+					var i = result.rows.length - 1;
+					var lastId = result.rows[i].id;
+					while(--i >= 0) {
+						if (result.rows[i].id != lastId) {
+							result.rows.splice(i + 1);
+							result.nextOffset = params['$skip'] 
+								+ result.rows.length;
+	//console.log(util.inspect(_.pluck(result.rows, 'id')));
+							break;					
+						}
+					}
+				}
+
+				//add nextUrl if nextOffset
+				if (result.nextOffset) {
+					result.nextUrl = me.nextUrl(req, result.nextOffset);
+				}
+	
+				//build objects
+				var objs = path.db.schema.graph
+							.rowsToObj(result.rows, path.table.name);
+				result.objs = objs;
+				delete(result.rows);
+	
+				log.trace(result);
+				res.send(result); 
+				log.info({res: res}, '...Controller.getObjs().');
+			}
+		);
+	});
+}
+
 Controller.prototype.getStats = function(req, res) {
 	log.info({req: req}, 'Controller.getStats()...');
+	var me = this;
 
 	var path = this.getPathObjects(req, {account: true, db: true, table: true});
 	if (path.error) {
@@ -513,16 +599,8 @@ Controller.prototype.getStats = function(req, res) {
 			return;
 		}
 	
-		var params = {};
-		_.each(req.query, function(v, k) {
-			if (k[0] == '$') {
-				var param = parser.parse(k + "=" + v);	
-				params[param.name] = param.value;
-			} else {
-				params[k] = v;
-			}
-		});
-	
+		var params = me.parseQueryParameters(req);
+
 		//TODO add access control filter
 	
 		path.db.getStats(path.table.name, { 

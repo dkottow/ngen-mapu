@@ -66,6 +66,11 @@ var prodLog = {
 			stream: process.stdout
 			, level: 'info'
 		} 
+		, {
+			type: 'file'
+			, path: path.join(config.logdir, 'donkey-error-log.json')
+			, level: 'error'
+		}
 	]
 };
 
@@ -78,6 +83,11 @@ var debugLog = {
 			stream: process.stdout
 			, level: 'debug'
 		} 
+		, {
+			type: 'file'
+			, path: path.join(config.logdir, 'donkey-error-log.json')
+			, level: 'error'
+		}
 /*		
 		, {
 			type: 'rotating-file'

@@ -59,7 +59,7 @@ var TableGraph = function(tables, options) {
 		}
 
 		log.trace({trees: me.trees}, 'TableGraph.init()');
-		log.debug('...TableGraph.init().');
+		log.debug({treesCount: me.trees.length}, '...TableGraph.init().');
 	}
 
 }
@@ -74,22 +74,40 @@ TableGraph.prototype.initJoinTrees = function(trees) {
 }
 
 TableGraph.prototype.minimumSpanningTree = function() {
+	
+	var me = this;
 	var weightFn = function(e) {
 		return 1; 
 	}
+
+	var result = [];
 
 	var components = graphlib.alg.components(this.graph);
 
 	if (components.length == 1) {
 		var tree = graphlib.alg.prim(this.graph, weightFn);
 		tree = graphutil.DirectTreeEdgesAsGraph(tree, this.graph);
-		return [ tree ];
+		result.push(tree);
 
 	} else {
-		//TODO build trees out of components
-		log.warn("Graph is not connected. " + components.length);
-		return [];
+		log.debug("Graph is not connected. " + components.length);
+
+		//build trees out of components
+		_.each(components, function(nodes) {
+			var sg = new graphlib.Graph();
+			_.each(nodes, function(n) {
+				sg.setNode(n);
+				_.each(me.graph.outEdges(n), function(e) {
+					sg.setEdge(e);
+				});
+			});
+
+			var tree = graphlib.alg.prim(sg, weightFn);
+			tree = graphutil.DirectTreeEdgesAsGraph(tree, me.graph);
+			result.push(tree);
+		});
 	}
+	return result;
 }
 
 TableGraph.prototype.tables = function() {

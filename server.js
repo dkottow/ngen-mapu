@@ -31,7 +31,7 @@ var config = {
 	'port'    : 3000, 
 	'auth'	  : true,
 	'logdir'  : 'logs',
-	'release' : 'prod',
+	'release' : 'debug',
 }
 
 if (process.env.DONKEYLIFT_AUTH) {

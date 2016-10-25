@@ -526,7 +526,9 @@ Controller.prototype.getObjs = function(req, res, opts) {
 		//TODO make sure fields include path table id
 
 		var orderObj = { field: 'id', order: 'asc' };
-		var orderBy = [ orderObj ].concat(params['$orderby']);
+		var orderBy = [ orderObj ];
+		
+		if (params['$orderby']) orderBy.concat(params['$orderby']);
 
 		path.db.all(path.table.name, {
 				filter: auth2.filter 

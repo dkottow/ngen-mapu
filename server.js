@@ -4,7 +4,7 @@
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
    You may obtain a copy of the License at
-
+ 
        http://www.apache.org/licenses/LICENSE-2.0
 
    Unless required by applicable law or agreed to in writing, software
@@ -31,19 +31,14 @@ var config = {
 	'port'    : 3000, 
 	'auth'	  : true,
 	'logdir'  : 'logs',
-	'release' : 'prod',
+	'release' : 'debug',
 }
 
 if (process.env.DONKEYLIFT_AUTH) {
 	config.auth = parseInt(process.env.DONKEYLIFT_AUTH) > 0;
 }
 
-if (process.env.DONKEYLIFT_API) {
-	var u = url.parse(process.env.DONKEYLIFT_API);
-	config.ip = u.hostname;
-	config.port = u.port;
-
-} else if (process.env.OPENSHIFT_DATA_DIR) {
+if (process.env.OPENSHIFT_DATA_DIR) {
 	config.ip = process.env.OPENSHIFT_NODEJS_IP;
 	config.port = process.env.OPENSHIFT_NODEJS_PORT;
 	config.logdir = process.env.OPENSHIFT_LOG_DIR;
@@ -71,6 +66,11 @@ var prodLog = {
 			stream: process.stdout
 			, level: 'info'
 		} 
+		, {
+			type: 'file'
+			, path: path.join(config.logdir, 'donkey-error-log.json')
+			, level: 'error'
+		}
 	]
 };
 
@@ -83,6 +83,11 @@ var debugLog = {
 			stream: process.stdout
 			, level: 'debug'
 		} 
+		, {
+			type: 'file'
+			, path: path.join(config.logdir, 'donkey-error-log.json')
+			, level: 'error'
+		}
 /*		
 		, {
 			type: 'rotating-file'

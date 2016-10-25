@@ -1,0 +1,375 @@
+
+var APP_PATH = "../../app/";
+
+var assert = require('assert')
+	, _ = require('underscore')
+	, util = require('util')
+	, sqlite3 = require('sqlite3').verbose()
+	, schema = require(APP_PATH + 'Schema')
+	, Model = require(APP_PATH + 'Database').Database;
+	
+var log = global.log;
+
+//run me from root dir mocha etc/create-sales.js to create sales.sqlite
+
+describe('Schema', function() {
+
+	var rentalsSchema = {
+		users : [ 
+			{ "name": "demo@donkeylift.com", "role": "reader" } 
+			, { "name": "rentals@donkeylift.com", "role": "owner" }
+		],
+		tables : [
+			 { "name": "quotes"
+			 , "access_control": [
+				{
+					role: "reader",
+					write: "own",
+					read: "all"
+				}			 
+				, {
+					role: "writer",
+					write: "own",
+					read: "all"
+				}			 
+			 ]
+			 , "fields": [
+					{
+						  "name": "id"
+						, "type": "INTEGER"
+						, "props": {
+							"order": 0
+						}
+					}
+					, {
+						  "name": "name"
+						, "type": "VARCHAR"
+						, "props": {
+							"width": 30
+						  , "order": 1
+						}
+					}
+					, {
+						  "name": "email"
+						, "type": "VARCHAR"
+						, "props": {
+							"width": 30
+						  , "order": 2
+						}
+					}
+					, {
+						  "name": "start_date"
+						, "type": "DATE"
+						, "props": {
+							"order": 3
+						}
+					}
+					, {
+						  "name": "end_date"
+						, "type": "DATE"
+						, "props": {
+							"order": 4
+						}
+					}
+					, {
+						  "name": "guest_count"
+						, "type": "INTEGER"
+						, "props": {
+							"order": 5
+						}
+					}
+					, {
+						  "name": "quote"
+						, "type": "NUMERIC"
+						, "props": {
+							"order": 6
+						  , "scale": 2
+						}
+					}
+					, {
+						  "name": "confirmed"
+						, "type": "INTEGER"
+						, "props": {
+							"order": 7
+						}
+					}
+					, {
+						  "name": "mod_by"
+						, "type": "VARCHAR"
+						, "props": {
+							"width": 20
+						  , "order": 91
+						}
+					}
+					, {
+						  "name": "mod_on"
+						, "type": "DATETIME"
+						, "props": {
+							"order": 92
+						  , "width": 11
+						}
+					}
+					, {
+						  "name": "add_by"
+						, "type": "VARCHAR"
+						, "props": {
+							"width": 20
+						  , "order": 93
+						}
+					}
+					, {
+						  "name": "add_on"
+						, "type": "DATETIME"
+						, "props": {
+							"order": 94
+					      , "width": 11
+						}
+					}
+				 ]
+			 }
+		   , { "name": "guests"
+			 , "row_alias": ["name"]		  	
+			 , "fields": [
+					{
+						  "name": "id"
+						, "type": "INTEGER"
+						, "props": {
+							"order": 0
+						}
+					}
+					, {
+						  "name": "name"
+						, "type": "VARCHAR"
+						, "props": {
+							"width": 30
+						  , "order": 1
+						}
+					}
+					, {
+						  "name": "email"
+						, "type": "VARCHAR"
+						, "props": {
+							"width": 30
+						  , "order": 2
+						}
+					}
+					, {
+						  "name": "mod_by"
+						, "type": "VARCHAR(64)"
+						, "props": {
+							"order": 91
+						}
+					}
+					, {
+						  "name": "mod_on"
+						, "type": "DATETIME"
+						, "props": {
+							"order": 92,
+							"width": 11
+						}
+					}
+					, {
+						  "name": "add_by"
+						, "type": "VARCHAR(64)"
+						, "props": {
+							"order": 93
+						}
+					}
+					, {
+						  "name": "add_on"
+						, "type": "DATETIME"
+						, "props": {
+							"order": 94,
+							"width": 11
+						}
+					}
+				]		
+			 }
+		   , { "name": "rentals"
+			 , "row_alias": ["start_date", "guests.name"]		  	
+			 , "fields": [
+					{
+						  "name": "id"
+						, "type": "INTEGER"
+						, "props": {
+							"order": 0
+						}
+					}
+					, {
+						  "name": "guest_id"
+						, "type": "INTEGER"
+						, "fk_table": "guests"
+						, "props": {
+							"order": 2
+						  , "width": 40
+						}
+					}
+					, {
+						  "name": "start_date"
+						, "type": "DATE"
+						, "props": {
+							"order": 3
+						}
+					}
+					, {
+						  "name": "end_date"
+						, "type": "DATE"
+						, "props": {
+							"order": 4
+						}
+					}
+					, {
+						  "name": "guest_count"
+						, "type": "INTEGER"
+						, "props": {
+							"order": 5
+						}
+					}
+					, {
+						  "name": "price"
+						, "type": "NUMERIC"
+						, "props": {
+							"order": 6
+						  , "scale": 2
+						}
+					}
+					, {
+						  "name": "paid"
+						, "type": "INTEGER"
+						, "props": {
+							"order": 7
+						}
+					}
+					, {
+						  "name": "mod_by"
+						, "type": "VARCHAR"
+						, "props": {
+							"width": 20
+						  , "order": 91
+						}
+					}
+					, {
+						  "name": "mod_on"
+						, "type": "DATETIME"
+						, "props": {
+							"order": 92
+						  , "width": 11
+						}
+					}
+					, {
+						  "name": "add_by"
+						, "type": "VARCHAR"
+						, "props": {
+							"width": 20
+						  , "order": 93
+						}
+					}
+					, {
+						  "name": "add_on"
+						, "type": "DATETIME"
+						, "props": {
+							"order": 94
+					      , "width": 11
+						}
+					}
+				 ]
+			 }
+		   , { "name": "payments"
+			 , "fields": [
+					{
+						  "name": "id"
+						, "type": "INTEGER"
+						, "props": {
+							"order": 0
+						}
+					}
+					, {
+						  "name": "rental_id"
+						, "type": "INTEGER"
+						, "fk_table": "rentals"
+						, "props": {
+							"order": 1
+						  , "width": 40
+						}
+					}
+					, {
+						  "name": "amount"
+						, "type": "NUMERIC"
+						, "props": {
+							"scale": 2
+						  , "order": 2
+						}
+					}
+					, {
+						  "name": "pay_date"
+						, "type": "DATE"
+						, "props": {
+							"order": 3
+						}
+					}
+					, {
+						  "name": "mod_by"
+						, "type": "VARCHAR(64)"
+						, "props": {
+							"order": 91
+						}
+					}
+					, {
+						  "name": "mod_on"
+						, "type": "DATETIME"
+						, "props": {
+							"order": 92,
+							"width": 11
+						}
+					}
+					, {
+						  "name": "add_by"
+						, "type": "VARCHAR(64)"
+						, "props": {
+							"order": 93
+						}
+					}
+					, {
+						  "name": "add_on"
+						, "type": "DATETIME"
+						, "props": {
+							"order": 94,
+							"width": 11
+						}
+					}
+				]		
+			 }
+		]
+	};		
+
+	describe('Rentals', function() {
+		var dbFile = "./rentals.sqlite";
+		var jsonFile = "./rentals.json";
+
+		before(function(done) {
+			schema.Schema.remove(dbFile, function(err) {
+				done();
+			});
+		});	
+
+		it('create ' + dbFile, function(done) {
+	
+			var db = new schema.Schema();
+			db.init(rentalsSchema);
+			var allDone = _.after(2, function() {
+				done();
+			});
+			db.write(dbFile, function(err) {
+				log.info(err);
+				allDone();	
+			});
+			db.jsonWrite(jsonFile, function(err) {
+				log.info(err);
+				allDone();	
+			});
+		});
+	});
+
+});
+
+

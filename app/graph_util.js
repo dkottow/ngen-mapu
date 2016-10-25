@@ -235,6 +235,7 @@ function r4() {
 
 function DirectTreeEdgesAsGraph(tree, graph) {
 	var result = new graphlib.Graph({ directed: true });
+	_.each(tree.nodes(), function(n) { result.setNode(n); });
 	_.each(tree.edges(), function(e) {
 		if (graph.hasEdge(e)) {
 			result.setEdge(e);

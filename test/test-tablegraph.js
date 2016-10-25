@@ -181,13 +181,29 @@ describe('RowsToObj Sandwiches DB', function() {
 	var dbFile = sqliteDir + '/sandwiches.sqlite';
 	var db = new Database(dbFile);
 	var tableGraph;
+	var customerCount;
 
 	before(function(done) {	
 
 		db.init(function(err) {
 			assert(err == null, err);
 			tableGraph = db.schema.graph;
-			done();
+			var options = {
+				fields : [
+					'customer_id'
+				]
+				, filter : [
+					{   
+						'field': 'customer_id', 
+						'op': 'btwn', 
+						'value': [1, 5]
+					}
+				]
+			};	
+			db.all('orders', options, function(err, result) {
+				customerCount = result.rows.length;
+				done();
+			});
 		});
 
 	});	
@@ -228,7 +244,9 @@ describe('RowsToObj Sandwiches DB', function() {
 			var obj = tableGraph.rowsToObj(rows, 'customers');
 			//console.log(util.inspect(obj, false, null));
 
-			assert(obj.customers.length == 5, 'Expected 5 customers got ' + obj.customers.length);
+			assert(obj.customers.length == customerCount, 
+				'Expected ' + customerCount + ' customers.'
+				+ ' Got ' + obj.customers.length);
 			done();
 		});
 
@@ -277,7 +295,7 @@ describe('RowsToObj Sandwiches DB', function() {
 
 			//console.log(customers);
 			
-			assert(_.keys(customers).length == 5, 'Expected 5 distinct customers got ' + _.keys(customers).length);
+			assert(_.keys(customers).length == customerCount, 'Expected ' + customerCount  + ' distinct customers got ' + _.keys(customers).length);
 			done();
 		});
 

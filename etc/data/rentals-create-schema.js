@@ -5,9 +5,10 @@ var assert = require('assert')
 	, _ = require('underscore')
 	, util = require('util')
 	, sqlite3 = require('sqlite3').verbose()
-	, schema = require(APP_PATH + 'Schema')
-	, Model = require(APP_PATH + 'Database').Database;
+	, Schema = require(APP_PATH + 'Schema').Schema
+	, Database = require(APP_PATH + 'Database').Database;
 	
+global.log = require('./log.js').log;
 var log = global.log;
 
 //run me from root dir mocha etc/create-sales.js to create sales.sqlite
@@ -87,8 +88,9 @@ describe('Schema', function() {
 						}
 					}
 					, {
-						  "name": "confirmed"
+						  "name": "status_id"
 						, "type": "INTEGER"
+						, "fk_table": "status"
 						, "props": {
 							"order": 7
 						}
@@ -234,8 +236,9 @@ describe('Schema', function() {
 						}
 					}
 					, {
-						  "name": "paid"
+						  "name": "status_id"
 						, "type": "INTEGER"
+						, "fk_table": "status"
 						, "props": {
 							"order": 7
 						}
@@ -339,6 +342,56 @@ describe('Schema', function() {
 					}
 				]		
 			 }
+		   , { "name": "status"
+			 , "row_alias": ["name"]		  	
+			 , "fields": [
+					{
+						  "name": "id"
+						, "type": "INTEGER"
+						, "props": {
+							"order": 0
+						}
+					}
+					, {
+						  "name": "name"
+						, "type": "VARCHAR"
+						, "props": {
+							"width": 30
+						  , "order": 1
+						}
+					}
+					, {
+						  "name": "mod_by"
+						, "type": "VARCHAR(64)"
+						, "props": {
+							"order": 91
+						}
+					}
+					, {
+						  "name": "mod_on"
+						, "type": "DATETIME"
+						, "props": {
+							"order": 92,
+							"width": 11
+						}
+					}
+					, {
+						  "name": "add_by"
+						, "type": "VARCHAR(64)"
+						, "props": {
+							"order": 93
+						}
+					}
+					, {
+						  "name": "add_on"
+						, "type": "DATETIME"
+						, "props": {
+							"order": 94,
+							"width": 11
+						}
+					}
+				]		
+			 }
 		]
 	};		
 
@@ -347,23 +400,38 @@ describe('Schema', function() {
 		var jsonFile = "./rentals.json";
 
 		before(function(done) {
-			schema.Schema.remove(dbFile, function(err) {
+			Schema.remove(dbFile, function(err) {
 				done();
 			});
 		});	
 
 		it('create ' + dbFile, function(done) {
 	
-			var db = new schema.Schema();
-			db.init(rentalsSchema);
+			var schema = new Schema();
+			schema.init(rentalsSchema);
 			var allDone = _.after(2, function() {
 				done();
 			});
-			db.write(dbFile, function(err) {
+			schema.write(dbFile, function(err) {
 				log.info(err);
-				allDone();	
+				//Add status
+				var db = new Database(dbFile);
+				db.init(function(err) {
+					log.debug(err);
+					var rows = [
+						{ id: 0, name: 'closed'}
+						, { id: 1, name: 'new'}
+						, { id: 11, name: 'quote_confirmed'}
+						, { id: 21, name: 'rental_reserved'}
+					];
+					db.insert('status', rows, function(err) {
+						log.debug(err);
+											
+						allDone();	
+					});	
+				});
 			});
-			db.jsonWrite(jsonFile, function(err) {
+			schema.jsonWrite(jsonFile, function(err) {
 				log.info(err);
 				allDone();	
 			});

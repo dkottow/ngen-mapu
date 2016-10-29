@@ -383,6 +383,22 @@ Database.prototype.insert = function(tableName, rows, options, cbResult) {
 		var rowIds = [];
 		var db = new sqlite3.Database(this.dbFile, sqlite3.OPEN_READWRITE);
 		var me = this;
+
+		var parseFn = function(fieldType) {
+			if (fieldType.indexOf('CHAR') >= 0) {
+				return function(val) { return val; }
+			} else if (fieldType.indexOf('NUMERIC') == 0) {
+				return function(val) { return parseFloat(val); }
+			} else if (fieldType == 'INTEGER') {
+				return function(val) { return parseInt(val); }
+			} else if (fieldType.indexOf('DATE') == 0) {
+				return function(val) { 
+					return Number.isFinite(Date.parse(val))
+						? val : NaN; 
+				}
+			}
+			throw new Error('unkown type ' + fieldType);
+		}
 		
 		db.serialize(function() {
 			db.run("PRAGMA foreign_keys = ON;");
@@ -400,7 +416,15 @@ Database.prototype.insert = function(tableName, rows, options, cbResult) {
 				if (err == null) {					
 
 					var params = _.map(fieldNames, function(fn) { 
-										return r[fn]; });
+						var t = table.field(fn).type;
+						var val = r[fn] ? parseFn(t)(r[fn]) : null;
+						if (t.indexOf('CHAR') < 0 && Number.isNaN(val)) {
+							err = new Error('Conversion failed for ' 
+								+ r[fn] + ' [' + fn + ']');
+						}
+						//console.log(val + ' ' + r[fn] + ' ' + fn + ' ' + t);
+						return val; 
+					});
 					//console.log(params);
 					stmt.run(params, function(e) { 
 						err = err || e;

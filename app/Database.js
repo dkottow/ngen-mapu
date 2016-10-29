@@ -360,7 +360,8 @@ Database.prototype.getFieldParams = function(row, table, fieldNames) {
 	var err = null;
 	var params = _.map(fieldNames, function(fn) { 
 		var t = table.field(fn).type;
-		var val = row[fn] ? parseFn(t)(row[fn]) : null;
+		var val = ( _.isNull(row[fn]) || _.isUndefined(row[fn]))
+			? null : parseFn(t)(row[fn]);
 		if (t.indexOf('CHAR') < 0 && Number.isNaN(val)) {
 			err = new Error('Conversion failed for ' 
 				+ row[fn] + ' [' + fn + ']');

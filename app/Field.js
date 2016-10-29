@@ -132,10 +132,6 @@ Field.prototype.defaultSQL = function() {
 	}
 }
 
-Field.prototype.constraintSQL = function() {
-	return "";
-}
-
 Field.prototype.foreignKeySQL = function() {
 	return this.fk 
 		? util.format("REFERENCES %s(%s)", this.fk_table, this.fk_field)
@@ -146,7 +142,6 @@ Field.prototype.toSQL = function() {
 	var sql = '"' + this.name + '" ' + this.type;
 	if (this.notnull) sql += " NOT NULL";
 	sql += " " + this.defaultSQL();
-	sql += " " + this.constraintSQL();
 	sql += " " + this.foreignKeySQL();
 	return sql;
 }
@@ -223,26 +218,11 @@ var TextField = function(fieldDef) {
 
 TextField.prototype = new Field;	
 
-TextField.prototype.constraintSQL = function() {
-	var sql = "CONSTRAINT chk_" + this.name + " CHECK ("
-			+ 'typeof("' + this.name + '") in ' 
-			+ "('text', 'null'))";
-	return sql;
-}
-
 var IntegerField = function(fieldDef) {
 	Field.call(this, fieldDef);
 }
 
 IntegerField.prototype = new Field;	
-
-IntegerField.prototype.constraintSQL = function() {
-	var sql = "CONSTRAINT chk_" + this.name + " CHECK ("
-			+ 'typeof("' + this.name + '") in ' 
-			+ "('integer', 'null'))";
-	return sql;
-}
-
 
 var NumericField = function(fieldDef) {
 	Field.call(this, fieldDef);
@@ -250,25 +230,11 @@ var NumericField = function(fieldDef) {
 
 NumericField.prototype = new Field;	
 
-NumericField.prototype.constraintSQL = function() {
-	var sql = "CONSTRAINT chk_" + this.name + " CHECK ("
-			+ 'typeof("' + this.name + '") in ' 
-			+ "('real', 'integer', 'null'))";
-	return sql;
-}
-
 var DateTimeField = function(fieldDef) {
 	Field.call(this, fieldDef);
 }
 
 DateTimeField.prototype = new Field;	
-
-DateTimeField.prototype.constraintSQL = function() {
-	var sql = "CONSTRAINT chk_" + this.name + " CHECK ("
-			+ 'julianday("' + this.name + '") is not null'
-			+ ' or "' + this.name + '" is null)';
-	return sql;
-}
 
 DateTimeField.toString = function(date) {
 	return date.toISOString().replace('T', ' ').substr(0, 19); //up to secs

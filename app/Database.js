@@ -342,7 +342,7 @@ Database.prototype.rowsOwned = function(tableName, rowIds, user, cbResult) {
 
 var parseFn = function(fieldType) {
 	if (fieldType.indexOf('CHAR') >= 0) {
-		return function(val) { return val; }
+		return function(val) { return String(val); }
 	} else if (fieldType.indexOf('NUMERIC') == 0) {
 		return function(val) { return parseFloat(val); }
 	} else if (fieldType == 'INTEGER') {
@@ -350,7 +350,7 @@ var parseFn = function(fieldType) {
 	} else if (fieldType.indexOf('DATE') == 0) {
 		return function(val) { 
 			return Number.isFinite(Date.parse(val))
-				? val : NaN; 
+				? String(val) : NaN; 
 		}
 	}
 	throw new Error('unkown type ' + fieldType);

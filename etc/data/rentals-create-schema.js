@@ -207,31 +207,39 @@ describe('Schema', function() {
 						}
 					}
 					, {
-						  "name": "start_date"
-						, "type": "DATE"
+						  "name": "email"
+						, "type": "VARCHAR"
 						, "props": {
-							"order": 3
+							"width": 30
+						  , "order": 3
 						}
 					}
 					, {
-						  "name": "end_date"
+						  "name": "start_date"
 						, "type": "DATE"
 						, "props": {
 							"order": 4
 						}
 					}
 					, {
+						  "name": "end_date"
+						, "type": "DATE"
+						, "props": {
+							"order": 5
+						}
+					}
+					, {
 						  "name": "guest_count"
 						, "type": "INTEGER"
 						, "props": {
-							"order": 5
+							"order": 6
 						}
 					}
 					, {
 						  "name": "price"
 						, "type": "NUMERIC"
 						, "props": {
-							"order": 6
+							"order": 7
 						  , "scale": 2
 						}
 					}
@@ -240,7 +248,7 @@ describe('Schema', function() {
 						, "type": "INTEGER"
 						, "fk_table": "status"
 						, "props": {
-							"order": 7
+							"order": 8
 						}
 					}
 					, {

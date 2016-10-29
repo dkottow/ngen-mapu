@@ -456,15 +456,8 @@ Database.prototype.update = function(tableName, rows, options, cbResult) {
 		var returnModifiedRows = options.retmod || false;
 
 		var fieldNames = _.intersection(_.keys(rows[0]), _.keys(table.fields));
-		fieldNames = _.without(fieldNames, ['id', 'add_by', 'add_on']);
+		fieldNames = _.without(fieldNames, 'id', 'add_by', 'add_on');
 		fieldNames = _.union(fieldNames, ['mod_on', 'mod_by']);
-/*
-		var fieldNames = _.filter(_.keys(rows[0]) 
-							, function(fn) { 
-				return _.has(table.fields, fn) && fn != 'id'; 
-		});
-		fieldNames = _.union(fieldNames, ['mod_on', 'mod_by']);
-*/
 
 		var mod_by = options.user ? options.user.name : 'unk';
 

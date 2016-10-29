@@ -340,6 +340,37 @@ Database.prototype.rowsOwned = function(tableName, rowIds, user, cbResult) {
 	});
 }
 
+var parseFn = function(fieldType) {
+	if (fieldType.indexOf('CHAR') >= 0) {
+		return function(val) { return val; }
+	} else if (fieldType.indexOf('NUMERIC') == 0) {
+		return function(val) { return parseFloat(val); }
+	} else if (fieldType == 'INTEGER') {
+		return function(val) { return parseInt(val); }
+	} else if (fieldType.indexOf('DATE') == 0) {
+		return function(val) { 
+			return Number.isFinite(Date.parse(val))
+				? val : NaN; 
+		}
+	}
+	throw new Error('unkown type ' + fieldType);
+}
+		
+Database.prototype.getFieldParams = function(row, table, fieldNames) {
+	var err = null;
+	var params = _.map(fieldNames, function(fn) { 
+		var t = table.field(fn).type;
+		var val = row[fn] ? parseFn(t)(row[fn]) : null;
+		if (t.indexOf('CHAR') < 0 && Number.isNaN(val)) {
+			err = new Error('Conversion failed for ' 
+				+ row[fn] + ' [' + fn + ']');
+		}
+		//console.log(val + ' ' + row[fn] + ' ' + fn + ' ' + t);
+		return val; 
+	});
+	return { params: params, err: err };
+}
+
 Database.prototype.insert = function(tableName, rows, options, cbResult) {
 
 	try {
@@ -384,22 +415,6 @@ Database.prototype.insert = function(tableName, rows, options, cbResult) {
 		var db = new sqlite3.Database(this.dbFile, sqlite3.OPEN_READWRITE);
 		var me = this;
 
-		var parseFn = function(fieldType) {
-			if (fieldType.indexOf('CHAR') >= 0) {
-				return function(val) { return val; }
-			} else if (fieldType.indexOf('NUMERIC') == 0) {
-				return function(val) { return parseFloat(val); }
-			} else if (fieldType == 'INTEGER') {
-				return function(val) { return parseInt(val); }
-			} else if (fieldType.indexOf('DATE') == 0) {
-				return function(val) { 
-					return Number.isFinite(Date.parse(val))
-						? val : NaN; 
-				}
-			}
-			throw new Error('unkown type ' + fieldType);
-		}
-		
 		db.serialize(function() {
 			db.run("PRAGMA foreign_keys = ON;");
 			db.run("BEGIN TRANSACTION");
@@ -415,18 +430,11 @@ Database.prototype.insert = function(tableName, rows, options, cbResult) {
 
 				if (err == null) {					
 
-					var params = _.map(fieldNames, function(fn) { 
-						var t = table.field(fn).type;
-						var val = r[fn] ? parseFn(t)(r[fn]) : null;
-						if (t.indexOf('CHAR') < 0 && Number.isNaN(val)) {
-							err = new Error('Conversion failed for ' 
-								+ r[fn] + ' [' + fn + ']');
-						}
-						//console.log(val + ' ' + r[fn] + ' ' + fn + ' ' + t);
-						return val; 
-					});
-					//console.log(params);
-					stmt.run(params, function(e) { 
+					var result = me.getFieldParams(r, table, fieldNames);
+					err = err || result.err;
+
+					//console.log(result);
+					stmt.run(result.params, function(e) { 
 						err = err || e;
 						rowIds.push(this.lastID);
 					});
@@ -480,15 +488,8 @@ Database.prototype.update = function(tableName, rows, options, cbResult) {
 		var returnModifiedRows = options.retmod || false;
 
 		var fieldNames = _.intersection(_.keys(rows[0]), _.keys(table.fields));
-		fieldNames = _.without(fieldNames, ['id', 'add_by', 'add_on']);
+		fieldNames = _.without(fieldNames, 'id', 'add_by', 'add_on');
 		fieldNames = _.union(fieldNames, ['mod_on', 'mod_by']);
-/*
-		var fieldNames = _.filter(_.keys(rows[0]) 
-							, function(fn) { 
-				return _.has(table.fields, fn) && fn != 'id'; 
-		});
-		fieldNames = _.union(fieldNames, ['mod_on', 'mod_by']);
-*/
 
 		var mod_by = options.user ? options.user.name : 'unk';
 
@@ -517,11 +518,14 @@ Database.prototype.update = function(tableName, rows, options, cbResult) {
 				r.mod_by = mod_by;
 
 				if (err == null) {					
-					var params = _.map(fieldNames, function(fn) { return r[fn]; });
-					params.push(r.id);
+
+					var result = me.getFieldParams(r, table, fieldNames);
+					err = err || result.err;
+
+					result.params.push(r.id);
 					//console.log(params);
 
-					stmt.run(params, function(e) {
+					stmt.run(result.params, function(e) {
 						err = err || e;
 						modCount += this.changes;
 					});

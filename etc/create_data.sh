@@ -13,7 +13,10 @@ mocha $DATA_DIR/soccer-create-schema.js
 sqlite3 soccer.sqlite < $DATA_DIR/soccer-dim-data.sql
 mocha $DATA_DIR/soccer-generate-data.js
 
+mocha $DATA_DIR/rentals-create-schema.js
+
 cp sales.json sandwiches.json soccer.json test/data/json
 cp sales.sqlite sandwiches.sqlite soccer.sqlite test/data/sqlite
-cp sandwiches.sqlite soccer.sqlite data/demo
-rm sales.json sandwiches.json soccer.json sales.sqlite sandwiches.sqlite soccer.sqlite 
+cp sandwiches.sqlite soccer.sqlite rentals.sqlite data/demo
+rm sales.json sandwiches.json soccer.json rentals.json
+rm sales.sqlite sandwiches.sqlite soccer.sqlite rentals.sqlite

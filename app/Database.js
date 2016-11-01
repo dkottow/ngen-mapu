@@ -356,9 +356,9 @@ var parseFn = function(fieldType) {
 	throw new Error('unkown type ' + fieldType);
 }
 		
-Database.prototype.getFieldParams = function(row, table, fieldNames) {
+Database.prototype.getFieldValues = function(row, table, fieldNames) {
 	var err = null;
-	var params = _.map(fieldNames, function(fn) { 
+	var values = _.map(fieldNames, function(fn) { 
 		var t = table.field(fn).type;
 		var val = ( _.isNull(row[fn]) || _.isUndefined(row[fn]))
 			? null : parseFn(t)(row[fn]);
@@ -369,7 +369,7 @@ Database.prototype.getFieldParams = function(row, table, fieldNames) {
 		//console.log(val + ' ' + row[fn] + ' ' + fn + ' ' + t);
 		return val; 
 	});
-	return { params: params, err: err };
+	return { values: values, err: err };
 }
 
 Database.prototype.insert = function(tableName, rows, options, cbResult) {
@@ -431,11 +431,11 @@ Database.prototype.insert = function(tableName, rows, options, cbResult) {
 
 				if (err == null) {					
 
-					var result = me.getFieldParams(r, table, fieldNames);
+					var result = me.getFieldValues(r, table, fieldNames);
 					err = err || result.err;
 
 					//console.log(result);
-					stmt.run(result.params, function(e) { 
+					stmt.run(result.values, function(e) { 
 						err = err || e;
 						rowIds.push(this.lastID);
 					});
@@ -520,13 +520,13 @@ Database.prototype.update = function(tableName, rows, options, cbResult) {
 
 				if (err == null) {					
 
-					var result = me.getFieldParams(r, table, fieldNames);
+					var result = me.getFieldValues(r, table, fieldNames);
 					err = err || result.err;
 
-					result.params.push(r.id);
-					//console.log(params);
+					result.values.push(r.id);
+					//console.log(result);
 
-					stmt.run(result.params, function(e) {
+					stmt.run(result.values, function(e) {
 						err = err || e;
 						modCount += this.changes;
 					});

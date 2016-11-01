@@ -17,8 +17,8 @@ describe('Schema', function() {
 
 	var rentalsSchema = {
 		users : [ 
-			{ "name": "demo@donkeylift.com", "role": "reader" } 
-			, { "name": "rentals@donkeylift.com", "role": "owner" }
+			{ "name": "anon@donkeylift.com", "role": "reader" } 
+			, { "name": "demo@donkeylift.com", "role": "owner" }
 		],
 		tables : [
 			 { "name": "quotes"

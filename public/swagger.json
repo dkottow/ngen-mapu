@@ -672,16 +672,41 @@
                 }
             }
         },
+        "User": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "role": {
+                    "type": "string",
+                    "enum": [
+                        "owner",
+                        "writer",
+                        "reader"
+                    ]
+                }
+            }
+        },
         "Schema": {
             "type": "object",
             "properties": {
                 "name": {
                     "type": "string"
                 },
+                "url": {
+                    "type": "string"
+                },
                 "tables": {
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/Table"
+                    }
+                },
+                "users": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/User"
                     }
                 },
                 "join_trees": {
@@ -697,6 +722,18 @@
             "properties": {
                 "name": {
                     "type": "string"
+                },
+                "url": {
+                    "type": "string"
+                },
+                "row_alias": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "props": {
+                    "type": "object"
                 },
                 "fields": {
                     "type": "array",
@@ -714,6 +751,23 @@
                 },
                 "type": {
                     "type": "string"
+                },
+                "props": {
+                    "type": "object"
+                },
+                "fk": {
+                    "type": "integer",
+                    "enum": [
+                        0,
+                        1
+                    ]
+                },
+                "notnull": {
+                    "type": "integer",
+                    "enum": [
+                        0,
+                        1
+                    ]
                 }
             }
         },

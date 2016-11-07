@@ -550,12 +550,13 @@ Controller.prototype.getObjs = function(req, res, opts) {
 				if (result.nextOffset) {
 					var i = result.rows.length - 1;
 					var lastId = result.rows[i].id;
+					var lastOffset = params['$skip'] ? params['$skip'] : 0;
 					while(--i >= 0) {
 						if (result.rows[i].id != lastId) {
 							result.rows.splice(i + 1);
-							result.nextOffset = params['$skip'] 
+							result.nextOffset = lastOffset 
 								+ result.rows.length;
-	//console.log(util.inspect(_.pluck(result.rows, 'id')));
+						//console.log(util.inspect(_.pluck(result.rows, 'id')));
 							break;					
 						}
 					}

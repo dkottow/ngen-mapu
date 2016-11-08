@@ -268,7 +268,9 @@ TableGraph.prototype.rowsToObj = function(rows, fromTable) {
 
 			var tableAttrs = _.map(tableGroups, function(rows) {
 				var attrs = {};
-				for(var i = 0; i < fieldQNsByTable[t].length; ++i) {
+				var attrsCount = fieldQNsByTable[t] 
+					? fieldQNsByTable[t].length : 0;
+				for(var i = 0; i < attrsCount; ++i) {
 					attrs[tableFields[i]] = rows[0][fieldQNsByTable[t][i]];
 				}
 				return attrs;

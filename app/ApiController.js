@@ -393,7 +393,7 @@ Controller.prototype.getDatabaseFile = function(req, res) {
 		return;
 	}
 
-	this.authRequest('getDatabaseFile', req, path, function(err, auth) {
+	this.access.authRequest('getDatabaseFile', req, path, function(err, auth) {
 		if (err) {
 			sendError(req, res, err, 400);
 			return;

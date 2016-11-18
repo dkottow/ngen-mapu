@@ -39,6 +39,7 @@ require('dotenv').config({path: envPath});
 
 function sendError(req, res, err, code) {
 	log.error({req: req, code: code, err: err}, 'Controller.sendError()');
+	code = code || 500;
 	res.status(code).send({error: err.message});
 }
 
@@ -55,6 +56,10 @@ Controller.prototype.initRoutes = function() {
 	log.debug("Controller.initRoutes()...");		
 	var me = this;
 
+	var nonceRoutes = [ 
+		/^\/(\w+)\/(\w+)\.sqlite?$/ //get database file
+	]; 		
+
 	//json parsing 
 	this.router.use(bodyParser.json());
 
@@ -62,20 +67,27 @@ Controller.prototype.initRoutes = function() {
 
 		var auth_token = jwt({
 			  secret: new Buffer(process.env.AUTH0_CLIENT_SECRET, 'base64'),
-			  audience: process.env.AUTH0_CLIENT_ID
-		});
+			  audience: process.env.AUTH0_CLIENT_ID,
+		}).unless({path: nonceRoutes});
 
 		this.router.use(auth_token);
+		
 		this.router.use(function(req, res, next) {
 			if (req.user && req.user.app_metadata) {
 				req.user.account = req.user.app_metadata.account;
 				req.user.root = req.user.app_metadata.root || false;
 				req.user.admin = req.user.app_metadata.admin || false;
 				req.user.name = req.user.email;
+			} else {
+				/* handle unauthenticated 
+				 * needed for routes that allow anonymous GET with nonce
+				*/ 
+				req.user = { name: 'unk' }; 
 			}
 			log.debug({'req.user': req.user}, 'router.use');
 			next();
 		});
+		
 	} else {
 		this.router.use(function(req, res, next) {
 			req.user = {
@@ -113,8 +125,12 @@ Controller.prototype.initRoutes = function() {
 			me.delDatabase(req, res);
 		});
 
-	this.router.get(/^\/(\w+)\/(\w+)\.sqlite?$/, function(req, res) {
+	this.router.get(/^\/(\w+)\/(\w+)\.sqlite$/, function(req, res) {
 		me.getDatabaseFile(req, res);
+	});
+
+	this.router.post(/^\/(\w+)\/(\w+)\.nonce$/, function(req, res) {
+		me.requestNonce(req, res);
 	});
 
 	this.router.route(/^\/(\w+)\/(\w+)\/(\w+)(?:\.rows)?$/)
@@ -413,6 +429,55 @@ Controller.prototype.getDatabaseFile = function(req, res) {
 
 	});	
 }
+
+Controller.prototype.requestNonce = function(req, res) {
+	log.info({req: req}, 'Controller.requestNonce()...');
+
+	var me = this;
+	var path = this.getPathObjects(req, {account: true, db: true});
+	if (path.error) {
+		sendError(req, res, path.error, 404);
+		return;
+	}
+
+	this.access.authRequest('requestNonce', req, path, function(err, auth) {
+
+		if (err) {
+			sendError(req, res, err, 400);
+			return;
+		}
+		if (auth.error) {
+			sendError(req, res, auth.error, 401);
+			return;
+		}
+
+		var op = undefined;
+		if (req.body.path) {
+			if (req.body.path.match(/^\/(\w+)\/(\w+)\.sqlite$/)) {
+				op = 'getDatabaseFile';
+			}
+		}
+
+		if (! op) {
+			sendError(req, res, new Error('Invalid or missing path argument.'), 400);
+			return;
+		}
+
+		me.access.createNonce(op, function(err, result) {
+			
+			if (err) {
+				sendError(req, res, err);
+				return;
+			}
+
+			res.send(result); 
+			log.info({res: res}, '...Controller.requestNonce().');
+
+		});
+
+	});	
+}
+
 
 Controller.prototype.parseQueryParameters = function(req) {
 	var params = {};

@@ -15,16 +15,60 @@
 */
 
 var _ = require('underscore');
+var fs = require('fs');
+var path = require('path');
+var crypto = require('crypto');
 
 var Schema = require('./Schema.js').Schema;
 var Table = require('./Table.js').Table;
 
 var log = global.log.child({'mod': 'g6.AccessControl.js'});
 
-
 function AccessControl(options) {
 	options = options || {};
 	this.auth = options.auth || false;
+}
+
+AccessControl.prototype.getNoncePath = function(nonce) {
+	var nonceDir = global.tmp_dir;
+	return path.join(nonceDir, nonce + ".nonce");
+}
+
+AccessControl.prototype.supportsNonce = function(op)
+{
+	var nonceMethods = [ 'getDatabaseFile' ];
+	return _.contains(nonceMethods, op);
+}
+
+AccessControl.prototype.checkNonce = function(nonce, cbResult) {
+	fs.unlink(this.getNoncePath(nonce), function(err) {
+		if (err) {
+			log.error({ err: err, nonce: nonce }, 'AccessControl.checkNonce');
+			cbResult(err, false);
+		} else {
+			cbResult(null, true);
+		}
+	});
+}
+
+AccessControl.prototype.createNonce = function(op, cbResult) {
+	if (this.supportsNonce(op)) {
+		var nonce = crypto.randomBytes(48).toString('hex');
+
+		var path = this.getNoncePath(nonce);
+		fs.open(path, "w", function (err, fd) {
+		    if (err) {
+		    	cbResult(err, null);
+		    } else {
+			    fs.close(fd, function (err) {
+			        cbResult(err, nonce);
+			    });
+		    }
+		});
+
+	} else {
+		cbResult(new Error('Method does not support nonce'), null);
+	}
 }
 
 
@@ -46,19 +90,33 @@ AccessControl.prototype.authRequest = function(op, req, path, cbResult) {
 		return;
 	}
 
-	//sys admin - true
+	//sys admin - return true
 	if (req.user.root) {
 		resultFn({ granted: true, message:  'system admin'});
 		return;
 	}
 
-	//path has no account aka global op requires system admin - false
+	//is it a nonce operation?
+	if (req.query.nonce) {
+		
+		if (this.supportsNonce(op)) {
+			this.checkNonce(req.query.nonce, function(err, validNonce) {
+				var msg = err ? 'invalid nonce' : 'valid nonce';
+				resultFn({ granted: validNonce, message: msg });
+			});
+		} else {
+			resultFn({ granted: false, message: 'op does not support nonce' });
+		}
+		return;
+	}
+
+	//if path has no account its a global op and requires system admin - return false
 	if ( ! (path && path.account)) {
 		resultFn({ granted: false, message: 'requires system admin'});
 		return;
 	}
 
-	//user account mismatch - false
+	//user account mismatch - return false
 	if (req.user.account != path.account.name) {
 		log.debug({ 
             "user.account": req.user.account,
@@ -68,7 +126,7 @@ AccessControl.prototype.authRequest = function(op, req, path, cbResult) {
 		return;
 	}
 
-	//user is account admin - true
+	//user is account admin - return true
 	if (req.user.admin) {
 		resultFn({ granted: true, message: 'account admin'});
 		return;
@@ -154,6 +212,8 @@ AccessControl.prototype.authRequest = function(op, req, path, cbResult) {
 		case 'putDatabase':			
 		case 'patchDatabase':			
 		case 'delDatabase':			
+		case 'getDatabaseFile':			
+		case 'requestNonce':			
 			resultFn({ granted: false, message: 'requires db owner'});
 			return;
 			

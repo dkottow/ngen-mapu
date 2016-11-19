@@ -463,14 +463,14 @@ Controller.prototype.requestNonce = function(req, res) {
 			return;
 		}
 
-		me.access.createNonce(op, function(err, result) {
+		me.access.createNonce(op, function(err, nonce) {
 			
 			if (err) {
 				sendError(req, res, err);
 				return;
 			}
 
-			res.send(result); 
+			res.send({ nonce: nonce }); 
 			log.info({res: res}, '...Controller.requestNonce().');
 
 		});

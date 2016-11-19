@@ -253,6 +253,7 @@ Schema.prototype.read = function(dbFile, cbAfter) {
 					if (rows.length == 0) {
 						db.close(function() {
 							me.init();
+							me.setName(dbFile);
 							cbAfter();
 							return;
 						});

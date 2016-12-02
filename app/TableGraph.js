@@ -389,8 +389,9 @@ TableGraph.prototype.tableJoins = function(fromTable, joinTables) {
 
 TableGraph.prototype.toJSON = function() {
 
+	//sortBy name?
 	var tables = _.map(this.graph.nodes(), function(tn) {
-		return this.tableJSON(tn);
+				return this.tableJSON(tn);
 	}, this);
 
 	var trees = this.joinTreesJSON();
@@ -411,8 +412,8 @@ TableGraph.prototype.joinTreesJSON = function() {
 
 TableGraph.prototype.joinTreeJSON = function(tree) {
 	log.trace({tree: tree}, 'TableGraph.joinTreeJSON()');
-	var tables = tree.nodes();
-	var joins = tree.edges();
+	var tables = tree.nodes().sort();
+	var joins = tree.edges().sort();
 	return { 
 		tables: tables,
 		joins: joins

@@ -1,35 +1,34 @@
-
 {
-  	"name": "rest-server"
-  , "description": "serves a directory tree of sqlite files through a rest api"
-  , "version": "0.0.1"
-  , "private": true
-  , "dependencies": {
-    "express": "4.x"
-    , "body-parser": "*"
-	, "sqlite3": "*"
-	, "node-dir": "*"
-	, "underscore": "*"
-	, "bunyan": "*"
-	, "express-jwt": "*"
-	, "jsonwebtoken": "*"
-	, "dotenv": "*"
-	, "pegjs": "*"
-	, "tmp": "*"
-	, "graphlib": "*"
-	, "validator": "*"
-  }
-  , "devDependencies": {
-	"mocha": "*"
-	, "request": "*"
-	, "fs-extra": "*"
-	, "probdist": "*"
-	, "random-js": "*"
-  }
-  , "main": "server.js"
-  , "scripts": {
-  	"start": "node server.js | node_modules/bunyan/bin/bunyan -o short"
-	, "test": "rm test/log.json; mocha"
+  "name": "rest-server",
+  "description": "serves a directory tree of sqlite files through a rest api",
+  "version": "0.0.1",
+  "private": true,
+  "dependencies": {
+    "body-parser": "*",
+    "bunyan": "*",
+    "dotenv": "*",
+    "express": "4.x",
+    "express-jwt": "*",
+    "fast-json-patch": "^1.1.2",
+    "graphlib": "*",
+    "jsonwebtoken": "*",
+    "node-dir": "*",
+    "pegjs": "*",
+    "sqlite3": "*",
+    "tmp": "*",
+    "underscore": "*",
+    "validator": "*"
+  },
+  "devDependencies": {
+    "mocha": "*",
+    "request": "*",
+    "fs-extra": "*",
+    "probdist": "*",
+    "random-js": "*"
+  },
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js | node_modules/bunyan/bin/bunyan -o short",
+    "test": "rm test/log.json; mocha"
   }
 }
-

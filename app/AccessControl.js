@@ -97,7 +97,7 @@ AccessControl.prototype.authRequest = function(op, req, path, cbResult) {
 	}
 
 	//is it a nonce operation?
-	if (req.query.nonce) {
+	if (req.query && req.query.nonce) {
 		
 		if (this.supportsNonce(op)) {
 			this.checkNonce(req.query.nonce, function(err, validNonce) {

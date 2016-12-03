@@ -20,6 +20,7 @@ var _ = require('underscore');
 var util = require('util');
 var assert = require('assert');
 var validator = require('validator');
+var jsonpatch = require('fast-json-patch');
 
 var tmp = require('tmp'); //tmp filenames
 
@@ -45,7 +46,8 @@ Schema.EMPTY = {
 }
 
 Schema.PATCH_OPS = {
-	SET_PROP: 'set_prop', 
+	SET_PROP_TABLE: 'set_prop_table', 
+	SET_PROP_FIELD: 'set_prop_field', 
 	SET_USER: 'set_user', 
 	//TODO
 	ADD_FIELD: 'add_field', 
@@ -82,7 +84,7 @@ Schema.prototype.init = function(schemaData) {
 	}
 }
 
-Schema.prototype.tables = function() {
+Schema.prototype.tableArray = function() {
 	try {
 		return this.graph.tables();
 
@@ -93,7 +95,7 @@ Schema.prototype.tables = function() {
 }
 
 Schema.prototype.table = function(name) { 
-	var table = _.find(this.tables(), function(t) { 
+	var table = _.find(this.tableArray(), function(t) { 
 		return t.name == name; 
 	});
 /*
@@ -231,7 +233,7 @@ Schema.prototype.read = function(dbFile, cbAfter) {
 					+ ' FROM ' + Schema.TABLE;
 
 			//read schema properties 
-			db.all(sql, function(err ,rows) {
+			db.all(sql, function(err, rows) {
 				dbErrorHandlerFn(err);
 
 				var schemaProps = {};
@@ -245,7 +247,7 @@ Schema.prototype.read = function(dbFile, cbAfter) {
 						+ ' FROM ' + Table.TABLE;
 
 				//read table properties 
-				db.all(sql, function(err ,rows) {
+				db.all(sql, function(err, rows) {
 
 					dbErrorHandlerFn(err);
 
@@ -424,6 +426,87 @@ Schema.prototype.setName = function(fileName) {
 	this.name = fn.substr(0, fn.lastIndexOf('.')) || fn;
 }
 
+
+
+Schema.prototype.parsePatches = function(patches) {
+
+	var result = {
+		error: null,
+		changes: []
+	};	
+	
+	var changePatches =	{};
+
+	 _.each(patches, function(patch) {
+	
+		var changePatch = {
+			patch: patch
+		};
+		var pathArray = patch.path.split('/');
+		
+		if (/^\/(\w+)\/(\d+)\/(\w+)\/(\d+)\/props\//.test(patch.path)) {
+			// field properties e.g. /tables/3/props/order
+			changePatch.op = Schema.PATCH_OPS.SET_PROP_FIELD;
+
+			pathArray.shift(); // leading slash,
+			pathArray.shift(); // 'tables' keyword
+			changePatch.table = this.tableArray()[ pathArray.shift() ];
+			pathArray.shift(); // 'field' keyword
+			changePatch.field = changePatch.table.fieldArray()[ pathArray.shift() ];
+			pathArray.shift(); // 'props' keyword
+			changePatch.patch.path = '/' + pathArray.join('/');
+			changePatch.path = '/' + changePatch.table.name + '/' + changePatch.field.name + '/props';
+			changePatch.value = changePatch.field.props;
+			
+		} else if (/^\/(\w+)\/(\d+)\/props\//.test(patch.path)) {
+			// table properties e.g. /tables/3/props/order
+			changePatch.op = Schema.PATCH_OPS.SET_PROP_TABLE;
+
+			pathArray.shift(); // leading slash,
+			pathArray.shift(); // 'tables' keyword
+			changePatch.table = this.tableArray()[ pathArray.shift() ];
+			pathArray.shift(); // 'props' keyword
+			changePatch.patch.path = '/' + pathArray.join('/');
+			changePatch.path = '/' + changePatch.table.name + '/props';
+			changePatch.value = changePatch.table.props;
+
+		} else if (/^\/users/.test(patch.path)) {
+			// database users e.g. /users/3
+			changePatch.op = Schema.PATCH_OPS.SET_USER;
+			pathArray.shift(); // leading slash,
+			pathArray.shift(); // 'users' keyword
+			changePatch.patch.path = '/' + pathArray.join('/');
+			changePatch.path = '/users';
+			changePatch.value = this.users;
+		}
+		
+		if (changePatch.value) {
+			var key = changePatch.op + changePatch.path;
+			changePatches[key] = changePatches[key] || [];
+			changePatches[key].push(changePatch);						
+		}
+		
+	}, this);
+	
+	var result = [];
+	
+	_.each(changePatches, function(changes) {
+		var obj = JSON.parse(JSON.stringify(changes[0].value)); //act on a copy
+		var patches = _.map(changes, function(change) {
+			return change.patch;
+		}); 
+		jsonpatch.apply(obj, patches);
+		result.push({
+			op: changes[0].op,
+			path: changes[0].path,
+			value: obj
+		});
+	});
+	
+	return result;
+	
+}
+
 Schema.prototype.parsePatch = function(patch) {
 	var me = this;
 
@@ -495,7 +578,8 @@ Schema.prototype.writePatches = function(dbFile, patchDefs, cbAfter) {
 		}, this);
 
 		var propPatches = _.filter(patches, function(p) {
-			return p.op == Schema.PATCH_OPS.SET_PROP;
+			return p.op == Schema.PATCH_OPS.SET_PROP_TABLE
+				|| p.op == Schema.PATCH_OPS.SET_PROP_FIELD;
 		});
 
 		var userPatches = _.filter(patches, function(p) {
@@ -572,7 +656,7 @@ Schema.prototype.updatePropSQL = function(opts) {
 	}).join('\n');
 
 	if (deep) {
-		_.each(this.tables(), function(t) {
+		_.each(this.tableArray(), function(t) {
 			sql += "\n" + t.updatePropSQL(opts);
 		}, this);
 	}
@@ -599,7 +683,7 @@ Schema.prototype.insertPropSQL = function(opts) {
 			+ ' VALUES ' + values.join(',') + '; ';
 
 	if (deep) {
-		_.each(this.tables(), function(t) {
+		_.each(this.tableArray(), function(t) {
 			sql += "\n" + t.insertPropSQL(opts);
 		}, this);
 	}

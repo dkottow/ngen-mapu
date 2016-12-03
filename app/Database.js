@@ -61,7 +61,7 @@ Database.prototype.user = function(name) {
 }
 
 Database.prototype.tables = function() { 
-	var tables = this.schema.tables();
+	var tables = this.schema.tableArray();
 	return _.object(_.pluck(tables, 'name'), tables); 
 };
 
@@ -651,19 +651,25 @@ Database.prototype.patchSchema = function(patches, cbResult) {
 	try {
 		var me = this;
 
+		var patchResult = me.schema.parsePatches(patches);
+		if (patchResult.error) {
+			log.error({err: patchResult.error, patches: patchResult.changes}, 
+				"Database.patchSchema() failed.");
+			cbResult(patchResult.error, null);
+			return;
+		}
+
 		//take a schema copy 
 		var patchedSchema = new Schema();
 		patchedSchema.init(me.schema.get());
 
 		//apply patches to schema copy 
-		_.each(patches, function(patch) {
-			patchedSchema.patch(patch);
-		});	
+		patchedSchema.applyChanges(patchResult.changes);
 
 		//write patches to database
-		patchedSchema.writePatches(this.dbFile, patches, function(err) {
+		patchedSchema.writeChanges(this.dbFile, patchResult.changes, function(err) {
 			if (err) {
-				log.error({err: err, patches: patches}, 
+				log.error({err: err, changes: patchResult.changes}, 
 					"Database.patchSchema() failed.");
 
 				cbResult(err, null);

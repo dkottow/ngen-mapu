@@ -209,6 +209,10 @@ Table.prototype.insertPropSQL = function(opts) {
 	return sql;
 }
 
+Table.prototype.fieldArray = function(name) {
+	return _.sortBy(this.fields, function(field) { return field.name; });
+}
+
 Table.prototype.field = function(name) {
 	var field = this.fields[name];
 	if ( ! field) throw new Error(util.format('field %s not found.', name));
@@ -349,7 +353,7 @@ Table.prototype.toJSON = function() {
 		, disabled: this.disabled
 	};
 
-	result.fields = _.map(this.fields, function(f) {
+	result.fields = _.map(this.fieldArray(), function(f) {
 		return f.toJSON();
 	});
 

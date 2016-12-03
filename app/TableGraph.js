@@ -389,11 +389,13 @@ TableGraph.prototype.tableJoins = function(fromTable, joinTables) {
 
 TableGraph.prototype.toJSON = function() {
 
-	//sortBy name?
 	var tables = _.map(this.graph.nodes(), function(tn) {
 				return this.tableJSON(tn);
 	}, this);
-
+	
+	//sortBy name?
+	//tables = _.sortBy(tables, function(t) { return t.name; });
+	
 	var trees = this.joinTreesJSON();
 	
 	var result = {

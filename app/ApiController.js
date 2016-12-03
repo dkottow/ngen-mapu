@@ -375,7 +375,7 @@ Controller.prototype.patchDatabase = function(req, res) {
 		return;
 	}
 
-	this.accesss.authRequest('patchDatabase', req, path, function(err, auth) {
+	this.access.authRequest('patchDatabase', req, path, function(err, auth) {
 		if (err) {
 			sendError(req, res, err, 400);
 			return;

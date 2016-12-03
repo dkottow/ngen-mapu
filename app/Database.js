@@ -651,35 +651,37 @@ Database.prototype.patchSchema = function(patches, cbResult) {
 	try {
 		var me = this;
 
-		var patchResult = me.schema.parsePatches(patches);
-		if (patchResult.error) {
-			log.error({err: patchResult.error, patches: patchResult.changes}, 
+		var changes = me.schema.patchesToChanges(patches);
+		if (changes.error) {
+			log.error({err: changes.error, patches: patches}, 
 				"Database.patchSchema() failed.");
-			cbResult(patchResult.error, null);
+			cbResult(changes.error, null);
 			return;
 		}
 
 		//take a schema copy 
 		var patchedSchema = new Schema();
 		patchedSchema.init(me.schema.get());
+		patchedSchema.setName(this.dbFile);
 
-		//apply patches to schema copy 
-		patchedSchema.applyChanges(patchResult.changes);
+		//apply changes to schema copy 
+		patchedSchema.applyChanges(changes.changes);
 
 		//write patches to database
-		patchedSchema.writeChanges(this.dbFile, patchResult.changes, function(err) {
+		patchedSchema.writeChanges(this.dbFile, changes.changes, function(err) {
 			if (err) {
-				log.error({err: err, changes: patchResult.changes}, 
+				log.error({err: err, changes: changes.changes}, 
 					"Database.patchSchema() failed.");
 
 				cbResult(err, null);
 				return;
 			}
 
-			//apply patches to me
-			me.schema.init(patchedSchema.get());
+			//update my schema 
+			me.schema = patchedSchema;
+			//me.schema.init(patchedSchema.get());
 
-			//return patched schema
+			//return patched schema (use getInfo to return rowCounts)
 			me.getInfo(cbResult);
 		});
 

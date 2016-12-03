@@ -31,6 +31,8 @@ var Table = require('./Table.js').Table;
 var TableGraph = require('./TableGraph.js').TableGraph;
 var SqlBuilder = require('./SqlBuilder.js').SqlBuilder;
 
+var SchemaChange = require('./SchemaChange.js').SchemaChange;
+
 var log = global.log.child({'mod': 'g6.Schema.js'});
 
 global.tmp_dir = global.tmp_dir || '.';
@@ -44,15 +46,6 @@ Schema.EMPTY = {
 	, join_trees: []
 	, users: []
 }
-
-Schema.PATCH_OPS = {
-	SET_PROP_TABLE: 'set_prop_table', 
-	SET_PROP_FIELD: 'set_prop_field', 
-	SET_USER: 'set_user', 
-	//TODO
-	ADD_FIELD: 'add_field', 
-	ADD_TABLE: 'add_table'
-};
 
 Schema.USER_ROLES = {
 	OWNER: "owner",
@@ -120,18 +113,6 @@ Schema.prototype.get = function() {
 		throw err;
 	}
 }
-
-Schema.prototype.patch = function(patch) {
-	try {	
-		var patchHandler = this.parsePatch(patch);		
-		patchHandler.apply();
-
-	} catch(err) {
-		log.error({err: err, patch: patch}, "Schema.patch() exception.");
-		throw err;
-	}
-}
-
 
 /******* user ops *******/
 
@@ -428,172 +409,64 @@ Schema.prototype.setName = function(fileName) {
 
 
 
-Schema.prototype.parsePatches = function(patches) {
+Schema.prototype.patchesToChanges = function(patches) {
 
-	var result = {
-		error: null,
-		changes: []
-	};	
+	try {
+		var changePatches =	{};
 	
-	var changePatches =	{};
-
-	 _.each(patches, function(patch) {
-	
-		var changePatch = {
-			patch: patch
-		};
-		var pathArray = patch.path.split('/');
+		 _.each(patches, function(patch) {
 		
-		if (/^\/(\w+)\/(\d+)\/(\w+)\/(\d+)\/props\//.test(patch.path)) {
-			// field properties e.g. /tables/3/props/order
-			changePatch.op = Schema.PATCH_OPS.SET_PROP_FIELD;
-
-			pathArray.shift(); // leading slash,
-			pathArray.shift(); // 'tables' keyword
-			changePatch.table = this.tableArray()[ pathArray.shift() ];
-			pathArray.shift(); // 'field' keyword
-			changePatch.field = changePatch.table.fieldArray()[ pathArray.shift() ];
-			pathArray.shift(); // 'props' keyword
-			changePatch.patch.path = '/' + pathArray.join('/');
-			changePatch.path = '/' + changePatch.table.name + '/' + changePatch.field.name + '/props';
-			changePatch.value = changePatch.field.props;
+			var change = SchemaChange.create(patch.path, this);
+			if (change) {
+				patch.path = change.patchPath();
+	
+				var key = change.key();
+				changePatches[key] = changePatches[key] || [];
+				changePatches[key].push({
+					patch: patch,
+					change: change
+				});						
+			}
 			
-		} else if (/^\/(\w+)\/(\d+)\/props\//.test(patch.path)) {
-			// table properties e.g. /tables/3/props/order
-			changePatch.op = Schema.PATCH_OPS.SET_PROP_TABLE;
-
-			pathArray.shift(); // leading slash,
-			pathArray.shift(); // 'tables' keyword
-			changePatch.table = this.tableArray()[ pathArray.shift() ];
-			pathArray.shift(); // 'props' keyword
-			changePatch.patch.path = '/' + pathArray.join('/');
-			changePatch.path = '/' + changePatch.table.name + '/props';
-			changePatch.value = changePatch.table.props;
-
-		} else if (/^\/users/.test(patch.path)) {
-			// database users e.g. /users/3
-			changePatch.op = Schema.PATCH_OPS.SET_USER;
-			pathArray.shift(); // leading slash,
-			pathArray.shift(); // 'users' keyword
-			changePatch.patch.path = '/' + pathArray.join('/');
-			changePatch.path = '/users';
-			changePatch.value = this.users;
-		}
+		}, this);
 		
-		if (changePatch.value) {
-			var key = changePatch.op + changePatch.path;
-			changePatches[key] = changePatches[key] || [];
-			changePatches[key].push(changePatch);						
-		}
-		
-	}, this);
-	
-	var result = [];
-	
-	_.each(changePatches, function(changes) {
-		var obj = JSON.parse(JSON.stringify(changes[0].value)); //act on a copy
-		var patches = _.map(changes, function(change) {
-			return change.patch;
-		}); 
-		jsonpatch.apply(obj, patches);
-		result.push({
-			op: changes[0].op,
-			path: changes[0].path,
-			value: obj
+		var changes = [];
+		_.each(changePatches, function(changePatch) {
+			var change = changePatch[0].change;
+			var patches = _.pluck(changePatch, 'patch');
+			jsonpatch.apply(change.value, patches);
+			changes.push(change);
 		});
+		
+		return { changes: changes };
+
+	} catch(err) {
+		log.error({err: err, patches: patches}, 
+			"Schema.patchesToChanges() exception.");
+		return { error: err };
+	}
+}
+
+Schema.prototype.applyChanges = function(changes) {
+
+	_.each(changes, function(change) {
+		try {
+			change.apply();
+		} catch(err) {
+			log.error({err: err, change: change}, 
+					"Schema.applyChanges() exception.");
+			throw err;		
+		}
 	});
-	
-	return result;
-	
 }
 
-Schema.prototype.parsePatch = function(patch) {
-	var me = this;
-
-	if ( ! _.contains(Schema.PATCH_OPS, patch.op)) {
-		throw new Error("Unknown patch op. " + patch.op);
-	}
-
-	if (patch.op == Schema.PATCH_OPS.SET_PROP) {
-
-		var path = patch.path.split('/');
-		if (path[0].length == 0) path.shift(); //remove leading slash
-
-		var table = this.table(path.shift());
-		var prop = path.pop();
-
-		if (path.length == 0) {			
-			return {
-				op: patch.op,
-				table: table,
-				prop: prop,
-				value: patch.value,
-				apply: function() {
-					table.setProp(prop, patch.value);
-				}							
-			}
-		} else if (path.length == 1) {			
-			var field = table.field(path.shift());
-			return {
-				op: patch.op,
-				table: table,
-				field: field,
-				prop: prop,
-				value: patch.value,
-				apply: function() {
-					field.setProp(prop, patch.value);
-				}							
-			}
-		}
-
-	} else if (patch.op == Schema.PATCH_OPS.SET_USER) {
-		var user = patch.path.substr('/user/'.length);
-
-		if ( ! validator.isEmail(user)) {
-			throw new Error('Username is not a valid email address. ' + user);
-		}
-
-		if ( ! _.contains(Schema.USER_ROLES, patch.value.role)) {
-			throw new Error("Unknown user role. " + patch.value.role);
-		}
-
-		return {
-			op: patch.op,
-			user: user,
-			role: patch.value,
-			apply: function() {
-				me.setUser(user, patch.value);			
-			}
-		}	
-	}
-
-	return {};
-}
-
-Schema.prototype.writePatches = function(dbFile, patchDefs, cbAfter) {
+Schema.prototype.writeChanges = function(dbFile, changes, cbAfter) {
 	try {
 
-		var patches = _.map(patchDefs, function(p) {
-			return this.parsePatch(p);
-		}, this);
+		var sql = _.reduce(changes, function(sql, change) {
+			return sql + change.toSQL() + '; \n';
+		}, '');
 
-		var propPatches = _.filter(patches, function(p) {
-			return p.op == Schema.PATCH_OPS.SET_PROP_TABLE
-				|| p.op == Schema.PATCH_OPS.SET_PROP_FIELD;
-		});
-
-		var userPatches = _.filter(patches, function(p) {
-			return p.op == Schema.PATCH_OPS.SET_USER;
-		});
-
-		var sql = '';
-
-		if (propPatches.length > 0) {
-			sql += "\n" + this.sqlBuilder.updatePropSQL(propPatches);
-		}
-		if (userPatches.length > 0) {
-			sql += "\n" + this.updatePropSQL();
-		}
 
 		log.debug({sql: sql}, "Schema.writePatches()");
 		if (sql.length == 0) {
@@ -618,15 +491,15 @@ Schema.prototype.writePatches = function(dbFile, patchDefs, cbAfter) {
 		} catch(err) {
 			db.run("ROLLBACK TRANSACTION");
 			db.close(function() {
-				log.error({err: err, patches: patches}, 
+				log.error({err: err, changes: changes}, 
 					"Schema.writePatches() exception. Rollback.");
 				cbAfter(err);				
 			});
 		}
 
 	} catch(err) {
-		log.error({err: err, patches: patches}, 
-			"Schema.writePatches() exception.");
+		log.error({err: err, changes: changes}, 
+			"Schema.writeChanges() exception.");
 		cbAfter(err);
 	}
 }

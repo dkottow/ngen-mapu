@@ -451,13 +451,16 @@ Schema.prototype.applyChanges = function(changes) {
 
 	_.each(changes, function(change) {
 		try {
+			if (change.schema != this) throw new Error('Change from different schema cannot be applied.');
 			change.apply();
 		} catch(err) {
 			log.error({err: err, change: change}, 
 					"Schema.applyChanges() exception.");
 			throw err;		
 		}
-	});
+	}, this);
+	
+	this.init(this.get()); //rebuild objs from json (e.g. TableGraph)
 }
 
 Schema.prototype.writeChanges = function(dbFile, changes, cbAfter) {

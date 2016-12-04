@@ -32,6 +32,7 @@ var SchemaChange = function(path, schema) {
 SchemaChange.OPS = {
 	SET_PROP_TABLE: 'set_prop_table', 
 	SET_PROP_FIELD: 'set_prop_field', 
+	DISABLE_FIELD: 'disable_field', 
 	SET_USER: 'set_user', 
 	//TODO
 	ADD_FIELD: 'add_field', 
@@ -44,6 +45,9 @@ SchemaChange.create = function(path, schema) {
 	if (SCFieldProps.test(path)) {
 		return new SCFieldProps(path, schema);
 		
+	} else if (SCDisableField.test(path)) {
+		return new SCDisableField(path, schema);
+
 	} else if (SCTableProps.test(path)) {
 		return new SCTableProps(path, schema);
 
@@ -66,7 +70,7 @@ SchemaChange.prototype.patchPath = function() {
 
 
 /*
- * field properties. path e.g. /tables/3/props/order
+ * field properties. path e.g. /tables/3/fields/2/props/order
  */
 
 var SCFieldProps = function(path, schema) {
@@ -102,6 +106,40 @@ SCFieldProps.prototype.toSQL = function() {
 	return this.field.updatePropSQL(this.table);
 }
 
+
+/*
+ * disable field path e.g. /tables/3/fields/4/disabled
+ */
+
+var SCDisableField = function(path, schema) {
+	SchemaChange.call(this, path, schema);
+	this.op = SchemaChange.OPS.DISABLE_FIELD;
+	
+	var pathArray = path.split('/');
+	pathArray.shift(); // leading slash,
+	pathArray.shift(); // 'tables' keyword
+	this.table = this.schema.tableArray()[ pathArray.shift() ];
+	pathArray.shift(); // 'field' keyword
+	this.field = this.table.fieldArray()[ pathArray.shift() ];
+	this.patch_path = '/' + pathArray.join('/');
+	this.path = '/' + this.table.name + '/' + this.field.name + '/disabled';
+	this.value = this.field; 
+}
+
+
+SCDisableField.prototype = new SchemaChange;	
+
+SCDisableField.test = function(path) {
+	return /^\/(\w+)\/(\d+)\/(\w+)\/(\d+)\/disabled/.test(path);	
+}
+
+SCDisableField.prototype.apply = function() {
+	this.field.setDisabled(this.value.disabled);
+}
+
+SCDisableField.prototype.toSQL = function() {
+	return this.field.updatePropSQL(this.table);
+}
 
 /*
  * table properties. path e.g. /tables/3/props/order

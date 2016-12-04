@@ -651,18 +651,18 @@ Database.prototype.patchSchema = function(patches, cbResult) {
 	try {
 		var me = this;
 
-		var changes = me.schema.patchesToChanges(patches);
+		//take a schema copy 
+		var patchedSchema = new Schema();
+		patchedSchema.init(me.schema.get());
+		patchedSchema.setName(this.dbFile);
+
+		var changes = patchedSchema.patchesToChanges(patches);
 		if (changes.error) {
 			log.error({err: changes.error, patches: patches}, 
 				"Database.patchSchema() failed.");
 			cbResult(changes.error, null);
 			return;
 		}
-
-		//take a schema copy 
-		var patchedSchema = new Schema();
-		patchedSchema.init(me.schema.get());
-		patchedSchema.setName(this.dbFile);
 
 		//apply changes to schema copy 
 		patchedSchema.applyChanges(changes.changes);
@@ -681,7 +681,7 @@ Database.prototype.patchSchema = function(patches, cbResult) {
 			me.schema = patchedSchema;
 			//me.schema.init(patchedSchema.get());
 
-			//return patched schema (use getInfo to return rowCounts)
+			//return patched schema info (use getInfo to return rowCounts)
 			me.getInfo(cbResult);
 		});
 

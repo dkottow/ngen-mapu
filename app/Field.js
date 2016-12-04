@@ -79,7 +79,7 @@ Field.TABLE = '__fieldprops__';
 Field.TABLE_FIELDS = ['name', 'table_name', 'props', 'disabled'];
 
 //adding or removing PROPERTIES needs no change in db schema
-Field.PROPERTIES = ['order', 'width', 'scale', 'label'];
+Field.PROPERTIES = ['order', 'width', 'scale', 'visible', 'label'];
 
 Field.CreateTableSQL 
 	= " CREATE TABLE " + Field.TABLE + " ("
@@ -117,6 +117,10 @@ Field.prototype.setProp = function(name, value) {
 	} else {
 		throw new Error(util.format('prop %s not found.', name));
 	}
+}
+
+Field.prototype.setDisabled = function(disabled) {
+	this.disabled = disabled == true;
 }
 
 Field.prototype.defaultSQL = function() {

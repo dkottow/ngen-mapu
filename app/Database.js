@@ -325,14 +325,14 @@ Database.prototype.rowsOwned = function(tableName, rowIds, user, cbResult) {
 	log.debug({table: tableName, user: user}, 'Database.rowsOwned()...');
 	log.trace({rowIds: rowIds},  'Database.rowsOwned()');
 	
-	var fields = ['id', 'add_by'];
+	var fields = ['id', 'own_by'];
 	this.allById(tableName, rowIds, { fields: fields }, function(err, result) {
 		if (err) {
 			cbResult(err, null);
 			return;
 		}
 		var notOwned = _.find(result.rows, function(row) {
-			return row.add_by != user.name;	
+			return row.own_by != user.name;	
 		});
 
 		log.debug({notOwned: notOwned}, '...Database.rowsOwned()');
@@ -428,7 +428,8 @@ Database.prototype.insert = function(tableName, rows, options, cbResult) {
 
 				r.add_on = r.mod_on = DateTimeField.toString(new Date());
 				r.add_by = r.mod_by = mod_by;
-
+				r.own_by = r.own_by || mod_by;
+				//console.log(r);				
 				if (err == null) {					
 
 					var result = me.getFieldValues(r, table, fieldNames);

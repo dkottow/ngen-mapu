@@ -25,6 +25,7 @@ var jwt = require('express-jwt');
 
 var parser = require('./QueryParser.js');
 var AccessControl = require('./AccessControl.js').AccessControl;
+var Schema = require('./Schema.js').Schema;
 
 var log = global.log.child({'mod': 'g6.ApiController.js'});
 
@@ -688,6 +689,13 @@ Controller.prototype.getStats = function(req, res) {
 	});
 }
 
+
+Controller.prototype.stripOwnerField = function(rows) {
+	return _.map(rows, function(row) {
+		return _.omit(row, 'own_by');
+	});
+}
+
 //insert rows into table
 Controller.prototype.postRows = function(req, res) {
 	log.info({req: req}, 'Controller.postRows()...');
@@ -715,6 +723,11 @@ Controller.prototype.postRows = function(req, res) {
 		var opts = req.query;
 		opts.user = req.user;
 	
+		if (opts.user.role == Schema.USER_ROLES.READER
+		 || opts.user.role == Schema.USER_ROLES.WRITER) {
+			this.stripOwnerField(rows);
+		}
+
 		path.db.insert(path.table.name, rows, opts, function(err, result) {
 			if (err) {
 				sendError(req, res, err, 400);
@@ -754,6 +767,11 @@ Controller.prototype.putRows = function(req, res) {
 		var opts = req.query;
 		opts.user = req.user;
 	
+		if (opts.user.role == Schema.USER_ROLES.READER
+		 || opts.user.role == Schema.USER_ROLES.WRITER) {
+			this.stripOwnerField(rows);
+		}
+
 		path.db.update(path.table.name, rows, opts, function(err, result) {
 			if (err) {
 				sendError(req, res, err, 400);

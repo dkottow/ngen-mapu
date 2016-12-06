@@ -633,20 +633,6 @@ Database.prototype.delete = function(tableName, rowIds, cbResult) {
 	}
 }
 
-/* ex patches 
-[
-	{
-					op: Schema.PATCH_OPS.SET_PROP
-					, path: '/customers/name/width'
-					, value: 20
-	},
-	{
-					op: Schema.PATCH_OPS.SET_USER
-					, path: '/user/demo@donkeylift.com'
-					, value: { role: 'writer' }
-	}
-]
-*/
 Database.prototype.patchSchema = function(patches, cbResult) {
 	try {
 		var me = this;
@@ -664,7 +650,7 @@ Database.prototype.patchSchema = function(patches, cbResult) {
 			return;
 		}
 
-		//apply changes to schema copy 
+		//apply changes  
 		patchedSchema.applyChanges(changes.changes);
 
 		//write patches to database
@@ -677,9 +663,8 @@ Database.prototype.patchSchema = function(patches, cbResult) {
 				return;
 			}
 
-			//update my schema 
+			//replace database schema by patched one 
 			me.schema = patchedSchema;
-			//me.schema.init(patchedSchema.get());
 
 			//return patched schema info (use getInfo to return rowCounts)
 			me.getInfo(cbResult);

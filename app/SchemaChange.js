@@ -86,7 +86,7 @@ var SCFieldProps = function(path, schema) {
 	pathArray.shift(); // 'props' keyword
 	this.patch_path = '/' + pathArray.join('/');
 	this.path = '/' + this.table.name + '/' + this.field.name + '/props';
-	this.value = JSON.parse(JSON.stringify(this.field.props)); //hold a copy
+	this.obj = JSON.parse(JSON.stringify(this.field.props)); //hold a copy
 }
 
 
@@ -97,7 +97,7 @@ SCFieldProps.test = function(path) {
 }
 
 SCFieldProps.prototype.apply = function() {
-	_.each(this.value, function(v, k) {
+	_.each(this.obj, function(v, k) {
 		this.field.setProp(k, v); 
 	}, this);
 }
@@ -123,7 +123,7 @@ var SCDisableField = function(path, schema) {
 	this.field = this.table.fieldArray()[ pathArray.shift() ];
 	this.patch_path = '/' + pathArray.join('/');
 	this.path = '/' + this.table.name + '/' + this.field.name + '/disabled';
-	this.value = this.field; 
+	this.obj = JSON.parse(JSON.stringify(this.field)); 
 }
 
 
@@ -134,7 +134,7 @@ SCDisableField.test = function(path) {
 }
 
 SCDisableField.prototype.apply = function() {
-	this.field.setDisabled(this.value.disabled);
+	this.field.setDisabled(this.obj.disabled);
 }
 
 SCDisableField.prototype.toSQL = function() {
@@ -156,7 +156,7 @@ var SCTableProps = function(path, schema) {
 	pathArray.shift(); // 'props' keyword
 	this.patch_path = '/' + pathArray.join('/');
 	this.path = '/' + this.table.name + '/props';
-	this.value = JSON.parse(JSON.stringify(this.table.props)); //hold a copy
+	this.obj = JSON.parse(JSON.stringify(this.table.props)); //hold a copy
 }
 
 SCTableProps.prototype = new SchemaChange;	
@@ -166,7 +166,7 @@ SCTableProps.test = function(path) {
 }
 
 SCTableProps.prototype.apply = function() {
-	_.each(this.value, function(v, k) {
+	_.each(this.obj, function(v, k) {
 		this.table.setProp(k, v); 
 	}, this);
 }
@@ -188,7 +188,7 @@ var SCUsers = function(path, schema) {
 	pathArray.shift(); // 'users' keyword
 	this.patch_path = '/' + pathArray.join('/');
 	this.path = '/users';
-	this.value = JSON.parse(JSON.stringify(this.schema.users));
+	this.obj = JSON.parse(JSON.stringify(this.schema.users));
 }
 
 SCUsers.prototype = new SchemaChange;	
@@ -199,7 +199,7 @@ SCUsers.test = function(path) {
 
 SCUsers.prototype.apply = function() {
 	this.schema.users = [];
-	_.each(this.value, function(user) {
+	_.each(this.obj, function(user) {
 		this.schema.setUser(user.name, user.role); 
 	}, this);
 }

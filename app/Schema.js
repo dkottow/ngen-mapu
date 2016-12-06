@@ -434,7 +434,7 @@ Schema.prototype.patchesToChanges = function(patches) {
 		_.each(changePatches, function(changePatch) {
 			var change = changePatch[0].change;
 			var patches = _.pluck(changePatch, 'patch');
-			jsonpatch.apply(change.value, patches);
+			jsonpatch.apply(change.obj, patches);
 			changes.push(change);
 		});
 		

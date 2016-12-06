@@ -69,7 +69,7 @@ var Table = function(tableDef) {
 			});
 		}
 
-		//dont show falsy disable prop
+		//dont show disable prop if false
 		if (tableDef.disabled) me.disabled = true;
 
 		//property values
@@ -81,7 +81,7 @@ var Table = function(tableDef) {
 	}
 }
 
-Table.MANDATORY_FIELDS = ['id', 'add_by', 'add_on', 'mod_by', 'mod_on'];
+Table.MANDATORY_FIELDS = ['id', 'add_by', 'add_on', 'mod_by', 'mod_on', 'own_by'];
 
 Table.ROW_SCOPES = {
 	NONE: "none",

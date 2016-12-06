@@ -127,6 +127,13 @@ describe('Schema', function() {
 					      , "width": 11
 						}
 					}
+					, {
+						  "name": "own_by"
+						, "type": "VARCHAR(64)"
+						, "props": {
+							"order": 95
+						}
+					}
 				 ]
 			 }
 		   , { "name": "guests"
@@ -183,6 +190,13 @@ describe('Schema', function() {
 						, "props": {
 							"order": 94,
 							"width": 11
+						}
+					}
+					, {
+						  "name": "own_by"
+						, "type": "VARCHAR(64)"
+						, "props": {
+							"order": 95
 						}
 					}
 				]		
@@ -283,6 +297,13 @@ describe('Schema', function() {
 					      , "width": 11
 						}
 					}
+					, {
+						  "name": "own_by"
+						, "type": "VARCHAR(64)"
+						, "props": {
+							"order": 95
+						}
+					}
 				 ]
 			 }
 		   , { "name": "payments"
@@ -348,6 +369,13 @@ describe('Schema', function() {
 							"width": 11
 						}
 					}
+					, {
+						  "name": "own_by"
+						, "type": "VARCHAR(64)"
+						, "props": {
+							"order": 95
+						}
+					}
 				]		
 			 }
 		   , { "name": "status"
@@ -396,6 +424,13 @@ describe('Schema', function() {
 						, "props": {
 							"order": 94,
 							"width": 11
+						}
+					}
+					, {
+						  "name": "own_by"
+						, "type": "VARCHAR(64)"
+						, "props": {
+							"order": 95
 						}
 					}
 				]		

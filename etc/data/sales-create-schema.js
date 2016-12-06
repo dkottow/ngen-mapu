@@ -73,6 +73,13 @@ describe('Schema', function() {
 							"width": 11
 						}
 					}
+					, {
+						  "name": "own_by"
+						, "type": "VARCHAR(64)"
+						, "props": {
+							"order": 95
+						}
+					}
 				 ]
 			 }
 		   , { "name": "products"
@@ -129,6 +136,13 @@ describe('Schema', function() {
 						, "props": {
 							"order": 94,
 							"width": 11
+						}
+					}
+					, {
+						  "name": "own_by"
+						, "type": "VARCHAR(64)"
+						, "props": {
+							"order": 95
 						}
 					}
 				]		
@@ -196,6 +210,13 @@ describe('Schema', function() {
 						, "props": {
 							"order": 94,
 							"width": 11
+						}
+					}
+					, {
+						  "name": "own_by"
+						, "type": "VARCHAR(64)"
+						, "props": {
+							"order": 95
 						}
 					}
 				]		
@@ -270,6 +291,13 @@ describe('Schema', function() {
 						, "props": {
 							"order": 94,
 							"width": 11
+						}
+					}
+					, {
+						  "name": "own_by"
+						, "type": "VARCHAR(64)"
+						, "props": {
+							"order": 95
 						}
 					}
 				]		

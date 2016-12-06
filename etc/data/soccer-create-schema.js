@@ -68,6 +68,13 @@ describe('Schema', function() {
 							"width": 11
 						}
 					}
+					, {
+						  "name": "own_by"
+						, "type": "VARCHAR(64)"
+						, "props": {
+							"order": 95
+						}
+					}
 				]		
 			 }
 			 , { "name": "Player"
@@ -140,6 +147,13 @@ describe('Schema', function() {
 							"width": 11
 						}
 					}
+					, {
+						  "name": "own_by"
+						, "type": "VARCHAR(64)"
+						, "props": {
+							"order": 95
+						}
+					}
 				]		
 			 }
 		   , { "name": "Game"
@@ -208,6 +222,13 @@ describe('Schema', function() {
 							"width": 11
 						}
 					}
+					, {
+						  "name": "own_by"
+						, "type": "VARCHAR(64)"
+						, "props": {
+							"order": 95
+						}
+					}
 				]		
 			 }
 		   , { "name": "Formation"
@@ -266,6 +287,13 @@ describe('Schema', function() {
 							"width": 11
 						}
 					}
+					, {
+						  "name": "own_by"
+						, "type": "VARCHAR(64)"
+						, "props": {
+							"order": 95
+						}
+					}
 				]		
 			 }
 		   , { "name": "Position"
@@ -316,6 +344,13 @@ describe('Schema', function() {
 							"width": 11
 						}
 					}
+					, {
+						  "name": "own_by"
+						, "type": "VARCHAR(64)"
+						, "props": {
+							"order": 95
+						}
+					}
 				]		
 			 }
 		   , { "name": "Venue"
@@ -359,6 +394,13 @@ describe('Schema', function() {
 						, "props": {
 							"order": 94,
 							"width": 11
+						}
+					}
+					, {
+						  "name": "own_by"
+						, "type": "VARCHAR(64)"
+						, "props": {
+							"order": 95
 						}
 					}
 				]		

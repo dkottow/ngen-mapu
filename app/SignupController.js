@@ -38,7 +38,9 @@ Controller.prototype.initRoutes = function() {
 			return;
 		}
 
-		me.validateSignup(req.body.email, req.body.account, 
+		var createAccount = req.body.is_new_account == "on";
+
+		me.validateSignup(req.body.email, req.body.account, createAccount,
             function(err, rsp) {
 
 			if (err) {
@@ -46,7 +48,7 @@ Controller.prototype.initRoutes = function() {
 				return;
 			}
 			
-			me.doSignup(req.body.email, req.body.account, req.body.password,
+			me.doSignup(req.body.email, req.body.password, req.body.account, createAccount,
             	function(err, rsp) {
 
 				if (err) {
@@ -134,7 +136,7 @@ Controller.prototype.doLogin = function(email, pass, cbAfter) {
 
 }
 
-Controller.prototype.doSignup = function(email, account, pass, cbAfter) {
+Controller.prototype.doSignup = function(email, pass, account, createAccount, cbAfter) {
 	log.debug({email: email, account: account, pass: pass}, 'Controller.doSignup()...');
 	var me = this;
 	var authRequest = {
@@ -174,6 +176,12 @@ Controller.prototype.doSignup = function(email, account, pass, cbAfter) {
 				return;
 			}
 
+			if ( ! createAccount) {
+				//done.	
+				cbAfter(null, true);
+				return;
+			}
+			
 			//create account
 			var apiRequest = {
 				url: process.env.DONKEYLIFT_API + '/' + account
@@ -202,7 +210,7 @@ Controller.prototype.doSignup = function(email, account, pass, cbAfter) {
 	});
 }
 
-Controller.prototype.validateSignup = function(email, account, cbAfter) {
+Controller.prototype.validateSignup = function(email, account, newAccount, cbAfter) {
 	log.debug({email: email, account: account}, 'Controller.validateSignup()...');
 	var me = this;
 
@@ -280,18 +288,34 @@ Controller.prototype.validateSignup = function(email, account, cbAfter) {
 				}
 
 				if (rsp.statusCode == 200) {
-					var err = new Error('Account already exists.');
-					err.arg = 'account';	
-					cbAfter(err, null);
+					//account exists
+					
+					if (newAccount) {
+						var err = new Error('Account already exists.');
+						err.arg = 'account';	
+						cbAfter(err, null);
+					} else {
+						//signup validation passed
+						cbAfter(null, true);
+					}
 					return;
 				} 
 
 				if (rsp.statusCode == 404) {
-					//if account does not exist, signup validation is passed
-					cbAfter(null, true);
+					//account does not exist
+					
+					if (newAccount) {
+						//signup validation is passed
+						cbAfter(null, true);
+					} else {
+						var err = new Error('Account does not exist.');
+						err.arg = 'account';	
+						cbAfter(err, null);
+					}
 					return;
 				} 
 
+				//unexpected htto return code.
 				var err = new Error('Account validation failed');
 				cbAfter(err, null);
 			});

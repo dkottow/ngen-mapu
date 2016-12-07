@@ -698,6 +698,7 @@ Controller.prototype.stripOwnerField = function(rows) {
 
 //insert rows into table
 Controller.prototype.postRows = function(req, res) {
+	var me = this;
 	log.info({req: req}, 'Controller.postRows()...');
 	log.debug({'req.body': req.body});
 
@@ -725,7 +726,7 @@ Controller.prototype.postRows = function(req, res) {
 	
 		if (opts.user.role == Schema.USER_ROLES.READER
 		 || opts.user.role == Schema.USER_ROLES.WRITER) {
-			this.stripOwnerField(rows);
+			me.stripOwnerField(rows);
 		}
 
 		path.db.insert(path.table.name, rows, opts, function(err, result) {
@@ -742,6 +743,7 @@ Controller.prototype.postRows = function(req, res) {
 
 //update rows in table
 Controller.prototype.putRows = function(req, res) {
+	var me = this;
 	log.info({req: req}, 'Controller.putRows()...');
 	log.debug({'req.body': req.body});
 
@@ -769,7 +771,7 @@ Controller.prototype.putRows = function(req, res) {
 	
 		if (opts.user.role == Schema.USER_ROLES.READER
 		 || opts.user.role == Schema.USER_ROLES.WRITER) {
-			this.stripOwnerField(rows);
+			me.stripOwnerField(rows);
 		}
 
 		path.db.update(path.table.name, rows, opts, function(err, result) {

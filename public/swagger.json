@@ -5,9 +5,9 @@
         "description": "A web API to manage SQL databases (sqlite).",
         "version": "1.0.0-alpha"
     },
-    "host": "api.donkeylift.com",
+    "host": "api-donkeylift-dkottow.c9.io",
     "schemes": [
-        "http"
+        "https"
     ],
     "basePath": "/",
     "produces": [

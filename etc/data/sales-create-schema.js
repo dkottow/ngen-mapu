@@ -15,7 +15,11 @@ var log = global.log;
 describe('Schema', function() {
 
 	var salesSchema = {
-		users : [ { "name": "demo@donkeylift.com", "role": "owner" } ],
+		users : [ 
+			{ "name": "anon@donkeylift.com", "role": "reader" } 
+			, { "name": "demo@donkeylift.com", "role": "owner" }
+			, { "name": "admin@donkeylift.com", "role": "owner" }
+		],
 		tables : [
 			 { "name": "customers"
 			 , "row_alias": ["name", "email"]

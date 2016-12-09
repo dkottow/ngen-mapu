@@ -164,7 +164,7 @@ Database.prototype.getStats = function(tableName, options, cbResult) {
 		options = typeof options == 'object' ? options : {};		
 
 		var filterClauses = options.filter || [];
-		var fields = options.fields || '*'; 
+		var fields = options.fields || Table.ALL_FIELDS; 
 
 		var sql = this.schema.sqlBuilder.statsSQL(table, fields, filterClauses);
 		
@@ -209,7 +209,7 @@ Database.prototype.all = function(tableName, options, cbResult) {
 		options = typeof options == 'object' ? options : {};		
 
 		var filterClauses = options.filter || [];
-		var fields = options.fields || '*'; 
+		var fields = options.fields || Table.ALL_FIELDS; 
 		var order = options.order || [];
 		var limit = options.limit || global.row_max_count;
 		var offset = options.offset || 0;
@@ -282,7 +282,7 @@ Database.prototype.get = function(tableName, options, cbResult) {
 		options = typeof options == 'object' ? options : {};		
 
 		var filterClauses = options.filter || [];
-		var fields = options.fields || '*'; 
+		var fields = options.fields || Table.ALL_FIELDS; 
 
 		var sql = this.schema.sqlBuilder.selectSQL(table, fields, filterClauses, [], 1, 0, false);
 

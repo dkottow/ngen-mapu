@@ -28,6 +28,7 @@
   },
   "main": "server.js",
   "scripts": {
+    "install" : "cp $DONKEYLIFT_SWAGGER_FILE public/swagger.json",
     "start": "node server.js | node_modules/bunyan/bin/bunyan -o short",
     "test": "rm test/log.json; mocha"
   }

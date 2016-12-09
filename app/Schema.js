@@ -129,9 +129,19 @@ Schema.prototype.setUser = function(name, role) {
 		delete this.users[name];
 		return;
 	}
+	if ( ! _.contains(Schema.USER_ROLES, role)) { 
+		throw new Error(util.format('user role %s unknown.', role));
+	}
 	var user = this.user(name);
 	if (user) user.role = role;
 	else this.users.push({name: name, role:role});
+}
+
+//used in ApiController, smells bad..
+Schema.setAdmin = function(schemaDef, admin) {
+	if (_.findIndex(schemaDef.users, { name : admin }) < 0) {
+		schemaDef.users.push({name: admin, role: Schema.USER_ROLES.OWNER });
+	}
 }
 
 /******* file ops *******/

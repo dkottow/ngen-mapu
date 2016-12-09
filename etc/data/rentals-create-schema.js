@@ -19,6 +19,7 @@ describe('Schema', function() {
 		users : [ 
 			{ "name": "anon@donkeylift.com", "role": "reader" } 
 			, { "name": "demo@donkeylift.com", "role": "owner" }
+			, { "name": "admin@donkeylift.com", "role": "owner" }
 		],
 		tables : [
 			 { "name": "quotes"

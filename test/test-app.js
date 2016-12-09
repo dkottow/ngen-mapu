@@ -55,7 +55,7 @@ describe('Server (app)', function() {
 		var baseUrl = 'http://' + config.ip + ':' + config.port;
 		var url = baseUrl;
 		var demoAccount = 'demo';
-		var salesDatabase = 'sales';
+		var testDatabase = 'sandwiches';
 
 		var options = { auth: useAuth };
 
@@ -113,15 +113,15 @@ describe('Server (app)', function() {
 				//console.log(result.databases);
 				assert(result.databases, 'response malformed');
 				assert(_.find(result.databases, function(db) {
-					return db.name == salesDatabase;
-				}), 'response has no sales database');
+					return db.name == testDatabase;
+				}), 'response has no ' + testDatabase + ' db');
 				done();
 			});
 
 		});
 
 		it('getDatabase', function(done) {		
-			url = baseUrl + '/' + demoAccount + '/' + salesDatabase;
+			url = baseUrl + '/' + demoAccount + '/' + testDatabase;
 			get(url, function(err, result) {
 				assert(err == null, err ? err.message : "");
 				assert(result.tables, 'response malformed');

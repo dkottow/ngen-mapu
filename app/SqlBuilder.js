@@ -164,7 +164,7 @@ SqlBuilder.prototype.updatePropSQL = function(patches) {
 
 SqlBuilder.prototype.sanitizeFieldClauses = function(table, fieldClauses) {
 
-	fieldClauses = fieldClauses == '*' ? table.allFieldClauses() : fieldClauses;
+	fieldClauses = fieldClauses == Table.ALL_FIELDS ? table.allFieldClauses() : fieldClauses;
 
 	var result = _.map(fieldClauses, function(fc) {
 		var item = {};
@@ -426,7 +426,7 @@ SqlBuilder.prototype.filterSQL = function(filterClauses) {
 							table.ftsName(),
 							//check if full row search
 							//filter.field == filter.table
-							filter.field == '*'
+							filter.field == Table.ALL_FIELDS
 								? table.ftsName()
 								: filter.field
 						); 	

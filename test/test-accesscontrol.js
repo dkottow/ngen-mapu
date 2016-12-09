@@ -146,10 +146,10 @@ describe('AccessControl', function() {
 			var result = access.filterQuery(path, query, users.reader);
 			assert( ! result.error, 'Error ' + util.inspect(result));
 
-			var acFilters = _.filter(result.filter, function(f) {
-				return f.field == 'add_by';
+			var ownFilters = _.filter(result.filter, function(f) {
+				return f.field == 'own_by';
 			});
-			assert( acFilters.length == 2, 'Error ' + util.inspect(result));
+			assert( ownFilters.length == 2, 'Error ' + util.inspect(result));
 			done();
 		});
 		

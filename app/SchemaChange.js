@@ -35,6 +35,7 @@ SchemaChange.OPS = {
 	DISABLE_FIELD: 'disable_field', 
 	SET_USER: 'set_user', 
 	//TODO
+	SET_ACCESS_CONTROL: 'set_access_control', 
 	ADD_FIELD: 'add_field', 
 	ADD_TABLE: 'add_table'
 };
@@ -50,6 +51,9 @@ SchemaChange.create = function(path, schema) {
 
 	} else if (SCTableProps.test(path)) {
 		return new SCTableProps(path, schema);
+
+	} else if (SCTableAccess.test(path)) {
+		return new SCTableAccess(path, schema);
 
 	} else if (SCUsers.test(path)) {
 		return new SCUsers(path, schema);
@@ -139,6 +143,38 @@ SCDisableField.prototype.apply = function() {
 
 SCDisableField.prototype.toSQL = function() {
 	return this.field.updatePropSQL(this.table);
+}
+
+/*
+ * table access control. path e.g. /tables/1/access_control
+ */
+
+var SCTableAccess = function(path, schema) {
+	SchemaChange.call(this, path, schema);
+	this.op = SchemaChange.OPS.SET_ACCESS_CONTROL;
+	
+	var pathArray = path.split('/');
+	pathArray.shift(); // leading slash,
+	pathArray.shift(); // 'tables' keyword
+	this.table = this.schema.tableArray()[ pathArray.shift() ];
+	pathArray.shift(); // 'access_control' keyword
+	this.patch_path = '/' + pathArray.join('/');
+	this.path = '/' + this.table.name + '/access_control';
+	this.obj = JSON.parse(JSON.stringify(this.table.access_control)); //hold a copy
+}
+
+SCTableAccess.prototype = new SchemaChange;	
+
+SCTableAccess.test = function(path) {
+	return /^\/(\w+)\/(\d+)\/access_control/.test(path);	
+}
+
+SCTableAccess.prototype.apply = function() {
+	this.table.access_control = this.obj;
+}
+
+SCTableAccess.prototype.toSQL = function() {
+	return this.table.updatePropSQL();
 }
 
 /*

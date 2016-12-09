@@ -103,6 +103,7 @@ Table.DEFAULT_ACCESS_CONTROL = [
 
 Table.TABLE = '__tableprops__';
 Table.TABLE_FIELDS = ['name', 'props', 'disabled'];
+Table.ALL_FIELDS = '*';
 
 Table.PROPERTIES = ['order', 'label'];
 
@@ -135,6 +136,24 @@ Table.prototype.access = function(user) {
 	}
 	
 }
+
+Table.prototype.setAccess = function(role, access, scope) {
+	var match = _.find(this.access_control, function(ac) {
+		return ac.role == role;
+	});
+	if ( ! match) { 
+		throw new Error(util.format('set access role %s not supported.', role));
+	}
+	if ( ! match[access]) { 
+		throw new Error(util.format('access type %s unknown.', access));
+	}
+	if ( ! _.contains(Table.ROW_SCOPES, scope)) { 
+		throw new Error(util.format('access scope %s unknown.', scope));
+	}
+	
+	match[access] = scope; 
+}
+
 
 Table.CreateTableSQL = "CREATE TABLE " + Table.TABLE + " ("
 		+ " name VARCHAR NOT NULL, "
@@ -248,7 +267,7 @@ Table.prototype.viewFields = function() {
 
 Table.prototype.assertQueryField = function(fieldName) {
 	//must be a view field or the name of the table (for search filter)
-	if ( ! _.contains(this.viewFields(), fieldName) && fieldName != '*') {
+	if ( ! _.contains(this.viewFields(), fieldName) && fieldName != Table.ALL_FIELDS) {
 		throw new Error("unknown field '" + fieldName + "'");
 	}			
 }

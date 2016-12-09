@@ -229,7 +229,8 @@ AccessControl.prototype.filterQuery = function(path, query, user) {
 	if ( ! this.auth) return { filter: query.filter };
 
 	var sb = path.db.schema.sqlBuilder;
-	var queryFields = sb.sanitizeFieldClauses(path.table, query.fields);
+	var fields = query.fields || Table.ALL_FIELDS;
+	var queryFields = sb.sanitizeFieldClauses(path.table, fields);
 	var queryTables = _.uniq(_.pluck(queryFields, 'table'));
 
 	var acFilters = [];
@@ -244,7 +245,7 @@ AccessControl.prototype.filterQuery = function(path, query, user) {
 		} else if (access.read == Table.ROW_SCOPES.OWN) {
 			acFilters.push({
 				table: table.name
-				, field: 'add_by'
+				, field: 'own_by'
 				, op: 'eq'
 				, value: user.name
 			});		

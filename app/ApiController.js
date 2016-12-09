@@ -318,6 +318,7 @@ Controller.prototype.putDatabase = function(req, res) {
 	
 		var schema = req.body;
 		schema.name = req.params[1];
+		Schema.setAdmin(schema, req.user.name);
 	
 		path.account.createDatabase(schema, function(err, db) {
 			if (err) {

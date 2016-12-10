@@ -33,7 +33,7 @@ var SqlBuilder = require('./SqlBuilder.js').SqlBuilder;
 
 var SchemaChange = require('./SchemaChange.js').SchemaChange;
 
-var log = global.log.child({'mod': 'g6.Schema.js'});
+var log = require('./log.js').log;
 
 global.tmp_dir = global.tmp_dir || '.';
 
@@ -55,7 +55,7 @@ Schema.USER_ROLES = {
 
 Schema.prototype.init = function(schemaData) {
 	try {
-		log.debug('Schema.init()...');
+		log.trace('Schema.init()...');
 		log.trace({data: schemaData});
 		
 		schemaData = schemaData || Schema.EMPTY;
@@ -69,7 +69,7 @@ Schema.prototype.init = function(schemaData) {
 		this.sqlBuilder = new SqlBuilder(this.graph);
 		this.users = schemaData.users || [];
 
-		log.debug('...Schema.init()');
+		log.trace('...Schema.init()');
 
 	} catch(err) {
 		log.error({err: err, data: schemaData}, "Schema.init() exception.");
@@ -196,7 +196,7 @@ Schema.remove = function(dbFile, cbAfter) {
 Schema.prototype.read = function(dbFile, cbAfter) {
 
 	try {
-		log.debug("Schema.prototype.read " + dbFile);
+		log.debug({db: path.basename(dbFile)}, "Schema.read()");
 		var me = this;
 		var db = new sqlite3.Database(dbFile
 							, sqlite3.OPEN_READONLY

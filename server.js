@@ -16,7 +16,6 @@
 
 var url = require('url');
 var path = require('path');
-var bunyan = require('bunyan');
 
 var envPath = './.env'; 
 if (process.env.OPENSHIFT_DATA_DIR) { 
@@ -49,71 +48,12 @@ if (process.env.OPENSHIFT_DATA_DIR) {
 	config.port = process.env.PORT;
 }
 
+global.config = config;
 
+var log = require('./app/log.js').log;
 
-/*
-var BunyanLoggly = require('bunyan-loggly');
-var loggly_stream = new BunyanLoggly({
-	subdomain: 'dkottow'
-	, token: 'ea829b15-4675-49a7-8c42-f227d0b9313f'
-}, 5, 500);
-*/
-var prodLog = {
-	name: 'g6.server'
-	, serializers: bunyan.stdSerializers
-	, streams: [
-		{
-			stream: process.stdout
-			, level: 'info'
-		} 
-		, {
-			type: 'file'
-			, path: path.join(config.logdir, 'donkey-error-log.json')
-			, level: 'error'
-		}
-	]
-};
-
-var debugLog = {
-	name: 'g6.server'
-	, src: true
-	, serializers: bunyan.stdSerializers
-	, streams: [
-		{
-			stream: process.stdout
-			, level: 'debug'
-		} 
-		, {
-			type: 'file'
-			, path: path.join(config.logdir, 'donkey-error-log.json')
-			, level: 'error'
-		}
-/*		
-		, {
-			type: 'rotating-file'
-			, path: path.join(config.logdir, 'g6.rest-server.json')
-			, level: 'debug'
-			, period: '1d'
-		}
-
-		, {
-			stream: loggly_stream
-			, type: 'raw'
-			, level: 'debug'
-		} 
-*/
-	]
-};
-
-
-if (config.release == 'prod') {
-	global.log = bunyan.createLogger(prodLog);
-} else {
-	global.log = bunyan.createLogger(debugLog);
-}
-
-var log = global.log.child({'mod': 'g6.server.js'});
-log.info({config: config}, "*********** DONKEYLIFT RESET DONKEYLIFT ***********.");
+log.info("*********** DONKEYLIFT RESET DONKEYLIFT ***********.");
+log.info({config: config});
 
 var app = require('./app/app.js').app;
 

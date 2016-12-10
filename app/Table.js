@@ -20,7 +20,7 @@ var assert = require('assert');
 
 var Field = require('./Field.js').Field;
 
-var log = global.log.child({'mod': 'g6.Table.js'});
+var log = require('./log.js').log;
 
 var Table = function(tableDef) {
 

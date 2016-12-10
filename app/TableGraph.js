@@ -21,7 +21,7 @@ var util = require('util');
 var graphutil = require('./graph_util.js');
 var Table = require('./Table.js').Table;
 
-var log = global.log.child({'mod': 'g6.TableGraph.js'});
+var log = require('./log.js').log;
 
 var TableGraph = function(tables, options) {
 
@@ -32,7 +32,7 @@ var TableGraph = function(tables, options) {
 	init(tables, options);
 
 	function init(tables, options) {	
-		log.debug('TableGraph.init()...');
+		log.trace('TableGraph.init()...');
 		log.trace({tables: _.pluck(tables, 'name'), options: options});
 
 		_.each(tables, function(table) {
@@ -59,7 +59,7 @@ var TableGraph = function(tables, options) {
 		}
 
 		log.trace({trees: me.trees}, 'TableGraph.init()');
-		log.debug({treesCount: me.trees.length}, '...TableGraph.init().');
+		log.trace({treesCount: me.trees.length}, '...TableGraph.init().');
 	}
 
 }
@@ -367,7 +367,7 @@ TableGraph.prototype.joinTree = function(fromTable, joinTables) {
 
 TableGraph.prototype.tableJoins = function(fromTable, joinTables) {
 
-	log.debug({fromTable: fromTable, joinTables: joinTables},
+	log.trace({fromTable: fromTable, joinTables: joinTables},
 		"TableGraph.tableJoins()...");
 
 	var joinTree = this.joinTree(fromTable, joinTables);
@@ -383,7 +383,7 @@ TableGraph.prototype.tableJoins = function(fromTable, joinTables) {
 		_.extend(result, path);
 	}
 		
-	log.debug({path: result}, '...TableGraph.tableJoins()');
+	log.trace({path: result}, '...TableGraph.tableJoins()');
 	return result;
 }
 

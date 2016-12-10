@@ -23,7 +23,7 @@ var util = require('util');
 var Schema = require('./Schema.js').Schema;
 var Database = require('./Database.js').Database;
 
-var log = global.log.child({'mod': 'g6.Account.js'});
+var log = require('./log.js').log;
 
 global.sqlite_ext = global.sqlite_ext || '.sqlite';
 
@@ -38,10 +38,10 @@ function Account(baseDir) {
 Account.prototype.init = function(cbAfter) {
 	var me = this;
 
-	log.debug({baseDir: me.baseDir}, "Account.init()...");
+	log.trace({baseDir: me.baseDir}, "Account.init()...");
 	//serve each database
 	fs.readdir(me.baseDir, function(err, files) {
-		log.debug('Scanning ' + me.baseDir);
+		log.trace('Scanning ' + me.baseDir);
 
 		if (err) {
 			log.error({err: err}, "Account.init failed.");
@@ -54,16 +54,16 @@ Account.prototype.init = function(cbAfter) {
 			return (path.extname(file) == global.sqlite_ext);
 		});
 
-		log.debug({dbFiles: dbFiles});
+		log.trace({dbFiles: dbFiles});
 
 		var doAfter = _.after(dbFiles.length, function() {
-			log.debug("...Account.init()");
+			log.trace("...Account.init()");
 			cbAfter();
 			return;
 		});
 
 		dbFiles.forEach(function (file, i, files) {
-			log.debug({dbFile: file}, "init");
+			log.trace({dbFile: file}, "init");
 
 			var name = path.basename(file, global.sqlite_ext);
 			var dbFile = path.join(me.baseDir, file);					
@@ -77,7 +77,7 @@ Account.prototype.init = function(cbAfter) {
 
 		//handle empty dir
 		if (dbFiles.length == 0) {
-			log.debug("Account is empty.");
+			log.debug("Account " + me.name + " is empty.");
 			cbAfter();
 		}
 	});

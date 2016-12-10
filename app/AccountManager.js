@@ -22,7 +22,7 @@ var util = require('util');
 
 var Account = require('./Account.js').Account;
 
-var log = global.log.child({'mod': 'g6.AccountManager.js'});
+var log = require('./log.js').log;
 
 function AccountManager() {
 	this.path = global.data_dir;
@@ -60,13 +60,13 @@ AccountManager.prototype.init = function(cbAfter) {
 	    });
 
 		var doAfter = _.after(accountDirs.length, function() {
-			log.debug("...AccountManager.init()");
+			log.trace("...AccountManager.init()");
 			cbAfter();
 			return;
 		});
 		
 		accountDirs.forEach(function (dir, i, subDirs) {
-			log.debug(dir + " from " + subDirs);
+			log.trace(dir + " from " + subDirs);
 
 			var account = new Account(dir);
 			me.accounts[account.name] = account;	

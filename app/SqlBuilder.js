@@ -29,8 +29,7 @@ var Schema_CreateTableSQL = "CREATE TABLE __schemaprops__ ("
 		+ ");\n\n";
 
 
-
-var log = global.log.child({'mod': 'g6.SqlBuilder.js'});
+var log = require('./log.js').log;
 
 var SqlBuilder = function(tableGraph) {
 	this.graph = tableGraph;
@@ -39,7 +38,7 @@ var SqlBuilder = function(tableGraph) {
 SqlBuilder.prototype.selectSQL 
 	= function(table, fieldExpr, filterClauses, orderClauses, limit, offset) 
 {
-	log.debug('SqlBuilder.selectSQL...');
+	log.trace('SqlBuilder.selectSQL...');
 	log.trace({
 		table: table
 		, fieldExpr: fieldExpr
@@ -71,8 +70,7 @@ SqlBuilder.prototype.selectSQL
 		'countSql': countSQL,
 		'sanitized': s
 	}
-	log.debug({result: result}, "SqlBuilder.selectSQL");
-	log.debug('...SqlBuilder.selectSQL');
+	log.trace({result: result}, "SqlBuilder.selectSQL");
 	return result;
 }
 
@@ -357,8 +355,7 @@ SqlBuilder.prototype.joinSQL = function(fromTable, tables, options) {
 		query: ' AND ' + sql_clauses.join(' AND ')
 	};
 		
-	log.trace({result: result});
-	log.debug('...SqlBuilder.joinSQL()');
+	log.trace({result: result}, '...SqlBuilder.joinSQL()');
 	return result;
 
 

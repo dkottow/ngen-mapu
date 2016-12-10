@@ -24,7 +24,6 @@ var _ = require('underscore');
 var express = require('express');
 
 /** globals **/
-var log = global.log.child({'mod': 'g6.app.js'});
 
 //max number of rows queried by any SELECT
 global.row_max_count = 1000;
@@ -45,7 +44,7 @@ var ApiController = require('./ApiController.js').ApiController;
 var SignupController = require('./SignupController.js').SignupController;
 
 var app = express();
-var log = global.log.child({'mod': 'g6.app.js'});
+var log = require('./log.js').log;
 
 var accounts;
 var controller;
@@ -85,8 +84,8 @@ function initRoutes(options) {
 	//uncaught exception handling 
 	app.use(function(err, req, res, next) {
 
-		log.error({req: req, err: err}, 'app.use...');
-		log.info({"req.body": req.body}, 'Error payload');
+		log.error({req: req, err: err.message}, 'app.use...');
+		log.debug({err: err}, 'app.use');
 
 		if (res.headersSent) {
 		    return next(err);
@@ -98,7 +97,7 @@ function initRoutes(options) {
 			res.status(500).send({error: err.message});
 		}
 
-		log.info({res: res}, '...app.use');
+		log.debug('...app.use');
 	});
 
 }

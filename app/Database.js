@@ -28,14 +28,14 @@ var Table = require('./Table.js').Table;
 var Schema = require('./Schema.js').Schema;
 var DateTimeField = require('./Field.js').DateTimeField;
 
-var log = global.log.child({'mod': 'g6.Database.js'});
+var log = require('./log.js').log;
 
 global.row_max_count = global.row_count || 1000;
 global.sqlite_ext = global.sqlite_ext || '.sqlite';
 
 var Database = function(dbFile, options) 
 {
-	log.debug('new Database ' + dbFile);
+	log.trace('new Database ' + dbFile);
 
 	options = options || {};
 
@@ -114,7 +114,7 @@ Database.prototype.isEmpty = function(cbResult) {
 }
 
 Database.prototype.getCounts = function(cbResult) {
-	log.debug("Database.getCounts()...");
+	log.trace("Database.getCounts()...");
 	try {
 		//add row counts
 		var sql = _.map(_.keys(this.tables()), function(tn) {
@@ -142,7 +142,7 @@ Database.prototype.getCounts = function(cbResult) {
 				_.each(rows, function(r) {
 					result[r.table_name] = r.count;
 				});
-				log.debug("...Database.getCounts()");
+				log.trace("...Database.getCounts()");
 				cbResult(null, result);
 			});
 		});
@@ -155,7 +155,7 @@ Database.prototype.getCounts = function(cbResult) {
 
 Database.prototype.getStats = function(tableName, options, cbResult) {
 
-	log.debug("Database.getStats()...");
+	log.trace("Database.getStats()...");
 	try {
 
 		var table = this.table(tableName);
@@ -187,7 +187,7 @@ Database.prototype.getStats = function(tableName, options, cbResult) {
 						max: row[max_key]
 					};
 				});
-				log.debug("...Database.getCounts()");
+				log.trace("...Database.getCounts()");
 				cbResult(null, result);
 			});
 		});
@@ -200,7 +200,7 @@ Database.prototype.getStats = function(tableName, options, cbResult) {
 
 Database.prototype.all = function(tableName, options, cbResult) {
 
-	log.debug("Database.all()...");
+	log.trace("Database.all()...");
 	try {
 
 		var table = this.table(tableName);
@@ -220,6 +220,9 @@ Database.prototype.all = function(tableName, options, cbResult) {
 				+ " filtered by " + util.inspect(filterClauses));
 
 		var sql = this.schema.sqlBuilder.selectSQL(table, fields, filterClauses, order, limit, offset);
+
+		log.debug({sql: sql.query}, "Database.all()");
+		log.trace({sql: sql}, "Database.all()");
 
 		var db = new sqlite3.Database(this.dbFile, sqlite3.OPEN_READONLY);
 		db.all(sql.query, sql.params, function(err, rows) {
@@ -258,7 +261,7 @@ Database.prototype.all = function(tableName, options, cbResult) {
 								result.sql = sql.query;
 								result.sqlParams = sql.params;
 							}		
-							log.debug("...Database.all()");
+							log.trace("...Database.all()");
 							cbResult(null, result);
 						}
 					});
@@ -322,7 +325,7 @@ Database.prototype.allById = function(tableName, rowIds, options, cbResult) {
 } 
 
 Database.prototype.rowsOwned = function(tableName, rowIds, user, cbResult) {
-	log.debug({table: tableName, user: user}, 'Database.rowsOwned()...');
+	log.trace({table: tableName, user: user}, 'Database.rowsOwned()...');
 	log.trace({rowIds: rowIds},  'Database.rowsOwned()');
 	
 	var fields = ['id', 'own_by'];
@@ -335,7 +338,7 @@ Database.prototype.rowsOwned = function(tableName, rowIds, user, cbResult) {
 			return row.own_by != user.name;	
 		});
 
-		log.debug({notOwned: notOwned}, '...Database.rowsOwned()');
+		log.trace({notOwned: notOwned}, '...Database.rowsOwned()');
 		cbResult(null,  ! notOwned);	
 	});
 }
@@ -375,7 +378,7 @@ Database.prototype.getFieldValues = function(row, table, fieldNames) {
 Database.prototype.insert = function(tableName, rows, options, cbResult) {
 
 	try {
-		log.debug('Database.insert()...');
+		log.trace('Database.insert()...');
 		log.trace({table: tableName, rows: rows, options: options});
 
 		cbResult = cbResult || arguments[arguments.length - 1];	
@@ -409,7 +412,7 @@ Database.prototype.insert = function(tableName, rows, options, cbResult) {
 				+ '("' + fieldNames.join('", "') + '")'
 				+ " VALUES (" + fieldParams.join(', ') + ");"
 
-		log.debug(sql);
+		log.debug({sql: sql}, "Database.insert()");
 
 		var err = null;
 		var rowIds = [];
@@ -473,7 +476,7 @@ Database.prototype.insert = function(tableName, rows, options, cbResult) {
 Database.prototype.update = function(tableName, rows, options, cbResult) {
 
 	try {
-		log.debug('Database.update()...');
+		log.trace('Database.update()...');
 		log.trace({table: tableName, rows: rows, options: options});
 
 		if (rows.length == 0) {
@@ -499,7 +502,7 @@ Database.prototype.update = function(tableName, rows, options, cbResult) {
 				+ ' SET "' + fieldNames.join('" = ?, "') + '" = ?'
 				+ " WHERE id = ?"; 
 
-		log.debug(sql);
+		log.debug({sql: sql}, "Database.update()");
 
 		var err = null;
 		var modCount = 0;	
@@ -570,7 +573,7 @@ Database.prototype.update = function(tableName, rows, options, cbResult) {
 Database.prototype.delete = function(tableName, rowIds, cbResult) {
 
 	try {
-		log.debug('Database.delete()...');
+		log.trace('Database.delete()...');
 		log.trace({table: tableName, rowIds: rowIds});
 
 		var table = this.table(tableName);
@@ -586,7 +589,7 @@ Database.prototype.delete = function(tableName, rowIds, cbResult) {
 		var sql = "DELETE FROM " + table.name 
 				+ " WHERE id IN (" + idParams.join(', ') + ")";
 
-		log.debug(sql);
+		log.debug({sql: sql}, "Database.delete()");
 
 		var err = null;
 		var delCount = 0;

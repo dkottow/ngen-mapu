@@ -22,7 +22,7 @@ var crypto = require('crypto');
 var Schema = require('./Schema.js').Schema;
 var Table = require('./Table.js').Table;
 
-var log = global.log.child({'mod': 'g6.AccessControl.js'});
+var log = require('./log.js').log;
 
 function AccessControl(options) {
 	options = options || {};
@@ -118,7 +118,7 @@ AccessControl.prototype.authRequest = function(op, req, path, cbResult) {
 
 	//user account mismatch - return false
 	if (req.user.account != path.account.name) {
-		log.debug({ 
+		log.trace({ 
             "user.account": req.user.account,
             "path.account": path.account.name
 		} , 'Controller.authorized()');
@@ -143,7 +143,7 @@ AccessControl.prototype.authRequest = function(op, req, path, cbResult) {
 		return;
 	}
 
-	log.debug({
+	log.trace({
 			"db.name": path.db.name(), 
 			"db.users": path.db.users() 
 		}, 'AccessControl.authRequest()');
@@ -223,7 +223,7 @@ AccessControl.prototype.authRequest = function(op, req, path, cbResult) {
 }
 
 AccessControl.prototype.filterQuery = function(path, query, user) {
-	log.debug('AccessControl.filterQuery()...'); 
+	log.trace('AccessControl.filterQuery()...'); 
 	log.trace({ query: query, user: user }, 'AccessControl.filterQuery()...'); 
 
 	if ( ! this.auth) return { filter: query.filter };
@@ -267,7 +267,6 @@ AccessControl.prototype.filterQuery = function(path, query, user) {
 	};
 	
 	log.trace({ result: result }, '...AccessControl.filterQuery()'); 
-	log.debug('...AccessControl.filterQuery()'); 
 	return result;
 	
 }
@@ -289,7 +288,7 @@ AccessControl.prototype.filterDatabases = function(path, databases, user) {
 }
 
 AccessControl.prototype.filterTables = function(path, tables, user) {
-	log.debug('AccessControl.filterTables()...'); 
+	log.trace('AccessControl.filterTables()...'); 
 	log.trace({ user: user, tables: tables }, 'AccessControl.filterTables()');
 
 	if ( ! this.auth) return tables;
@@ -301,7 +300,7 @@ AccessControl.prototype.filterTables = function(path, tables, user) {
 	});
 
 	log.trace({ result: result }, '...AccessControl.filterTables()'); 
-	log.debug('...AccessControl.filterTables()'); 
+	log.trace('...AccessControl.filterTables()'); 
 	return result;
 }
 

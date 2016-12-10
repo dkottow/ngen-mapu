@@ -5,7 +5,7 @@
   "private": true,
   "dependencies": {
     "body-parser": "*",
-    "bunyan": "*",
+    "winston": "*",
     "dotenv": "*",
     "express": "4.x",
     "express-jwt": "*",
@@ -29,7 +29,7 @@
   "main": "server.js",
   "scripts": {
     "install" : "cp $DONKEYLIFT_SWAGGER_FILE public/swagger.json",
-    "start": "node server.js | node_modules/bunyan/bin/bunyan -o short",
+    "start": "node server.js",
     "test": "rm test/log.json; mocha"
   }
 }

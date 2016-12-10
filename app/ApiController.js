@@ -27,7 +27,8 @@ var parser = require('./QueryParser.js');
 var AccessControl = require('./AccessControl.js').AccessControl;
 var Schema = require('./Schema.js').Schema;
 
-var log = global.log.child({'mod': 'g6.ApiController.js'});
+var log = require('./log.js').log;
+
 
 /*
 var envPath = './.env'; 
@@ -54,7 +55,7 @@ function Controller(accountManager, options) {
 }
 
 Controller.prototype.initRoutes = function() {
-	log.debug("Controller.initRoutes()...");		
+	log.trace("Controller.initRoutes()...");		
 	var me = this;
 
 	var nonceRoutes = [ 
@@ -156,11 +157,11 @@ Controller.prototype.initRoutes = function() {
 		me.getObjs(req, res);
 	});
 
-	log.debug("...Controller.initRoutes()");		
+	log.trace("...Controller.initRoutes()");		
 }
 
 Controller.prototype.listAccounts = function(req, res) {
-	log.info({req: req, user: req.user}, 'Controller.listAccounts()...');
+	log.info({req: req}, 'Controller.listAccounts()...');
 
 	var me = this;
 	this.access.authRequest('listAccounts', req, null, function(err, auth) {
@@ -181,13 +182,13 @@ Controller.prototype.listAccounts = function(req, res) {
 		});
 	
 		res.send(result);
-		log.info({res: res}, '...Controller.listAccounts()');
+		log.info({req: req}, '...Controller.listAccounts()');
 	});
 
 }
 
 Controller.prototype.putAccount = function(req, res) {
-	log.info({req: req, user: req.user}, 'Controller.putAccount()...');
+	log.info({req: req}, 'Controller.putAccount()...');
 	var me = this;
 	this.access.authRequest('putAccount', req, null, function(err, auth) {
 		if (err) {
@@ -207,13 +208,13 @@ Controller.prototype.putAccount = function(req, res) {
 			}
 			log.trace(result);
 			res.send(result); 
-			log.info({res: res}, '...Controller.putAccount().');
+			log.info({req: req}, '...Controller.putAccount().');
 		});
 	});
 }
 
 Controller.prototype.getAccount = function(req, res) {
-	log.info({req: req, user: req.user}, 'Controller.getAccount()...');
+	log.info({req: req}, 'Controller.getAccount()...');
 	var me = this;
 	var path = this.getPathObjects(req, {account: true});
 	if (path.error) {
@@ -248,7 +249,7 @@ Controller.prototype.getAccount = function(req, res) {
 	
 			log.trace(result);
 			res.send(result); 
-			log.info({res: res}, '...Controller.getAccount().');
+			log.info({req: req}, '...Controller.getAccount().');
 		});
 
 	});		
@@ -291,7 +292,7 @@ Controller.prototype.getDatabase = function(req, res) {
 	
 			log.trace(result);
 			res.send(result); 
-			log.info({res: res}, '...Controller.getDatabase().');
+			log.info({req: req}, '...Controller.getDatabase().');
 		});
 	});
 }
@@ -329,7 +330,7 @@ Controller.prototype.putDatabase = function(req, res) {
 			db.getInfo(function(err, result) {
 				res.send(result);
 			});
-			log.info({res: res}, '...Controller.putDatabase().');
+			log.info({req: req}, '...Controller.putDatabase().');
 		});
 	});
 }
@@ -394,9 +395,9 @@ Controller.prototype.patchDatabase = function(req, res) {
 				sendError(req, res, err, 400);
 				return;
 			}
-			log.debug({'res.body': result});
+			log.trace({'res.body': result});
 			res.send(result); 
-			log.info({res: res}, '...Controller.patchDatabase().');
+			log.info({req: req}, '...Controller.patchDatabase().');
 		});
 	});
 }
@@ -426,7 +427,7 @@ Controller.prototype.getDatabaseFile = function(req, res) {
 				sendError(req, res, err);
 				return;
 			}
-			log.info({res: res}, '...Controller.getDatabaseFile().');
+			log.info({req: req}, '...Controller.getDatabaseFile().');
 		});
 
 	});	
@@ -473,7 +474,7 @@ Controller.prototype.requestNonce = function(req, res) {
 			}
 
 			res.send({ nonce: nonce }); 
-			log.info({res: res}, '...Controller.requestNonce().');
+			log.info({req: req}, '...Controller.requestNonce().');
 
 		});
 
@@ -555,7 +556,7 @@ Controller.prototype.getRows = function(req, res, opts) {
 	
 				log.trace(result);
 				res.send(result); 
-				log.info({res: res}, '...Controller.getRows().');
+				log.info({req: req}, '...Controller.getRows().');
 			}
 		);
 	});
@@ -642,7 +643,7 @@ Controller.prototype.getObjs = function(req, res, opts) {
 	
 				log.trace(result);
 				res.send(result); 
-				log.info({res: res}, '...Controller.getObjs().');
+				log.info({req: req}, '...Controller.getObjs().');
 			}
 		);
 	});
@@ -682,9 +683,9 @@ Controller.prototype.getStats = function(req, res) {
 					sendError(req, res, err, 400);
 					return;
 				}
-				log.debug(result);
+				log.trace(result);
 				res.send(result); 
-				log.info({res: res}, '...Controller.getStats().');
+				log.info({req: req}, '...Controller.getStats().');
 			}
 		);
 	});
@@ -737,7 +738,7 @@ Controller.prototype.postRows = function(req, res) {
 			}
 			log.debug({'res.body': result});
 			res.send(result); 
-			log.info({res: res}, '...Controller.postRows().');
+			log.info({req: req}, '...Controller.postRows().');
 		});
 	});
 }
@@ -782,7 +783,7 @@ Controller.prototype.putRows = function(req, res) {
 			}
 			log.debug({'res.body': result});
 			res.send(result);  
-			log.info({res: res}, '...Controller.putRows().');
+			log.info({req: req}, '...Controller.putRows().');
 		});
 	});
 }
@@ -816,7 +817,7 @@ Controller.prototype.delRows = function(req, res) {
 				return;
 			}
 			res.send(result); 
-			log.info({res: res}, '...Controller.delRows().');
+			log.info({req: req}, '...Controller.delRows().');
 		});
 	});
 }
@@ -827,7 +828,7 @@ Controller.prototype.account = function(name) {
 
 Controller.prototype.getPathObjects = function(req, objs) {
 
-	log.debug({params: req.params}, 'Controller.getPathObjects...');
+	log.trace({params: req.params}, 'Controller.getPathObjects...');
 
 	var result = {};
 	if (req.params[0] && objs.account) {
@@ -864,8 +865,7 @@ Controller.prototype.getPathObjects = function(req, objs) {
 		}
 	}
 
-	log.trace({result: result}, 'Controller.getPathObjects');
-	log.debug('...Controller.getPathObjects');
+	log.trace({result: result}, '...Controller.getPathObjects');
 	return result;
 }
 

@@ -80,20 +80,20 @@ var rewriteRequest = function(level, msg, obj) {
 
 	var result = obj;	
 	if (obj && obj.req) {
-		result.req = {
-			url: obj.req.url
-			, method: obj.req.method			
-		};
+		var user;
 		if (obj.req.user) {
-			result.req.user = {
+			user = {
 				name: obj.req.user.name
 				, account: obj.req.user.account
 				, role: obj.req.user.role
 				, admin: obj.req.user.admin
 			}
-		} else {
-			result.req.user = null;
-		}
+		} 
+		result.req = {
+			url: obj.req.url
+			, method: obj.req.method
+			, user: user
+		};
 	}
 	return result;
 }

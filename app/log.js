@@ -18,7 +18,8 @@ var path = require('path');
 var winston = require('winston');
 
 function init() {
-	var logfile = path.join(global.config.logdir, 'donkey-error-log.json');
+	var logfile = 'donkey-error-log.json';
+	if (global.config) logfile = path.join(global.config.logdir, logfile);
 	if ( ! global.init_log) {
 
 		winston.loggers.add('dl', {

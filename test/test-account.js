@@ -7,10 +7,9 @@ var assert = require('assert')
 global.log = require('./create_log.js').log;
 	
 var Account = require('../app/Account').Account
-	, Schema = require('../app/Schema').Schema;
+	, Schema = require('../app/Schema').Schema
+	, log = require('../app/log').log;
 	
-var log = global.log.child({'mod': 'mocha.test-account.js'});
-
 describe('Account', function() {
 	var accountDir = "test/data/sqlite";
 

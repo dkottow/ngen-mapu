@@ -4,14 +4,13 @@ var assert = require('assert')
 	, util = require('util')
 	, fse = require('fs-extra');
 	
-global.log = require('./create_log.js').log;
-
-var AccessControl = require('../app/AccessControl').AccessControl
-	, Database = require('../app/Database').Database
-	, Table = require('../app/Table').Table
-	, Schema = require('../app/Schema').Schema;
+var APP_PATH = "../app/";
+var AccessControl = require(APP_PATH + 'AccessControl').AccessControl
+	, Database = require(APP_PATH + 'Database').Database
+	, Table = require(APP_PATH + 'Table').Table
+	, Schema = require(APP_PATH + 'Schema').Schema
+	, log = require(APP_PATH + 'log').log;
 	
-var log = global.log.child({'mod': 'mocha.test-accesscontrol.js'});
 
 
 describe('AccessControl', function() {

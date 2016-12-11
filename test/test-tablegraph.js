@@ -13,7 +13,7 @@ var Table = require('../app/Table.js').Table
 	, Schema = require('../app/Schema.js').Schema
 	, Database = require('../app/Database.js').Database;
 	
-var log = global.log.child({'mod': 'mocha.test-tablegraph.js'});
+var log =  require('../app/log.js').log;
 
 describe('GetAllPaths', function() {
 
@@ -354,7 +354,7 @@ describe('RowsToObj Soccer DB', function() {
 
 			var rows = result.rows;
 			var obj = tableGraph.rowsToObj(rows, 'Game');
-			//console.log(util.inspect(obj, false, null));
+			console.log(util.inspect(obj, false, null));
 
 			assert(obj.Game.length == 3, 'Expected 3 Game objects');
 			done();

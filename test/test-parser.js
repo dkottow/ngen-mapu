@@ -6,11 +6,9 @@ var assert = require('assert')
 	, _ = require('underscore')
 	, util = require('util');
 	
-global.log = require('./create_log.js').log;
-
 var parser = require('../app/QueryParser');
 
-var log = global.log.child({'mod': 'mocha.test-parser.js'});
+var log =  require('../app/log').log;
 
 describe('Parser.parser', function() {
 	it('skip', function() {		

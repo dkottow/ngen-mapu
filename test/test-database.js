@@ -6,12 +6,10 @@ var assert = require('assert')
 	, util = require('util')
 	, sqlite3 = require('sqlite3').verbose();
 
-global.log = require('./create_log.js').log;
-
 var Database = require('../app/Database').Database;
 var Schema = require('../app/Schema').Schema; //only for some static var
 	
-var log = global.log.child({'mod': 'mocha.test-database.js'});
+var log = require('../app/log').log;
 
 describe('Database', function() {
 	var dbFile = "test/data/sqlite/sales.sqlite";

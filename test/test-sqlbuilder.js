@@ -4,14 +4,12 @@ var assert = require('assert')
 	, util = require('util')
 	, fs = require('fs');
 	
-global.log = require('./create_log.js').log;
-	
 var Table = require('../app/Table.js').Table
 	, Schema = require('../app/Schema.js').Schema //to read json
 	, TableGraph = require('../app/TableGraph.js').TableGraph
 	, SqlBuilder = require('../app/SqlBuilder.js').SqlBuilder;
 
-var log = global.log.child({'mod': 'mocha.test-sqlbuilder.js'});
+var log =  require('../app/log.js').log;
 	
 function sqlReplaceParams(selectResult) {
 	var sql = selectResult.query;

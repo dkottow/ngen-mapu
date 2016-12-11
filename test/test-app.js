@@ -7,14 +7,12 @@ var assert = require('assert')
 	
 require('dotenv').config();
 
-global.log = require('./create_log.js').log;
+var log = require('../app/log.js').log;
 
 var useAuth = true;
 var authToken = null;
 
 var app = require('../app/app.js').app;
-
-var log = global.log.child({'mod': 'mocha.test-app.js'});
 
 var config = {
 	'ip'	:  'localhost',

@@ -8,7 +8,7 @@ global.log = require('./create_log.js').log;
 	
 var Schema = require('../app/Schema').Schema;
 	
-var log = global.log.child({'mod': 'mocha.test-schema.js'});
+var log =  require('../app/log').log;
 
 describe('Schema', function() {
 	var jsonSalesFile = "test/data/json/sales.json";

@@ -9,7 +9,7 @@ if (process.env.OPENSHIFT_DATA_DIR) {
     envPath = process.env.OPENSHIFT_DATA_DIR + '/.env'; 
 } 
 
-var log = global.log.child({'mod': 'g6.SignupController.js'});
+var log = require('./log.js').log;
  
 require('dotenv').config({path: envPath}); 
 
@@ -62,8 +62,8 @@ Controller.prototype.initRoutes = function() {
 				};
 
 				res.send(body);
-				log.info({body: body}, 'Controller.signup()');
-				log.info({res: res}, '...Controller.signup()');
+				log.debug({body: body}, 'Controller.signup()');
+				log.info({req: req}, '...Controller.signup()');
 			});
 			
 		});
@@ -92,8 +92,7 @@ Controller.prototype.initRoutes = function() {
 			};
 
 			res.send(body);
-			log.debug({body: body}, 'Controller.login()');
-			log.info({res: res}, '...Controller.login()');
+			log.info({req: req}, '...Controller.login()');
 		});
 	});
 
@@ -115,10 +114,10 @@ Controller.prototype.doLogin = function(email, pass, cbAfter) {
 		}
 	} 
 
-	log.debug({reqParam: authRequest}, 'Controller.doLogin(). Auth0 request');
+	log.trace({reqParam: authRequest}, 'Controller.doLogin(). Auth0 request');
 	//do login
 	request.post(authRequest, function(err, rsp, body) {
-		log.debug({rsp: rsp}, 'Controller.doLogin(). Auth0 response');
+		log.trace({rsp: rsp}, 'Controller.doLogin(). Auth0 response');
 		if (err) {
 			cbAfter(err, null);
 			return;
@@ -154,7 +153,7 @@ Controller.prototype.doSignup = function(email, pass, account, createAccount, cb
 		}
 	};
 
-	log.debug({reqParam: authRequest}, 'Controller.doSignup(). Auth0 request');
+	log.trace({reqParam: authRequest}, 'Controller.doSignup(). Auth0 request');
 
 	//create user
 	request.post(authRequest, function(err, rsp, body) {
@@ -189,10 +188,10 @@ Controller.prototype.doSignup = function(email, pass, account, createAccount, cb
 					bearer: apiToken
 				}
 			};
-			log.debug({reqParam: apiRequest}, 'Controller.doSignup(). PutAccount request');
+			log.trace({reqParam: apiRequest}, 'Controller.doSignup(). PutAccount request');
 
 			request.put(apiRequest, function(err, rsp, body) {
-				log.debug({rsp: rsp}, 'Controller.doSignup(). PutAccount response');
+				log.trace({rsp: rsp}, 'Controller.doSignup(). PutAccount response');
 				if (err) {
 					cbAfter(err, null);
 					return;
@@ -211,7 +210,7 @@ Controller.prototype.doSignup = function(email, pass, account, createAccount, cb
 }
 
 Controller.prototype.validateSignup = function(email, account, newAccount, cbAfter) {
-	log.debug({email: email, account: account}, 'Controller.validateSignup()...');
+	log.trace({email: email, account: account}, 'Controller.validateSignup()...');
 	var me = this;
 
 	if ( ! validator.isEmail(email)) {
@@ -240,11 +239,11 @@ Controller.prototype.validateSignup = function(email, account, newAccount, cbAft
 		}
 	};
 
-	log.debug({reqParam: authRequest}, 'Controller.validateSignup(). Auth0 request.');
+	log.trace({reqParam: authRequest}, 'Controller.validateSignup(). Auth0 request.');
 
 	//check if user exists
 	request.get(authRequest, function(err, rsp, body) {
-		log.debug({rsp: rsp}, 'Controller.validateSignup(). Auth0 response.');
+		log.trace({rsp: rsp}, 'Controller.validateSignup(). Auth0 response.');
 		if (err) {
 			cbAfter(err, null);
 			return;
@@ -278,10 +277,10 @@ Controller.prototype.validateSignup = function(email, account, newAccount, cbAft
 				}
 			};
 
-			log.debug({reqParam: apiRequest}, 'Controller.validateSignup(). GetAccount request');
+			log.trace({reqParam: apiRequest}, 'Controller.validateSignup(). GetAccount request');
 
 			request.get(apiRequest, function(err, rsp, body) {
-				log.debug({rsp: rsp}, 'Controller.validateSignup(). GetAccount response');
+				log.trace({rsp: rsp}, 'Controller.validateSignup(). GetAccount response');
 				if (err) {
 					cbAfter(err, null);
 					return;

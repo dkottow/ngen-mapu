@@ -20,23 +20,23 @@ var assert = require('assert');
 
 var log = require('./log.js').log;
 
-//console.log('TMP DIR ' + tmp_dir);
-
 var SchemaChange = function(path, schema) {
-	//prototype defs call the ctor with no args, get out!
-	//if (schema == undefined) return;
 	this.schema = schema;
 }
 
 SchemaChange.OPS = {
-	SET_PROP_TABLE: 'set_prop_table', 
-	SET_PROP_FIELD: 'set_prop_field', 
-	DISABLE_FIELD: 'disable_field', 
-	SET_USER: 'set_user', 
-	//TODO
-	SET_ACCESS_CONTROL: 'set_access_control', 
-	ADD_FIELD: 'add_field', 
-	ADD_TABLE: 'add_table'
+	SET_PROP_TABLE: 'set_prop_table' 
+	, SET_PROP_FIELD: 'set_prop_field' 
+	, DISABLE_FIELD: 'disable_field'
+	, SET_USER: 'set_user' 
+	, SET_ACCESS_CONTROL: 'set_access_control'
+
+	//for non-empty tables
+	, ADD_FIELD: 'add_field'
+	, ADD_TABLE: 'add_table'
+
+	//only for empty tables
+	, SET_TABLE: 'set_table'
 };
 
 SchemaChange.create = function(path, schema) {
@@ -57,7 +57,22 @@ SchemaChange.create = function(path, schema) {
 	} else if (SCUsers.test(path)) {
 		return new SCUsers(path, schema);
 	}
-	
+
+	var match = path.match(/^\/tables\/\(\d+\)/);
+	if (match) {
+		var idx = + match[0];
+		var isEmpty = ! schema.tableArray()[idx].row_count > 0;
+
+		if (isEmpty && SCTable.test(path)) {
+			return new SCTable(path, schema);
+
+		} else if ( ! isEmpty && SCAddField.test(path)) {
+			return new SCAddField(path, schema);
+
+		} else if ( ! isEmpty && SCAddTable.test(path)) {
+			return new SCAddTable(path, schema);
+		}
+	}
 	return null;	
 } 
 
@@ -96,7 +111,7 @@ var SCFieldProps = function(path, schema) {
 SCFieldProps.prototype = new SchemaChange;	
 
 SCFieldProps.test = function(path) {
-	return /^\/(\w+)\/(\d+)\/(\w+)\/(\d+)\/props\//.test(path);	
+	return /^\/tables\/(\d+)\/fields\/(\d+)\/props\//.test(path);	
 }
 
 SCFieldProps.prototype.apply = function() {
@@ -133,7 +148,7 @@ var SCDisableField = function(path, schema) {
 SCDisableField.prototype = new SchemaChange;	
 
 SCDisableField.test = function(path) {
-	return /^\/(\w+)\/(\d+)\/(\w+)\/(\d+)\/disabled/.test(path);	
+	return /^\/tables\/(\d+)\/fields\/(\d+)\/disabled/.test(path);	
 }
 
 SCDisableField.prototype.apply = function() {
@@ -165,7 +180,7 @@ var SCTableAccess = function(path, schema) {
 SCTableAccess.prototype = new SchemaChange;	
 
 SCTableAccess.test = function(path) {
-	return /^\/(\w+)\/(\d+)\/access_control/.test(path);	
+	return /^\/tables\/(\d+)\/access_control/.test(path);	
 }
 
 SCTableAccess.prototype.apply = function() {
@@ -197,7 +212,7 @@ var SCTableProps = function(path, schema) {
 SCTableProps.prototype = new SchemaChange;	
 
 SCTableProps.test = function(path) {
-	return /^\/(\w+)\/(\d+)\/props\//.test(path);	
+	return /^\/tables\/(\d+)\/props\//.test(path);	
 }
 
 SCTableProps.prototype.apply = function() {

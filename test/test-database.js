@@ -4,7 +4,10 @@
 var assert = require('assert')
 	, _ = require('underscore')
 	, util = require('util')
+	, fsext = require('fs-extra')
 	, sqlite3 = require('sqlite3').verbose();
+
+var jsonpatch = require('fast-json-patch');
 
 var Database = require('../app/Database').Database;
 var Schema = require('../app/Schema').Schema; //only for some static var
@@ -13,21 +16,14 @@ var log = require('../app/log').log;
 
 describe('Database', function() {
 	var dbFile = "test/data/sqlite/sales.sqlite";
-	var db = new Database(dbFile);
+	var dbCopy = "test/data/sqlite/sales.tmp.sqlite";
+	var db = new Database(dbCopy);
 
 	before(function(done) {
-		db.init(done);
+		fsext.copy(dbFile, dbCopy, function(err) {
+			db.init(done);
+		});
 	});	
-
-	after(function(done) {
-		//log.debug("DELETING ALL ROWS id > 2");
-		console.log("DELETING ALL ROWS id > 2");
-		var db = new sqlite3.Database(dbFile);
-		db.run("DELETE FROM orders WHERE id > 10", done);
-		//db.run("DELETE FROM fts_orders WHERE docid > 10", done);
-		db.close();
-		console.log("Done DELETING ALL ROWS id > 2");
-	});
 
 	describe('init()', function() {
 		it('guards file not found', function(done) {
@@ -371,24 +367,14 @@ describe('Database', function() {
   	describe('patchSchema()', function() {		
 		it('write prop patches', function(done) {
 	
-			var prevOrder = db.table('customers').props.order; 
+			var prevSchema = JSON.parse(JSON.stringify(db.schema.get())); 
+			
+			//modify schema
+			db.table('customers').props.order = 77;
 
-			var patches = [
-				{
-					op: Schema.PATCH_OPS.SET_PROP
-					, path: '/customers/order'
-					, value: 77
-				},
-				{
-					op: Schema.PATCH_OPS.SET_PROP
-					, path: '/orders/FOO/width'
-					, value: 44
-				}
-			];
-
+			var patches = jsonpatch.compare(prevSchema, db.schema.get());			
 			db.patchSchema(patches, function(err, schema) {
-				assert(err instanceof Error);
-				assert(db.table('customers').props.order == prevOrder);
+				assert(schema.tables[0].props.order == 77 );
 				log.info({schema: db.schema.get()}, 
 					"schema after failing to write patches");
 				done();				

@@ -641,37 +641,53 @@ Database.prototype.patchSchema = function(patches, cbResult) {
 	try {
 		var me = this;
 
-		//take a schema copy 
-		var patchedSchema = new Schema();
-		patchedSchema.init(me.schema.get());
-		patchedSchema.setName(this.dbFile);
-
-		var changes = patchedSchema.patchesToChanges(patches);
-		if (changes.error) {
-			log.error({err: changes.error, patches: patches}, 
-				"Database.patchSchema() failed.");
-			cbResult(changes.error, null);
-			return;
-		}
-
-		//apply changes  
-		patchedSchema.applyChanges(changes.changes);
-
-		//write patches to database
-		patchedSchema.writeChanges(this.dbFile, changes.changes, function(err) {
+		me.getInfo(function(err, schemaInfo) {
 			if (err) {
-				log.error({err: err, changes: changes.changes}, 
-					"Database.patchSchema() failed.");
-
 				cbResult(err, null);
 				return;
 			}
+	
+			//take a schema copy 
 
-			//replace database schema by patched one 
-			me.schema = patchedSchema;
+			var patchedSchema = new Schema();
+			patchedSchema.init(schemaInfo);
+			patchedSchema.setName(this.dbFile);
 
-			//return patched schema info (use getInfo to return rowCounts)
-			me.getInfo(cbResult);
+			//decorate row_counts
+			_.each(schemaInfo.tables, function(table) {
+				patchedSchema.table(table.name).row_count = table.row_count;
+			});
+
+			var changes = patchedSchema.patchesToChanges(patches);
+			if (changes.error) {
+				log.error({err: changes.error, patches: patches}, 
+					"Database.patchSchema() failed.");
+				cbResult(changes.error, null);
+				return;
+			}
+
+			//apply changes  
+			patchedSchema.applyChanges(changes.changes);
+
+			//write patches to database
+			patchedSchema.writeChanges(me.dbFile, changes.changes, 
+				function(err) {
+
+				if (err) {
+					log.error({err: err, changes: changes.changes}, 
+						"Database.patchSchema() failed.");
+
+					cbResult(err, null);
+					return;
+				}
+
+				//replace database schema by patched one 
+				me.schema = patchedSchema;
+
+				//return patched schema info (use getInfo to return rowCounts)
+				me.getInfo(cbResult);
+			});
+
 		});
 
 	} catch(err) {

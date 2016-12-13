@@ -91,11 +91,6 @@ Schema.prototype.table = function(name) {
 	var table = _.find(this.tableArray(), function(t) { 
 		return t.name == name; 
 	});
-/*
-	if ( ! table) {
-		throw new Error(util.format('Table %s not found.', name));
-	}
-*/
 	return table;
 }
 
@@ -419,7 +414,7 @@ Schema.prototype.setName = function(fileName) {
 
 
 
-Schema.prototype.patchesToChanges = function(patches) {
+Schema.prototype.patchesToChanges = function(patches, rowCounts) {
 
 	try {
 		var changePatches =	{};
@@ -461,7 +456,9 @@ Schema.prototype.applyChanges = function(changes) {
 
 	_.each(changes, function(change) {
 		try {
-			if (change.schema != this) throw new Error('Change from different schema cannot be applied.');
+			if (change.schema != this) {
+				throw new Error('Schema mismatch. Internal Error.');
+			}
 			change.apply();
 		} catch(err) {
 			log.error({err: err, change: change}, 
@@ -488,7 +485,7 @@ Schema.prototype.writeChanges = function(dbFile, changes, cbAfter) {
 		}
 
 		var db = new sqlite3.Database(dbFile);
-		
+
 		try {
 
 			db.serialize(function() {
@@ -504,14 +501,14 @@ Schema.prototype.writeChanges = function(dbFile, changes, cbAfter) {
 		} catch(err) {
 			db.run("ROLLBACK TRANSACTION");
 			db.close(function() {
-				log.error({err: err, changes: changes}, 
+				log.error({err: err, sql: sql}, 
 					"Schema.writePatches() exception. Rollback.");
 				cbAfter(err);				
 			});
 		}
 
 	} catch(err) {
-		log.error({err: err, changes: changes}, 
+		log.error({err: err}, 
 			"Schema.writeChanges() exception.");
 		cbAfter(err);
 	}

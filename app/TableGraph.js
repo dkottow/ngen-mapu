@@ -41,7 +41,7 @@ var TableGraph = function(tables, options) {
 
 		_.each(tables, function(table) {
 
-			var fks = _.where(table.fields, {fk: 1});
+			var fks = _.where(table.fields(), {fk: 1});
 			var fkGroups = _.groupBy(fks, 'fk_table');
 
 			_.each(fkGroups, function(fkGroup, fk_table) {
@@ -116,6 +116,16 @@ TableGraph.prototype.tables = function() {
 	}, this);
 }
 
+TableGraph.prototype.table = function(name) {
+	var table = this.graph.node(name);
+	if ( ! table) throw new Error(util.format('table %s not found.', name));
+	return table;
+}
+
+TableGraph.prototype.assertTable = function(name) {
+	this.table(name);
+}
+
 TableGraph.prototype.tablesByDependencies = function() {
 
 	var me = this;
@@ -162,16 +172,6 @@ TableGraph.prototype.tablesByDependencies = function() {
 	}
 
 	return result;
-}
-
-TableGraph.prototype.assertTable = function(name) {
-	this.table(name);
-}
-
-TableGraph.prototype.table = function(name) {
-	var table = this.graph.node(name);
-	if ( ! table) throw new Error(util.format('table %s not found.', name));
-	return table;
 }
 
 TableGraph.prototype.rowsToObj = function(rows, fromTable) {
@@ -399,7 +399,7 @@ TableGraph.prototype.toJSON = function() {
 	var trees = this.joinTreesJSON();
 	
 	var result = {
-		tables: tables,
+		tables: _.object(_.pluck(tables, 'name'), tables),
 		join_trees: trees
 	};
 	log.trace({result: result}, 'TableGraph.toJSON()');
@@ -432,7 +432,7 @@ TableGraph.prototype.tableJSON = function(table) {
 	json.referencing = _.flatten(
 		_.map(me.graph.outEdges(tableName), function(e) {
 			return _.map(me.graph.edge(e), function(fk) {
-				fk = table.fields[fk];
+				fk = table.fields()[fk];
 				return { fk: fk.name, fk_table: fk.fk_table };
 			});
 		})
@@ -441,7 +441,7 @@ TableGraph.prototype.tableJSON = function(table) {
 	json.referenced = _.flatten(
 		_.map(me.graph.inEdges(tableName), function(e) {
 			return _.map(me.graph.edge(e), function(fk) {
-				fk = me.graph.node(e.v).fields[fk];
+				fk = me.graph.node(e.v).fields()[fk];
 				return { table: e.v, fk: fk.name };
 			});
 		})

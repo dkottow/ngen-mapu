@@ -19,12 +19,18 @@ var winston = require('winston');
 
 function init() {
 	var logfile = 'donkey-error-log.json';
-	if (global.config) logfile = path.join(global.config.logdir, logfile);
+	var loglevel = 'debug'
+
+	if (global.config) {
+		logfile = path.join(global.config.logdir, logfile);
+		loglevel = global.config.loglevel;
+	}
+
 	if ( ! global.init_log) {
 
 		winston.loggers.add('dl', {
 			console: {
-				level: 'debug'
+				level: loglevel
 				, timestamp: true
 				, colorize: true
 				//, prettyPrint: prettyPrint
@@ -37,10 +43,12 @@ function init() {
 				, maxFiles: 10
 				, maxsize: 1000000
     		}
-
+			//, rewriters: [rewriteError, rewriteRequest]
+						
 		});
 
 		winston.loggers.get('dl').rewriters.push(rewriteRequest);
+		winston.loggers.get('dl').rewriters.push(rewriteError);
 
 		global.init_log = true;
 	}
@@ -77,9 +85,20 @@ var log = {
 	},
 }
 
+var rewriteError = function(level, msg, obj) {
+	if (obj && obj.err) {
+		obj.err = {
+			name: obj.err.name
+			, message: obj.err.message
+			, status: obj.err.status
+			, stack: obj.err.stack
+		}
+	}
+	return obj;
+}
+
 var rewriteRequest = function(level, msg, obj) {
 
-	var result = obj;	
 	if (obj && obj.req) {
 		var user;
 		if (obj.req.user) {
@@ -90,13 +109,13 @@ var rewriteRequest = function(level, msg, obj) {
 				, admin: obj.req.user.admin
 			}
 		} 
-		result.req = {
+		obj.req = {
 			url: obj.req.url
 			, method: obj.req.method
 			, user: user
 		};
 	}
-	return result;
+	return obj;
 }
 
 var prettyPrint = function(obj) {

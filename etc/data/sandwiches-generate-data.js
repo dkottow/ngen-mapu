@@ -10,7 +10,7 @@ var assert = require('assert')
 	, schema = require(APP_PATH + 'Schema')
 	, database = require(APP_PATH + 'Database');
 	
-var log = global.log;
+var log = require(APP_PATH + 'log').log;
 
 //run me from root dir mocha gen_data/create-sandwich-data.js to upload data to sales_sandwich.sqlite
 

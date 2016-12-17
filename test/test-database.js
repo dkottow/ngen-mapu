@@ -56,7 +56,7 @@ describe('Database', function() {
 		it('sales.sqlite has products table with some fields', function() {
 			var products = _.find(defs.tables, function(t) { return t.name == "products" });
 			assert(products, 'table exists');
-			assert(products.fields.length > 3, 'fields exists');
+			assert(_.values(products.fields).length > 3, 'fields exists');
 			assert.equal(products.referenced.length, 1, 'one referenced table');
 		});
 
@@ -374,7 +374,7 @@ describe('Database', function() {
 
 			var patches = jsonpatch.compare(prevSchema, db.schema.get());			
 			db.patchSchema(patches, function(err, schema) {
-				assert(schema.tables[0].props.order == 77 );
+				assert(schema.tables.customers.props.order == 77 );
 				log.info({schema: db.schema.get()}, 
 					"schema after failing to write patches");
 				done();				

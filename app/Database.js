@@ -61,8 +61,7 @@ Database.prototype.user = function(name) {
 }
 
 Database.prototype.tables = function() { 
-	var tables = this.schema.tableArray();
-	return _.object(_.pluck(tables, 'name'), tables); 
+	return this.schema.tables();
 };
 
 Database.prototype.users = function() { 
@@ -396,7 +395,7 @@ Database.prototype.insert = function(tableName, rows, options, cbResult) {
 
 		var fieldNames = _.filter(_.keys(rows[0]), function(fn) { 
 				//filter out any non-field key
-				return _.has(table.fields, fn); // && fn != 'id'; 
+				return _.has(table.fields(), fn); // && fn != 'id'; 
 		});
 
 		fieldNames = _.union(fieldNames, Table.MANDATORY_FIELDS);
@@ -492,7 +491,9 @@ Database.prototype.update = function(tableName, rows, options, cbResult) {
 
 		var returnModifiedRows = options.retmod || false;
 
-		var fieldNames = _.intersection(_.keys(rows[0]), _.keys(table.fields));
+		var fieldNames = _.intersection(_.keys(rows[0]), 
+							_.keys(table.fields()));
+
 		fieldNames = _.without(fieldNames, 'id', 'add_by', 'add_on');
 		fieldNames = _.union(fieldNames, ['mod_on', 'mod_by']);
 
@@ -639,6 +640,7 @@ Database.prototype.delete = function(tableName, rowIds, cbResult) {
 
 Database.prototype.patchSchema = function(patches, cbResult) {
 	try {
+		log.debug({patches: patches}, 'Database.patchSchema()...');
 		var me = this;
 
 		me.getInfo(function(err, schemaInfo) {
@@ -651,11 +653,12 @@ Database.prototype.patchSchema = function(patches, cbResult) {
 
 			var patchedSchema = new Schema();
 			patchedSchema.init(schemaInfo);
-			patchedSchema.setName(this.dbFile);
+			patchedSchema.setName(me.dbFile);
 
-			//decorate row_counts
+			//decorate table with row_count prop
 			_.each(schemaInfo.tables, function(table) {
-				patchedSchema.table(table.name).row_count = table.row_count;
+				patchedSchema.table(table.name)
+					.setProp('row_count', table.row_count);
 			});
 
 			var changes = patchedSchema.patchesToChanges(patches);

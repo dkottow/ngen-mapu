@@ -168,7 +168,7 @@ describe('Schema', function() {
 
 		it('patch table prop order on all tables', function(done) {
 	
-			var tables = schema.tableArray();
+			var tables = schema.tables();
 
 			_.each(tables, function(t, idx) {
 				var p = {

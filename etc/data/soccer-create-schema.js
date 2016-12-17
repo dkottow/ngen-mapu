@@ -11,7 +11,7 @@ var APP_PATH = "../../app/";
 var Schema = require(APP_PATH + 'Schema').Schema
 	, Model = require(APP_PATH + 'Database').Database;
 	
-var log = global.log;
+var log = require(APP_PATH + 'log').log;
 
 //run me from root dir mocha etc/create-sales.js to create sales.sqlite
 

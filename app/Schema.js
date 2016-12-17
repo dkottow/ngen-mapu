@@ -77,21 +77,13 @@ Schema.prototype.init = function(schemaData) {
 	}
 }
 
-Schema.prototype.tableArray = function() {
-	try {
-		return this.graph.tables();
-
-	} catch(err) {
-		log.error({err: err}, "Schema.tables() exception.");
-		throw err;
-	}
+Schema.prototype.tables = function() {
+	var tables = this.graph.tables();
+	return _.object(_.pluck(tables, 'name'), tables);
 }
 
 Schema.prototype.table = function(name) { 
-	var table = _.find(this.tableArray(), function(t) { 
-		return t.name == name; 
-	});
-	return table;
+	return this.tables()[name];
 }
 
 Schema.prototype.get = function() {
@@ -539,7 +531,7 @@ Schema.prototype.updatePropSQL = function(opts) {
 	}).join('\n');
 
 	if (deep) {
-		_.each(this.tableArray(), function(t) {
+		_.each(this.tables(), function(t) {
 			sql += "\n" + t.updatePropSQL(opts);
 		}, this);
 	}
@@ -566,7 +558,7 @@ Schema.prototype.insertPropSQL = function(opts) {
 			+ ' VALUES ' + values.join(',') + '; ';
 
 	if (deep) {
-		_.each(this.tableArray(), function(t) {
+		_.each(this.tables(), function(t) {
 			sql += "\n" + t.insertPropSQL(opts);
 		}, this);
 	}

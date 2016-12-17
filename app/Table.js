@@ -25,7 +25,7 @@ var log = require('./log.js').log;
 var Table = function(tableDef) {
 
 	var me = this;
-	me.fields = {};
+	me._fields = {};
 
 	init(tableDef);
 
@@ -53,7 +53,7 @@ var Table = function(tableDef) {
 		});
 
 		_.each(tableDef.fields, function(f) {
-			me.fields[f.name] = Field.create(f);
+			me._fields[f.name] = Field.create(f);
 		});
 
 		me.name = tableDef.name;
@@ -76,7 +76,7 @@ var Table = function(tableDef) {
 		me.props = {};
 
 		//copy known props. 
-		_.extend(me.props, _.pick(tableDef.props, Table.PROPERTIES));
+		_.extend(me.props, tableDef.props);
 
 	}
 }
@@ -108,11 +108,14 @@ Table.ALL_FIELDS = '*';
 Table.PROPERTIES = ['order', 'label'];
 
 Table.prototype.setProp = function(name, value) {
+	this.props[name] = value;
+/*
 	if (_.contains(Table.PROPERTIES, name)) {
 		this.props[name] = value;
 	} else {
 		throw new Error(util.format('prop %s not found.', name));
 	}
+*/
 }
 
 Table.prototype.access = function(user) {
@@ -167,7 +170,7 @@ Table.prototype.persistentProps = function() {
 		row_alias: this.row_alias
 		, access_control: this.access_control
 	};
-	_.extend(dbProps, this.props);
+	_.extend(dbProps, _.pick(this.props, Table.PROPERTIES));
 	return dbProps;
 }
 
@@ -185,7 +188,7 @@ Table.prototype.updatePropSQL = function(opts) {
 			+ " WHERE name = '" + this.name + "'; ";
 
 	if (deep) {
-		_.each(this.fields, function(f) {
+		_.each(this.fields(), function(f) {
 			sql += "\n" + f.updatePropSQL(this);
 		}, this);
 	}
@@ -219,7 +222,7 @@ Table.prototype.insertPropSQL = function(opts) {
 			+ ' VALUES (' + values.join(',') + '); ';
 
 	if (deep) {
-		_.each(this.fields, function(f) {
+		_.each(this.fields(), function(f) {
 			sql += "\n" + f.insertPropSQL(this);
 		}, this);
 	}
@@ -228,18 +231,36 @@ Table.prototype.insertPropSQL = function(opts) {
 	return sql;
 }
 
-Table.prototype.fieldArray = function(name) {
-	return _.sortBy(this.fields, function(field) { return field.name; });
+Table.prototype.deletePropSQL = function(opts) {
+	opts = opts || {};
+	var deep = opts.deep || false;
+
+	var sql = 'DELETE FROM ' + Table.TABLE 
+		+ " WHERE name = '" + this.name + "'" + ';\n';
+
+	if (deep) {
+		sql += 'DELETE FROM ' + Field.TABLE
+		+ " WHERE table_name = '" + this.name + "'" + ';\n';
+	}
+
+	log.trace({sql: sql}, "Table.deletePropSQL()");
+	return sql;
+}
+
+
+
+Table.prototype.fields = function() {
+	return this._fields;
 }
 
 Table.prototype.field = function(name) {
-	var field = this.fields[name];
+	var field = this._fields[name];
 	if ( ! field) throw new Error(util.format('field %s not found.', name));
 	return field;
 }
 
 Table.prototype.foreignKeys = function() {
-	return _.select(this.fields, function(f) { 
+	return _.select(this.fields(), function(f) { 
 		return f.fk == 1; 
 	});
 }
@@ -256,7 +277,7 @@ Table.prototype.virtualFields = function() {
 
 Table.prototype.viewFields = function() {
 
-	var enabledFields = _.filter(this.fields, function(f) {
+	var enabledFields = _.filter(this.fields(), function(f) {
 		return f.disabled != true;
 	});
 
@@ -274,7 +295,7 @@ Table.prototype.assertQueryField = function(fieldName) {
 
 Table.prototype.createSQL = function() {
 	var sql = "CREATE TABLE " + this.name + "(";
-	_.each(this.fields, function(f) {
+	_.each(this.fields(), function(f) {
 		sql += "\n" + f.toSQL() + ",";
 	});
 	sql += "\n PRIMARY KEY (id)";
@@ -346,20 +367,10 @@ Table.prototype.createSearchSQL = function() {
 	return sql;
 }
 
-Table.prototype.deleteViewSQL = function() {
-	return 'DROP VIEW IF EXISTS ' + this.viewName() + ';\n';
-}
-
-Table.prototype.deleteSearchSQL = function() {
-	return 'DROP TABLE IF EXISTS ' + this.ftsName() + ';\n'
-		+ 'DROP TRIGGER IF EXISTS tgr_' + this.name + '_ai' + ';\n'
-		+ 'DROP TRIGGER IF EXISTS tgr_' + this.name + '_bu' + ';\n'
-		+ 'DROP TRIGGER IF EXISTS tgr_' + this.name + '_au' + ';\n'
-		+ 'DROP TRIGGER IF EXISTS tgr_' + this.name + '_bd' + ';\n'
-}
-
-Table.prototype.deleteSQL = function() {
-	return 'DROP TABLE IF EXISTS ' + this.name + ';\n';
+Table.prototype.dropSQL = function() {
+	return 'DROP VIEW IF EXISTS ' + this.viewName() + ';\n'
+		+  'DROP TABLE IF EXISTS ' + this.ftsName() + ';\n'
+		+  'DROP TABLE IF EXISTS ' + this.name + ';\n\n'
 }
 
 Table.prototype.toJSON = function() {
@@ -368,12 +379,12 @@ Table.prototype.toJSON = function() {
 		name: this.name 
 		, row_alias: this.row_alias
 		, access_control: this.access_control
-		, props: this.props
+		, props: _.pick(this.props, Table.PROPERTIES)
 		, disabled: this.disabled
 	};
 
-	result.fields = _.map(this.fieldArray(), function(f) {
-		return f.toJSON();
+	result.fields = _.mapObject(this.fields(), function(field) {
+		return field.toJSON();
 	});
 
 	//console.log(result);

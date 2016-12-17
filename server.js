@@ -26,22 +26,24 @@ require('dotenv').config({path: envPath});
 
 var config = {
 	'ip'      : 'localhost',
-	//'ip'    : '192.168.1.38',
 	'port'    : 3000, 
 	'auth'	  : true,
 	'logdir'  : 'logs',
-	'release' : 'debug',
+	'loglevel' : 'debug',
 }
 
 if (process.env.DONKEYLIFT_AUTH) {
 	config.auth = parseInt(process.env.DONKEYLIFT_AUTH) != 0;
 }
 
+if (process.env.DONKEYLIFT_LOGLEVEL) {
+	config.loglevel = process.env.DONKEYLIFT_LOGLEVEL;
+}
+
 if (process.env.OPENSHIFT_DATA_DIR) {
 	config.ip = process.env.OPENSHIFT_NODEJS_IP;
 	config.port = process.env.OPENSHIFT_NODEJS_PORT;
 	config.logdir = process.env.OPENSHIFT_LOG_DIR;
-	//config.release = 'prod';
 
 } else if (process.env.C9_USER) {
 	config.ip = process.env.IP;

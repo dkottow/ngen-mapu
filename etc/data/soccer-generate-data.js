@@ -13,6 +13,7 @@ global.log = require('./log.js').log;
 var Schema = require(APP_PATH + 'Schema').Schema
 	, Database = require(APP_PATH + 'Database').Database;
 	
+var log = require(APP_PATH + 'log').log;
 
 //run me from root dir
 

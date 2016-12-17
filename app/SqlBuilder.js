@@ -22,6 +22,8 @@ var Field = require('./Field.js').Field;
 var Table = require('./Table.js').Table;
 
 //ugly but avoids circular requires with Schema.js
+var Schema_PragmaSQL = "PRAGMA journal_mode=WAL;\n\n";
+
 var Schema_CreateTableSQL = "CREATE TABLE __schemaprops__ ("
 		+ " name VARCHAR NOT NULL, "
 		+ "	value VARCHAR, "
@@ -101,19 +103,17 @@ SqlBuilder.prototype.statsSQL = function(table, fieldExpr, filterClauses)
 	return result;
 }
 
+SqlBuilder.prototype.createTableSQL = function(table) {
+	return table.createSQL()
+		+ this.createViewSQL(table)
+		+ table.createSearchSQL();
+}
+
 SqlBuilder.prototype.createSQL = function(schema) {
-	var createSysTablesSQL = Schema_CreateTableSQL
+	var createSysTablesSQL = Schema_PragmaSQL
+			+ Schema_CreateTableSQL
 			+ Table.CreateTableSQL
 			+ Field.CreateTableSQL;
-
-/*
-	var sysTablesInsertSQL = _.map(this.graph.tables(), function(t) {
-		return t.insertPropSQL();
-	}).join('\n');
-
-	sysTablesInsertSQL = sysTablesInsertSQL + '\n'
-		+ schema.insertPropSQL(); 
-*/
 
 	var sysTablesInsertSQL = schema.insertPropSQL({deep: true}); 
 
@@ -143,6 +143,7 @@ SqlBuilder.prototype.createSQL = function(schema) {
 	return sql;
 }
 
+/*
 SqlBuilder.prototype.updatePropSQL = function(patches) {
 	//only table props or deeper supported
 
@@ -157,6 +158,7 @@ SqlBuilder.prototype.updatePropSQL = function(patches) {
 
 	return sql;
 }
+*/
 
 // private methods...
 
@@ -299,7 +301,7 @@ SqlBuilder.prototype.createViewSQL = function(table) {
 		? "COALESCE(" + ref_field + ", '') || ' ' || " + ref_id 
 		: ref_id;
 
-	var table_fields = _.map(table.fields, function(f) {
+	var table_fields = _.map(table.fields(), function(f) {
 		return util.format('%s."%s" AS "%s"', table.name, f.name, f.name);
 	});
 

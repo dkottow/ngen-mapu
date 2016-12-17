@@ -8,8 +8,7 @@ var assert = require('assert')
 	, Schema = require(APP_PATH + 'Schema').Schema
 	, Database = require(APP_PATH + 'Database').Database;
 	
-global.log = require('./log.js').log;
-var log = global.log;
+var log = require(APP_PATH + 'log').log;
 
 //run me from root dir mocha etc/create-sales.js to create sales.sqlite
 

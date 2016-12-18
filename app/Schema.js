@@ -103,6 +103,10 @@ Schema.prototype.table = function(name) {
 	return this.tables()[name];
 }
 
+Schema.prototype.setTable = function(table) { 
+	return this.addTable(table);
+}
+
 Schema.prototype.addTable = function(table) { 
 	if ( ! table instanceof Table) 
 		throw new Error('Type mismatch error on addTable'); 

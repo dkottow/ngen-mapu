@@ -78,14 +78,14 @@ SchemaChange.create = function(patch, schema) {
 	} else if (SCAddTable.test(patch)) {
 		return new SCAddTable(patch, schema);
 
-	} else if (SCAddField.test(patch)) {
-		return new SCAddField(patch, schema);
-
 	} else if (isEmpty && SCSetTable.test(patch)) {
 		return new SCSetTable(patch, schema);
 
 	} else if (isEmpty && SCDelTable.test(patch)) {
 		return new SCDelTable(patch, schema);
+
+	} else if ( ! isEmpty && SCAddField.test(patch)) {
+		return new SCAddField(patch, schema);
 	}
 
 	return null;	
@@ -131,9 +131,19 @@ SCAddField.prototype.apply = function() {
 
 SCAddField.prototype.toSQL = function() {
 	var field = this.table.field(this.fieldDef.name);
+
 	var addSQL = this.table.addFieldSQL(field);
+
+	var viewSQL = this.table.dropViewSQL()
+		+ this.schema.sqlBuilder.createViewSQL(this.table);
+
+	var searchTriggerSQL = this.table.dropTriggerSQL()
+		+ this.table.createTriggerSQL();
+
 	var insertPropSQL = field.insertPropSQL(this.table);
-	return addSQL + insertPropSQL;
+
+	var sql = addSQL + viewSQL + searchTriggerSQL + insertPropSQL;
+	return sql;
 }
 
 
@@ -266,11 +276,10 @@ var SCSetTable = function(patch, schema) {
 	var pathArray = patch.path.split('/');
 	pathArray.shift(); // leading slash,
 	pathArray.shift(); // 'tables' keyword
-	this.table = this.schema.table(pathArray.shift());
+	var table = this.schema.table(pathArray.shift());
 	this.patch_path = '/' + pathArray.join('/');
-	this.path = '/' + this.table.name;
-	
-	this.obj = this.table.toJSON(); 
+	this.path = '/' + table.name;
+	this.obj = table.toJSON(); 
 }
 
 SCSetTable.prototype = new SchemaChange;	
@@ -280,15 +289,16 @@ SCSetTable.test = function(patch) {
 }
 
 SCSetTable.prototype.apply = function() {
-	this.table = new Table(this.obj);
+	this.schema.setTable(new Table(this.obj));
 }
 
 SCSetTable.prototype.toSQL = function() {
-	var deletePropSQL = this.table.deletePropSQL({deep: true});
-	var dropSQL = this.table.dropSQL();
+	var table = this.schema.table(this.obj.name);
+	var deletePropSQL = table.deletePropSQL({deep: true});
+	var dropSQL = table.dropSQL();
 
-	var createSQL = this.schema.sqlBuilder.createTableSQL(this.table);
-	var insertPropSQL = this.table.insertPropSQL({deep: true});
+	var createSQL = this.schema.sqlBuilder.createTableSQL(table);
+	var insertPropSQL = table.insertPropSQL({deep: true});
 
 	return deletePropSQL + dropSQL + createSQL + insertPropSQL;
 }

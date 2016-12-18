@@ -326,9 +326,6 @@ Table.prototype.addFieldSQL = function(field) {
 	var sql = "ALTER TABLE " + this.name 
 		+ " ADD COLUMN " + field.toSQL() + ";\n";
 
-	sql += 'ALTER TABLE ' + this.ftsName()
-		+ " ADD COLUMN " + field.toSQL() + ";\n";
-
 	log.trace(sql);
 	return sql;
 }
@@ -357,14 +354,26 @@ sqlite> create trigger orders_ai after insert on orders begin
 
 */
 
+Table.prototype.dropTriggerSQL = function() {
+	var sql = 'DROP TRIGGER IF EXISTS tgr_' + this.name + '_ai;\n'
+		+ 'DROP TRIGGER IF EXISTS tgr_' + this.name + '_bu;\n'
+		+ 'DROP TRIGGER IF EXISTS tgr_' + this.name + '_au;\n'
+		+ 'DROP TRIGGER IF EXISTS tgr_' + this.name + '_bd;\n\n';
+
+	return sql;
+}
+
 Table.prototype.createTriggerSQL = function() {
 	var viewFields = this.viewFields();
 
+	var content = _.map(viewFields, function(f) {
+		return util.format("COALESCE(\"%s\", '')", f);
+	}).join(" || ' ' || ");	
+
 	var sql = 'CREATE TRIGGER tgr_' + this.name + '_ai'
 		+ ' AFTER INSERT ON ' + this.name
-		+ ' BEGIN\n INSERT INTO ' + this.ftsName() 
-		+ ' (docid, ' + viewFields.join(',') + ') '
-		+ ' SELECT id AS docid, ' + viewFields.join(',')
+		+ ' BEGIN\n INSERT INTO ' + this.ftsName() + ' (docid, content) '
+		+ ' SELECT id AS docid, ' + content + ' as content'
 		+ ' FROM ' + this.viewName() + ' WHERE id = new.id;'
 		+ '\nEND;\n\n';
 
@@ -376,9 +385,8 @@ Table.prototype.createTriggerSQL = function() {
 
 	sql += 'CREATE TRIGGER tgr_' + this.name + '_au'
 		+ ' AFTER UPDATE ON ' + this.name
-		+ ' BEGIN\n INSERT INTO ' + this.ftsName() 
-		+ ' (docid, ' + viewFields.join(',') + ') '
-		+ ' SELECT id AS docid, ' + viewFields.join(',')
+		+ ' BEGIN\n INSERT INTO ' + this.ftsName() + ' (docid, content) '
+		+ ' SELECT id AS docid, ' + content + ' as content'
 		+ ' FROM ' + this.viewName() + ' WHERE id = new.id;'
 		+ '\nEND;\n\n';
 
@@ -394,16 +402,21 @@ Table.prototype.createTriggerSQL = function() {
 Table.prototype.createSearchSQL = function() {
 	var viewFields = this.viewFields();
 
-	var createSQL = 'CREATE VIRTUAL TABLE  ' + this.ftsName() 
-			+ ' USING fts4(' +  viewFields.join(',') + ',' + 'tokenize=simple "tokenchars=-");\n\n';
-
+	var createSQL = 'CREATE VIRTUAL TABLE ' + this.ftsName() 
+			+ ' USING fts4(content, tokenize=simple "tokenchars=-");\n\n';
 	var triggerSQL = this.createTriggerSQL();
+	var sql = createSQL + triggerSQL;
 
-	return createSQL + triggerSQL;
+	log.trace({ sql: sql }, 'Table.createSearchSQL()');
+	return sql;
+}
+
+Table.prototype.dropViewSQL = function() {
+	return 'DROP VIEW IF EXISTS ' + this.viewName() + ';\n'
 }
 
 Table.prototype.dropSQL = function() {
-	return 'DROP VIEW IF EXISTS ' + this.viewName() + ';\n'
+	return this.dropViewSQL()
 		+  'DROP TABLE IF EXISTS ' + this.ftsName() + ';\n'
 		+  'DROP TABLE IF EXISTS ' + this.name + ';\n\n'
 }

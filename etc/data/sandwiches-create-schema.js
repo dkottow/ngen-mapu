@@ -336,6 +336,7 @@ describe('Schema', function() {
 		});	
 
 		it('create ' + dbFile, function(done) {
+			this.timeout(5000);
 	
 			var db = new schema.Schema();
 			db.init(salesSchema);

@@ -72,7 +72,7 @@ SqlBuilder.prototype.selectSQL
 		'countSql': countSQL,
 		'sanitized': s
 	}
-	log.warn({result: result}, "SqlBuilder.selectSQL");
+	log.trace({result: result}, "SqlBuilder.selectSQL");
 	return result;
 }
 
@@ -438,7 +438,12 @@ SqlBuilder.prototype.filterSQL = function(filterClauses) {
 								table.viewName(), filter.field);
 			
 				sql_clauses.push(clause);
-				sql_params.push('%' + filter.value + '%'); 
+
+				var searchValue = '%' + filter.value + '%';
+				if (filter.value[0] == ' ') {
+					searchValue = filter.value.substr(1) + '%';
+				}
+				sql_params.push(searchValue); 
 			}
 
 		} else {

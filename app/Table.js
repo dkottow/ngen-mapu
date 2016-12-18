@@ -33,10 +33,11 @@ var Table = function(tableDef) {
 		var errMsg = util.format("Table.init(%s) failed. "
 					, util.inspect(tableDef));
 
-		assert(_.isObject(tableDef), errMsg);
-		assert(_.has(tableDef, "name"), errMsg);
-		assert(_.has(tableDef, "fields"), errMsg);
-		assert(_.isObject(tableDef.fields), errMsg);
+		if ( ! tableDef.name) {
+			log.error({ tableDef: tableDef }, "Table.init() failed.");
+			throw new Error("Table.init() failed. "
+				+ 'Table name missing.');
+		}
 
 		if ( ! /^\w+$/.test(tableDef.name)) {
 			log.error({ tableDef: tableDef }, "Table.init() failed.");
@@ -44,15 +45,20 @@ var Table = function(tableDef) {
 					+ " Table names can only have word-type characters.");
 		}
 
-		var fieldNames = _.pluck(tableDef.fields, 'name');
-		_.each(Table.MANDATORY_FIELDS, function(mf) {
-			if( ! _.contains(fieldNames, mf)) {
-				log.error({ tableDef: tableDef }, "Table.init() failed.");
-				throw new Error("Table.init() failed. Field " + mf + " missing.");
-			}
-		});
+		tableDef.fields = tableDef.fields || [];
 
-		_.each(tableDef.fields, function(f) {
+		var fieldNames = _.pluck(tableDef.fields, 'name');
+		
+		var missFields = _.filter(Table.MANDATORY_FIELDS, function(mf) {
+			return ! _.contains(fieldNames, mf.name);
+		});
+		
+		var fields = tableDef.fields;
+		_.each(missFields, function(mf) {
+			fields[mf.name] = mf;
+		});
+		
+		_.each(fields, function(f) {
 			me._fields[f.name] = Field.create(f);
 		});
 
@@ -64,24 +70,29 @@ var Table = function(tableDef) {
 		if (tableDef.access_control) {
 			me.access_control = tableDef.access_control;
 		} else {
-			me.access_control = _.map(Table.DEFAULT_ACCESS_CONTROL, function(ac) {
-				return _.clone(ac);	
+			me.access_control = _.map(Table.DEFAULT_ACCESS_CONTROL
+								, function(ac) {
+					return _.clone(ac);	
 			});
 		}
 
-		//dont show disable prop if false
+		//dont set disable prop if false
 		if (tableDef.disabled) me.disabled = true;
 
 		//property values
-		me.props = {};
-
-		//copy known props. 
-		_.extend(me.props, tableDef.props);
+		me.props = tableDef.props;
 
 	}
 }
 
-Table.MANDATORY_FIELDS = ['id', 'add_by', 'add_on', 'mod_by', 'mod_on', 'own_by'];
+Table.MANDATORY_FIELDS = [
+	{ name: 'id', type: 'INTEGER', props: { order: 1} }
+	, { name : 'own_by', type: 'VARCHAR', props: {order: 90} }
+	, { name : 'mod_by', type: 'VARCHAR', props: {order: 91} }
+	, { name : 'mod_on', type: 'DATETIME', props: {order: 92} }
+	, { name : 'add_by', type: 'VARCHAR', props: {order: 93} }
+	, { name : 'add_on', type: 'DATETIME', props: {order: 94} }
+];
 
 Table.ROW_SCOPES = {
 	NONE: "none",
@@ -89,7 +100,7 @@ Table.ROW_SCOPES = {
 	ALL: "all" 
 }
 
-//TODO must match Schema.js
+//must match Schema.js TODO
 var USER_ROLES = {
 	OWNER: "owner",
 	WRITER: "writer",
@@ -97,25 +108,25 @@ var USER_ROLES = {
 };
 
 Table.DEFAULT_ACCESS_CONTROL = [
-    { "role": USER_ROLES.READER, "write": Table.ROW_SCOPES.NONE, "read": Table.ROW_SCOPES.ALL }
-    , { "role": USER_ROLES.WRITER, "write": Table.ROW_SCOPES.OWN, "read": Table.ROW_SCOPES.ALL }
+
+    { "role": USER_ROLES.READER
+	, "write": Table.ROW_SCOPES.NONE
+	, "read": Table.ROW_SCOPES.ALL }
+
+    , { "role": USER_ROLES.WRITER
+	, "write": Table.ROW_SCOPES.OWN
+	, "read": Table.ROW_SCOPES.ALL }
 ];
 
 Table.TABLE = '__tableprops__';
 Table.TABLE_FIELDS = ['name', 'props', 'disabled'];
 Table.ALL_FIELDS = '*';
 
+//only these are stored and returned as JSON
 Table.PROPERTIES = ['order', 'label'];
 
 Table.prototype.setProp = function(name, value) {
 	this.props[name] = value;
-/*
-	if (_.contains(Table.PROPERTIES, name)) {
-		this.props[name] = value;
-	} else {
-		throw new Error(util.format('prop %s not found.', name));
-	}
-*/
 }
 
 Table.prototype.access = function(user) {
@@ -254,9 +265,15 @@ Table.prototype.fields = function() {
 }
 
 Table.prototype.field = function(name) {
-	var field = this._fields[name];
-	if ( ! field) throw new Error(util.format('field %s not found.', name));
-	return field;
+	return this.fields()[name];
+	//if ( ! field) throw new Error(util.format('field %s not found.', name));
+}
+
+Table.prototype.addField = function(field) {
+	if ( ! field instanceof Field) 
+		throw new Error('Type mismatch error on addField'); 
+
+	this._fields[field.name] = new Field(field.toJSON());
 }
 
 Table.prototype.foreignKeys = function() {
@@ -299,10 +316,20 @@ Table.prototype.createSQL = function() {
 		sql += "\n" + f.toSQL() + ",";
 	});
 	sql += "\n PRIMARY KEY (id)";
-
 	sql += "\n);";
-	log.debug(sql);
 
+	log.trace(sql);
+	return sql;
+}
+
+Table.prototype.addFieldSQL = function(field) {
+	var sql = "ALTER TABLE " + this.name 
+		+ " ADD COLUMN " + field.toSQL() + ";\n";
+
+	sql += 'ALTER TABLE ' + this.ftsName()
+		+ " ADD COLUMN " + field.toSQL() + ";\n";
+
+	log.trace(sql);
 	return sql;
 }
 
@@ -330,13 +357,10 @@ sqlite> create trigger orders_ai after insert on orders begin
 
 */
 
-Table.prototype.createSearchSQL = function() {
+Table.prototype.createTriggerSQL = function() {
 	var viewFields = this.viewFields();
 
-	var sql = 'CREATE VIRTUAL TABLE  ' + this.ftsName() 
-			+ ' USING fts4(' +  viewFields.join(',') + ',' + 'tokenize=simple "tokenchars=-");\n\n';
-
-	sql += 'CREATE TRIGGER tgr_' + this.name + '_ai'
+	var sql = 'CREATE TRIGGER tgr_' + this.name + '_ai'
 		+ ' AFTER INSERT ON ' + this.name
 		+ ' BEGIN\n INSERT INTO ' + this.ftsName() 
 		+ ' (docid, ' + viewFields.join(',') + ') '
@@ -365,6 +389,17 @@ Table.prototype.createSearchSQL = function() {
 		+ '\nEND;\n\n';
 
 	return sql;
+}
+
+Table.prototype.createSearchSQL = function() {
+	var viewFields = this.viewFields();
+
+	var createSQL = 'CREATE VIRTUAL TABLE  ' + this.ftsName() 
+			+ ' USING fts4(' +  viewFields.join(',') + ',' + 'tokenize=simple "tokenchars=-");\n\n';
+
+	var triggerSQL = this.createTriggerSQL();
+
+	return createSQL + triggerSQL;
 }
 
 Table.prototype.dropSQL = function() {

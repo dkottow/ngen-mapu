@@ -42,10 +42,10 @@ describe('Account', function() {
 		it('getInfo', function(done) {
 			account.getInfo(function(err, accountData) {
 				assert(_.size(accountData.databases) > 0);
-				var salesDB = _.find(accountData.databases, function(db) {
-					return db.name == 'sales';
-				});
-				assert(salesDB.tables.length > 0);
+				assert(accountData.databases.sandwiches
+					, 'sandwiches db not found');
+				assert(accountData.databases.sandwiches.tables.customers
+					, 'sandwiches table customers not found.');
 				done();
 			});
 		});

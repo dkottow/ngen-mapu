@@ -20,66 +20,74 @@ var assert = require('assert');
 
 var log = require('./log.js').log;
 var Table = require('./Table.js').Table;
+var Field = require('./Field.js').Field;
 
-var SchemaChange = function(path, schema) {
+var SchemaChange = function(patch, schema) {
 	this.schema = schema;
 }
 
 SchemaChange.OPS = {
-	SET_PROP_TABLE: 'set_prop_table' 
-	, SET_PROP_FIELD: 'set_prop_field' 
-	, DISABLE_FIELD: 'disable_field'
-	, SET_USER: 'set_user' 
-	, SET_ACCESS_CONTROL: 'set_access_control'
-
-	//for non-empty tables
+	  ADD_TABLE: 'add_table'
 	, ADD_FIELD: 'add_field'
-	, ADD_TABLE: 'add_table'
 
 	//only for empty tables
 	, SET_TABLE: 'set_table'
+	, DEL_TABLE: 'del_table'
+
+	//non-structural	
+	, SET_PROP_TABLE: 'set_prop_table' 
+	, SET_PROP_FIELD: 'set_prop_field' 
+	, DISABLE_FIELD: 'disable_field'
+
+	, SET_USER: 'set_user' 
+	, SET_ACCESS_CONTROL: 'set_access_control'
+
 };
 
-SchemaChange.create = function(path, schema) {
+SchemaChange.create = function(patch, schema) {
 
 	//ordering is important, test more specific paths first
 
-	this.schema = schema;
-	if (SCFieldProps.test(path)) {
-		return new SCFieldProps(path, schema);
-		
-	} else if (SCDisableField.test(path)) {
-		return new SCDisableField(path, schema);
+	var isEmpty = false;
 
-	} else if (SCTableProps.test(path)) {
-		return new SCTableProps(path, schema);
-
-	} else if (SCTableAccess.test(path)) {
-		return new SCTableAccess(path, schema);
-
-	} else if (SCUsers.test(path)) {
-		return new SCUsers(path, schema);
-	}
-
-	var match = path.match(/^\/tables\/(\w+)/);
+	var match = patch.path.match(/^\/tables\/(\w+)/);
 	if (match) {
-		var table = match[1];
-		var isEmpty = true;
-		if (schema.tables()[table] 
-		  && schema.tables()[table].props.row_count > 0) {
-			//console.log(schema.tables()[table].props.row_count );
-			isEmpty = false;		
-		}
-		if (isEmpty && SCTable.test(path)) {
-			return new SCTable(path, schema);
-
-		} else if (SCAddField.test(path)) {
-			return new SCAddField(path, schema);
-
-		} else if (SCAddTable.test(path)) {
-			return new SCAddTable(path, schema);
+		var table = schema.table(match[1]);
+		if (table && table.props.row_count == 0) {
+			isEmpty = true;		
 		}
 	}
+
+	this.schema = schema;
+
+	if (SCFieldProps.test(patch)) {
+		return new SCFieldProps(patch, schema);
+		
+	} else if (SCDisableField.test(patch)) {
+		return new SCDisableField(patch, schema);
+
+	} else if (SCTableProps.test(patch)) {
+		return new SCTableProps(patch, schema);
+
+	} else if (SCTableAccess.test(patch)) {
+		return new SCTableAccess(patch, schema);
+
+	} else if (SCUsers.test(patch)) {
+		return new SCUsers(patch, schema);
+	
+	} else if (SCAddTable.test(patch)) {
+		return new SCAddTable(patch, schema);
+
+	} else if (SCAddField.test(patch)) {
+		return new SCAddField(patch, schema);
+
+	} else if (isEmpty && SCSetTable.test(patch)) {
+		return new SCSetTable(patch, schema);
+
+	} else if (isEmpty && SCDelTable.test(patch)) {
+		return new SCDelTable(patch, schema);
+	}
+
 	return null;	
 } 
 
@@ -93,22 +101,57 @@ SchemaChange.prototype.patchPath = function() {
 
 /**** SchemaChange ops *****/ 
 
+var SCAddField = function(patch, schema) {
+	log.trace({patch: patch}, "SchemaChange.SCAddField()");
+	SchemaChange.call(this, patch, schema);
+	this.op = SchemaChange.OPS.ADD_FIELD;
+	
+	var pathArray = patch.path.split('/');
+	pathArray.shift(); // leading slash,
+	pathArray.shift(); // 'tables' keyword
+	this.table = this.schema.table(pathArray.shift());
+	pathArray.shift(); // 'field' keyword
+	this.path = '/' + this.table.name + '/' + pathArray.shift();
+	this.obj = null; //no json patches
+	this.fieldDef = patch.value;
+}
+
+
+SCAddField.prototype = new SchemaChange;	
+
+SCAddField.test = function(patch) {
+	return (patch.op == 'add' 
+		&& /^\/tables\/(\w+)\/fields\/(\w+)$/.test(patch.path)); 
+}
+
+SCAddField.prototype.apply = function() {
+	var field = new Field(this.fieldDef);
+	this.table.addField(field);	
+}
+
+SCAddField.prototype.toSQL = function() {
+	var field = this.table.field(this.fieldDef.name);
+	var addSQL = this.table.addFieldSQL(field);
+	var insertPropSQL = field.insertPropSQL(this.table);
+	return addSQL + insertPropSQL;
+}
+
 
 /*
  * field properties. path e.g. /tables/customers/fields/name/props/order
  */
 
-var SCFieldProps = function(path, schema) {
-	log.warn({path: path}, "SchemaChange.SCFieldProps()");
-	SchemaChange.call(this, path, schema);
+var SCFieldProps = function(patch, schema) {
+	log.trace({patch: patch}, "SchemaChange.SCFieldProps()");
+	SchemaChange.call(this, patch, schema);
 	this.op = SchemaChange.OPS.SET_PROP_FIELD;
 	
-	var pathArray = path.split('/');
+	var pathArray = patch.path.split('/');
 	pathArray.shift(); // leading slash,
 	pathArray.shift(); // 'tables' keyword
-	this.table = this.schema.tables()[ pathArray.shift() ];
+	this.table = this.schema.table(pathArray.shift());
 	pathArray.shift(); // 'field' keyword
-	this.field = this.table.fields()[ pathArray.shift() ];
+	this.field = this.table.field(pathArray.shift());
 	pathArray.shift(); // 'props' keyword
 	this.patch_path = '/' + pathArray.join('/');
 	this.path = '/' + this.table.name + '/' + this.field.name + '/props';
@@ -118,8 +161,8 @@ var SCFieldProps = function(path, schema) {
 
 SCFieldProps.prototype = new SchemaChange;	
 
-SCFieldProps.test = function(path) {
-	return /^\/tables\/(\w+)\/fields\/(\w+)\/props\//.test(path);	
+SCFieldProps.test = function(patch) {
+	return /^\/tables\/(\w+)\/fields\/(\w+)\/props\//.test(patch.path);	
 }
 
 SCFieldProps.prototype.apply = function() {
@@ -137,17 +180,17 @@ SCFieldProps.prototype.toSQL = function() {
  * disable field path e.g. /tables/3/fields/4/disabled
  */
 
-var SCDisableField = function(path, schema) {
-	log.trace({path: path}, "SchemaChange.SCDisableField()");
-	SchemaChange.call(this, path, schema);
+var SCDisableField = function(patch, schema) {
+	log.trace({patch: patch}, "SchemaChange.SCDisableField()");
+	SchemaChange.call(this, patch, schema);
 	this.op = SchemaChange.OPS.DISABLE_FIELD;
 	
-	var pathArray = path.split('/');
+	var pathArray = patch.path.split('/');
 	pathArray.shift(); // leading slash,
 	pathArray.shift(); // 'tables' keyword
-	this.table = this.schema.tables()[ pathArray.shift() ];
+	this.table = this.schema.table(pathArray.shift());
 	pathArray.shift(); // 'field' keyword
-	this.field = this.table.fields()[ pathArray.shift() ];
+	this.field = this.table.field(pathArray.shift());
 	this.patch_path = '/' + pathArray.join('/');
 	this.path = '/' + this.table.name + '/' + this.field.name + '/disabled';
 	this.obj = JSON.parse(JSON.stringify(this.field)); 
@@ -156,8 +199,8 @@ var SCDisableField = function(path, schema) {
 
 SCDisableField.prototype = new SchemaChange;	
 
-SCDisableField.test = function(path) {
-	return /^\/tables\/(\w+)\/fields\/(\w+)\/disabled/.test(path);	
+SCDisableField.test = function(patch) {
+	return /^\/tables\/(\w+)\/fields\/(\w+)\/disabled/.test(patch.path);	
 }
 
 SCDisableField.prototype.apply = function() {
@@ -169,38 +212,81 @@ SCDisableField.prototype.toSQL = function() {
 }
 
 /*
- * set table. this drops and re-create a table 
- * path is any starting with /tables/1 
- * more specific, cheaper changes should be tested before			 
+ * add table. 
+ * 
+ * patch op is add and path is /tables/<name>
+ *
  */
 
-var SCTable = function(path, schema) {
-	log.trace({path: path}, "SchemaChange.SCTable()");
-	SchemaChange.call(this, path, schema);
-	this.op = SchemaChange.OPS.SET_TABLE;
+var SCAddTable = function(patch, schema) {
+	log.trace({patch: patch}, "SchemaChange.SCAddTable()");
+	SchemaChange.call(this, patch, schema);
+	this.op = SchemaChange.OPS.ADD_TABLE;
 	
-	var pathArray = path.split('/');
+	var pathArray = patch.path.split('/');
 	pathArray.shift(); // leading slash,
 	pathArray.shift(); // 'tables' keyword
-	this.table = this.schema.tables()[ pathArray.shift() ];
+	this.path = '/' + pathArray.shift();
+	this.obj = null; //no json patches
+	this.tableDef = patch.value;
+}
+
+SCAddTable.prototype = new SchemaChange;	
+
+SCAddTable.test = function(patch) {
+	return (patch.op == 'add' && /^\/tables\/(\w+)$/.test(patch.path)); 
+}
+
+SCAddTable.prototype.apply = function() {
+	var table = new Table(this.tableDef);
+	this.schema.addTable(table);	
+}
+
+SCAddTable.prototype.toSQL = function() {	
+	var table = this.schema.table(this.tableDef.name);
+	var createSQL = this.schema.sqlBuilder.createTableSQL(table);
+	var insertPropSQL = table.insertPropSQL({deep: true});
+
+	return createSQL + insertPropSQL;
+}
+
+/*
+ * set table. 
+ * drops and re-creates a table 
+ * 
+ * patch path must start with /tables/<name>/
+ *
+ */
+
+var SCSetTable = function(patch, schema) {
+	log.trace({patch: patch}, "SchemaChange.SCSetTable()");
+	SchemaChange.call(this, patch, schema);
+	this.op = SchemaChange.OPS.SET_TABLE;
+	
+	var pathArray = patch.path.split('/');
+	pathArray.shift(); // leading slash,
+	pathArray.shift(); // 'tables' keyword
+	this.table = this.schema.table(pathArray.shift());
 	this.patch_path = '/' + pathArray.join('/');
 	this.path = '/' + this.table.name;
+	
 	this.obj = this.table.toJSON(); 
 }
 
-SCTable.prototype = new SchemaChange;	
+SCSetTable.prototype = new SchemaChange;	
 
-SCTable.test = function(path) {
-	return /^\/tables\/(\w+)\//.test(path);	
+SCSetTable.test = function(patch) {
+	return /^\/tables\/(\w+)\//.test(patch.path);	
 }
 
-SCTable.prototype.apply = function() {
+SCSetTable.prototype.apply = function() {
 	this.table = new Table(this.obj);
 }
 
-SCTable.prototype.toSQL = function() {
+SCSetTable.prototype.toSQL = function() {
 	var deletePropSQL = this.table.deletePropSQL({deep: true});
 	var dropSQL = this.table.dropSQL();
+
 	var createSQL = this.schema.sqlBuilder.createTableSQL(this.table);
 	var insertPropSQL = this.table.insertPropSQL({deep: true});
 
@@ -208,18 +294,55 @@ SCTable.prototype.toSQL = function() {
 }
 
 /*
+ * del table. drops table.
+ * 
+ * patch op remove
+ * patch path /tables/<name>
+ *
+ */
+
+var SCDelTable = function(patch, schema) {
+	log.trace({patch: patch}, "SchemaChange.SCDelTable()");
+	SchemaChange.call(this, patch, schema);
+	this.op = SchemaChange.OPS.DEL_TABLE;
+	
+	var pathArray = patch.path.split('/');
+	pathArray.shift(); // leading slash,
+	pathArray.shift(); // 'tables' keyword
+	this.table = this.schema.table(pathArray.shift());
+	this.path = '/' + this.table.name;
+}
+
+SCDelTable.prototype = new SchemaChange;	
+
+SCDelTable.test = function(patch) {
+	return /^\/tables\/(\w+)$/.test(patch.path); 
+}
+
+SCDelTable.prototype.apply = function() {
+	this.schema.removeTable(this.table.name);
+}
+
+SCDelTable.prototype.toSQL = function() {
+	var deletePropSQL = this.table.deletePropSQL({deep: true});
+	var dropSQL = this.table.dropSQL();
+	return deletePropSQL + dropSQL;
+}
+
+
+/*
  * table access control. path e.g. /tables/1/access_control
  */
 
-var SCTableAccess = function(path, schema) {
-	log.trace({path: path}, "SchemaChange.SCTableAccess()");
-	SchemaChange.call(this, path, schema);
+var SCTableAccess = function(patch, schema) {
+	log.trace({patch: patch}, "SchemaChange.SCTableAccess()");
+	SchemaChange.call(this, patch, schema);
 	this.op = SchemaChange.OPS.SET_ACCESS_CONTROL;
 	
-	var pathArray = path.split('/');
+	var pathArray = patch.path.split('/');
 	pathArray.shift(); // leading slash,
 	pathArray.shift(); // 'tables' keyword
-	this.table = this.schema.tables()[ pathArray.shift() ];
+	this.table = this.schema.table(pathArray.shift());
 	pathArray.shift(); // 'access_control' keyword
 	this.patch_path = '/' + pathArray.join('/');
 	this.path = '/' + this.table.name + '/access_control';
@@ -228,8 +351,8 @@ var SCTableAccess = function(path, schema) {
 
 SCTableAccess.prototype = new SchemaChange;	
 
-SCTableAccess.test = function(path) {
-	return /^\/tables\/(\w+)\/access_control/.test(path);	
+SCTableAccess.test = function(patch) {
+	return /^\/tables\/(\w+)\/access_control/.test(patch.path);	
 }
 
 SCTableAccess.prototype.apply = function() {
@@ -244,15 +367,15 @@ SCTableAccess.prototype.toSQL = function() {
  * table properties. path e.g. /tables/3/props/order
  */
 
-var SCTableProps = function(path, schema) {
-	log.trace({path: path}, "SchemaChange.SCTableProps()");
-	SchemaChange.call(this, path, schema);
+var SCTableProps = function(patch, schema) {
+	log.trace({patch: patch}, "SchemaChange.SCTableProps()");
+	SchemaChange.call(this, patch, schema);
 	this.op = SchemaChange.OPS.SET_PROP_TABLE;
 	
-	var pathArray = path.split('/');
+	var pathArray = patch.path.split('/');
 	pathArray.shift(); // leading slash,
 	pathArray.shift(); // 'tables' keyword
-	this.table = this.schema.tables()[ pathArray.shift() ];
+	this.table = this.schema.table(pathArray.shift());
 	pathArray.shift(); // 'props' keyword
 	this.patch_path = '/' + pathArray.join('/');
 	this.path = '/' + this.table.name + '/props';
@@ -261,8 +384,8 @@ var SCTableProps = function(path, schema) {
 
 SCTableProps.prototype = new SchemaChange;	
 
-SCTableProps.test = function(path) {
-	return /^\/tables\/(\w+)\/props\//.test(path);	
+SCTableProps.test = function(patch) {
+	return /^\/tables\/(\w+)\/props\//.test(patch.path);	
 }
 
 SCTableProps.prototype.apply = function() {
@@ -279,12 +402,12 @@ SCTableProps.prototype.toSQL = function() {
  * database users. path e.g. /users/3
 */
 
-var SCUsers = function(path, schema) {
-	log.trace({path: path}, "SchemaChange.SCUsers()");
-	SchemaChange.call(this, path, schema);
+var SCUsers = function(patch, schema) {
+	log.trace({patch: patch}, "SchemaChange.SCUsers()");
+	SchemaChange.call(this, patch, schema);
 	this.op = SchemaChange.OPS.SET_USER;
 
-	var pathArray = path.split('/');
+	var pathArray = patch.path.split('/');
 	pathArray.shift(); // leading slash,
 	pathArray.shift(); // 'users' keyword
 	this.patch_path = '/' + pathArray.join('/');
@@ -294,8 +417,8 @@ var SCUsers = function(path, schema) {
 
 SCUsers.prototype = new SchemaChange;	
 
-SCUsers.test = function(path) {
-	return /^\/users/.test(path);	
+SCUsers.test = function(patch) {
+	return /^\/users/.test(patch.path);	
 }
 
 SCUsers.prototype.apply = function() {

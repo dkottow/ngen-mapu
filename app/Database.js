@@ -394,11 +394,12 @@ Database.prototype.insert = function(tableName, rows, options, cbResult) {
 		}
 
 		var fieldNames = _.filter(_.keys(rows[0]), function(fn) { 
-				//filter out any non-field key
-				return _.has(table.fields(), fn); // && fn != 'id'; 
+			//filter out any non-field key
+			return _.has(table.fields(), fn); // && fn != 'id'; 
 		});
 
-		fieldNames = _.union(fieldNames, Table.MANDATORY_FIELDS);
+		fieldNames = _.union(fieldNames, 
+					_.pluck(Table.MANDATORY_FIELDS, 'name'));
 	
 		var add_by = options.user ? options.user.name : 'unk';
 		var mod_by = add_by;

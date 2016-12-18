@@ -77,15 +77,6 @@ Schema.prototype.init = function(schemaData) {
 	}
 }
 
-Schema.prototype.tables = function() {
-	var tables = this.graph.tables();
-	return _.object(_.pluck(tables, 'name'), tables);
-}
-
-Schema.prototype.table = function(name) { 
-	return this.tables()[name];
-}
-
 Schema.prototype.get = function() {
 
 	try {
@@ -99,6 +90,33 @@ Schema.prototype.get = function() {
 		log.error({err: err}, "Schema.get() exception.");
 		throw err;
 	}
+}
+
+/******* table ops *******/
+
+Schema.prototype.tables = function() {
+	var tables = this.graph.tables();
+	return _.object(_.pluck(tables, 'name'), tables);
+}
+
+Schema.prototype.table = function(name) { 
+	return this.tables()[name];
+}
+
+Schema.prototype.addTable = function(table) { 
+	if ( ! table instanceof Table) 
+		throw new Error('Type mismatch error on addTable'); 
+
+	var schemaData = this.get();
+	schemaData.tables[table.name] = table.toJSON();
+	this.init(schemaData);	
+}
+
+Schema.prototype.removeTable = function(name) { 
+	var schemaData = this.get();
+	delete schemaData.tables[name];
+	//TODO - remove table from possible join_trees?
+	this.init(schemaData);	
 }
 
 /******* user ops *******/
@@ -409,17 +427,17 @@ Schema.prototype.setName = function(fileName) {
 Schema.prototype.patchesToChanges = function(patches, rowCounts) {
 
 	try {
-		var changePatches =	{};
+		var patchSequences = {}; //sequence of changes of same type
 	
 		 _.each(patches, function(patch) {
 		
-			var change = SchemaChange.create(patch.path, this);
+			var change = SchemaChange.create(patch, this);
 			if (change) {
 				patch.path = change.patchPath();
 	
 				var key = change.key();
-				changePatches[key] = changePatches[key] || [];
-				changePatches[key].push({
+				patchSequences[key] = patchSequences[key] || [];
+				patchSequences[key].push({
 					patch: patch,
 					change: change
 				});						
@@ -428,10 +446,12 @@ Schema.prototype.patchesToChanges = function(patches, rowCounts) {
 		}, this);
 		
 		var changes = [];
-		_.each(changePatches, function(changePatch) {
+		_.each(patchSequences, function(changePatch) {			
 			var change = changePatch[0].change;
-			var patches = _.pluck(changePatch, 'patch');
-			jsonpatch.apply(change.obj, patches);
+			if (change.obj) {
+				var patches = _.pluck(changePatch, 'patch');
+				jsonpatch.apply(change.obj, patches);
+			}
 			changes.push(change);
 		});
 		

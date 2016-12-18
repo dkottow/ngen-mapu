@@ -72,7 +72,7 @@ SqlBuilder.prototype.selectSQL
 		'countSql': countSQL,
 		'sanitized': s
 	}
-	log.trace({result: result}, "SqlBuilder.selectSQL");
+	log.warn({result: result}, "SqlBuilder.selectSQL");
 	return result;
 }
 
@@ -421,20 +421,25 @@ SqlBuilder.prototype.filterSQL = function(filterClauses) {
 
 		} else if (filter.op == 'search') {
 
-			var clause = util.format('(%s."%s" MATCH ?)', 
-							table.ftsName(),
-							//check if full row search
-							//filter.field == filter.table
-							filter.field == Table.ALL_FIELDS
-								? table.ftsName()
-								: filter.field
-						); 	
+			if (filter.field == Table.ALL_FIELDS) {
+				//use full text search (fts)
+				var clause = util.format('(%s."%s" MATCH ?)', 
+								table.ftsName(), table.ftsName()); 	
 
-			sql_clauses.push(clause);
+				sql_clauses.push(clause);
+		
+				//(prefix last + phrase query) - see sqlite fts
+				var searchValue = '"' + filter.value + '*"';  
+				sql_params.push(searchValue);
 
-			//(prefix last + phrase query) - see sqlite fts
-			var searchValue = '"' + filter.value + '*"';  
-			sql_params.push(searchValue);
+			} else {
+				//use LIKE on filter.field
+				var clause = util.format('(%s."%s" || ' + "''" + ' LIKE ?)',
+								table.viewName(), filter.field);
+			
+				sql_clauses.push(clause);
+				sql_params.push('%' + filter.value + '%'); 
+			}
 
 		} else {
 			//unknown op
@@ -456,7 +461,7 @@ SqlBuilder.prototype.filterSQL = function(filterClauses) {
 SqlBuilder.prototype.joinSearchSQL = function(filterClauses) {
 	//there can be only one search filter
 	var searchFilter = _.find(filterClauses, function(filter) {
-		return filter.op == 'search';
+		return filter.op == 'search' && filter.field == Table.ALL_FIELDS;
 	});
 
 	if (searchFilter) {

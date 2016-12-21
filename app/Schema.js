@@ -445,6 +445,10 @@ Schema.prototype.patchesToChanges = function(patches, rowCounts) {
 					patch: patch,
 					change: change
 				});						
+
+			} else {
+				log.error({patch: patch}, 'Schema.patchesToChanges()');
+				throw new Error('Patch sequence contains unsupported patch');
 			}
 			
 		}, this);

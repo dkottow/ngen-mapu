@@ -61,14 +61,10 @@ var Field = function(fieldDef) {
 		if (fieldDef.disabled) me.disabled = true;
 
 		//property values
-		me.props = {};
+		me.props = fieldDef.props;
 
-		//default values
-		me.props.order = 0;
-		me.props.width = me.defaultWidth();
-
-		//copy known props. 
-		_.extend(me.props, _.pick(fieldDef.props, Field.PROPERTIES));
+		me.props.order = me.props.order || 0;
+		me.props.width = me.props.width || me.defaultWidth();
 	}
 }
 
@@ -147,12 +143,18 @@ Field.prototype.toSQL = function() {
 	return sql;
 }
 
+Field.prototype.persistentProps = function() {
+	return _.pick(this.props, Field.PROPERTIES);
+}
+
 Field.prototype.insertPropSQL = function(table) {
+
+	var props = this.persistentProps();
 
 	var values = _.map([
 			this.name, 
 			table.name, 
-			JSON.stringify(this.props)
+			JSON.stringify(props)
 		], function(v) {
 		return "'" + v + "'";
 	}).concat([
@@ -171,8 +173,10 @@ Field.prototype.insertPropSQL = function(table) {
 }
 
 Field.prototype.updatePropSQL = function(table) {
+	var props = this.persistentProps();
+
 	var sql = 'UPDATE ' + Field.TABLE
-			+ " SET props = '" + JSON.stringify(this.props) + "'"
+			+ " SET props = '" + JSON.stringify(props) + "'"
 			+ " , disabled = " + (this.disabled ? 1 : 0)
 			+ util.format(" WHERE name = '%s' AND table_name = '%s'; ",
 				this.name, table.name);
@@ -191,12 +195,12 @@ Field.prototype.defaultWidth = function() {
 Field.prototype.toJSON = function() {
 
 	var result = {
-		name: this.name,
-		type: this.type,
-		fk: this.fk,
-		notnull: this.notnull,
-		props: this.props,
-		disabled: this.disabled
+		name: this.name
+		, type: this.type
+		, fk: this.fk
+		, notnull: this.notnull
+		, props: _.pick(this.props, Field.PROPERTIES)
+		, disabled: this.disabled
 	};
 
 	if (result.fk == 1) {

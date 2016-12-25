@@ -5,12 +5,10 @@ var assert = require('assert')
 	, sqlite3 = require('sqlite3').verbose()
 	, jsonpatch = require('fast-json-patch');
 
-global.log = require('./create_log.js').log;
-	
 var Schema = require('../app/Schema').Schema;
 var SchemaChange = require('../app/SchemaChange').SchemaChange;
 	
-var log =  require('../app/log').log;
+var log =  require('./log').log;
 
 describe('SchemaChange', function() {
 	var jsonSalesFile = "test/data/json/sales.json";
@@ -31,7 +29,9 @@ describe('SchemaChange', function() {
 		it('change table prop', function(done) {
 	
 			schema.table('customers').props.order = 99;
+			schema.table('customers').props.foo = 'bar';
 			var patches = jsonpatch.compare(orgJSON, schema.get());		
+			log.debug({patches: patches});
 
 			var change = SchemaChange.create(patches[0], schema);
 			//log.info({op: change.op, path: change.path});
@@ -48,7 +48,7 @@ describe('SchemaChange', function() {
 	
 			schema.table('customers').field('name').props.width = 99;
 			var patches = jsonpatch.compare(orgJSON, schema.get());		
-			log.info({patches: patches});
+			log.debug({patches: patches});
 
 			var change = SchemaChange.create(patches[0], schema);
 			//log.info({op: change.op, path: change.path});

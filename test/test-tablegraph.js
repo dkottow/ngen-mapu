@@ -5,15 +5,13 @@ var assert = require('assert')
 	, util = require('util')
 	, graphlib = require('graphlib');
 	
-global.log = require('./create_log.js').log;
-	
 var Table = require('../app/Table.js').Table
 	, TableGraph = require('../app/TableGraph.js').TableGraph
 	, graphutil = require('../app/graph_util.js')
 	, Schema = require('../app/Schema.js').Schema
 	, Database = require('../app/Database.js').Database;
 	
-var log =  require('../app/log.js').log;
+var log = require('./log.js').log;
 
 describe('GetAllPaths', function() {
 
@@ -354,7 +352,7 @@ describe('RowsToObj Soccer DB', function() {
 
 			var rows = result.rows;
 			var obj = tableGraph.rowsToObj(rows, 'Game');
-			console.log(util.inspect(obj, false, null));
+			log.debug(util.inspect(obj, false, null));
 
 			assert(obj.Game.length == 3, 'Expected 3 Game objects');
 			done();

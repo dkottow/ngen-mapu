@@ -124,6 +124,9 @@ var prettyPrint = function(obj) {
 
 init();
 
-exports.log = log;
+module.exports = { 
+	log: log,
+	winston: winston
+};
 
 

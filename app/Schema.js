@@ -18,7 +18,6 @@ var  fs = require('fs');
 var  path = require('path');
 var _ = require('underscore');
 var util = require('util');
-var assert = require('assert');
 var validator = require('validator');
 var jsonpatch = require('fast-json-patch');
 
@@ -428,7 +427,7 @@ Schema.prototype.setName = function(fileName) {
 
 
 
-Schema.prototype.patchesToChanges = function(patches, rowCounts) {
+Schema.prototype.patchesToChanges = function(patches) {
 
 	try {
 		var patchSequences = {}; //sequence of changes of same type

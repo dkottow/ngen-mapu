@@ -7,7 +7,7 @@ var assert = require('assert')
 	
 require('dotenv').config();
 
-var log = require('../app/log.js').log;
+var log = require('./log.js').log;
 
 var useAuth = true;
 var authToken = null;

@@ -8,7 +8,7 @@ var assert = require('assert')
 	
 var parser = require('../app/QueryParser');
 
-var log =  require('../app/log').log;
+var log = require('./log.js').log;
 
 describe('Parser.parser', function() {
 	it('skip', function() {		

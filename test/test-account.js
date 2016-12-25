@@ -4,11 +4,10 @@ var assert = require('assert')
 	, util = require('util')
 	, fse = require('fs-extra');
 	
-global.log = require('./create_log.js').log;
-	
 var Account = require('../app/Account').Account
-	, Schema = require('../app/Schema').Schema
-	, log = require('../app/log').log;
+	, Schema = require('../app/Schema').Schema;
+
+var log =  require('./log').log;
 	
 describe('Account', function() {
 	var accountDir = "test/data/sqlite";

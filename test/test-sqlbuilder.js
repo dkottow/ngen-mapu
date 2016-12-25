@@ -9,7 +9,7 @@ var Table = require('../app/Table.js').Table
 	, TableGraph = require('../app/TableGraph.js').TableGraph
 	, SqlBuilder = require('../app/SqlBuilder.js').SqlBuilder;
 
-var log =  require('../app/log.js').log;
+var log = require('./log.js').log;
 	
 function sqlReplaceParams(selectResult) {
 	var sql = selectResult.query;

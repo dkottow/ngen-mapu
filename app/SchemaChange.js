@@ -16,7 +16,8 @@
 
 var _ = require('underscore');
 var util = require('util');
-var assert = require('assert');
+
+var jsonpatch = require('fast-json-patch');
 
 var log = require('./log.js').log;
 var Table = require('./Table.js').Table;
@@ -90,6 +91,51 @@ SchemaChange.create = function(patch, schema) {
 
 	return null;	
 } 
+
+
+SchemaChange.patchesToChanges = function(patches, schema) {
+
+	try {
+		var patchSequences = {}; //sequence of changes of same type
+	
+		 _.each(patches, function(patch) {
+		
+			var change = SchemaChange.create(patch, schema);
+			if (change) {
+				patch.path = change.patchPath();
+	
+				var key = change.key();
+				patchSequences[key] = patchSequences[key] || [];
+				patchSequences[key].push({
+					patch: patch,
+					change: change
+				});						
+
+			} else {
+				log.error({patch: patch}, 'Schema.patchesToChanges()');
+				throw new Error('Patch sequence contains unsupported patch');
+			}
+			
+		}, this);
+		
+		var changes = [];
+		_.each(patchSequences, function(changePatch) {			
+			var change = changePatch[0].change;
+			if (change.obj) {
+				var patches = _.pluck(changePatch, 'patch');
+				jsonpatch.apply(change.obj, patches);
+			}
+			changes.push(change);
+		});
+		
+		return { changes: changes };
+
+	} catch(err) {
+		log.error({err: err, patches: patches}, 
+			"Schema.patchesToChanges() exception.");
+		return { error: err };
+	}
+}
 
 SchemaChange.prototype.key = function() {
 	return this.op + this.path;	

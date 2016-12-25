@@ -4,11 +4,9 @@ var assert = require('assert')
 	, util = require('util')
 	, sqlite3 = require('sqlite3').verbose();
 	
-global.log = require('./create_log.js').log;
-	
 var Schema = require('../app/Schema').Schema;
 	
-var log =  require('../app/log').log;
+var log = require('./log.js').log;
 
 describe('Schema', function() {
 	var jsonSalesFile = "test/data/json/sales.json";

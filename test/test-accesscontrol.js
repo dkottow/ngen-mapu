@@ -8,9 +8,9 @@ var APP_PATH = "../app/";
 var AccessControl = require(APP_PATH + 'AccessControl').AccessControl
 	, Database = require(APP_PATH + 'Database').Database
 	, Table = require(APP_PATH + 'Table').Table
-	, Schema = require(APP_PATH + 'Schema').Schema
-	, log = require(APP_PATH + 'log').log;
+	, Schema = require(APP_PATH + 'Schema').Schema;
 	
+var log =  require('./log').log;
 
 
 describe('AccessControl', function() {

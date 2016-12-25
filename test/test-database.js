@@ -12,7 +12,7 @@ var jsonpatch = require('fast-json-patch');
 var Database = require('../app/Database').Database;
 var Schema = require('../app/Schema').Schema; //only for some static var
 	
-var log = require('../app/log').log;
+var log = require('./log.js').log;
 
 describe('Database', function() {
 	var dbFile = "test/data/sqlite/sales.sqlite";

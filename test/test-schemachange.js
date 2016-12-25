@@ -60,6 +60,26 @@ describe('SchemaChange', function() {
 
 			done();
 		});
+
+		it('change unknown', function(done) {
+	
+			var newJSON = JSON.parse(JSON.stringify(orgJSON));
+			newJSON.foo = 99;
+			var patches = jsonpatch.compare(orgJSON, newJSON);		
+			log.debug({patches: patches});
+
+			var change = SchemaChange.create(patches[0], schema);
+			log.debug({change: change});
+			assert( ! change, 'no change for schema.foo attribute');
+
+/*
+			assert(change.op == SchemaChange.OPS.SET_PROP_FIELD
+				, 'expected set_field_prop, got ' + change.op);
+			assert(change.path == '/customers/name/props'
+				, 'expected /customers/name/props path, got ' + change.path);
+*/
+			done();
+		});
 	});
 });
 

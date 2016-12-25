@@ -428,8 +428,11 @@ Table.prototype.toJSON = function() {
 		, row_alias: this.row_alias
 		, access_control: this.access_control
 		, props: _.pick(this.props, Table.PROPERTIES)
-		, disabled: this.disabled
 	};
+
+	if (this.disabled) {
+		result.disabled = this.disabled;
+	}
 
 	result.fields = _.mapObject(this.fields(), function(field) {
 		return field.toJSON();

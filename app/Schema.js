@@ -18,8 +18,6 @@ var  fs = require('fs');
 var  path = require('path');
 var _ = require('underscore');
 var util = require('util');
-var validator = require('validator');
-var jsonpatch = require('fast-json-patch');
 
 var tmp = require('tmp'); //tmp filenames
 
@@ -29,8 +27,6 @@ var Field = require('./Field.js').Field;
 var Table = require('./Table.js').Table;
 var TableGraph = require('./TableGraph.js').TableGraph;
 var SqlBuilder = require('./SqlBuilder.js').SqlBuilder;
-
-var SchemaChange = require('./SchemaChange.js').SchemaChange;
 
 var log = require('./log.js').log;
 
@@ -425,51 +421,6 @@ Schema.prototype.setName = function(fileName) {
 	this.name = fn.substr(0, fn.lastIndexOf('.')) || fn;
 }
 
-
-
-Schema.prototype.patchesToChanges = function(patches) {
-
-	try {
-		var patchSequences = {}; //sequence of changes of same type
-	
-		 _.each(patches, function(patch) {
-		
-			var change = SchemaChange.create(patch, this);
-			if (change) {
-				patch.path = change.patchPath();
-	
-				var key = change.key();
-				patchSequences[key] = patchSequences[key] || [];
-				patchSequences[key].push({
-					patch: patch,
-					change: change
-				});						
-
-			} else {
-				log.error({patch: patch}, 'Schema.patchesToChanges()');
-				throw new Error('Patch sequence contains unsupported patch');
-			}
-			
-		}, this);
-		
-		var changes = [];
-		_.each(patchSequences, function(changePatch) {			
-			var change = changePatch[0].change;
-			if (change.obj) {
-				var patches = _.pluck(changePatch, 'patch');
-				jsonpatch.apply(change.obj, patches);
-			}
-			changes.push(change);
-		});
-		
-		return { changes: changes };
-
-	} catch(err) {
-		log.error({err: err, patches: patches}, 
-			"Schema.patchesToChanges() exception.");
-		return { error: err };
-	}
-}
 
 Schema.prototype.applyChanges = function(changes) {
 

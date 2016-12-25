@@ -45,7 +45,7 @@ SchemaChange.OPS = {
 
 };
 
-SchemaChange.create = function(patch, schema) {
+SchemaChange._create = function(patch, schema) {
 
 	//ordering is important, test more specific paths first
 
@@ -93,48 +93,46 @@ SchemaChange.create = function(patch, schema) {
 } 
 
 
-SchemaChange.patchesToChanges = function(patches, schema) {
+SchemaChange.create = function(patches, schema) {
+	log.debug({patches: patches}, 'SchemaChange.create()');
 
-	try {
-		var patchSequences = {}; //sequence of changes of same type
-	
-		 _.each(patches, function(patch) {
-		
-			var change = SchemaChange.create(patch, schema);
-			if (change) {
-				patch.path = change.patchPath();
-	
-				var key = change.key();
-				patchSequences[key] = patchSequences[key] || [];
-				patchSequences[key].push({
-					patch: patch,
-					change: change
-				});						
-
-			} else {
-				log.error({patch: patch}, 'Schema.patchesToChanges()');
-				throw new Error('Patch sequence contains unsupported patch');
-			}
-			
-		}, this);
-		
-		var changes = [];
-		_.each(patchSequences, function(changePatch) {			
-			var change = changePatch[0].change;
-			if (change.obj) {
-				var patches = _.pluck(changePatch, 'patch');
-				jsonpatch.apply(change.obj, patches);
-			}
-			changes.push(change);
-		});
-		
-		return { changes: changes };
-
-	} catch(err) {
-		log.error({err: err, patches: patches}, 
-			"Schema.patchesToChanges() exception.");
-		return { error: err };
+	if (patches.op) {
+		return SchemaChange._create(patches, schema);
 	}
+
+	var patchSequences = {}; //sequence of changes of same type
+
+	 _.each(patches, function(patch) {
+	
+		var change = SchemaChange._create(patch, schema);
+		if (change) {
+			patch.path = change.patchPath();
+
+			var key = change.key();
+			patchSequences[key] = patchSequences[key] || [];
+			patchSequences[key].push({
+				patch: patch,
+				change: change
+			});						
+
+		} else {
+			log.warn({patch: patch}, 'Schema.patchesToChanges()');
+			throw new Error('Patch sequence contains unsupported patch');
+		}
+		
+	}, this);
+	
+	var changes = [];
+	_.each(patchSequences, function(changePatch) {			
+		var change = changePatch[0].change;
+		if (change.obj) {
+			var patches = _.pluck(changePatch, 'patch');
+			jsonpatch.apply(change.obj, patches);
+		}
+		changes.push(change);
+	});
+	
+	return { changes: changes };
 }
 
 SchemaChange.prototype.key = function() {

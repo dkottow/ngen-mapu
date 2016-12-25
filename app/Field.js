@@ -200,8 +200,11 @@ Field.prototype.toJSON = function() {
 		, fk: this.fk
 		, notnull: this.notnull
 		, props: _.pick(this.props, Field.PROPERTIES)
-		, disabled: this.disabled
 	};
+
+	if (this.disabled) {
+		result.disabled = this.disabled;
+	}
 
 	if (result.fk == 1) {
 		result.fk_table = this.fk_table;

@@ -26,6 +26,7 @@ var util = require('util');
 
 var Table = require('./Table.js').Table;
 var Schema = require('./Schema.js').Schema;
+var SchemaChange = require('./SchemaChange.js').SchemaChange;
 var DateTimeField = require('./Field.js').DateTimeField;
 
 var log = require('./log.js').log;
@@ -662,11 +663,12 @@ Database.prototype.patchSchema = function(patches, cbResult) {
 					.setProp('row_count', table.row_count);
 			});
 
-			var changes = patchedSchema.patchesToChanges(patches);
-			if (changes.error) {
-				log.error({err: changes.error, patches: patches}, 
+			try {
+				var changes = SchemaChange.create(patches, patchedSchema);
+			} catch (err) {
+				log.error({err: err, patches: patches}, 
 					"Database.patchSchema() failed.");
-				cbResult(changes.error, null);
+				cbResult(err, null);
 				return;
 			}
 

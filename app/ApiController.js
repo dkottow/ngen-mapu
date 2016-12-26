@@ -51,10 +51,10 @@ function Controller(accountManager, options) {
 	this.accountManager = accountManager;
 	this.router = new express.Router();
 	this.access = new AccessControl({ auth: this.auth });
-	this.initRoutes();
+	this.initRoutes(options);
 }
 
-Controller.prototype.initRoutes = function() {
+Controller.prototype.initRoutes = function(options) {
 	log.trace("Controller.initRoutes()...");		
 	var me = this;
 
@@ -63,7 +63,8 @@ Controller.prototype.initRoutes = function() {
 	]; 		
 
 	//json parsing 
-	this.router.use(bodyParser.json());
+	var reqSizeLimit = options.bodyParser ? options.bodyParser.limit : '1mb';
+	this.router.use(bodyParser.json({ limit: reqSizeLimit }));
 
 	if (this.auth) {
 

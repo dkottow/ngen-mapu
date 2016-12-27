@@ -540,7 +540,6 @@ Controller.prototype.getRows = function(req, res, opts) {
 				, order: params['$orderby'] 
 				, limit: params['$top'] 
 				, offset: params['$skip'] 
-				, distinct: params['$distinct'] 
 				, debug: params['debug']	
 			},
 	

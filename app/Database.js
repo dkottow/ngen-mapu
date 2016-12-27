@@ -31,7 +31,7 @@ var DateTimeField = require('./Field.js').DateTimeField;
 
 var log = require('./log.js').log;
 
-global.row_max_count = global.row_count || 1000;
+global.row_max_count = global.row_max_count || 1000;
 global.sqlite_ext = global.sqlite_ext || '.sqlite';
 
 var Database = function(dbFile, options) 

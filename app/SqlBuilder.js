@@ -16,14 +16,12 @@
 
 var _ = require('underscore');
 var util = require('util');
-var assert = require('assert');
 
 var Field = require('./Field.js').Field;
 var Table = require('./Table.js').Table;
 
 //ugly but avoids circular requires with Schema.js
 var Schema_PragmaSQL = "PRAGMA journal_mode=WAL;\n\n";
-
 var Schema_CreateTableSQL = "CREATE TABLE __schemaprops__ ("
 		+ " name VARCHAR NOT NULL, "
 		+ "	value VARCHAR, "
@@ -392,18 +390,25 @@ SqlBuilder.prototype.filterSQL = function(filterClauses) {
 
 		} else if (filter.op == 'btwn') {
 
+			if ( ! filter.value.length == 2) {
+				throw new Error(
+					util.format("filter.value %s mismatch", filter.value));
+			}
+
 			var clause = util.format('(%s."%s" BETWEEN ? AND ?)', 
 							table.viewName(), filter.field);
 				
-			assert(filter.value.length && filter.value.length >= 2, 
-				util.format("filter.value %s mismatch", filter.value));
-
 			sql_clauses.push(clause);
 			sql_params.push(filter.value[0]);
 			sql_params.push(filter.value[1]);
 
 
 		} else if (filter.op == 'in') {
+
+			if ( ! filter.value.length > 0) {
+				throw new Error(
+					util.format("filter.value %s mismatch", filter.value));
+			}
 
 			var inParams = _.times(filter.value.length, function(fn) { 
 					return "?"; 
@@ -412,9 +417,6 @@ SqlBuilder.prototype.filterSQL = function(filterClauses) {
 			var clause = util.format('(%s."%s" IN (%s))',
 							table.viewName(), filter.field, 
 							inParams.join(','));
-
-			assert(filter.value.length, 
-				util.format("filter.value %s mismatch", filter.value));
 
 			sql_clauses.push(clause);
 			sql_params = sql_params.concat(filter.value); 
@@ -439,9 +441,9 @@ SqlBuilder.prototype.filterSQL = function(filterClauses) {
 			
 				sql_clauses.push(clause);
 
-				var searchValue = '%' + filter.value + '%';
-				if (filter.value[0] == ' ') {
-					searchValue = filter.value.substr(1) + '%';
+				var searchValue = filter.value + '%';
+				if (filter.value[0] == '*') {
+					searchValue = '%' + filter.value.substr(1) + '%';
 				}
 				sql_params.push(searchValue); 
 			}

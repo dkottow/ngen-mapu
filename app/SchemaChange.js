@@ -47,20 +47,19 @@ SchemaChange.OPS = {
 
 SchemaChange._create = function(patch, schema) {
 
-	//ordering is important, test more specific paths first
+	this.schema = schema;
 
+	//determine if patch acts on (non)empty table
 	var isEmpty = false;
-
 	var match = patch.path.match(/^\/tables\/(\w+)/);
 	if (match) {
 		var table = schema.table(match[1]);
 		if (table && table.props.row_count == 0) {
-			isEmpty = true;		
+			isEmpty = true;	
 		}
 	}
 
-	this.schema = schema;
-
+	//ordering is important, test more specific paths first
 	if (SCFieldProps.test(patch)) {
 		return new SCFieldProps(patch, schema);
 		
@@ -96,10 +95,6 @@ SchemaChange._create = function(patch, schema) {
 SchemaChange.create = function(patches, schema) {
 	log.debug({patches: patches}, 'SchemaChange.create()');
 
-	if (patches.op) {
-		return SchemaChange._create(patches, schema);
-	}
-
 	var patchSequences = {}; //sequence of changes of same type
 
 	 _.each(patches, function(patch) {
@@ -123,16 +118,16 @@ SchemaChange.create = function(patches, schema) {
 	}, this);
 	
 	var changes = [];
-	_.each(patchSequences, function(changePatch) {			
-		var change = changePatch[0].change;
+	_.each(patchSequences, function(seq) {			
+		var change = seq[0].change;
 		if (change.obj) {
-			var patches = _.pluck(changePatch, 'patch');
+			var patches = _.pluck(seq, 'patch');
 			jsonpatch.apply(change.obj, patches);
 		}
 		changes.push(change);
 	});
 	
-	return { changes: changes };
+	return changes;
 }
 
 SchemaChange.prototype.key = function() {

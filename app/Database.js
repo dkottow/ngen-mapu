@@ -645,6 +645,7 @@ Database.prototype.patchSchema = function(patches, cbResult) {
 		log.debug({patches: patches}, 'Database.patchSchema()...');
 		var me = this;
 
+		//obtains table row counts
 		me.getInfo(function(err, schemaInfo) {
 			if (err) {
 				cbResult(err, null);
@@ -652,7 +653,6 @@ Database.prototype.patchSchema = function(patches, cbResult) {
 			}
 	
 			//take a schema copy 
-
 			var patchedSchema = new Schema();
 			patchedSchema.init(schemaInfo);
 			patchedSchema.setName(me.dbFile);
@@ -666,21 +666,21 @@ Database.prototype.patchSchema = function(patches, cbResult) {
 			try {
 				var changes = SchemaChange.create(patches, patchedSchema);
 			} catch (err) {
-				log.error({err: err, patches: patches}, 
-					"Database.patchSchema() failed.");
+				log.warn({err: err, patches: patches}, 
+					"SchemaChange.create() failed. Unsupported patches");
 				cbResult(err, null);
 				return;
 			}
 
 			//apply changes  
-			patchedSchema.applyChanges(changes.changes);
+			patchedSchema.applyChanges(changes);
 
 			//write patches to database
-			patchedSchema.writeChanges(me.dbFile, changes.changes, 
+			patchedSchema.writeChanges(me.dbFile, changes, 
 				function(err) {
 
 				if (err) {
-					log.error({err: err, changes: changes.changes}, 
+					log.error({err: err, changes: changes}, 
 						"Database.patchSchema() failed.");
 
 					cbResult(err, null);

@@ -7,8 +7,6 @@ var assert = require('assert')
 	, fsext = require('fs-extra')
 	, sqlite3 = require('sqlite3').verbose();
 
-var jsonpatch = require('fast-json-patch');
-
 var Database = require('../app/Database').Database;
 var Schema = require('../app/Schema').Schema; //only for some static var
 	
@@ -364,23 +362,5 @@ describe('Database', function() {
 		});
 	});
 
-  	describe('patchSchema()', function() {		
-		it('write prop patches', function(done) {
-	
-			var prevSchema = JSON.parse(JSON.stringify(db.schema.get())); 
-			
-			//modify schema
-			db.table('customers').props.order = 77;
-
-			var patches = jsonpatch.compare(prevSchema, db.schema.get());			
-			db.patchSchema(patches, function(err, schema) {
-				assert(schema.tables.customers.props.order == 77 );
-				log.info({schema: db.schema.get()}, 
-					"schema after failing to write patches");
-				done();				
-			});
-
-		});
-	});
 });
 

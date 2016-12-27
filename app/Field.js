@@ -61,7 +61,7 @@ var Field = function(fieldDef) {
 		if (fieldDef.disabled) me.disabled = true;
 
 		//property values
-		me.props = fieldDef.props;
+		me.props = fieldDef.props || {};
 
 		me.props.order = me.props.order || 0;
 		me.props.width = me.props.width || me.defaultWidth();
@@ -90,13 +90,14 @@ Field.create = function(fieldDef) {
 
 	assert(_.has(fieldDef, "type"), errMsg + " Type attr missing.");
 
-	if (fieldDef.type.indexOf("VARCHAR") == 0) {
+	if (fieldDef.type.indexOf(Field.TYPES.text) == 0) {
 		return new TextField(fieldDef);
-	} else if (fieldDef.type == "INTEGER") {
+	} else if (fieldDef.type == Field.TYPES.integer) {
 		return new IntegerField(fieldDef);
-	} else if (fieldDef.type.indexOf("NUMERIC") == 0) {
+	} else if (fieldDef.type.indexOf(Field.TYPES.numeric) == 0) {
 		return new NumericField(fieldDef);
-	} else if (fieldDef.type == "DATETIME" || fieldDef.type == "DATE") {
+	} else if (fieldDef.type == Field.TYPES.datetime 
+			|| fieldDef.type == Field.TYPES.date) {
 		return new DateTimeField(fieldDef);
 	}
 
@@ -125,7 +126,7 @@ Field.prototype.defaultSQL = function() {
 		return "DEFAULT 'sql'";
 
 	} else {
-		return "";
+		return '';
 	}
 }
 
@@ -137,7 +138,7 @@ Field.prototype.foreignKeySQL = function() {
 
 Field.prototype.toSQL = function() {
 	var sql = '"' + this.name + '" ' + this.type;
-	if (this.notnull) sql += " NOT NULL";
+	if (this.notnull) sql += ' NOT NULL';
 	sql += " " + this.defaultSQL();
 	sql += " " + this.foreignKeySQL();
 	return sql;
@@ -218,6 +219,14 @@ Field.REF_NAME = 'ref';
 Field.prototype.refName = function() {
 	if (this.name.match(/id$/)) return this.name.replace(/id$/, "ref");
 	else return this.name + "_ref";
+}
+
+Field.TYPES = {
+	'text': 'VARCHAR'
+	, 'integer': 'INTEGER'
+	, 'numeric': 'NUMERIC'
+	, 'date': 'DATE'
+	, 'datetime': 'DATETIME'
 }
 
 var TextField = function(fieldDef) {

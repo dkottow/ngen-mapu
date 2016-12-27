@@ -24,19 +24,28 @@ var _ = require('underscore');
 
 var program = require('commander');
 
-var parser = require('../app/QueryParser.js');
-var Table = require('../app/Table.js').Table;
-var Database = require('../app/Database.js').Database;
+/** globals **/
 
-var log = require('../app/log.js').log;
+//max number of rows queried by any SELECT
+global.row_max_count = 1000 * 1000;
+
+/*** end globals ***/
+
+var logger = require('../log.js');
+logger.winston.loggers.get('dl').remove(logger.winston.loggers.get('dl').transports.console);
+var log = logger.log;
+
+var parser = require('../QueryParser.js');
+var Table = require('../Table.js').Table;
+var Database = require('../Database.js').Database;
 
 program
 	.arguments('<db-file> <table>')
 	.option("-f, --filter <filters>", "query filters")
 	.option("-s, --select <fields>", "output fields")
 	.option("-o, --orderby <ordering>", "order clauses")
-	.option("--skip <N>", "number of rows to skip")
-	.option("--top <N>", "number of rows to return")
+	.option("--skip <n>", "number of rows to skip")
+	.option("--top <n>", "number of rows to return")
 	.action(function (dbFile, table, params) {
 		log.debug({ dbFile: dbFile, table: table }, 'donk-get()');
 
@@ -82,7 +91,7 @@ program
 				}
 		
 				log.trace(result);
-				console.log(result);
+				console.log(JSON.stringify(result));
 			});
 		});
 

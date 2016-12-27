@@ -1,36 +1,37 @@
 {
-  "name": "rest-server",
-  "description": "serves a directory tree of sqlite files through a rest api",
-  "version": "0.0.1",
-  "private": true,
-  "dependencies": {
-    "underscore": "*",
-    "express": "4.x",
-    "body-parser": "*",
-    "jsonwebtoken": "*",
-    "express-jwt": "*",
-    "winston": "*",
-    "dotenv": "*",
-    "sqlite3": "*",
-    "graphlib": "*",
-    "pegjs": "*",
-    "fast-json-patch": "^1.1.2",
-    "node-dir": "*",
-    "tmp": "*",
-    "validator": "*",
-    "commander": "*"
-  },
-  "devDependencies": {
-    "mocha": "*",
-    "request": "*",
-    "fs-extra": "*",
-    "probdist": "*",
-    "random-js": "*"
-  },
-  "main": "server.js",
-  "scripts": {
-    "install" : "cp $DONKEYLIFT_SWAGGER_FILE public/swagger.json",
-    "start": "node server.js",
-    "test": "rm test/log.json; mocha"
+  "name": "rest-server"
+  , "description": "serves a directory tree of sqlite files through a rest api"
+  , "version": "0.0.1"
+  , "private": true
+  , "dependencies": {
+    "underscore": "*"
+    , "express": "4.x"
+    , "body-parser": "*"
+    , "jsonwebtoken": "*"
+    , "express-jwt": "*"
+    , "winston": "*"
+    , "dotenv": "*"
+    , "sqlite3": "*"
+    , "graphlib": "*"
+    , "pegjs": "*"
+    , "fast-json-patch": "^1.1.2"
+    , "node-dir": "*"
+    , "tmp": "*"
+    , "validator": "*"
+    , "commander": "*"
+  }
+  , "devDependencies": {
+    "mocha": "*"
+    , "request": "*"
+    , "fs-extra": "*"
+    , "probdist": "*"
+    , "random-js": "*"
+  }
+  , "main": "server.js"
+  , "bin": { "donk": "./donk/donk.js" }
+  , "scripts": {
+    "install" : "cp $DONKEYLIFT_SWAGGER_FILE public/swagger.json"
+    , "start": "node server.js"
+    , "test": "rm test/log.json; mocha"
   }
 }

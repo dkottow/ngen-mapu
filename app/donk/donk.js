@@ -22,6 +22,5 @@ var program = require('commander');
 program
   .version('0.0.1')
   .command('get <db-file> <table>', 'query database rows')
-  .command('insert <db-file>', 'insert database rows')
-  .command('update <db-file>', 'update database rows')
+  .command('put <db-file> <table>', 'insert/update database rows')
   .parse(process.argv);

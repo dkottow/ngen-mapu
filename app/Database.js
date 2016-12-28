@@ -214,6 +214,15 @@ Database.prototype.all = function(tableName, options, cbResult) {
 		var limit = options.limit || global.row_max_count;
 		var offset = options.offset || 0;
 
+		var query = {
+			table : tableName
+			, select: fields
+			, filter : filterClauses
+			, orderby: order
+			, top: limit
+			, skip: offset 
+		};
+
 		var debug = options.debug || false;
 
 		log.trace(fields + " from " + table.name 
@@ -245,13 +254,15 @@ Database.prototype.all = function(tableName, options, cbResult) {
 								"Database.all() failed. ");	
 							cbResult(err, null);
 						} else {
-							var expectedCount = countRows[0].count - offset;
 
 							var result = { 
 								rows: rows, 
 								count: countRows[0].count,
-								totalCount: countRows[1].count
-							}
+								totalCount: countRows[1].count,
+								query: query
+							};
+
+							var expectedCount = countRows[0].count - offset;
 
 							if (rows.length < expectedCount) {
 								result.nextOffset = offset + limit;
@@ -271,7 +282,7 @@ Database.prototype.all = function(tableName, options, cbResult) {
 
 	} catch(err) {
 		log.error({err: err}, "Database.all() exception.");	
-		cbResult(err, []);
+		cbResult(err, null);
 	}
 }
 

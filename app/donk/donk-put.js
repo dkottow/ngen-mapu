@@ -34,13 +34,14 @@ var Database = require('../Database.js').Database;
 program
 	.arguments('<db-file>')
 	.option("-u, --update", "update existing rows only")
-	.option("-t, --table", "insert into this table. overwrites file table")
+	.option("-t, --table <table>", "insert into this table. overwrites file table")
 	.option("-U, --user <username>", "username that adds rows")
 	.action(function (dbFile, params) {
 		log.debug({ dbFile: dbFile }, 'donk-put()');
 
 		var options = {};
 		if (params.user) options.user = { name: params.user };
+		if (params.table) options.table = params.table;
 
 		var db = new Database(dbFile);
 

@@ -32,10 +32,11 @@ var parser = require('../QueryParser.js');
 var Database = require('../Database.js').Database;
 
 program
-	.arguments('<db-file> <table>')
+	.arguments('<db-file>')
 	.option("-u, --update", "update existing rows only")
+	.option("-t, --table", "insert into this table. overwrites file table")
 	.option("-U, --user <username>", "username that adds rows")
-	.action(function (dbFile, table, params) {
+	.action(function (dbFile, params) {
 		log.debug({ dbFile: dbFile }, 'donk-put()');
 
 		var options = {};
@@ -49,16 +50,17 @@ program
 				return;
 			}
 
-			if ( ! db.table(table)) {
-				console.error(util.format("Table '%s' not found.", table));
-				return;
-			}
-
 			readStdIn(function(data) {
 				log.debug({ data: data }, 'donk-put()');
 			
-				var rows = JSON.parse(data).rows;
-			
+				data = JSON.parse(data);
+				var rows = data.rows;
+				var table = options.table || data.table || data.query.table;				
+				if ( ! db.table(table)) {
+					console.error(util.format("Table '%s' not found.", table));
+					return;
+				}
+
 				if (params.update) {
 					db.update(table, rows, options, function(err, result) {
 						if (err) {

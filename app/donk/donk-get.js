@@ -41,9 +41,9 @@ var Database = require('../Database.js').Database;
 
 program
 	.arguments('<db-file> <table>')
-	.option("-f, --filter <filters>", "query filters")
-	.option("-s, --select <fields>", "output fields")
-	.option("-o, --orderby <ordering>", "order clauses")
+	.option("-f, --filter <filters>", "query filters (use and keyword in between)")
+	.option("-s, --select <fields>", "output fields (comma separated)")
+	.option("-o, --orderby <ordering>", "order clauses (comma separated)")
 	.option("--skip <n>", "number of rows to skip")
 	.option("--top <n>", "number of rows to return")
 	.action(function (dbFile, table, params) {
@@ -51,7 +51,7 @@ program
 
 		var options = {};
 		if (params.filter) {
-			options.filter = _.map(params.filter.split('|'), function(f) { return f.trim(); });
+			options.filter = _.map(params.filter.split('and'), function(f) { return f.trim(); });
 			options.filter = parser.parse('$filter=' + options.filter.join('\t')).value;
 		}
 		if (params.select) {

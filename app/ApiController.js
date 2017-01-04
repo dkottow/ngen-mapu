@@ -242,12 +242,11 @@ Controller.prototype.getAccount = function(req, res) {
 	
 			result.url = '/' + path.account.name; 
 
-			var databases = me.access.filterDatabases(path, result.databases, req.user);
-			_.each(databases, function(db) {
+			result.databases = me.access.filterDatabases(path, result.databases, req.user);
+			_.each(result.databases, function(db) {
 				db.url = '/' + path.account.name + '/' + db.name;
 			});
-			result.databases = _.object(_.pluck(databases, 'name'), databases);
-	
+
 			log.trace(result);
 			res.send(result); 
 			log.info({req: req}, '...Controller.getAccount().');
@@ -284,13 +283,12 @@ Controller.prototype.getDatabase = function(req, res) {
 	
 			result.url = '/' + path.account.name + '/' + path.db.name();
 	
-			var tables = me.access.filterTables(path, result.tables, req.user);
-			_.each(tables, function(t) {
+			result.tables = me.access.filterTables(path, result.tables, req.user);
+			_.each(result.tables, function(t) {
 				t.url = '/' + path.account.name 
 						+ '/' + path.db.name() + '/' + t.name;
 			});
-			result.tables = _.object(_.pluck(tables, 'name'), tables);
-	
+
 			log.trace(result);
 			res.send(result); 
 			log.info({req: req}, '...Controller.getDatabase().');

@@ -283,6 +283,7 @@ AccessControl.prototype.filterDatabases = function(path, databases, user) {
 			return dbUser.name == user.name;
 		});
 	});
+	result = _.object(_.pluck(result, 'name'), result);
 	log.trace({ result: result }, '...AccessControl.filterDatabases()'); 
 	return result;
 }
@@ -298,6 +299,7 @@ AccessControl.prototype.filterTables = function(path, tables, user) {
 		var access = path.db.table(t.name).access(user);
 		return access.read != Table.ROW_SCOPES.NONE;
 	});
+	result = _.object(_.pluck(result, 'name'), result);
 
 	log.trace({ result: result }, '...AccessControl.filterTables()'); 
 	log.trace('...AccessControl.filterTables()'); 

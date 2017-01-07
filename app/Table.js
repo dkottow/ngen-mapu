@@ -282,30 +282,96 @@ Table.prototype.foreignKeys = function() {
 	});
 }
 
+Table.rowAliasView = function(name) {
+	return 'vra_' + name;
+}
+
+Table.prototype.rowAliasView = function() { 
+	return Table.rowAliasView(this.name); 
+}
+
 Table.prototype.viewName = function() { return 'v_' + this.name; }
 Table.prototype.ftsName = function() { return 'fts_' + this.name; }
 
-Table.prototype.virtualFields = function() {
-
-	return _.map(this.foreignKeys(), function(f) { 
-		return f.refName();
-	});
-}
 
 Table.prototype.viewFields = function() {
 
-	var enabledFields = _.filter(this.fields(), function(f) {
-		return f.disabled != true;
+	var refField = Field.ROW_ALIAS;
+	var fkRefs = _.map(this.foreignKeys(), function(f) { 
+		return f.refName();
 	});
 
-	return [Field.REF_NAME]
-			.concat( _.pluck(enabledFields, 'name'))
-			.concat(this.virtualFields());
+	var enabledFields = this.enabledFields();
+
+	var result = [refField]
+			.concat(enabledFields)
+			.concat(fkRefs);
+
+	log.debug({result: result}, '...Table.viewFields()');
+	return result;
+}
+
+Table.prototype.enabledFields = function() {
+	var enabledFields = _.pluck(_.filter(this.fields()
+		, function(f) {
+			return f.disabled != true;
+		})
+	, 'name');
+
+	return enabledFields;
+}
+
+
+Table.prototype.refFields = function() {
+
+	var refField = util.format('%s.%s'
+				, this.rowAliasView()
+				, Field.ROW_ALIAS);
+
+	var fkRefs = _.map(this.foreignKeys(), function(fk) {
+		return util.format('%s.%s'
+				, Table.rowAliasView(fk.fk_table)
+				, Field.ROW_ALIAS)
+	});
+	
+	var result = [refField].concat(fkRefs);
+
+	return result;
+}
+
+Table.prototype.refSQL = function() {
+	var fkRefTables = _.map(this.foreignKeys(), function(fk) {
+		return Table.rowAliasView(fk.fk_table);
+	});
+
+	var refTables = [this.rowAliasView()].concat(fkRefTables);
+
+	var refClauses = [
+			util.format('%s.id = %s.id'
+				, this.rowAliasView()
+				, this.name)
+		].concat(
+			_.map(this.foreignKeys(), function(fk) {
+				return util.format('%s.id = %s."%s"'
+				, Table.rowAliasView(fk.fk_table) 
+				, this.name
+				, fk.name);
+			}, this)
+	);
+
+	var result = {
+		tables: refTables.join(', '),
+		query: refClauses.join(' AND ')
+	};
+
+	return result;
 }
 
 Table.prototype.assertQueryField = function(fieldName) {
 	//must be a view field or the name of the table (for search filter)
-	if ( ! _.contains(this.viewFields(), fieldName) && fieldName != Table.ALL_FIELDS) {
+	if ( ! _.contains(this.viewFields(), fieldName) 
+		&& fieldName != Table.ALL_FIELDS) {
+
 		throw new Error("unknown field '" + fieldName + "'");
 	}			
 }
@@ -346,12 +412,15 @@ Table.prototype.allFieldClauses = function() {
 
 /* 
 
-use triggers to populate https://github.com/coolaj86/sqlite-fts-demo
+use triggers to populate FTS full text search
+see https://github.com/coolaj86/sqlite-fts-demo
 
-sqlite> create trigger orders_ai after insert on orders begin    
-...>    insert into fts_orders (docid,content) select id as docid, customers_ || ' yes' as content from v_orders where id = new.id; 
-...>end;
-
+sqlite> create trigger <table>_ai after insert on <table> 
+		begin    
+			insert into fts_orders (docid,content) 
+			select id as docid, <concat fields> AS content from <table> 
+			where id = new.id; 
+		end;
 */
 
 Table.prototype.dropTriggerSQL = function() {
@@ -364,17 +433,28 @@ Table.prototype.dropTriggerSQL = function() {
 }
 
 Table.prototype.createTriggerSQL = function() {
-	var viewFields = this.viewFields();
+	var refSQL = this.refSQL();
+	var tables = this.name + ', ' + refSQL.tables;
 
-	var content = _.map(viewFields, function(f) {
-		return util.format("COALESCE(\"%s\", '')", f);
-	}).join(" || ' ' || ");	
+	var fieldContent = _.map(this.fields(), function(f) {
+		return util.format('COALESCE(%s."%s", %s)', this.name, f.name, "''");
+	}, this);
+
+	var refContent = _.map(this.refFields(), function(rf) {
+		return util.format("COALESCE(%s, '')", rf);
+	});
+
+	var tableId = this.name + '.id';
+
+	var content = fieldContent.concat(refContent).join(" || ' ' || ");	
 
 	var sql = 'CREATE TRIGGER tgr_' + this.name + '_ai'
 		+ ' AFTER INSERT ON ' + this.name
 		+ ' BEGIN\n INSERT INTO ' + this.ftsName() + ' (docid, content) '
-		+ ' SELECT id AS docid, ' + content + ' as content'
-		+ ' FROM ' + this.viewName() + ' WHERE id = new.id;'
+		+ ' SELECT ' + tableId + ' AS docid, ' + content + ' as content'
+		+ ' FROM ' + tables 
+		+ ' WHERE ' + tableId + ' = new.id'
+		+ ' AND ' + refSQL.query + ';'
 		+ '\nEND;\n\n';
 
 	sql += 'CREATE TRIGGER tgr_' + this.name + '_bu '
@@ -386,8 +466,10 @@ Table.prototype.createTriggerSQL = function() {
 	sql += 'CREATE TRIGGER tgr_' + this.name + '_au'
 		+ ' AFTER UPDATE ON ' + this.name
 		+ ' BEGIN\n INSERT INTO ' + this.ftsName() + ' (docid, content) '
-		+ ' SELECT id AS docid, ' + content + ' as content'
-		+ ' FROM ' + this.viewName() + ' WHERE id = new.id;'
+		+ ' SELECT ' + tableId + ' AS docid, ' + content + ' as content'
+		+ ' FROM ' + tables 
+		+ ' WHERE ' + tableId + ' = new.id'
+		+ ' AND ' + refSQL.query + ';'
 		+ '\nEND;\n\n';
 
 	sql += 'CREATE TRIGGER tgr_' + this.name + '_bd '
@@ -412,7 +494,7 @@ Table.prototype.createSearchSQL = function() {
 }
 
 Table.prototype.dropViewSQL = function() {
-	return 'DROP VIEW IF EXISTS ' + this.viewName() + ';\n'
+	return 'DROP VIEW IF EXISTS ' + this.rowAliasView() + ';\n'
 }
 
 Table.prototype.dropSQL = function() {

@@ -132,7 +132,7 @@ describe('Sandwiches DB', function() {
 	it('SqlBuilder.createViewSQL', function() {
 		//var table = sqlBuilder.graph.table('products_in_orders');
 		var table = sqlBuilder.graph.table('orders');
-		var result = sqlBuilder.createViewSQL(table);
+		var result = sqlBuilder.createRowAliasViewSQL(table);
 		log.info(result);
 	});
 
@@ -193,7 +193,7 @@ describe('Soccer DB', function() {
 
 	it('SqlBuilder.createViewSQL', function() {
 		var table = sqlBuilder.graph.table('Team');
-		var result = sqlBuilder.createViewSQL(table);
+		var result = sqlBuilder.createRowAliasViewSQL(table);
 		log.info(result);
 	});
 });

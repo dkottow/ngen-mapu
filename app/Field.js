@@ -214,7 +214,7 @@ Field.prototype.toJSON = function() {
 	return result;
 }
 
-Field.REF_NAME = 'ref';
+Field.ROW_ALIAS = 'ref';
 
 Field.prototype.refName = function() {
 	if (this.name.match(/id$/)) return this.name.replace(/id$/, "ref");

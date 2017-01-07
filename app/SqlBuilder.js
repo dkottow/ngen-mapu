@@ -103,7 +103,7 @@ SqlBuilder.prototype.statsSQL = function(table, fieldExpr, filterClauses)
 
 SqlBuilder.prototype.createTableSQL = function(table) {
 	return table.createSQL()
-		+ this.createViewSQL(table)
+		+ this.createRowAliasViewSQL(table)
 		+ table.createSearchSQL();
 }
 
@@ -122,7 +122,7 @@ SqlBuilder.prototype.createSQL = function(schema) {
 	}).join('\n');
 
 	var createViewSQL = _.map(tables, function(t) {
-		var viewSQL = this.createViewSQL(t);
+		var viewSQL = this.createRowAliasViewSQL(t);
 		//log.debug(viewSQL);
 		return viewSQL;
 	}, this).join('\n');
@@ -137,7 +137,7 @@ SqlBuilder.prototype.createSQL = function(schema) {
 			+ createViewSQL + '\n\n'
 			+ createSearchSQL + '\n\n';
 	
-	log.trace({sql: sql}, 'SqlBuilder.createSQL');
+	log.debug({sql: sql}, 'SqlBuilder.createSQL');
 	return sql;
 }
 
@@ -162,7 +162,8 @@ SqlBuilder.prototype.updatePropSQL = function(patches) {
 
 SqlBuilder.prototype.sanitizeFieldClauses = function(table, fieldClauses) {
 
-	fieldClauses = fieldClauses == Table.ALL_FIELDS ? table.allFieldClauses() : fieldClauses;
+	fieldClauses = fieldClauses == Table.ALL_FIELDS 
+				? table.allFieldClauses() : fieldClauses;
 
 	var result = _.map(fieldClauses, function(fc) {
 		var item = {};
@@ -207,7 +208,6 @@ SqlBuilder.prototype.querySQL = function(table, fields, filterClauses) {
 	var filterSQL = this.filterSQL(filterClauses);
 	var fieldSQL = this.fieldSQL(table, fields);
 
-
 	var selectSQL = 'SELECT DISTINCT ' + fieldSQL 
 					+ ' FROM ' + table.viewName() 
 					+ joinSQL.tables + joinSearchSQL.tables
@@ -222,41 +222,7 @@ SqlBuilder.prototype.querySQL = function(table, fields, filterClauses) {
 	};
 }
 
-SqlBuilder.prototype.createViewSQL = function(table) {
-	var me = this;
-	
-	//group foreign keys by referenced table to number referenced tables
-	//e.g. persons as persons01, persons as persons02 etc.
-	var fk_groups = _.groupBy(table.foreignKeys(), function(fk) {
-		return fk.fk_table;
-	});
-	var aliasFn = function(fk) {
-		return 'v_' + fk.fk_table
-			+ ('00' + (fk_groups[fk.fk_table].indexOf(fk) + 1)).substr(-2);
-	}
-
-	var fk_tables = _.map(table.foreignKeys(), function(fk) {
-		var fk_table = me.graph.table(fk.fk_table);
-		return util.format('%s AS %s', fk_table.viewName(), aliasFn(fk));
-	});
-
-	var fk_clauses = _.map(table.foreignKeys(), function(fk) {
-		var fk_table = me.graph.table(fk.fk_table);
-
-		return util.format('%s.id = %s."%s"', 
-			aliasFn(fk), table.name, fk.name);
-	});
-
-	var fk_join = { tables: '', query: '' };
-	if (fk_tables.length > 0) {
-		fk_join = {
-			tables: ', ' + fk_tables.join(', '),
-			query: ' AND ' + fk_clauses.join(' AND ')
-		};
-	}
-
-		
-	//TODO make sure row_alias only references existing table/fields
+SqlBuilder.prototype.createRowAliasViewSQL = function(table) {
 
 	var ref_tables = _.map(_.filter(table.row_alias, function(ref) {
 			return ref.indexOf('.') >= 0;		
@@ -264,15 +230,7 @@ SqlBuilder.prototype.createViewSQL = function(table) {
 		return ref.split('.')[0];	
 	});
 
-	var ref_join = this.joinSQL(table.name, ref_tables, { joinViews: true });
-	var r = new RegExp('\\b' + table.viewName() + '\\b', 'g');
-	ref_join.query = ref_join.query.replace(r, table.name);
-
-	var fk_fields = _.map(table.foreignKeys(), function(fk) {
-		return util.format('%s."%s" AS "%s"', 
-			aliasFn(fk), Field.REF_NAME, 
-			fk.refName()); 
-	});
+	var ref_join = this.joinSQL(table.name, ref_tables);
 
 	var ref_field = _.reduce(table.row_alias, function(memo, f) {
 		var result;
@@ -280,35 +238,33 @@ SqlBuilder.prototype.createViewSQL = function(table) {
 			result = util.format('%s."%s"', table.name, f);
 		} else {
 			result = util.format('%s."%s"', 
-				me.graph.table(f.split('.')[0]).viewName(),
+				this.graph.table(f.split('.')[0]).name,
 				f.split('.')[1]);
 		}
 		if ( ! _.isEmpty(memo)) {
 			result = memo + " || ' ' || " + result;
 		}
 		return result;
-	}, '');
+	}, '', this);
 
 
 	var ref_id =  util.format("'[' || %s.id || ']' AS %s", 
 		table.name,
-		Field.REF_NAME
+		Field.ROW_ALIAS
 	);
 	
 	ref_field = ref_field.length > 0
 		? "COALESCE(" + ref_field + ", '') || ' ' || " + ref_id 
 		: ref_id;
 
-	var table_fields = _.map(table.fields(), function(f) {
-		return util.format('%s."%s" AS "%s"', table.name, f.name, f.name);
-	});
+	var id_field = util.format('%s.id AS id', table.name);
 
-	var fields = [ref_field].concat(table_fields).concat(fk_fields);
+	var fields = [id_field, ref_field];
 
-	var sql = 'CREATE VIEW ' + table.viewName() + ' AS '
+	var sql = 'CREATE VIEW ' + table.rowAliasView() + ' AS '
 		+ ' SELECT ' + fields.join(', ')
-		+ ' FROM ' + table.name + ref_join.tables + fk_join.tables
-		+ ' WHERE 1=1 ' + ref_join.query + fk_join.query + ';';
+		+ ' FROM ' + table.name + ref_join.tables
+		+ ' WHERE 1=1 ' + ref_join.query + ';';
 
 	return sql;
 }

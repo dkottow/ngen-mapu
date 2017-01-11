@@ -49,7 +49,7 @@ describe('Sandwiches DB', function() {
 	});	
 
 
-	it('SqlBuilder.joinSQL', function() {
+	it('SqlBuilder.joinGraphSQL', function() {
 		
 		_.each([
 			  ['products', 'orders']
@@ -59,7 +59,7 @@ describe('Sandwiches DB', function() {
 		], function(tables) {
 			log.info({tables: tables});
 
-			var sql = sqlBuilder.joinSQL(tables[0], tables);
+			var sql = sqlBuilder.joinGraphSQL(tables[0], tables);
 			log.info({sql: sql});
 
 		});

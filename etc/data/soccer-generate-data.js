@@ -20,6 +20,7 @@ var log = require(APP_PATH + 'log').log;
 describe('Database', function() {
 
 	describe('create_teams()', function() {
+		this.timeout(10000);
 
 		var dbFile = "soccer.sqlite";
 		var db = new Database(dbFile);
@@ -38,7 +39,7 @@ describe('Database', function() {
 					log.info(err);
 				} else {
 					var allDone = _.after(4, function() {
-						log.info({soccerData: soccerData}, "before.init()");
+						log.trace({soccerData: soccerData}, "before.init()");
 						done();
 					});
 					db.all('Venue', function(err, result) {
@@ -118,7 +119,6 @@ describe('Database', function() {
 						eventDate.setDate(eventDate.getDate() + 1);
 					} 
 
-console.log(eventDate);
 					var i = gc * 2;
 					var game = {
 						EventDate: eventDate.toISOString().split('T')[0]
@@ -146,6 +146,8 @@ console.log(eventDate);
 			db.insert('Game', games, function(err, result) {
 				if (err) throw new Error(err);
 				var ids = result.rows;
+console.log('*********');
+console.log(result);
 				_.each(_.zip(games, ids), function(game_id) {
 					game_id[0].id = game_id[1].id;
 				});
@@ -154,6 +156,7 @@ console.log(eventDate);
 		});
 
 
+/*
 		it('Formations. Pick 11 players from each team and each game.', function(done) {
 			var teams = soccerData.teams;
 			var games = soccerData.games;
@@ -168,15 +171,16 @@ console.log(eventDate);
 			});
 
 			soccerData.formations = formations;
+
+
 			db.insert('Formation', formations, function(err, ids) {
 				if (err) throw new Error(err);
 				done();	
 			});
 
 		});
-
+*/
 		function get_formation(game, team) {
-			console.log(game.EventDate + " " + team.Name);
 			var players = soccerData.players;
 			var allPos = soccerData.positions;
 			var fieldPos = soccerData.fieldPositions;
@@ -212,7 +216,8 @@ console.log(eventDate);
 
 				if (pickPlayer) {
 
-console.log(pos.Code + " - " + pickPlayer.Name + " " + allPos[pickPlayer.PreferredPosition_id]);
+					log.debug(pos.Code + " - " + pickPlayer.Name);
+
 					formation.push({
 							Player_id: pickPlayer.id
 							, Position_id: pos.id

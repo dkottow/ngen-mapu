@@ -282,32 +282,29 @@ Table.prototype.foreignKeys = function() {
 	});
 }
 
-Table.rowAliasView = function(name) {
-	return 'vra_' + name;
+Table.rowAliasView = function(name, idx) {
+	if (idx) return 'vra_' + name + ('00' + idx).substr(-2);
+	else return 'vra_' + name;
 }
 
-Table.prototype.rowAliasView = function() { 
-	return Table.rowAliasView(this.name); 
+Table.prototype.rowAliasView = function(idx) { 
+	return Table.rowAliasView(this.name, idx); 
 }
 
 Table.prototype.viewName = function() { return 'v_' + this.name; }
 Table.prototype.ftsName = function() { return 'fts_' + this.name; }
 
 
-Table.prototype.viewFields = function() {
-
-	var refField = Field.ROW_ALIAS;
+Table.prototype.refFields = function() {
 	var fkRefs = _.map(this.foreignKeys(), function(f) { 
 		return f.refName();
 	});
+	return [ Field.ROW_ALIAS ].concat(fkRefs);
+}
 
-	var enabledFields = this.enabledFields();
-
-	var result = [refField]
-			.concat(enabledFields)
-			.concat(fkRefs);
-
-	log.debug({result: result}, '...Table.viewFields()');
+Table.prototype.viewFields = function() {
+	var result = this.enabledFields().concat(this.refFields());
+	log.trace({result: result}, '...Table.viewFields()');
 	return result;
 }
 
@@ -322,6 +319,7 @@ Table.prototype.enabledFields = function() {
 }
 
 
+/*
 Table.prototype.refFields = function() {
 
 	var refField = util.format('%s.%s'
@@ -338,33 +336,34 @@ Table.prototype.refFields = function() {
 
 	return result;
 }
+*/
 
-Table.prototype.refSQL = function() {
-	var fkRefTables = _.map(this.foreignKeys(), function(fk) {
-		return Table.rowAliasView(fk.fk_table);
-	});
-
-	var refTables = [this.rowAliasView()].concat(fkRefTables);
-
-	var refClauses = [
-			util.format('%s.id = %s.id'
-				, this.rowAliasView()
-				, this.name)
-		].concat(
-			_.map(this.foreignKeys(), function(fk) {
-				return util.format('%s.id = %s."%s"'
-				, Table.rowAliasView(fk.fk_table) 
-				, this.name
-				, fk.name);
-			}, this)
-	);
-
+Table.prototype.rowAliasSQL = function(idx) {
 	var result = {
-		tables: refTables.join(', '),
-		query: refClauses.join(' AND ')
-	};
-
+		table: this.rowAliasView(idx),
+		clause: util.format('%s.id = %s.id'
+					, this.rowAliasView(idx)
+					, this.name)
+	}
+	if (idx) {
+		result.alias = this.rowAliasView(idx);
+	}
 	return result;
+}
+
+Table.prototype.fkAliasSQL = function(fk, idx) {
+	
+	var result = {
+		table: Table.rowAliasView(fk.fk_table),
+		clause: util.format('%s.id = %s."%s"'
+					, Table.rowAliasView(fk.fk_table, idx) 
+					, this.name
+					, fk.name)
+	};
+	if (idx) {
+		result.alias = Table.rowAliasView(fk.fk_table, idx);
+	}
+	return result;	
 }
 
 Table.prototype.assertQueryField = function(fieldName) {
@@ -396,6 +395,7 @@ Table.prototype.addFieldSQL = function(field) {
 	return sql;
 }
 
+/*
 function tableAlias(name, idx) {
 	return name + '_' + idx;
 }
@@ -403,6 +403,7 @@ function tableAlias(name, idx) {
 Table.prototype.alias = function(idx) {
 	return tableAlias(this.name, idx);
 }
+*/
 
 Table.prototype.allFieldClauses = function() {
 	return _.map(this.viewFields(), function(vf) {
@@ -433,28 +434,55 @@ Table.prototype.dropTriggerSQL = function() {
 }
 
 Table.prototype.createTriggerSQL = function() {
-	var refSQL = this.refSQL();
-	var tables = this.name + ', ' + refSQL.tables;
+
+	//group foreign keys by referenced table to number referenced tables
+	//e.g. vra_team as vra_team01, vra_team as vra_team02 etc.
+	var fk_groups = _.groupBy(this.foreignKeys(), function(fk) {
+		return fk.fk_table;
+	});
+
+	var fkSQL = _.map(this.foreignKeys(), function(fk) {
+		return this.fkAliasSQL(fk, 
+						fk_groups[fk.fk_table].indexOf(fk) + 1);
+	}, this);
+
+	var rowAliasSQL = this.rowAliasSQL();
+
+	var tables = [this.name, rowAliasSQL.table];
+	var fkAlias = _.map(fkSQL, function(ref) {
+		return util.format('%s AS %s', ref.table, ref.alias); 
+	});
+
+	tables = [this.name, rowAliasSQL.table].concat(fkAlias);
 
 	var fieldContent = _.map(this.fields(), function(f) {
 		return util.format('COALESCE(%s."%s", %s)', this.name, f.name, "''");
 	}, this);
 
-	var refContent = _.map(this.refFields(), function(rf) {
-		return util.format("COALESCE(%s, '')", rf);
+	var refCoalesceFn = function(table) {
+		return util.format("COALESCE(%s.ref, '')", table);
+	};
+
+	fieldContent.push(refCoalesceFn(rowAliasSQL.table));
+
+	_.each(fkSQL, function(fk) {
+		fieldContent.push(refCoalesceFn(fk.alias));
 	});
+
+	var refClauses = _.pluck(fkSQL, 'clause');
+	refClauses = [ rowAliasSQL.clause ].concat(refClauses);
 
 	var tableId = this.name + '.id';
 
-	var content = fieldContent.concat(refContent).join(" || ' ' || ");	
+	var content = fieldContent.join(" || ' ' || ");	
 
 	var sql = 'CREATE TRIGGER tgr_' + this.name + '_ai'
 		+ ' AFTER INSERT ON ' + this.name
 		+ ' BEGIN\n INSERT INTO ' + this.ftsName() + ' (docid, content) '
 		+ ' SELECT ' + tableId + ' AS docid, ' + content + ' as content'
-		+ ' FROM ' + tables 
+		+ ' FROM ' + tables.join(', ') 
 		+ ' WHERE ' + tableId + ' = new.id'
-		+ ' AND ' + refSQL.query + ';'
+		+ ' AND ' + refClauses.join(' AND ') + ';'
 		+ '\nEND;\n\n';
 
 	sql += 'CREATE TRIGGER tgr_' + this.name + '_bu '
@@ -467,9 +495,9 @@ Table.prototype.createTriggerSQL = function() {
 		+ ' AFTER UPDATE ON ' + this.name
 		+ ' BEGIN\n INSERT INTO ' + this.ftsName() + ' (docid, content) '
 		+ ' SELECT ' + tableId + ' AS docid, ' + content + ' as content'
-		+ ' FROM ' + tables 
+		+ ' FROM ' + tables.join(', ') 
 		+ ' WHERE ' + tableId + ' = new.id'
-		+ ' AND ' + refSQL.query + ';'
+		+ ' AND ' + refClauses.join(' AND ') + ';'
 		+ '\nEND;\n\n';
 
 	sql += 'CREATE TRIGGER tgr_' + this.name + '_bd '

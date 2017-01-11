@@ -21,12 +21,14 @@ var Field = require('./Field.js').Field;
 var Table = require('./Table.js').Table;
 
 //ugly but avoids circular requires with Schema.js
-var Schema_PragmaSQL = "PRAGMA journal_mode=WAL;\n\n";
-var Schema_CreateTableSQL = "CREATE TABLE __schemaprops__ ("
+var Schema = {
+	PragmaSQL: "PRAGMA journal_mode=WAL;\n\n",
+	CreateTableSQL: "CREATE TABLE __schemaprops__ ("
 		+ " name VARCHAR NOT NULL, "
 		+ "	value VARCHAR, "
 		+ "	PRIMARY KEY (name) "
-		+ ");\n\n";
+		+ ");\n\n"
+};
 
 
 var log = require('./log.js').log;
@@ -108,8 +110,8 @@ SqlBuilder.prototype.createTableSQL = function(table) {
 }
 
 SqlBuilder.prototype.createSQL = function(schema) {
-	var createSysTablesSQL = Schema_PragmaSQL
-			+ Schema_CreateTableSQL
+	var createSysTablesSQL = Schema.PragmaSQL
+			+ Schema.CreateTableSQL
 			+ Table.CreateTableSQL
 			+ Field.CreateTableSQL;
 
@@ -121,7 +123,7 @@ SqlBuilder.prototype.createSQL = function(schema) {
 		return t.createSQL();
 	}).join('\n');
 
-	var createViewSQL = _.map(tables, function(t) {
+	var createRowAliasViewSQL = _.map(tables, function(t) {
 		var viewSQL = this.createRowAliasViewSQL(t);
 		//log.debug(viewSQL);
 		return viewSQL;
@@ -134,7 +136,7 @@ SqlBuilder.prototype.createSQL = function(schema) {
 	var sql = createSysTablesSQL + '\n\n'
 			+ sysTablesInsertSQL + '\n\n'
 			+ createTableSQL + '\n\n'
-			+ createViewSQL + '\n\n'
+			+ createRowAliasViewSQL + '\n\n'
 			+ createSearchSQL + '\n\n';
 	
 	log.debug({sql: sql}, 'SqlBuilder.createSQL');
@@ -198,23 +200,16 @@ SqlBuilder.prototype.sanitizeFieldClauses = function(table, fieldClauses) {
 
 SqlBuilder.prototype.querySQL = function(table, fields, filterClauses) {
 
-	//collect filter and field tables
-	var joinTables = _.pluck(filterClauses, 'table')
-		.concat(_.pluck(fields, 'table'));
-	
-	var joinSQL = this.joinSQL(table.name, joinTables, { joinViews: true });
-
-	var joinSearchSQL = this.joinSearchSQL(filterClauses);
+	var joinSQL = this.joinSQL(table, fields, filterClauses);
 	var filterSQL = this.filterSQL(filterClauses);
 	var fieldSQL = this.fieldSQL(table, fields);
 
+	var tables = [table.name].concat(joinSQL.tables);
+	var clauses = ['1=1'].concat(joinSQL.clauses.concat(filterSQL.clauses));
+
 	var selectSQL = 'SELECT DISTINCT ' + fieldSQL 
-					+ ' FROM ' + table.viewName() 
-					+ joinSQL.tables + joinSearchSQL.tables
-					+ ' WHERE 1=1 ' 
-					+ joinSQL.query 
-					+ joinSearchSQL.query 
-					+ filterSQL.query; 
+					+ ' FROM ' + tables.join(', ')
+					+ ' WHERE ' + clauses.join(' AND ');
 
 	return {
 		'sql': selectSQL, 
@@ -230,7 +225,7 @@ SqlBuilder.prototype.createRowAliasViewSQL = function(table) {
 		return ref.split('.')[0];	
 	});
 
-	var ref_join = this.joinSQL(table.name, ref_tables);
+	var ref_join = this.joinGraphSQL(table.name, ref_tables);
 
 	var ref_field = _.reduce(table.row_alias, function(memo, f) {
 		var result;
@@ -260,46 +255,97 @@ SqlBuilder.prototype.createRowAliasViewSQL = function(table) {
 	var id_field = util.format('%s.id AS id', table.name);
 
 	var fields = [id_field, ref_field];
+	var tables = [table.name].concat(ref_join.tables);
+	var clauses = ['1=1'].concat(ref_join.clauses);
 
 	var sql = 'CREATE VIEW ' + table.rowAliasView() + ' AS '
 		+ ' SELECT ' + fields.join(', ')
-		+ ' FROM ' + table.name + ref_join.tables
-		+ ' WHERE 1=1 ' + ref_join.query + ';';
+		+ ' FROM ' + tables.join(', ')
+		+ ' WHERE ' + clauses.join(' AND ') + ';';
 
 	return sql;
 }
 
-SqlBuilder.prototype.joinSQL = function(fromTable, tables, options) {
+SqlBuilder.prototype.joinSQL = function(fromTable, fields, filterClauses) {
+
+	var result = {
+		tables: [],
+		clauses: []
+	};
+
+	var rowAliasSQL = this.joinRowAliasSQL(fields, filterClauses);
+	result.tables = result.tables.concat(rowAliasSQL.tables);
+	result.clauses = result.clauses.concat(rowAliasSQL.clauses);
+
+	//collect filter and field tables
+	var joinTables = _.pluck(filterClauses, 'table')
+		.concat(_.pluck(fields, 'table'));
+
+	var graphSQL = this.joinGraphSQL(fromTable.name, joinTables);
+	result.tables = result.tables.concat(graphSQL.tables);
+	result.clauses = result.clauses.concat(graphSQL.clauses);
+
+	var searchSQL = this.joinSearchSQL(filterClauses);
+	result.tables = result.tables.concat(searchSQL.tables);
+	result.clauses = result.clauses.concat(searchSQL.clauses);
+
+	log.debug({ result: result }, '...SqlBuilder.joinSQL()');
+	return result;
+}
+
+SqlBuilder.prototype.joinRowAliasSQL = function(fieldClauses, filterClauses) {
+	log.trace({ fieldClauses: fieldClauses, filterClauses: filterClauses }
+			, 'SqlBuilder.joinRowAliasSQL()...');
+
+	var result = { tables: [], clauses: [] };
+
+	_.each(fieldClauses, function(fc) {
+		var table = this.graph.table(fc.table);
+		var fk = _.find(table.foreignKeys(), function(fk) {
+			return fk.refName() == fc.field;
+		});
+
+		if (fc.field == Field.ROW_ALIAS) {
+			var rowAliasSQL = table.rowAliasSQL();
+			result.tables.push(rowAliasSQL.table); 		
+			result.clauses.push(rowAliasSQL.clause); 		
+
+		} else if (fk) {
+			var fkAliasSQL = table.fkAliasSQL(fk);
+			result.tables.push(fkAliasSQL.table); 		
+			result.clauses.push(fkAliasSQL.clause); 		
+		}
+	}, this);
+
+	//TODO filterClauses
+
+	log.debug({ result: result }, '...SqlBuilder.joinRowAliasSQL()');
+	return result;
+}
+
+SqlBuilder.prototype.joinGraphSQL = function(fromTable, tables) {
 
 	log.trace('SqlBuilder.joinSQL()...');
 	log.trace({from: fromTable, join: tables});
-	options = options || {};
 
 	var joinTables = _.without(_.uniq(tables), fromTable).sort();
 	if (joinTables.length == 0) {
-		return  { tables: '', query: '' };
+		return  { tables: [], clauses: [] };
 	}
 
 	var joinPath = this.graph.tableJoins(fromTable, joinTables);
-	var joinViews = options.joinViews == true;
 	
 	var me = this;
 
 	var sqlTables = _.map(joinPath, function(join) {
-		return joinViews 
-			? me.graph.table(join.join_table).viewName() 
-			: join.join_table;
+		return join.join_table;
 	});
 
-	var sql_clauses = _.map(joinPath, function(join) {
+	var sqlClauses = _.map(joinPath, function(join) {
 		var idTable = join.id_table;
 		var fkTable = join.fk_table;
-		if (joinViews) {
-			fkTable = me.graph.table(fkTable).viewName();
-			idTable = me.graph.table(idTable).viewName();
-		}	
 		var joinQuery = _.map(join.fk, function(fk) {
-			return util.format('%s.id = %s.%s', idTable, fkTable, fk);
+			return util.format('%s.id = %s."%s"', idTable, fkTable, fk);
 		});		
 		
 		return '(' + joinQuery.join(' OR ') + ')';
@@ -307,11 +353,11 @@ SqlBuilder.prototype.joinSQL = function(fromTable, tables, options) {
 
 
 	var result = {
-		tables: ', ' + sqlTables.join(', '),
-		query: ' AND ' + sql_clauses.join(' AND ')
+		tables: sqlTables,
+		clauses: sqlClauses
 	};
 		
-	log.trace({result: result}, '...SqlBuilder.joinSQL()');
+	log.trace({result: result}, '...SqlBuilder.joinGraphSQL()');
 	return result;
 
 
@@ -320,8 +366,8 @@ SqlBuilder.prototype.joinSQL = function(fromTable, tables, options) {
 SqlBuilder.prototype.filterSQL = function(filterClauses) {
 
 	var me = this;
-	var sql_clauses = [];
-	var sql_params = [];
+	var sqlClauses = [];
+	var sqlParams = [];
 
 	_.each(filterClauses, function(filter) {
 		var table = me.graph.table(filter.table);
@@ -338,11 +384,11 @@ SqlBuilder.prototype.filterSQL = function(filterClauses) {
 		if (comparatorOperators[filter.op]) {
 
 			var clause = util.format('(%s."%s" %s ?)', 
-							table.viewName(), filter.field, 
+							table.name, filter.field, 
 							comparatorOperators[filter.op]);
 
-			sql_clauses.push(clause);
-			sql_params.push(filter.value);
+			sqlClauses.push(clause);
+			sqlParams.push(filter.value);
 
 		} else if (filter.op == 'btwn') {
 
@@ -352,11 +398,11 @@ SqlBuilder.prototype.filterSQL = function(filterClauses) {
 			}
 
 			var clause = util.format('(%s."%s" BETWEEN ? AND ?)', 
-							table.viewName(), filter.field);
+							table.name, filter.field);
 				
-			sql_clauses.push(clause);
-			sql_params.push(filter.value[0]);
-			sql_params.push(filter.value[1]);
+			sqlClauses.push(clause);
+			sqlParams.push(filter.value[0]);
+			sqlParams.push(filter.value[1]);
 
 
 		} else if (filter.op == 'in') {
@@ -371,11 +417,11 @@ SqlBuilder.prototype.filterSQL = function(filterClauses) {
 			});
 
 			var clause = util.format('(%s."%s" IN (%s))',
-							table.viewName(), filter.field, 
+							table.name, filter.field, 
 							inParams.join(','));
 
-			sql_clauses.push(clause);
-			sql_params = sql_params.concat(filter.value); 
+			sqlClauses.push(clause);
+			sqlParams = sqlParams.concat(filter.value); 
 
 		} else if (filter.op == 'search') {
 
@@ -384,24 +430,24 @@ SqlBuilder.prototype.filterSQL = function(filterClauses) {
 				var clause = util.format('(%s."%s" MATCH ?)', 
 								table.ftsName(), table.ftsName()); 	
 
-				sql_clauses.push(clause);
+				sqlClauses.push(clause);
 		
 				//(prefix last + phrase query) - see sqlite fts
 				var searchValue = '"' + filter.value + '*"';  
-				sql_params.push(searchValue);
+				sqlParams.push(searchValue);
 
 			} else {
 				//use LIKE on filter.field
 				var clause = util.format('(%s."%s" || ' + "''" + ' LIKE ?)',
-								table.viewName(), filter.field);
+								table.name, filter.field);
 			
-				sql_clauses.push(clause);
+				sqlClauses.push(clause);
 
 				var searchValue = filter.value + '%';
 				if (filter.value[0] == '*') {
 					searchValue = '%' + filter.value.substr(1) + '%';
 				}
-				sql_params.push(searchValue); 
+				sqlParams.push(searchValue); 
 			}
 
 		} else {
@@ -411,13 +457,9 @@ SqlBuilder.prototype.filterSQL = function(filterClauses) {
 
 	});
 
-	var query = sql_clauses.length > 0 
-		? ' AND ' + sql_clauses.join(' AND ')
-		: '';
-
 	return { 
-		query: query,
-		params: sql_params
+		clauses: sqlClauses,
+		params: sqlParams
 	};
 }
 
@@ -429,29 +471,75 @@ SqlBuilder.prototype.joinSearchSQL = function(filterClauses) {
 
 	if (searchFilter) {
 		var table = this.graph.table(searchFilter.table);
-		var query = util.format(' AND (%s.docid = %s.id)',
+		var clause = util.format('(%s.docid = %s.id)',
 			table.ftsName(),
-			table.viewName());
+			table.name);
 
 		var result = {
-			tables: ', ' + table.ftsName(),
-			query: query
+			tables: [table.ftsName()],
+			clauses: [clause]
 		};
 		
 		return result;
 
 	} else {
-		return { tables: '', query: '' };
+		return { tables: [], clauses: [] };
 	}
+}
+
+SqlBuilder.prototype.groupForeignKeys = function(fieldClauses) {
+	var me = this;
+
+	var refFields = {};
+	var refFn = function(table) { 
+		if ( ! refFields[table]) {
+			refFields[table] = me.graph.table(table).refFields();
+		}
+		return refFields[table];
+	}
+	var refClauses = _.filter(fieldClauses, function(fc) {
+		return refFn(fc.table).contains(fc.alias);
+	});
+
+
+	//group refClauses by table to number view row alias tables
+	//e.g. vra_team as vra_team01, vra_team as vra_team02 etc.
+	var refGroups = _.groupBy(refClauses, function(fc) {
+		return fc.table;
+	});
+
+	return refGroups;
 }
 
 SqlBuilder.prototype.fieldSQL = function(table, fieldClauses) {
 
-	var result = _.map(fieldClauses, function(field) {
+	//group foreign keys by referenced table to number referenced tables
+	//e.g. vra_team as vra_team01, vra_team as vra_team02 etc.
+	var fk_groups = _.groupBy(this.foreignKeys(), function(fk) {
+		return fk.fk_table;
+	});
+
+	var result = _.map(fieldClauses, function(fc) {
 		
-		var t = this.graph.table(field.table);	
-		return util.format('%s."%s" AS "%s"',
-				t.viewName(), field.field, field.alias);
+		var table = this.graph.table(fc.table);	
+		var fk = _.find(table.foreignKeys(), function(fk) {
+			return fk.refName() == fc.field;
+		});
+
+		if (fc.field == Field.ROW_ALIAS) {
+			return util.format('%s."%s" AS "%s"',
+					table.rowAliasView(), fc.field, fc.alias);
+
+		} else if (fk) {
+			return util.format('%s."%s" AS "%s"',
+					Table.rowAliasView(fk.fk_table), 
+					Field.ROW_ALIAS, 
+					fc.alias);
+
+		} else {
+			return util.format('%s."%s" AS "%s"',
+					fc.table, fc.field, fc.alias);
+		}
 
 	}, this);
 

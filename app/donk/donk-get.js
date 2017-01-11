@@ -51,7 +51,7 @@ program
 
 		var options = {};
 		if (params.filter) {
-			options.filter = _.map(params.filter.split('and'), function(f) { return f.trim(); });
+			options.filter = _.map(params.filter.split(' and '), function(f) { return f.trim(); });
 			options.filter = parser.parse('$filter=' + options.filter.join('\t')).value;
 		}
 		if (params.select) {

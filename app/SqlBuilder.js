@@ -299,6 +299,8 @@ SqlBuilder.prototype.joinRowAliasSQL = function(fieldClauses, filterClauses) {
 
 	var result = { tables: [], clauses: [] };
 
+	var fkGroups = this.groupForeignKeys(fieldClauses);
+
 	_.each(fieldClauses, function(fc) {
 		var table = this.graph.table(fc.table);
 		var fk = _.find(table.foreignKeys(), function(fk) {
@@ -311,9 +313,11 @@ SqlBuilder.prototype.joinRowAliasSQL = function(fieldClauses, filterClauses) {
 			result.clauses.push(rowAliasSQL.clause); 		
 
 		} else if (fk) {
-			var fkAliasSQL = table.fkAliasSQL(fk);
-			result.tables.push(fkAliasSQL.table); 		
-			result.clauses.push(fkAliasSQL.clause); 		
+			var idx = fkGroups[fk.fk_table].indexOf(fc) + 1;
+			var ref = table.fkAliasSQL(fk, idx);
+			var refTable = util.format('%s AS %s', ref.table, ref.alias); 
+			result.tables.push(refTable); 		
+			result.clauses.push(ref.clause); 		
 		}
 	}, this);
 
@@ -488,19 +492,43 @@ SqlBuilder.prototype.joinSearchSQL = function(filterClauses) {
 }
 
 SqlBuilder.prototype.groupForeignKeys = function(fieldClauses) {
-	var me = this;
 
+	var refGroups = {};
+
+	_.each(fieldClauses, function(fc) {
+
+		var table = this.graph.table(fc.table);	
+		var fk = _.find(table.foreignKeys(), function(fk) {
+			return fk.refName() == fc.field;
+		});
+
+		if (fc.field == Field.ROW_ALIAS) {
+			refGroups[fc.table] = refGroups[fc.table] || [];
+			refGroups[fc.table].push(fc);
+
+		} else if (fk) {
+			refGroups[fk.fk_table] = refGroups[fk.fk_table] || [];
+			refGroups[fk.fk_table].push(fc);
+		}
+	}, this);
+
+/*
+	console.log('------- refGroups --------');
+	console.log(util.inspect(refGroups, false, null));
+*/
+	return refGroups;
+/*
+	var me = this;
 	var refFields = {};
 	var refFn = function(table) { 
-		if ( ! refFields[table]) {
+		if ( ! refFields[table]) { 
 			refFields[table] = me.graph.table(table).refFields();
 		}
 		return refFields[table];
 	}
 	var refClauses = _.filter(fieldClauses, function(fc) {
-		return refFn(fc.table).contains(fc.alias);
+		return _.contains(refFn(fc.table), fc.field);
 	});
-
 
 	//group refClauses by table to number view row alias tables
 	//e.g. vra_team as vra_team01, vra_team as vra_team02 etc.
@@ -508,16 +536,15 @@ SqlBuilder.prototype.groupForeignKeys = function(fieldClauses) {
 		return fc.table;
 	});
 
+	console.log(util.inspect(refGroups, false, null));
+
 	return refGroups;
+*/
 }
 
 SqlBuilder.prototype.fieldSQL = function(table, fieldClauses) {
 
-	//group foreign keys by referenced table to number referenced tables
-	//e.g. vra_team as vra_team01, vra_team as vra_team02 etc.
-	var fk_groups = _.groupBy(this.foreignKeys(), function(fk) {
-		return fk.fk_table;
-	});
+	var fkGroups = this.groupForeignKeys(fieldClauses);
 
 	var result = _.map(fieldClauses, function(fc) {
 		
@@ -527,12 +554,14 @@ SqlBuilder.prototype.fieldSQL = function(table, fieldClauses) {
 		});
 
 		if (fc.field == Field.ROW_ALIAS) {
+			var idx = fkGroups[fc.table].indexOf(fc) + 1;
 			return util.format('%s."%s" AS "%s"',
 					table.rowAliasView(), fc.field, fc.alias);
 
 		} else if (fk) {
+			var idx = fkGroups[fk.fk_table].indexOf(fc) + 1;
 			return util.format('%s."%s" AS "%s"',
-					Table.rowAliasView(fk.fk_table), 
+					Table.rowAliasView(fk.fk_table, idx), 
 					Field.ROW_ALIAS, 
 					fc.alias);
 

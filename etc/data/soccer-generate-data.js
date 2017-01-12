@@ -146,8 +146,6 @@ describe('Database', function() {
 			db.insert('Game', games, function(err, result) {
 				if (err) throw new Error(err);
 				var ids = result.rows;
-console.log('*********');
-console.log(result);
 				_.each(_.zip(games, ids), function(game_id) {
 					game_id[0].id = game_id[1].id;
 				});
@@ -156,7 +154,7 @@ console.log(result);
 		});
 
 
-/*
+
 		it('Formations. Pick 11 players from each team and each game.', function(done) {
 			var teams = soccerData.teams;
 			var games = soccerData.games;
@@ -179,7 +177,7 @@ console.log(result);
 			});
 
 		});
-*/
+
 		function get_formation(game, team) {
 			var players = soccerData.players;
 			var allPos = soccerData.positions;

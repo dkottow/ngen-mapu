@@ -377,6 +377,7 @@ describe('RowsToObj Soccer DB', function() {
 				, { table: 'Player', field: 'id' }	
 				, { table: 'Player', field: 'Name' }	
 				, { table: 'Player', field: 'DateOfBirth' }	
+				, { table: 'Player', field: 'PreferredPosition_ref' }	
 				, { table: 'Position', field: 'Code' }	
 				, { table: 'Position', field: 'Name' }	
 				, { table: 'Venue', field: 'Name' }	
@@ -411,7 +412,8 @@ describe('RowsToObj Soccer DB', function() {
 			});
 			//console.log(games);
 
-			assert(_.keys(games).length == 3, 'Expected 3 Game objects');
+			assert(_.keys(games).length == 3, 
+				'Expected 3 Game objects. Got ' + _.keys(games).length);
 			done();
 		});
 

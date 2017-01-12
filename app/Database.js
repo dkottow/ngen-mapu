@@ -228,7 +228,9 @@ Database.prototype.all = function(tableName, options, cbResult) {
 		log.trace(fields + " from " + table.name 
 				+ " filtered by " + util.inspect(filterClauses));
 
-		var sql = this.schema.sqlBuilder.selectSQL(table, fields, filterClauses, order, limit, offset);
+		var sql = this.schema.sqlBuilder.selectSQL(
+					table, fields, filterClauses, 
+					order, limit, offset);
 
 		log.debug({sql: sql.query}, "Database.all()");
 		log.trace({sql: sql}, "Database.all()");

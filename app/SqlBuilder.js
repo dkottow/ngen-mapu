@@ -201,7 +201,7 @@ SqlBuilder.prototype.sanitizeFieldClauses = function(table, fieldClauses) {
 SqlBuilder.prototype.querySQL = function(table, fields, filterClauses) {
 
 	var joinSQL = this.joinSQL(table, fields, filterClauses);
-	var filterSQL = this.filterSQL(filterClauses);
+	var filterSQL = this.filterSQL(table, filterClauses);
 	var fieldSQL = this.fieldSQL(table, fields);
 
 	var tables = [table.name].concat(joinSQL.tables);
@@ -367,7 +367,7 @@ SqlBuilder.prototype.joinGraphSQL = function(fromTable, tables) {
 
 }
 
-SqlBuilder.prototype.filterSQL = function(filterClauses) {
+SqlBuilder.prototype.filterSQL = function(fromTable, filterClauses) {
 
 	var me = this;
 	var sqlClauses = [];
@@ -385,11 +385,14 @@ SqlBuilder.prototype.filterSQL = function(filterClauses) {
 			'lt': '<'
 		};
 
+		var fieldName = table.name == fromTable.name 
+						? '"' + filter.field + '"'
+						: util.format('%s."%s"', table.name, filter.field);
+
 		if (comparatorOperators[filter.op]) {
 
-			var clause = util.format('(%s."%s" %s ?)', 
-							table.name, filter.field, 
-							comparatorOperators[filter.op]);
+			var clause = util.format('(%s %s ?)', 
+							fieldName, comparatorOperators[filter.op]);
 
 			sqlClauses.push(clause);
 			sqlParams.push(filter.value);
@@ -401,8 +404,7 @@ SqlBuilder.prototype.filterSQL = function(filterClauses) {
 					util.format("filter.value %s mismatch", filter.value));
 			}
 
-			var clause = util.format('(%s."%s" BETWEEN ? AND ?)', 
-							table.name, filter.field);
+			var clause = util.format('(%s BETWEEN ? AND ?)', fieldName);
 				
 			sqlClauses.push(clause);
 			sqlParams.push(filter.value[0]);
@@ -420,9 +422,8 @@ SqlBuilder.prototype.filterSQL = function(filterClauses) {
 					return "?"; 
 			});
 
-			var clause = util.format('(%s."%s" IN (%s))',
-							table.name, filter.field, 
-							inParams.join(','));
+			var clause = util.format('(%s IN (%s))',
+							fieldName, inParams.join(','));
 
 			sqlClauses.push(clause);
 			sqlParams = sqlParams.concat(filter.value); 
@@ -442,8 +443,8 @@ SqlBuilder.prototype.filterSQL = function(filterClauses) {
 
 			} else {
 				//use LIKE on filter.field
-				var clause = util.format('(%s."%s" || ' + "''" + ' LIKE ?)',
-								table.name, filter.field);
+				var clause = util.format('(%s || ' + "''" + ' LIKE ?)',
+								fieldName);
 			
 				sqlClauses.push(clause);
 

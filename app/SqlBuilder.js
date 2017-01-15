@@ -385,14 +385,19 @@ SqlBuilder.prototype.filterSQL = function(fromTable, filterClauses) {
 			'lt': '<'
 		};
 
-		var fieldName = table.name == fromTable.name 
-						? '"' + filter.field + '"'
-						: util.format('%s."%s"', table.name, filter.field);
+		var fromFieldQN;
+		if (_.contains(table.refFields(), filter.field)) {
+			//TODO this fails for ref fields from tables different than fromTable
+			fromFieldQN = '"' + filter.field + '"';
+		} else {
+			fromFieldQN = util.format('%s."%s"', table.name, filter.field);
+		}
+
 
 		if (comparatorOperators[filter.op]) {
 
 			var clause = util.format('(%s %s ?)', 
-							fieldName, comparatorOperators[filter.op]);
+							fromFieldQN, comparatorOperators[filter.op]);
 
 			sqlClauses.push(clause);
 			sqlParams.push(filter.value);
@@ -404,7 +409,7 @@ SqlBuilder.prototype.filterSQL = function(fromTable, filterClauses) {
 					util.format("filter.value %s mismatch", filter.value));
 			}
 
-			var clause = util.format('(%s BETWEEN ? AND ?)', fieldName);
+			var clause = util.format('(%s BETWEEN ? AND ?)', fromFieldQN);
 				
 			sqlClauses.push(clause);
 			sqlParams.push(filter.value[0]);
@@ -423,7 +428,7 @@ SqlBuilder.prototype.filterSQL = function(fromTable, filterClauses) {
 			});
 
 			var clause = util.format('(%s IN (%s))',
-							fieldName, inParams.join(','));
+							fromFieldQN, inParams.join(','));
 
 			sqlClauses.push(clause);
 			sqlParams = sqlParams.concat(filter.value); 
@@ -444,7 +449,7 @@ SqlBuilder.prototype.filterSQL = function(fromTable, filterClauses) {
 			} else {
 				//use LIKE on filter.field
 				var clause = util.format('(%s || ' + "''" + ' LIKE ?)',
-								fieldName);
+								fromFieldQN);
 			
 				sqlClauses.push(clause);
 
@@ -518,29 +523,6 @@ SqlBuilder.prototype.groupForeignKeys = function(fieldClauses) {
 	console.log(util.inspect(refGroups, false, null));
 */
 	return refGroups;
-/*
-	var me = this;
-	var refFields = {};
-	var refFn = function(table) { 
-		if ( ! refFields[table]) { 
-			refFields[table] = me.graph.table(table).refFields();
-		}
-		return refFields[table];
-	}
-	var refClauses = _.filter(fieldClauses, function(fc) {
-		return _.contains(refFn(fc.table), fc.field);
-	});
-
-	//group refClauses by table to number view row alias tables
-	//e.g. vra_team as vra_team01, vra_team as vra_team02 etc.
-	var refGroups = _.groupBy(refClauses, function(fc) {
-		return fc.table;
-	});
-
-	console.log(util.inspect(refGroups, false, null));
-
-	return refGroups;
-*/
 }
 
 SqlBuilder.prototype.fieldSQL = function(table, fieldClauses) {

@@ -42,7 +42,7 @@ SchemaChange.OPS = {
 
 	, SET_USER: 'set_user' 
 	, SET_ACCESS_CONTROL: 'set_access_control'
-
+	, SET_ROW_ALIAS: 'set_row_alias'
 };
 
 SchemaChange._create = function(patch, schema) {
@@ -71,7 +71,10 @@ SchemaChange._create = function(patch, schema) {
 
 	} else if (SCTableAccess.test(patch)) {
 		return new SCTableAccess(patch, schema);
-
+/*
+	} else if (SCTableRowAlias.test(patch)) {
+		return new SCTableRowAlias(patch, schema);
+*/
 	} else if (SCUsers.test(patch)) {
 		return new SCUsers(patch, schema);
 	
@@ -410,6 +413,39 @@ SCTableAccess.prototype.apply = function() {
 
 SCTableAccess.prototype.toSQL = function() {
 	return this.table.updatePropSQL();
+}
+
+/*
+ * table access control. path e.g. /tables/1/access_control
+ */
+
+var SCTableRowAlias = function(patch, schema) {
+	log.trace({patch: patch}, "SchemaChange.SCTableRowAlias()");
+	SchemaChange.call(this, patch, schema);
+	this.op = SchemaChange.OPS.SET_ROW_ALIAS;
+	
+	var pathArray = patch.path.split('/');
+	pathArray.shift(); // leading slash,
+	pathArray.shift(); // 'tables' keyword
+	this.table = this.schema.table(pathArray.shift());
+	pathArray.shift(); // 'access_control' keyword
+	this.patch_path = '/' + pathArray.join('/');
+	this.path = '/' + this.table.name + '/row_alias';
+	this.obj = JSON.parse(JSON.stringify(this.table.row_alias)); //hold a copy
+}
+
+SCTableRowAlias.prototype = new SchemaChange;	
+
+SCTableRowAlias.test = function(patch) {
+	return /^\/tables\/(\w+)\/row_alias/.test(patch.path);	
+}
+
+SCTableRowAlias.prototype.apply = function() {
+	this.table.row_alias = this.obj;
+}
+
+SCTableRowAlias.prototype.toSQL = function() {
+	//TODO
 }
 
 /*

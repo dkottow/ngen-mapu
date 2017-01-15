@@ -86,7 +86,7 @@ var Table = function(tableDef) {
 }
 
 Table.MANDATORY_FIELDS = [
-	{ name: 'id', type: 'INTEGER', props: { order: 1} }
+	{ name: 'id', type: 'INTEGER', props: { order: 0} }
 	, { name : 'own_by', type: 'VARCHAR', props: {order: 90} }
 	, { name : 'mod_by', type: 'VARCHAR', props: {order: 91} }
 	, { name : 'mod_on', type: 'DATETIME', props: {order: 92} }

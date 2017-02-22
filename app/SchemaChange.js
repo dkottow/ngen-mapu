@@ -71,10 +71,10 @@ SchemaChange._create = function(patch, schema) {
 
 	} else if (SCTableAccess.test(patch)) {
 		return new SCTableAccess(patch, schema);
-/*
+
 	} else if (SCTableRowAlias.test(patch)) {
 		return new SCTableRowAlias(patch, schema);
-*/
+
 	} else if (SCUsers.test(patch)) {
 		return new SCUsers(patch, schema);
 	
@@ -416,7 +416,7 @@ SCTableAccess.prototype.toSQL = function() {
 }
 
 /*
- * table access control. path e.g. /tables/1/access_control
+ * table row alias. path e.g. /tables/1/row_alias
  */
 
 var SCTableRowAlias = function(patch, schema) {
@@ -428,7 +428,7 @@ var SCTableRowAlias = function(patch, schema) {
 	pathArray.shift(); // leading slash,
 	pathArray.shift(); // 'tables' keyword
 	this.table = this.schema.table(pathArray.shift());
-	pathArray.shift(); // 'access_control' keyword
+	pathArray.shift(); // 'row_alias' keyword
 	this.patch_path = '/' + pathArray.join('/');
 	this.path = '/' + this.table.name + '/row_alias';
 	this.obj = JSON.parse(JSON.stringify(this.table.row_alias)); //hold a copy
@@ -445,7 +445,15 @@ SCTableRowAlias.prototype.apply = function() {
 }
 
 SCTableRowAlias.prototype.toSQL = function() {
-	//TODO
+
+	var dropViewSQL = table.dropViewSQL();
+	var dropTriggerSQL = table.dropTriggerSQL();
+
+	var viewSQL = this.table.createviewSQL();
+	var triggerSQL = this.table.createTriggerSQL();
+	var updatePropSQL this.table.updatePropSQL();
+
+	return dropViewSQL + dropTriggerSQL + viewSQL + triggerSQL + updatePropSQL;
 }
 
 /*

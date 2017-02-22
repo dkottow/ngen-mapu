@@ -510,13 +510,10 @@ Table.prototype.createTriggerSQL = function() {
 }
 
 Table.prototype.createSearchSQL = function() {
-	var viewFields = this.viewFields();
-
 	var createSQL = 'CREATE VIRTUAL TABLE ' + this.ftsName() 
 			+ ' USING fts4(content, tokenize=simple "tokenchars=-");\n\n';
 	var triggerSQL = this.createTriggerSQL();
 	var sql = createSQL + triggerSQL;
-
 	log.trace({ sql: sql }, 'Table.createSearchSQL()');
 	return sql;
 }

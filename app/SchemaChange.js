@@ -96,7 +96,7 @@ SchemaChange._create = function(patch, schema) {
 
 
 SchemaChange.create = function(patches, schema) {
-	log.debug({patches: patches}, 'SchemaChange.create()');
+	log.debug({patches: patches}, 'SchemaChange.create()...');
 
 	var patchSequences = {}; //sequence of changes of same type
 
@@ -130,6 +130,7 @@ SchemaChange.create = function(patches, schema) {
 		changes.push(change);
 	});
 	
+	log.debug({changes: changes}, '...SchemaChange.create()');
 	return changes;
 }
 
@@ -177,7 +178,7 @@ SCAddField.prototype.toSQL = function() {
 	var addSQL = this.table.addFieldSQL(field);
 
 	var viewSQL = this.table.dropViewSQL()
-		+ this.schema.sqlBuilder.createViewSQL(this.table);
+		+ this.schema.sqlBuilder.createRowAliasViewSQL(this.table);
 
 	var searchTriggerSQL = this.table.dropTriggerSQL()
 		+ this.table.createTriggerSQL();
@@ -447,12 +448,12 @@ SCTableRowAlias.prototype.apply = function() {
 SCTableRowAlias.prototype.toSQL = function() {
 
 	var viewSQL = this.table.dropViewSQL()
-		+ this.schema.sqlBuilder.createViewSQL(this.table);
+		+ this.schema.sqlBuilder.createRowAliasViewSQL(this.table);
 
 	var searchTriggerSQL = this.table.dropTriggerSQL()
 		+ this.table.createTriggerSQL();
 
-	var updatePropSQL this.table.updatePropSQL();
+	var updatePropSQL = this.table.updatePropSQL();
 
 	return viewSQL + searchTriggerSQL + updatePropSQL;
 }

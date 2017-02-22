@@ -446,14 +446,15 @@ SCTableRowAlias.prototype.apply = function() {
 
 SCTableRowAlias.prototype.toSQL = function() {
 
-	var dropViewSQL = table.dropViewSQL();
-	var dropTriggerSQL = table.dropTriggerSQL();
+	var viewSQL = this.table.dropViewSQL()
+		+ this.schema.sqlBuilder.createViewSQL(this.table);
 
-	var viewSQL = this.table.createviewSQL();
-	var triggerSQL = this.table.createTriggerSQL();
+	var searchTriggerSQL = this.table.dropTriggerSQL()
+		+ this.table.createTriggerSQL();
+
 	var updatePropSQL this.table.updatePropSQL();
 
-	return dropViewSQL + dropTriggerSQL + viewSQL + triggerSQL + updatePropSQL;
+	return viewSQL + searchTriggerSQL + updatePropSQL;
 }
 
 /*

@@ -122,7 +122,10 @@ values
 value
  = number
  / string
+ / null
 
+null "null"
+  = "null" { return null; }
 
 /**** from json *****/
 

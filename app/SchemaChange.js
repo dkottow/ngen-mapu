@@ -130,7 +130,6 @@ SchemaChange.create = function(patches, schema) {
 		changes.push(change);
 	});
 	
-	log.debug({changes: changes}, '...SchemaChange.create()');
 	return changes;
 }
 

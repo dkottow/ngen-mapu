@@ -394,13 +394,21 @@ SqlBuilder.prototype.filterSQL = function(fromTable, filterClauses) {
 		}
 
 
-		if (comparatorOperators[filter.op]) {
+		if (comparatorOperators[filter.op] && filter.value !== null) {
 
 			var clause = util.format('(%s %s ?)', 
 							fromFieldQN, comparatorOperators[filter.op]);
 
 			sqlClauses.push(clause);
 			sqlParams.push(filter.value);
+
+		} else if (filter.op == 'eq' && filter.value === null) {
+			var clause = util.format('(%s is null)', fromFieldQN);
+			sqlClauses.push(clause);
+
+		} else if (filter.op == 'ne' && filter.value === null) {
+			var clause = util.format('(%s is not null)', fromFieldQN);
+			sqlClauses.push(clause);
 
 		} else if (filter.op == 'btwn') {
 

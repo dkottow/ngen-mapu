@@ -180,7 +180,7 @@ SqlBuilder.prototype.sanitizeFieldClauses = function(table, fieldClauses) {
 							+ Table.TABLE_FIELD_SEPARATOR 
 							+ item.field;
 		} else {
-			throw new Error("malformed filter item '" + util.inspect(fc) + "'");
+			throw new Error("malformed clause '" + util.inspect(fc) + "'");
 		}
 
 		//validate
@@ -394,13 +394,21 @@ SqlBuilder.prototype.filterSQL = function(fromTable, filterClauses) {
 		}
 
 
-		if (comparatorOperators[filter.op]) {
+		if (comparatorOperators[filter.op] && filter.value !== null) {
 
 			var clause = util.format('(%s %s ?)', 
 							fromFieldQN, comparatorOperators[filter.op]);
 
 			sqlClauses.push(clause);
 			sqlParams.push(filter.value);
+
+		} else if (filter.op == 'eq' && filter.value === null) {
+			var clause = util.format('(%s is null)', fromFieldQN);
+			sqlClauses.push(clause);
+
+		} else if (filter.op == 'ne' && filter.value === null) {
+			var clause = util.format('(%s is not null)', fromFieldQN);
+			sqlClauses.push(clause);
 
 		} else if (filter.op == 'btwn') {
 
@@ -436,10 +444,10 @@ SqlBuilder.prototype.filterSQL = function(fromTable, filterClauses) {
 		} else if (filter.op == 'childless') {
 			//filter out all rows in filter.table 
 			//leaving only rows in parent table without a join to this
+//TODO adjust joinSQL to join with parent table instead of filter.table
 			var field = table.field(filter.field);
 			if (field.fk == 1) {
-				var clause = util.format('(%s.id NOT IN (%s."%s"))',
-						field.fk_table, filter.table, filter.field);
+				var clause = util.format('(%s.id NOT IN (SELECT DISTINCT "%s" FROM %s))',	field.fk_table, filter.field, filter.table);
 				sqlClauses.push(clause);
 
 			} else {

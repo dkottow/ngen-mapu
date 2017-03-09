@@ -433,6 +433,19 @@ SqlBuilder.prototype.filterSQL = function(fromTable, filterClauses) {
 			sqlClauses.push(clause);
 			sqlParams = sqlParams.concat(filter.value); 
 
+		} else if (filter.op == 'childless') {
+			//filter out all rows in filter.table 
+			//leaving only rows in parent table without a join to this
+			var field = table.field(filter.field);
+			if (field.fk == 1) {
+				var clause = util.format('(%s.id NOT IN (%s."%s"))',
+						field.fk_table, filter.table, filter.field);
+				sqlClauses.push(clause);
+
+			} else {
+				throw new Error("childless filter works only on foreign keys");
+			}
+
 		} else if (filter.op == 'search') {
 
 			if (filter.field == Table.ALL_FIELDS) {

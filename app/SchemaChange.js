@@ -452,7 +452,7 @@ SCTableRowAlias.prototype.toSQL = function() {
 	var searchTriggerSQL = this.table.dropTriggerSQL()
 		+ this.table.createTriggerSQL();
 
-	var updatePropSQL this.table.updatePropSQL();
+	var updatePropSQL = this.table.updatePropSQL();
 
 	return viewSQL + searchTriggerSQL + updatePropSQL;
 }

@@ -107,6 +107,23 @@ describe('Sandwiches DB', function() {
 		});
 	});
 
+	it('TableGraph.parentTables', function() {
+		var table = tableGraph.table('products_in_orders');
+		var tables = tableGraph.parentTables(table);
+		var names = _.pluck(tables, 'name').sort();				
+		assert(names[0] == 'orders' && names[1] == 'products');
+	});
+
+	it('TableGraph.childTables', function() {
+		var t1 = tableGraph.table('products');
+		var t2 = tableGraph.table('orders');
+		var ct1 = tableGraph.childTables(t1);
+		var ct2 = tableGraph.childTables(t2);
+		log.info({ child1: ct1[0].name, child2: ct2[0].name });
+		assert(ct1[0].name == 'products_in_orders' 
+			&& ct2[0].name == 'products_in_orders');
+	});
+
 	it('TableGraph.tablesByDependencies', function() {
 		//TODO test me better, shuffle table ordering
 		var tables = tableGraph.tables();
@@ -115,6 +132,7 @@ describe('Sandwiches DB', function() {
 		log.info('by deps');
 		log.info(_.pluck(tablesByDeps, 'name'));
 	});
+
 });
 
 

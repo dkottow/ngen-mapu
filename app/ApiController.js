@@ -26,6 +26,7 @@ var jwt = require('express-jwt');
 var parser = require('./QueryParser.js');
 var AccessControl = require('./AccessControl.js').AccessControl;
 var Schema = require('./Schema.js').Schema;
+var Table = require('./Table.js').Table;
 
 var log = require('./log.js').log;
 
@@ -724,8 +725,15 @@ Controller.prototype.postRows = function(req, res) {
 		var opts = req.query;
 		opts.user = req.user;
 	
+
+/*
 		if (opts.user.role == Schema.USER_ROLES.READER
 		 || opts.user.role == Schema.USER_ROLES.WRITER) {
+			me.stripOwnerField(rows);
+		}
+*/
+		var table_access = path.table.access(opts.user);
+		if (table_access.write != Table.ROW_SCOPES.ALL) {
 			me.stripOwnerField(rows);
 		}
 
@@ -769,8 +777,8 @@ Controller.prototype.putRows = function(req, res) {
 		var opts = req.query;
 		opts.user = req.user;
 	
-		if (opts.user.role == Schema.USER_ROLES.READER
-		 || opts.user.role == Schema.USER_ROLES.WRITER) {
+		var table_access = path.table.access(opts.user);
+		if (table_access.write != Table.ROW_SCOPES.ALL) {
 			me.stripOwnerField(rows);
 		}
 
@@ -779,10 +787,13 @@ Controller.prototype.putRows = function(req, res) {
 				sendError(req, res, err, 400);
 				return;
 			}
+
 			log.debug({'res.body': result});
 			res.send(result);  
 			log.info({req: req}, '...Controller.putRows().');
 		});
+
+
 	});
 }
 

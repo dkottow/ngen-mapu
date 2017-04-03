@@ -362,5 +362,19 @@ describe('Database', function() {
 		});
 	});
 
+  	describe('chown()', function() {		
+
+		var table = 'customers';
+
+		it('chown some rows', function(done) {
+
+			db.chown(table, [1], 'new-owner', function(err, result) {
+				assert(err == null, 'changed owner of some rows');
+				log.info(err);
+				done(); 
+			});
+		});
+	});
+
 });
 

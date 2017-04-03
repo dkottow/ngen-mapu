@@ -101,19 +101,16 @@ Table.ROW_SCOPES = {
 }
 
 //must match Schema.js TODO
-var USER_ROLES = {
-	OWNER: "owner",
-	WRITER: "writer",
-	READER: "reader"
-};
+var Schema = Schema || {};
+Schema.ADMIN_ROLE = "owner";
 
 Table.DEFAULT_ACCESS_CONTROL = [
 
-    { "role": USER_ROLES.READER
+    { "role": "reader"
 	, "write": Table.ROW_SCOPES.NONE
 	, "read": Table.ROW_SCOPES.ALL }
 
-    , { "role": USER_ROLES.WRITER
+    , { "role": "writer"
 	, "write": Table.ROW_SCOPES.OWN
 	, "read": Table.ROW_SCOPES.ALL }
 ];
@@ -130,7 +127,7 @@ Table.prototype.setProp = function(name, value) {
 }
 
 Table.prototype.access = function(user) {
-	if (user.admin || user.role == USER_ROLES.OWNER) {
+	if (user.admin || user.role == Schema.ADMIN_ROLE) {
 	    return { 
 	    	read: Table.ROW_SCOPES.ALL 
 	    	, write: Table.ROW_SCOPES.ALL

@@ -45,7 +45,7 @@ Account.prototype.init = function(cbAfter) {
 
 		if (err) {
 			log.error({err: err}, "Account.init failed.");
-			cbAfter(err);
+			if (cbAfter) cbAfter(err);
 			return;
 		}
 
@@ -58,7 +58,7 @@ Account.prototype.init = function(cbAfter) {
 
 		var doAfter = _.after(dbFiles.length, function() {
 			log.trace("...Account.init()");
-			cbAfter();
+			if (cbAfter) cbAfter();
 			return;
 		});
 
@@ -78,7 +78,7 @@ Account.prototype.init = function(cbAfter) {
 		//handle empty dir
 		if (dbFiles.length == 0) {
 			log.debug("Account " + me.name + " is empty.");
-			cbAfter();
+			if (cbAfter) cbAfter();
 		}
 	});
 }

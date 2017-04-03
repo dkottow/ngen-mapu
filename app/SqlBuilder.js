@@ -602,5 +602,21 @@ SqlBuilder.prototype.orderSQL = function(table, orderClauses) {
 	return orderSQL;
 }
 
+SqlBuilder.prototype.chownSQL = function(rowTable, rowIds, chownTable, owner) {
+	var fieldClauses = this.sanitizeFieldClauses(chownTable, ['id']);
+
+	var filterClauses = [{ table: rowTable.name
+						, field: 'id', op: 'in'
+						, value: rowIds }];
+
+	var inQuery = this.querySQL(chownTable, fieldClauses, filterClauses);
+
+	var sql = "UPDATE " + chownTable.name 
+			+ " SET own_by = ?"
+			+ " WHERE id IN (" + inQuery.sql + ")";
+
+	return 	{ sql: sql, params: [ owner ].concat(rowIds) };
+}
+
 exports.SqlBuilder = SqlBuilder;
 

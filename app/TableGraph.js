@@ -126,16 +126,21 @@ TableGraph.prototype.assertTable = function(name) {
 	this.table(name);
 }
 
+TableGraph.prototype.parentTables = function(table) {
+	return _.map(table.foreignKeys(), function(fk) {
+		return this.table(fk.fk_table);
+	}, this);
+}
+
+TableGraph.prototype.childTables = function(table) {
+	var childNodes = this.graph.predecessors(table.name);
+	return _.map(childNodes, function(n) {
+		return this.table(n);
+	}, this);
+}
+
 TableGraph.prototype.tablesByDependencies = function() {
 
-	var me = this;
-	var dependentTablesFn = function(table) {
-		return _.map(table.foreignKeys(), function(fk) {
-			return me.table(fk.fk_table);
-		});
-	};
-
-	
 	var tables = this.tables();
 	var result = [];
 
@@ -144,7 +149,7 @@ TableGraph.prototype.tablesByDependencies = function() {
 		var doneInsert = false;
 		_.each(remainingTables, function(t) {
 
-			var depTables = dependentTablesFn(t);
+			var depTables = this.parentTables(t);
 			var pos = 0;
 			var doInsert = true;
 			for(var i = 0;i < depTables.length; ++i) {
@@ -161,7 +166,7 @@ TableGraph.prototype.tablesByDependencies = function() {
 				result.splice(pos, 0, t);
 				doneInsert = true;
 			}
-		});
+		}, this);
 		
 		//TODO we cant resolve it
 		if ( ! doneInsert) {

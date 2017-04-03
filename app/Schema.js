@@ -42,6 +42,8 @@ Schema.EMPTY = {
 	, users: []
 }
 
+Schema.ADMIN_ROLE = "owner";
+
 Schema.USER_ROLES = {
 	OWNER: "owner",
 	WRITER: "writer",
@@ -133,6 +135,7 @@ Schema.prototype.setUser = function(name, role) {
 		delete this.users[name];
 		return;
 	}
+	//TODO get rid of fixed roles..
 	if ( ! _.contains(Schema.USER_ROLES, role)) { 
 		throw new Error(util.format('user role %s unknown.', role));
 	}
@@ -142,9 +145,9 @@ Schema.prototype.setUser = function(name, role) {
 }
 
 //used in ApiController, smells bad..
-Schema.setAdmin = function(schemaDef, admin) {
-	if (_.findIndex(schemaDef.users, { name : admin }) < 0) {
-		schemaDef.users.push({name: admin, role: Schema.USER_ROLES.OWNER });
+Schema.setAdmin = function(schemaDef, name) {
+	if (_.findIndex(schemaDef.users, { name : name }) < 0) {
+		schemaDef.users.push({name: name, role: Schema.ADMIN_ROLE });
 	}
 }
 

@@ -543,10 +543,11 @@ Database.prototype.update = function(tableName, rows, options, cbResult) {
 					var result = me.getFieldValues(r, table, fieldNames);
 					err = err || result.err;
 
-					result.values.push(r.id);
-					//console.log(result);
+					var params = result.values;
+					params.push(r.id);
+					//console.log(params);
 
-					stmt.run(result.values, function(e) {
+					stmt.run(params, function(e) {
 						err = err || e;
 						modCount += this.changes;
 					});
@@ -621,7 +622,8 @@ Database.prototype.delete = function(tableName, rowIds, cbResult) {
 
 			if (err == null) 
 			{
-				stmt.run(rowIds, function(e) { 
+				var params = rowIds;
+				stmt.run(params, function(e) { 
 					err = err || e;
 					delCount = this.changes;
 				});
@@ -649,6 +651,69 @@ Database.prototype.delete = function(tableName, rowIds, cbResult) {
 
 	} catch(err) {
 		log.error({err: err, rowIds: rowIds}, "Database.delete() exception.");	
+		cbResult(err, null);
+	}
+}
+
+Database.prototype.chown = function(tableName, rowIds, owner, cbResult) {
+	try {
+		log.trace('Database.chown()...');
+		log.trace({table: tableName, rowIds: rowIds, owner: owner});
+
+		var me = this;
+
+		var table = this.table(tableName);
+		if ( ! _.isArray(rowIds)) throw new Error("rowIds type mismatch");
+
+		if (rowIds.length == 0) {
+			cbResult(null, 0);
+			return;
+		}
+
+		var db = new sqlite3.Database(this.dbFile, sqlite3.OPEN_READWRITE);
+		
+		db.serialize(function() {
+			db.run("PRAGMA foreign_keys = ON;");
+			db.run("BEGIN TRANSACTION");
+
+			var err = null;
+			var chownCount = 0;
+			var chownTables = [ table ];
+
+			while(err == null && chownTables.length > 0) {
+				var t = chownTables.shift();
+
+				var query = me.schema.sqlBuilder
+							.chownSQL(table, rowIds, t, owner);
+
+				log.debug({query: query}, "Database.chown()");
+
+				db.run(query.sql, query.params, function(e) {
+					err = err || e;
+					chownCount += this.changes;
+				});
+			
+				var childTables = me.schema.graph.childTables(t);
+				chownTables = chownTables.concat(childTables);
+			}
+
+			if (err == null) {
+				db.run("COMMIT TRANSACTION");
+			} else {
+				log.error({err: err, rowIds: rowIds, sql: sql}, 
+					"Database.chown() failed. Rollback.");
+				db.run("ROLLBACK TRANSACTION");
+			}
+
+			db.close(function() {
+				cbResult(err, chownCount); 
+			});
+
+		});
+
+
+	} catch(err) {
+		log.error({err: err, rowIds: rowIds}, "Database.chown() exception.");	
 		cbResult(err, null);
 	}
 }

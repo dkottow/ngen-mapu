@@ -84,7 +84,7 @@ Controller.prototype.initRoutes = function(options) {
 				req.user.name = req.user.email;
 			} else {
 				/* handle unauthenticated 
-				 * needed for routes that allow anonymous GET with nonce
+				 * needed for nonceRoutes that allow anonymous GET
 				*/ 
 				req.user = { name: 'unk' }; 
 			}
@@ -157,6 +157,10 @@ Controller.prototype.initRoutes = function(options) {
 
 	this.router.get(/^\/(\w+)\/(\w+)\/(\w+).objs$/, function(req, res) {
 		me.getObjs(req, res);
+	});
+
+	this.router.put(/^\/(\w+)\/(\w+)\/(\w+).chown$/, function(req, res) {
+		me.chownRows(req, res);
 	});
 
 	log.trace("...Controller.initRoutes()");		
@@ -831,6 +835,44 @@ Controller.prototype.delRows = function(req, res) {
 	});
 }
 
+//chown (change owner) of rows. deep, includes rows from all descendant tables
+Controller.prototype.chownRows = function(req, res) {
+	log.info({req: req}, 'Controller.chownRows()...');
+	log.debug({'req.body': req.body});
+
+	var path = this.getPathObjects(req, {account: true, db: true, table: true});
+	if (path.error) {
+		sendError(req, res, path.error, 404);
+		return;
+	}
+
+	this.access.authRequest('chownRows', req, path, function(err, auth) {
+		var owner = req.query.owner;
+		if ( ! owner) {
+			err = err || new Error('missing owner query parameter');
+		}
+
+		if (err) {
+			sendError(req, res, err, 400);
+			return;
+		}
+	
+		if (auth.error) {
+			sendError(req, res, auth.error, 401);
+			return;
+		}
+	
+		var rowIds = req.body;
+		path.db.chown(path.table.name, rowIds, owner, function(err, result) {
+			if (err) {
+				sendError(req, res, err, 400);
+				return;
+			}
+			res.send(result); 
+			log.info({req: req}, '...Controller.chownRows().');
+		});
+	});
+}
 Controller.prototype.account = function(name) {
 	return this.accountManager.get(name);
 }

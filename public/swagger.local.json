@@ -647,6 +647,66 @@
                     }
                 }
             }
+        },
+        "/{account}/{database}/{table}.chown": {
+            "put": {
+                "summary": "Change  rows owners",
+                "operationId": "chownRows",
+                "description": "Change rows owner. Acts on rows of all descendant tables, too.",
+                "parameters": [
+                    {
+                        "name": "account",
+                        "in": "path",
+                        "description": "database account",
+                        "required": true,
+                        "type": "string"
+                    },
+                    {
+                        "name": "database",
+                        "in": "path",
+                        "description": "table database",
+                        "required": true,
+                        "type": "string"
+                    },
+                    {
+                        "name": "table",
+                        "in": "path",
+                        "description": "table with data rows",
+                        "required": true,
+                        "type": "string"
+                    },
+                    {
+                        "name": "rowIds",
+                        "in": "body",
+                        "description": "row identifiers",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/RowIds"
+                        }
+                    },
+                    {
+                        "name": "owner",
+                        "in": "query",
+                        "description": "new owner user names.",
+                        "required": true,
+                        "type": "string"
+                    }
+                ],
+                "tags": [
+                    "table"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Affected rows count."
+                    },
+                    "default": {
+                        "description": "Unexpected error",
+                        "schema": {
+                            "$ref": "#/definitions/Error"
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {

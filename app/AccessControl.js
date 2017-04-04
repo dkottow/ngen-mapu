@@ -214,6 +214,7 @@ AccessControl.prototype.authRequest = function(op, req, path, cbResult) {
 		case 'delDatabase':			
 		case 'getDatabaseFile':			
 		case 'requestNonce':			
+		case 'chownRows':			
 			resultFn({ granted: false, message: 'requires db owner'});
 			return;
 			

@@ -706,7 +706,7 @@ Database.prototype.chown = function(tableName, rowIds, owner, cbResult) {
 			}
 
 			db.close(function() {
-				cbResult(err, chownCount); 
+				cbResult(err, { rowCount: chownCount }); 
 			});
 
 		});

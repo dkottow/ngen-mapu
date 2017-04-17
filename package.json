@@ -30,8 +30,8 @@
   , "main": "server.js"
   , "bin": { "donk": "./donk/donk.js" }
   , "scripts": {
-    "install" : "cp $DONKEYLIFT_SWAGGER_FILE public/swagger.json"
+    "install" : "node etc/post-install.js"
     , "start": "node server.js"
-    , "test": "rm test/log.json; mocha"
+    , "test": "mocha"
   }
 }

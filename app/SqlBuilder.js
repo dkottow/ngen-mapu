@@ -17,8 +17,17 @@
 var _ = require('underscore');
 var util = require('util');
 
-var Field = require('./Field.js').Field;
+/*
+var FieldFactory = require('./FieldFactory.js').FieldFactory;
+var TableFactory = require('./TableFactory.js').TableFactory;
+
+var Field = FieldFactory.class();
+var Table = TableFactory.class();
+*/
+
+var SqlHelper = require('./SqlHelperFactory.js').SqlHelperFactory.create();
 var Table = require('./Table.js').Table;
+var Field = require('./Field.js').Field;
 
 //ugly but avoids circular requires with Schema.js
 var Schema = {
@@ -29,7 +38,6 @@ var Schema = {
 		+ "	PRIMARY KEY (name) "
 		+ ");\n\n"
 };
-
 
 var log = require('./log.js').log;
 
@@ -101,46 +109,6 @@ SqlBuilder.prototype.statsSQL = function(table, fieldExpr, filterClauses)
 	}
 	log.trace({result: result}, "SqlBuilder.statsSQL");
 	return result;
-}
-
-SqlBuilder.prototype.createTableSQL = function(table) {
-	return table.createSQL()
-		+ this.createRowAliasViewSQL(table)
-		+ table.createSearchSQL();
-}
-
-SqlBuilder.prototype.createSQL = function(schema) {
-	var createSysTablesSQL = Schema.PragmaSQL
-			+ Schema.CreateTableSQL
-			+ Table.CreateTableSQL
-			+ Field.CreateTableSQL;
-
-	var sysTablesInsertSQL = schema.insertPropSQL({deep: true}); 
-
-	var tables = this.graph.tablesByDependencies();
-
-	var createTableSQL = _.map(tables, function(t) {
-		return t.createSQL();
-	}).join('\n');
-
-	var createRowAliasViewSQL = _.map(tables, function(t) {
-		var viewSQL = this.createRowAliasViewSQL(t);
-		//log.debug(viewSQL);
-		return viewSQL;
-	}, this).join('\n');
-
-	var createSearchSQL = _.map(tables, function(t) {
-		return t.createSearchSQL();
-	}).join('\n');
-
-	var sql = createSysTablesSQL + '\n\n'
-			+ sysTablesInsertSQL + '\n\n'
-			+ createTableSQL + '\n\n'
-			+ createRowAliasViewSQL + '\n\n'
-			+ createSearchSQL + '\n\n';
-	
-	log.debug({sql: sql}, 'SqlBuilder.createSQL');
-	return sql;
 }
 
 /*
@@ -230,11 +198,12 @@ SqlBuilder.prototype.createRowAliasViewSQL = function(table) {
 	var ref_field = _.reduce(table.row_alias, function(memo, f) {
 		var result;
 		if (f.indexOf('.') < 0) {
-			result = util.format('%s."%s"', table.name, f);
+			result = util.format('%s.%s', table.name, SqlHelper.EncloseSQL(f));
 		} else {
-			result = util.format('%s."%s"', 
-				this.graph.table(f.split('.')[0]).name,
-				f.split('.')[1]);
+			result = util.format('%s.%s', 
+					this.graph.table(f.split('.')[0]).name,
+					SqlHelper.EncloseSQL(f.split('.')[1])
+				);
 		}
 		if ( ! _.isEmpty(memo)) {
 			result = memo + " || ' ' || " + result;
@@ -349,7 +318,7 @@ SqlBuilder.prototype.joinGraphSQL = function(fromTable, tables) {
 		var idTable = join.id_table;
 		var fkTable = join.fk_table;
 		var joinQuery = _.map(join.fk, function(fk) {
-			return util.format('%s.id = %s."%s"', idTable, fkTable, fk);
+			return util.format('%s.id = %s.%s', idTable, fkTable, SqlHelper.EncloseSQL(fk));
 		});		
 		
 		return '(' + joinQuery.join(' OR ') + ')';
@@ -390,7 +359,7 @@ SqlBuilder.prototype.filterSQL = function(fromTable, filterClauses) {
 			//TODO this fails for ref fields from tables different than fromTable
 			fromFieldQN = '"' + filter.field + '"';
 		} else {
-			fromFieldQN = util.format('%s."%s"', table.name, filter.field);
+			fromFieldQN = util.format('%s.%s', table.name, SqlHelper.EncloseSQL(filter.field));
 		}
 
 
@@ -447,7 +416,8 @@ SqlBuilder.prototype.filterSQL = function(fromTable, filterClauses) {
 //TODO adjust joinSQL to join with parent table instead of filter.table
 			var field = table.field(filter.field);
 			if (field.fk == 1) {
-				var clause = util.format('(%s.id NOT IN (SELECT DISTINCT "%s" FROM %s))',	field.fk_table, filter.field, filter.table);
+				var clause = util.format('(%s.id NOT IN (SELECT DISTINCT %s FROM %s))'
+							, field.fk_table, SqlHelper.EncloseSQL(filter.field), filter.table);
 				sqlClauses.push(clause);
 
 			} else {
@@ -458,7 +428,7 @@ SqlBuilder.prototype.filterSQL = function(fromTable, filterClauses) {
 
 			if (filter.field == Table.ALL_FIELDS) {
 				//use full text search (fts)
-				var clause = util.format('(%s."%s" MATCH ?)', 
+				var clause = util.format('(%s.%s MATCH ?)', 
 								table.ftsName(), table.ftsName()); 	
 
 				sqlClauses.push(clause);
@@ -559,19 +529,19 @@ SqlBuilder.prototype.fieldSQL = function(table, fieldClauses) {
 
 		if (fc.field == Field.ROW_ALIAS) {
 			var idx = fkGroups[fc.table].indexOf(fc) + 1;
-			return util.format('%s."%s" AS "%s"',
-					table.rowAliasView(), fc.field, fc.alias);
+			return util.format('%s.%s AS %s',
+					table.rowAliasView(), SqlHelper.EncloseSQL(fc.field), SqlHelper.EncloseSQL(fc.alias));
 
 		} else if (fk) {
 			var idx = fkGroups[fk.fk_table].indexOf(fc) + 1;
-			return util.format('%s."%s" AS "%s"',
+			return util.format('%s.%s AS %s',
 					Table.rowAliasView(fk.fk_table, idx), 
-					Field.ROW_ALIAS, 
-					fc.alias);
+					SqlHelper.EncloseSQL(Field.ROW_ALIAS), 
+					SqlHelper.EncloseSQL(fc.alias));
 
 		} else {
-			return util.format('%s."%s" AS "%s"',
-					fc.table, fc.field, fc.alias);
+			return util.format('%s.%s AS %s',
+					fc.table, SqlHelper.EncloseSQL(fc.field), SqlHelper.EncloseSQL(fc.alias));
 		}
 
 	}, this);
@@ -591,7 +561,7 @@ SqlBuilder.prototype.orderSQL = function(table, orderClauses) {
 				throw new Error(util.format("order dir '%s' invalid", dir));
 			}
 			
-			var result = memo + util.format('"%s" %s', order.alias, dir);
+			var result = memo + util.format('%s %s', SqlHelper.EncloseSQL(order.alias), dir);
 
 			if (idx < orderClauses.length-1) result = result + ',';
 			return result;

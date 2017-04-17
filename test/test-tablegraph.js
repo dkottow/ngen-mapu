@@ -9,7 +9,7 @@ var Table = require('../app/Table.js').Table
 	, TableGraph = require('../app/TableGraph.js').TableGraph
 	, graphutil = require('../app/graph_util.js')
 	, Schema = require('../app/Schema.js').Schema
-	, Database = require('../app/Database.js').Database;
+	, Database = require('../app/sqlite/DatabaseSqlite.js').DatabaseSqlite;
 	
 var log = require('./log.js').log;
 
@@ -201,7 +201,7 @@ describe('RowsToObj Sandwiches DB', function() {
 
 	before(function(done) {	
 
-		db.init(function(err) {
+		db.readSchema(function(err) {
 			assert(err == null, err);
 			tableGraph = db.schema.graph;
 			var options = {
@@ -327,7 +327,7 @@ describe('RowsToObj Soccer DB', function() {
 
 	before(function(done) {	
 
-		db.init(function(err) {
+		db.readSchema(function(err) {
 			assert(err == null, err);
 			tableGraph = db.schema.graph;
 			done();

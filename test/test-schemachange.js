@@ -11,7 +11,7 @@ var SchemaChange = require('../app/SchemaChange').SchemaChange;
 	
 var Field = require('../app/Field').Field;
 var Table = require('../app/Table').Table;
-var Database = require('../app/Database').Database;
+var Database = require('../app/sqlite/DatabaseSqlite').DatabaseSqlite;
 
 var log =  require('./log').log;
 
@@ -136,7 +136,7 @@ describe('SchemaChange', function() {
 
 		before(function(done) {
 			fsext.copy(dbFile, dbCopy, function(err) {
-				db.init(done);
+				db.readSchema(done);
 			});
 		});	
 

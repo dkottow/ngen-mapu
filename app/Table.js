@@ -18,6 +18,12 @@ var _ = require('underscore');
 var util = require('util');
 var assert = require('assert');
 
+/*
+var FieldFactory = require('./FieldFactory.js').FieldFactory;
+var Field = FieldFactory.class();
+*/
+
+var SqlHelper = require('./SqlHelperFactory.js').SqlHelperFactory.create();
 var Field = require('./Field.js').Field;
 
 var log = require('./log.js').log;
@@ -59,7 +65,7 @@ var Table = function(tableDef) {
 		});
 		
 		_.each(fields, function(f) {
-			me._fields[f.name] = Field.create(f);
+			me._fields[f.name] = new Field(f);
 		});
 
 		me.name = tableDef.name;
@@ -165,13 +171,6 @@ Table.prototype.setAccess = function(role, access, scope) {
 	match[access] = scope; 
 }
 
-
-Table.CreateTableSQL = "CREATE TABLE " + Table.TABLE + " ("
-		+ " name VARCHAR NOT NULL, "
-		+ "	props VARCHAR, "
-		+ " disabled INTEGER DEFAULT 0, "
-		+ "	PRIMARY KEY (name) "
-		+ ");\n\n";
 
 Table.prototype.persistentProps = function() {
 	var dbProps = {
@@ -335,34 +334,6 @@ Table.prototype.refFields = function() {
 }
 */
 
-Table.prototype.rowAliasSQL = function(idx) {
-	var result = {
-		table: this.rowAliasView(idx),
-		clause: util.format('%s.id = %s.id'
-					, this.rowAliasView(idx)
-					, this.name)
-	}
-	if (idx) {
-		result.alias = this.rowAliasView(idx);
-	}
-	return result;
-}
-
-Table.prototype.fkAliasSQL = function(fk, idx) {
-	
-	var result = {
-		table: Table.rowAliasView(fk.fk_table),
-		clause: util.format('%s.id = %s."%s"'
-					, Table.rowAliasView(fk.fk_table, idx) 
-					, this.name
-					, fk.name)
-	};
-	if (idx) {
-		result.alias = Table.rowAliasView(fk.fk_table, idx);
-	}
-	return result;	
-}
-
 Table.prototype.assertQueryField = function(fieldName) {
 	//must be a view field or the name of the table (for search filter)
 	if ( ! _.contains(this.viewFields(), fieldName) 
@@ -370,6 +341,45 @@ Table.prototype.assertQueryField = function(fieldName) {
 
 		throw new Error("unknown field '" + fieldName + "'");
 	}			
+}
+
+
+/*
+function tableAlias(name, idx) {
+	return name + '_' + idx;
+}
+
+Table.prototype.alias = function(idx) {
+	return tableAlias(this.name, idx);
+}
+*/
+
+Table.prototype.allFieldClauses = function() {
+	return _.map(this.viewFields(), function(vf) {
+		return { table: this.name, field: vf };
+	}, this);
+}
+
+
+Table.prototype.toJSON = function() {
+
+	var result = {
+		name: this.name 
+		, row_alias: this.row_alias
+		, access_control: this.access_control
+		, props: _.pick(this.props, Table.PROPERTIES)
+	};
+
+	if (this.disabled) {
+		result.disabled = this.disabled;
+	}
+
+	result.fields = _.mapObject(this.fields(), function(field) {
+		return field.toJSON();
+	});
+
+	//console.log(result);
+	return result;
 }
 
 Table.prototype.createSQL = function() {
@@ -392,127 +402,32 @@ Table.prototype.addFieldSQL = function(field) {
 	return sql;
 }
 
-/*
-function tableAlias(name, idx) {
-	return name + '_' + idx;
+Table.prototype.rowAliasSQL = function(idx) {
+	var result = {
+		table: this.rowAliasView(idx),
+		clause: util.format('%s.id = %s.id'
+					, this.rowAliasView(idx)
+					, this.name)
+	}
+	if (idx) {
+		result.alias = this.rowAliasView(idx);
+	}
+	return result;
 }
 
-Table.prototype.alias = function(idx) {
-	return tableAlias(this.name, idx);
-}
-*/
-
-Table.prototype.allFieldClauses = function() {
-	return _.map(this.viewFields(), function(vf) {
-		return { table: this.name, field: vf };
-	}, this);
-}
-
-/* 
-
-use triggers to populate FTS full text search
-see https://github.com/coolaj86/sqlite-fts-demo
-
-sqlite> create trigger <table>_ai after insert on <table> 
-		begin    
-			insert into fts_orders (docid,content) 
-			select id as docid, <concat fields> AS content from <table> 
-			where id = new.id; 
-		end;
-*/
-
-Table.prototype.dropTriggerSQL = function() {
-	var sql = 'DROP TRIGGER IF EXISTS tgr_' + this.name + '_ai;\n'
-		+ 'DROP TRIGGER IF EXISTS tgr_' + this.name + '_bu;\n'
-		+ 'DROP TRIGGER IF EXISTS tgr_' + this.name + '_au;\n'
-		+ 'DROP TRIGGER IF EXISTS tgr_' + this.name + '_bd;\n\n';
-
-	return sql;
-}
-
-Table.prototype.createTriggerSQL = function() {
-
-	//group foreign keys by referenced table to number referenced tables
-	//e.g. vra_team as vra_team01, vra_team as vra_team02 etc.
-	var fk_groups = _.groupBy(this.foreignKeys(), function(fk) {
-		return fk.fk_table;
-	});
-
-	var fkSQL = _.map(this.foreignKeys(), function(fk) {
-		return this.fkAliasSQL(fk, 
-						fk_groups[fk.fk_table].indexOf(fk) + 1);
-	}, this);
-
-	var rowAliasSQL = this.rowAliasSQL();
-
-	var tables = [this.name, rowAliasSQL.table];
-	var fkAlias = _.map(fkSQL, function(ref) {
-		return util.format('%s AS %s', ref.table, ref.alias); 
-	});
-
-	tables = [this.name, rowAliasSQL.table].concat(fkAlias);
-
-	var fieldContent = _.map(this.fields(), function(f) {
-		return util.format('COALESCE(%s."%s", %s)', this.name, f.name, "''");
-	}, this);
-
-	var refCoalesceFn = function(table) {
-		return util.format("COALESCE(%s.ref, '')", table);
+Table.prototype.fkAliasSQL = function(fk, idx) {
+	
+	var result = {
+		table: Table.rowAliasView(fk.fk_table),
+		clause: util.format('%s.id = %s.%s'
+					, Table.rowAliasView(fk.fk_table, idx) 
+					, this.name
+					, SqlHelper.EncloseSQL(fk.name))
 	};
-
-	fieldContent.push(refCoalesceFn(rowAliasSQL.table));
-
-	_.each(fkSQL, function(fk) {
-		fieldContent.push(refCoalesceFn(fk.alias));
-	});
-
-	var refClauses = _.pluck(fkSQL, 'clause');
-	refClauses = [ rowAliasSQL.clause ].concat(refClauses);
-
-	var tableId = this.name + '.id';
-
-	var content = fieldContent.join(" || ' ' || ");	
-
-	var sql = 'CREATE TRIGGER tgr_' + this.name + '_ai'
-		+ ' AFTER INSERT ON ' + this.name
-		+ ' BEGIN\n INSERT INTO ' + this.ftsName() + ' (docid, content) '
-		+ ' SELECT ' + tableId + ' AS docid, ' + content + ' as content'
-		+ ' FROM ' + tables.join(', ') 
-		+ ' WHERE ' + tableId + ' = new.id'
-		+ ' AND ' + refClauses.join(' AND ') + ';'
-		+ '\nEND;\n\n';
-
-	sql += 'CREATE TRIGGER tgr_' + this.name + '_bu '
-		+ ' BEFORE UPDATE ON ' + this.name
-		+ ' BEGIN\n DELETE FROM ' + this.ftsName() 
-		+ ' WHERE docid = old.id;'
-		+ '\nEND;\n\n';
-
-	sql += 'CREATE TRIGGER tgr_' + this.name + '_au'
-		+ ' AFTER UPDATE ON ' + this.name
-		+ ' BEGIN\n INSERT INTO ' + this.ftsName() + ' (docid, content) '
-		+ ' SELECT ' + tableId + ' AS docid, ' + content + ' as content'
-		+ ' FROM ' + tables.join(', ') 
-		+ ' WHERE ' + tableId + ' = new.id'
-		+ ' AND ' + refClauses.join(' AND ') + ';'
-		+ '\nEND;\n\n';
-
-	sql += 'CREATE TRIGGER tgr_' + this.name + '_bd '
-		+ ' BEFORE DELETE ON ' + this.name
-		+ ' BEGIN\n DELETE FROM ' + this.ftsName() 
-		+ ' WHERE docid = old.id;'
-		+ '\nEND;\n\n';
-
-	return sql;
-}
-
-Table.prototype.createSearchSQL = function() {
-	var createSQL = 'CREATE VIRTUAL TABLE ' + this.ftsName() 
-			+ ' USING fts4(content, tokenize=simple "tokenchars=-");\n\n';
-	var triggerSQL = this.createTriggerSQL();
-	var sql = createSQL + triggerSQL;
-	log.trace({ sql: sql }, 'Table.createSearchSQL()');
-	return sql;
+	if (idx) {
+		result.alias = Table.rowAliasView(fk.fk_table, idx);
+	}
+	return result;	
 }
 
 Table.prototype.dropViewSQL = function() {
@@ -523,27 +438,6 @@ Table.prototype.dropSQL = function() {
 	return this.dropViewSQL()
 		+  'DROP TABLE IF EXISTS ' + this.ftsName() + ';\n'
 		+  'DROP TABLE IF EXISTS ' + this.name + ';\n\n'
-}
-
-Table.prototype.toJSON = function() {
-
-	var result = {
-		name: this.name 
-		, row_alias: this.row_alias
-		, access_control: this.access_control
-		, props: _.pick(this.props, Table.PROPERTIES)
-	};
-
-	if (this.disabled) {
-		result.disabled = this.disabled;
-	}
-
-	result.fields = _.mapObject(this.fields(), function(field) {
-		return field.toJSON();
-	});
-
-	//console.log(result);
-	return result;
 }
 
 Table.TABLE_FIELD_SEPARATOR = '$';

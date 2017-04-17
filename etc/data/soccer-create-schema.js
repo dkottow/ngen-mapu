@@ -8,8 +8,7 @@ var assert = require('assert')
 
 var APP_PATH = "../../app/";
 
-var Schema = require(APP_PATH + 'Schema').Schema
-	, Model = require(APP_PATH + 'Database').Database;
+var Database = require(APP_PATH + 'sqlite/DatabaseSqlite').DatabaseSqlite;
 	
 var log = require(APP_PATH + 'log').log;
 
@@ -18,6 +17,7 @@ var log = require(APP_PATH + 'log').log;
 describe('Schema', function() {
 
 	var soccerSchema = {
+		name : 'soccer',
 		users : [ 
 			{ "name": "anon@donkeylift.com", "role": "reader" } 
 			, { "name": "demo@donkeylift.com", "role": "writer" }
@@ -458,7 +458,7 @@ describe('Schema', function() {
 		var jsonFile = "./soccer.json";
 		
 		before(function(done) {
-			Schema.remove(dbFile, function(err) {
+			Database.remove(dbFile, function(err) {
 				done();
 			});
 		});	
@@ -466,17 +466,17 @@ describe('Schema', function() {
 		it('create ' + dbFile, function(done) {
 			this.timeout(5000);
 	
-			var db = new Schema();
-			db.init(soccerSchema);
+			var db = new Database(dbFile);
+			db.schema.init(soccerSchema);
 
 			var allDone = _.after(2, function() {
 				done();
 			});
-			db.write(dbFile, function(err) {
+			db.writeSchema(function(err) {
 				log.info(err);
 				allDone();	
 			});
-			db.jsonWrite(jsonFile, function(err) {
+			db.schema.jsonWrite(jsonFile, function(err) {
 				log.info(err);
 				allDone();	
 			});

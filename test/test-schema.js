@@ -79,28 +79,6 @@ describe('Schema', function() {
 		});
 	});
 	
-	describe('Schema.write()', function() {
-		
-		before(function(done) {
-			Schema.remove(dbFile, function(err) {
-				done();
-			});
-		});	
-
-		it('write example', function(done) {
-	
-			var schema = new Schema();
-			schema.jsonRead(jsonSalesFile, function(err) {
-				log.info(err);
-				assert(err == null, err);
-				schema.write(dbFile, function(err) {
-					log.info(err);
-					done();	
-				});
-			});
-
-		});
-	});
 });
 
 

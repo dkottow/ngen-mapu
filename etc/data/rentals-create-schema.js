@@ -5,8 +5,7 @@ var assert = require('assert')
 	, _ = require('underscore')
 	, util = require('util')
 	, sqlite3 = require('sqlite3').verbose()
-	, Schema = require(APP_PATH + 'Schema').Schema
-	, Database = require(APP_PATH + 'Database').Database;
+	, Database = require(APP_PATH + 'DatabaseSqlite').DatabaseSqlite;
 	
 var log = require(APP_PATH + 'log').log;
 
@@ -15,12 +14,13 @@ var log = require(APP_PATH + 'log').log;
 describe('Schema', function() {
 
 	var rentalsSchema = {
-		users : [ 
+		"name" : "rentals",
+		"users" : [ 
 			{ "name": "anon@donkeylift.com", "role": "reader" } 
 			, { "name": "demo@donkeylift.com", "role": "owner" }
 			, { "name": "admin@donkeylift.com", "role": "owner" }
 		],
-		tables : [
+		"tables" : [
 			 { "name": "quotes"
 			 , "access_control": [
 				{
@@ -443,19 +443,19 @@ describe('Schema', function() {
 		var jsonFile = "./rentals.json";
 
 		before(function(done) {
-			Schema.remove(dbFile, function(err) {
+			Database.remove(dbFile, function(err) {
 				done();
 			});
 		});	
 
 		it('create ' + dbFile, function(done) {
 	
-			var schema = new Schema();
-			schema.init(rentalsSchema);
+			var db = new Database(dbFile);
+			db.schema.init(rentalsSchema);
 			var allDone = _.after(2, function() {
 				done();
 			});
-			schema.write(dbFile, function(err) {
+			db.writeSchema(function(err) {
 				log.info(err);
 				//Add status
 				var db = new Database(dbFile);
@@ -474,7 +474,7 @@ describe('Schema', function() {
 					});	
 				});
 			});
-			schema.jsonWrite(jsonFile, function(err) {
+			db.schema.jsonWrite(jsonFile, function(err) {
 				log.info(err);
 				allDone();	
 			});

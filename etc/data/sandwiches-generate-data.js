@@ -7,8 +7,7 @@ var assert = require('assert')
 	, sqlite3 = require('sqlite3').verbose()
 	, probdist = require('probdist')
 	, Random = require('random-js')
-	, schema = require(APP_PATH + 'Schema')
-	, database = require(APP_PATH + 'Database');
+	, Database = require(APP_PATH + 'sqlite/DatabaseSqlite').DatabaseSqlite;
 	
 var log = require(APP_PATH + 'log').log;
 
@@ -19,7 +18,7 @@ describe('Database', function() {
 	describe('create_orders()', function() {
 
 		var dbFile = "sandwiches.sqlite";
-		var db = new database.Database(dbFile);
+		var db = new Database(dbFile);
 		var customers;
 		var sandwiches;
 		

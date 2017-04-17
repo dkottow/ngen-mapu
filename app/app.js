@@ -14,8 +14,6 @@
    limitations under the License.
 */
 
-var fs = require('fs');
-var path = require('path');
 var util = require('util');
 var url = require('url');
 
@@ -25,21 +23,15 @@ var express = require('express');
 
 /** globals **/
 
+global.sql_engine = 'sqlite'; //supported are: sqlite, mssql
+
 //max number of rows queried by any SELECT
 global.row_max_count = 1000;
-global.sqlite_ext = '.sqlite';
-
-global.tmp_dir = path.join(process.cwd(), 'tmp');
-global.data_dir = path.join(process.cwd(), 'data');
-
-if (process.env.OPENSHIFT_DATA_DIR) {
-	global.tmp_dir = path.join(process.env.OPENSHIFT_DATA_DIR, 'tmp');
-	global.data_dir = path.join(process.env.OPENSHIFT_DATA_DIR, 'data');
-}
 
 /*** end globals ***/
 
-var AccountManager = require('./AccountManager.js').AccountManager;
+var AccountManager = require('./AccountManagerFactory.js').AccountManagerFactory;
+
 var ApiController = require('./ApiController.js').ApiController;
 var SignupController = require('./SignupController.js').SignupController;
 
@@ -52,7 +44,7 @@ var controller;
 app.init = function(options, cbAfter) {
 	log.info('app.init()...');
 
-	accounts = new AccountManager();
+	accounts = AccountManager.create();
 
 	accounts.init(function() {
 		initRoutes(options);

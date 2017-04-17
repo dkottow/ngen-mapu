@@ -5,8 +5,7 @@ var assert = require('assert')
 	, _ = require('underscore')
 	, util = require('util')
 	, sqlite3 = require('sqlite3').verbose()
-	, schema = require(APP_PATH + 'Schema')
-	, Model = require(APP_PATH + 'Database').Database;
+	, Database = require(APP_PATH + 'sqlite/DatabaseSqlite').DatabaseSqlite;
 	
 var log = require(APP_PATH + 'log').log;
 
@@ -15,6 +14,7 @@ var log = require(APP_PATH + 'log').log;
 describe('Schema', function() {
 
 	var salesSchema = {
+		name: "sales",
 		users : [ 
 			{ "name": "anon@donkeylift.com", "role": "reader" } 
 			, { "name": "demo@donkeylift.com", "role": "owner" }
@@ -314,7 +314,7 @@ describe('Schema', function() {
 		var jsonFile = "./sales.json";
 
 		before(function(done) {
-			schema.Schema.remove(dbFile, function(err) {
+			Database.remove(dbFile, function(err) {
 				done();
 			});
 		});	
@@ -322,16 +322,16 @@ describe('Schema', function() {
 		it('create ' + dbFile, function(done) {
 			this.timeout(5000);
 	
-			var db = new schema.Schema();
-			db.init(salesSchema);
+			var db = new Database(dbFile);
+			db.schema.init(salesSchema);
 			var allDone = _.after(2, function() {
 				done();
 			});
-			db.write(dbFile, function(err) {
+			db.writeSchema(function(err) {
 				log.info(err);
 				allDone();	
 			});
-			db.jsonWrite(jsonFile, function(err) {
+			db.schema.jsonWrite(jsonFile, function(err) {
 				log.info(err);
 				allDone();	
 			});

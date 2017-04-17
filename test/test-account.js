@@ -2,26 +2,32 @@
 var assert = require('assert')
 	, _ = require('underscore')
 	, util = require('util')
+	, path = require('path')
 	, fse = require('fs-extra');
+
+global.sql_engine = 'sqlite';
+global.data_dir = "./test/data";
 	
-var Account = require('../app/Account').Account
+var AccountFactory = require('../app/AccountFactory').AccountFactory
 	, Schema = require('../app/Schema').Schema;
 
 var log =  require('./log').log;
-	
+
 describe('Account', function() {
-	var accountDir = "test/data/sqlite";
+
+	var accountName = 'sqlite';
+	var accountDir = path.join(global.data_dir, accountName);
 
 	describe('Account.init()', function() {
 		it('account init', function(done) {
-			var account = new Account(accountDir);
+			var account = AccountFactory.create(accountName);
 			account.init(function(err) {
 				done();
 			});
 		});
 
 		it('account does not exist', function(done) {
-			var account = new Account('foo/bar');
+			var account = AccountFactory.create('foo');
 			account.init(function(err) {
 				assert(err instanceof Error);
 				done();
@@ -32,7 +38,7 @@ describe('Account', function() {
 	
 	describe('Account.getInfo()', function() {
 		
-		var account = new Account(accountDir);
+		var account = AccountFactory.create(accountName);
 
 		before(function(done) {
 			account.init(function(err) { done(); });
@@ -54,7 +60,7 @@ describe('Account', function() {
 
 		var jsonSalesFile = "test/data/json/sales.json";
 		
-		var account = new Account(accountDir);
+		var account = AccountFactory.create(accountName);
 		var schema = new Schema();
 
 		before(function(done) {
@@ -101,7 +107,7 @@ describe('Account', function() {
 		var emptyCopySalesFile = accountDir + "/sales_empty_copy.sqlite";
 		var copySalesFile = accountDir + "/sales_copy.sqlite";
 		
-		var account = new Account(accountDir);
+		var account = AccountFactory.create(accountName);
 		var schema = new Schema();
 
 		before(function(done) {

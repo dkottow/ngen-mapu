@@ -18,31 +18,20 @@ var _ = require('underscore');
 var util = require('util');
 var log = require('./log.js').log;
 
-function AccountManager() {
-	this.accounts = {};
+var path = require('path');
+
+/**** sqlite *****/
+
+var DatabaseSqlite = require('./sqlite/DatabaseSqlite.js').DatabaseSqlite;
+
+var DatabaseFactory = {};
+
+DatabaseFactory.create = function(name) {
+	if (global.sql_engine == 'sqlite') {
+		return new DatabaseSqlite(name);
+	}
+	throw new Error(util.format("unsupported sql engine '%s'", global.sql_engine));	
 }
 
-/* interfaces
-
-AccountManager.prototype.init = function(cbAfter) {
-}
-
-AccountManager.prototype.create = function(name, cbAfter) {
-}
-
-*/
-
-AccountManager.prototype.list = function() {
-	var result = {};
-	result.accounts = _.map(this.accounts, function(ac) {
-		return { name: ac.name };
-	});
-	return result;
-}
-
-AccountManager.prototype.get = function(name) { 
-	return this.accounts[name];
-}
-
-exports.AccountManager = AccountManager;
+exports.DatabaseFactory = DatabaseFactory;
 

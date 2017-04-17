@@ -9,7 +9,7 @@ require('dotenv').config();
 
 var log = require('./log.js').log;
 
-var useAuth = true;
+var useAuth = false;
 var authToken = null;
 
 var app = require('../app/app.js').app;
@@ -33,8 +33,9 @@ function get(url, cbAfter) {
 	}
 	request.get(options,
 		function(err, rsp, body) {
+			log.debug(options);
 			if (err || rsp.statusCode != 200) {
-				err = err || new Error(rsp.statusCode + ' error.' + rsp.body);
+				err = err || new Error(rsp.statusCode + ' error. ' + options.url);
 				log.error(err);			
 				cbAfter(err, null);
 				return;

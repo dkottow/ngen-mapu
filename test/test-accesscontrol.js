@@ -3,12 +3,15 @@ var assert = require('assert')
 	, _ = require('underscore')
 	, util = require('util')
 	, fse = require('fs-extra');
+
+global.sql_engine = 'sqlite';
 	
 var APP_PATH = "../app/";
+
 var AccessControl = require(APP_PATH + 'AccessControl').AccessControl
-	, Database = require(APP_PATH + 'Database').Database
-	, Table = require(APP_PATH + 'Table').Table
-	, Schema = require(APP_PATH + 'Schema').Schema;
+	, Database = require(APP_PATH + 'sqlite/DatabaseSqlite').DatabaseSqlite
+	, Table = require(APP_PATH + 'Table.js').Table
+	, Schema = require(APP_PATH + 'Schema.js').Schema;
 	
 var log =  require('./log').log;
 
@@ -44,7 +47,7 @@ describe('AccessControl', function() {
 		}
 
 		before(function(done) {
-			db.init(function(err) { 
+			db.readSchema(function(err) { 
 				assert(err == null, 'Error loading ' + db.name());
 				done(); 
 			});
@@ -85,7 +88,7 @@ describe('AccessControl', function() {
 		}
 
 		before(function(done) {
-			db.init(function(err) { 
+			db.readSchema(function(err) { 
 				assert(err == null, 'Error loading ' + db.name());
 				done(); 
 			});

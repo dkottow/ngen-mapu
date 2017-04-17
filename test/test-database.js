@@ -7,26 +7,29 @@ var assert = require('assert')
 	, fsext = require('fs-extra')
 	, sqlite3 = require('sqlite3').verbose();
 
-var Database = require('../app/Database').Database;
+global.sql_engine = 'sqlite';
+
+var DatabaseFactory = require('../app/DatabaseFactory').DatabaseFactory;
 var Schema = require('../app/Schema').Schema; //only for some static var
+var Database = require('../app/sqlite/DatabaseSqlite').DatabaseSqlite;
 	
 var log = require('./log.js').log;
 
 describe('Database', function() {
 	var dbFile = "test/data/sqlite/sales.sqlite";
 	var dbCopy = "test/data/sqlite/sales.tmp.sqlite";
-	var db = new Database(dbCopy);
+	var db = DatabaseFactory.create(dbCopy);
 
 	before(function(done) {
 		fsext.copy(dbFile, dbCopy, function(err) {
-			db.init(done);
+			db.readSchema(done);
 		});
 	});	
 
-	describe('init()', function() {
+	describe('readSchema()', function() {
 		it('guards file not found', function(done) {
-			var m = new Database("file-not-found.sqlite");
-			m.init(function(err) {
+			var m = DatabaseFactory.create("file-not-found.sqlite");
+			m.readSchema(function(err) {
 				assert(err instanceof Error);
 				done();	
 			});
@@ -373,6 +376,36 @@ describe('Database', function() {
 				log.info(err);
 				done(); 
 			});
+		});
+	});
+
+	describe('Database.schemaWrite()', function() {
+		var jsonSalesFile = "test/data/json/sales.json";
+		var dbFile = "test/data/sqlite/test-create.sqlite";
+		
+		before(function(done) {
+			Database.remove(dbFile, function(err) {
+				done();
+			});
+		});	
+
+		it('write example', function(done) {
+	
+			var db = DatabaseFactory.create(dbFile);
+			var schema = new Schema();
+
+			schema.jsonRead(jsonSalesFile, function(err) {
+				log.info(err);
+				assert(err == null, err);
+				db.setSchema(schema.get());
+				db.writeSchema(function(err) {
+					log.info(err);
+					assert(err == null, err);
+					done();	
+				});
+				
+			});
+			
 		});
 	});
 

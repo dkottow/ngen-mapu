@@ -3,11 +3,14 @@ var assert = require('assert')
 	, _ = require('underscore')
 	, util = require('util')
 	, fs = require('fs');
+
+global.sql_engine = 'sqlite';
 	
 var Table = require('../app/Table.js').Table
 	, Schema = require('../app/Schema.js').Schema //to read json
 	, TableGraph = require('../app/TableGraph.js').TableGraph
-	, SqlBuilder = require('../app/SqlBuilder.js').SqlBuilder;
+
+var SqlBuilderFactory = require('../app/SqlBuilderFactory').SqlBuilderFactory;
 
 var log = require('./log.js').log;
 	
@@ -36,16 +39,9 @@ describe('Sandwiches DB', function() {
 		schema.jsonRead(jsonFile, function(err) {
 			log.info(err);
 			assert(err == null, err);
-			sqlBuilder = schema.sqlBuilder;
+			sqlBuilder = SqlBuilderFactory.create(schema.graph);
 			done();
 		});
-/*
-		var tables = _.map(tableDefs, function(def) {
-			return new Table(def);
-		});
-		var tableGraph = new TableGraph(tables);
-		sqlBuilder = new SqlBuilder(tableGraph);
-*/
 	});	
 
 
@@ -184,7 +180,7 @@ describe('Soccer DB', function() {
 		schema.jsonRead(jsonFile, function(err) {
 			log.info(err);
 			assert(err == null, err);
-			sqlBuilder = schema.sqlBuilder;
+			sqlBuilder = SqlBuilderFactory.create(schema.graph);
 			done();
 		});
 	});	

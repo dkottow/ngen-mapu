@@ -1,2 +1,6 @@
 node_modules
+tmp
+test/data
+data
+logs
 *.swp

@@ -19,25 +19,26 @@ var  path = require('path');
 var _ = require('underscore');
 var util = require('util');
 
-var tmp = require('tmp'); //tmp filenames
-
-var sqlite3 = require('sqlite3').verbose();
-
-var Field = require('./Field.js').Field;
-var Table = require('./Table.js').Table;
 var TableGraph = require('./TableGraph.js').TableGraph;
-var SqlBuilder = require('./SqlBuilder.js').SqlBuilder;
+
+/*
+var TableFactory = require('./TableFactory.js').TableFactory;
+var Table = TableFactory.class();
+*/
+
+var SqlHelper = require('./SqlHelperFactory.js').SqlHelperFactory.create();
+var Table = require('./Table.js').Table;
+
 
 var log = require('./log.js').log;
-
-global.tmp_dir = global.tmp_dir || '.';
 
 var Schema = function() {
 	this.graph = null;
 }
 
 Schema.EMPTY = {
-	tables: []
+	name: ''
+	, tables: []
 	, join_trees: []
 	, users: []
 }
@@ -49,6 +50,8 @@ Schema.USER_ROLES = {
 	WRITER: "writer",
 	READER: "reader"
 };
+
+Schema.TABLE = '__schemaprops__';
 
 Schema.prototype.init = function(schemaData) {
 	try {
@@ -63,8 +66,8 @@ Schema.prototype.init = function(schemaData) {
 
 		var options = _.pick(schemaData, 'join_trees');
 		this.graph = new TableGraph(tables, options);
-		this.sqlBuilder = new SqlBuilder(this.graph);
 		this.users = schemaData.users || [];
+		this.name = schemaData.name;
 
 		log.trace('...Schema.init()');
 
@@ -153,211 +156,6 @@ Schema.setAdmin = function(schemaDef, name) {
 
 /******* file ops *******/
 
-Schema.prototype.write = function(dbFile, cbAfter) {
-	var me = this;
-	try {
-
-		var createSQL = this.sqlBuilder.createSQL(this);
-
-		var tmpFile = path.join(global.tmp_dir,
-						tmp.tmpNameSync({template: 'dl-XXXXXX.sqlite'}));
-
-		var db = new sqlite3.Database(tmpFile 
-			, sqlite3.OPEN_READWRITE | sqlite3.OPEN_CREATE
-			, function(err) {
-			if (err) {
-				cbAfter(err);
-				return;
-			}
-			db.exec(createSQL, function(err) {
-				db.close();
-				if (err) {
-					log.error("Schema.write() failed. " + err);	
-					fs.unlink(tmpFile);
-					cbAfter(err);
-					return;
-				}
-				me.setName(dbFile);
-				log.debug('rename ' + tmpFile + ' to ' + dbFile);	
-				fs.rename(tmpFile, dbFile, function(err) {						
-					cbAfter(err);
-				});
-			});
-		});
-
-	} catch(err) {
-		log.error({err: err}, "Schema.write() exception.");
-		cbAfter(err);
-	}
-}
-
-Schema.remove = function(dbFile, cbAfter) {
-	fs.unlink(dbFile, function(err) {
-		if (err) {
-			log.error({err: err}, "Schema.remove() failed.");	
-		}
-		cbAfter(err);
-	});
-}
-
-Schema.prototype.read = function(dbFile, cbAfter) {
-
-	try {
-		log.debug({db: path.basename(dbFile)}, "Schema.read()");
-		var me = this;
-		var db = new sqlite3.Database(dbFile
-							, sqlite3.OPEN_READONLY
-							, function(err) {
-			if (err) {
-				log.error({err: err, file: dbFile}, 
-					"Schema.read() failed. Could not open file.");
-				cbAfter(err);
-				return;
-			}
-
-			var dbErrorHandlerFn = function(err) {
-				if (err) {
-					db.close();
-					log.error({err: err}, "Schema.read() failed.");
-					cbAfter(err);
-					return;
-				}
-			}
-
-			var fields = _.map(Schema.TABLE_FIELDS, function(f) {
-				return '"' + f + '"';
-			});
-			var sql = 'SELECT ' + fields.join(',') 
-					+ ' FROM ' + Schema.TABLE;
-
-			//read schema properties 
-			db.all(sql, function(err, rows) {
-				dbErrorHandlerFn(err);
-
-				var schemaProps = {};
-				_.each(rows, function(r) {
-					schemaProps[r.name] = JSON.parse(r.value);
-				});
-				var fields = _.map(Table.TABLE_FIELDS, function(f) {
-					return '"' + f + '"';
-				});
-				var sql = 'SELECT ' + fields.join(',') 
-						+ ' FROM ' + Table.TABLE;
-
-				//read table properties 
-				db.all(sql, function(err, rows) {
-
-					dbErrorHandlerFn(err);
-
-					//handle empty schema
-					if (rows.length == 0) {
-						db.close(function() {
-							me.init();
-							me.setName(dbFile);
-							cbAfter();
-							return;
-						});
-					}
-
-					var tables = _.map(rows, function(r) {
-						var table = { 
-							name: r.name,
-							disabled: r.disabled
-						};
-						var props =  JSON.parse(r.props);
-						table.row_alias = props.row_alias;
-						table.access_control = props.access_control;
-						table.props = _.pick(props, Table.PROPERTIES);
-						return table;
-					});
-
-					//console.dir(rows);
-					tables = _.object(_.pluck(tables, 'name'), tables);
-						
-					var fields = _.map(Field.TABLE_FIELDS, function(f) {
-						return '"' + f + '"';
-					});
-					var sql = 'SELECT ' + fields.join(',') 
-							+ ' FROM ' + Field.TABLE;
-
-					//read field properties 
-					db.all(sql, function(err ,rows) {
-						
-						dbErrorHandlerFn(err);
-
-						var tableNames = _.uniq(_.pluck(rows, 'table_name'));
-
-						_.each(tableNames, function(tn) {
-							tables[tn]['fields'] = {};
-						});
-
-						_.each(rows, function(r) {
-							var field = { 
-								name: r.name,
-								disabled: r.disabled
-							};
-							var props = JSON.parse(r.props);
-							field.props = _.pick(props, Field.PROPERTIES);
-
-							tables[r.table_name].fields[r.name] = field;
-						});
-
-						var doAfter = _.after(2*tableNames.length, function() {
-							//after executing two SQL statements per table
-							db.close(function () {
-								var data = {
-									tables: tables
-								};
-								_.extend(data, schemaProps);
-								me.init(data);
-								me.setName(dbFile);
-								cbAfter();
-							});
-						});
-
-						//read field sql definition 
-						_.each(tableNames, function(tn) {
-							var sql = util.format("PRAGMA table_info(%s)", tn);
-							//console.log(sql);
-							db.all(sql, function(err, rows) {
-
-								dbErrorHandlerFn(err);
-
-								_.each(rows, function(r) {
-									//console.log(r);
-									_.extend(tables[tn].fields[r.name], r);	
-								});
-								doAfter();
-							});
-						});
-
-						//read fk sql definition 
-						_.each(tableNames, function(tn) {
-							var sql = util.format("PRAGMA foreign_key_list(%s)", tn);
-							db.all(sql, function(err, rows) {
-
-								dbErrorHandlerFn(err);
-
-								_.each(rows, function(r) {
-									//console.log(r);
-									_.extend(tables[tn].fields[r.from], {
-										fk: 1,
-										fk_table: r.table,
-										fk_field: r.to
-									});
-								});
-								doAfter();
-							});
-						});
-					});
-				});
-			});
-		});
-	} catch(err) {
-		log.error({err: err}, "Schema.read() exception.");
-		cbAfter(err);
-	}
-}
 
 Schema.prototype.jsonWrite = function(fileName, cbAfter) {
 	var me = this;
@@ -372,7 +170,6 @@ Schema.prototype.jsonWrite = function(fileName, cbAfter) {
 				return;
 			}
 
-			me.setName(fileName);
 			cbAfter();
 		});
 
@@ -405,7 +202,6 @@ Schema.prototype.jsonRead = function(fileName, cbAfter) {
 			}
 
 			me.init(data);
-			me.setName(fileName);
 			cbAfter();
 			
 		});
@@ -418,11 +214,6 @@ Schema.prototype.jsonRead = function(fileName, cbAfter) {
 }
 
 // private methods..
-
-Schema.prototype.setName = function(fileName) {
-	var fn = path.basename(fileName);
-	this.name = fn.substr(0, fn.lastIndexOf('.')) || fn;
-}
 
 
 Schema.prototype.applyChanges = function(changes) {
@@ -443,49 +234,6 @@ Schema.prototype.applyChanges = function(changes) {
 	this.init(this.get()); //rebuild objs from json (e.g. TableGraph)
 }
 
-Schema.prototype.writeChanges = function(dbFile, changes, cbAfter) {
-	try {
-
-		var sql = _.reduce(changes, function(sql, change) {
-			return sql + change.toSQL() + '; \n';
-		}, '');
-
-
-		log.debug({sql: sql}, "Schema.writePatches()");
-		if (sql.length == 0) {
-			cbAfter();
-			return;
-		}
-
-		var db = new sqlite3.Database(dbFile);
-
-		try {
-
-			db.serialize(function() {
-				db.run("PRAGMA foreign_keys = ON;");
-				db.run("BEGIN TRANSACTION");
-				db.exec(sql);
-				db.run("COMMIT TRANSACTION");
-				db.close(function() {
-					cbAfter();
-				});
-			});
-
-		} catch(err) {
-			db.run("ROLLBACK TRANSACTION");
-			db.close(function() {
-				log.error({err: err, sql: sql}, 
-					"Schema.writePatches() exception. Rollback.");
-				cbAfter(err);				
-			});
-		}
-
-	} catch(err) {
-		log.error({err: err}, 
-			"Schema.writeChanges() exception.");
-		cbAfter(err);
-	}
-}
 
 Schema.TABLE = "__schemaprops__";
 Schema.TABLE_FIELDS = ['name', 'value'];

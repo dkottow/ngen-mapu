@@ -229,9 +229,8 @@ AccessControl.prototype.filterQuery = function(path, query, user) {
 
 	if ( ! this.auth) return { filter: query.filter };
 
-	var sb = path.db.schema.sqlBuilder;
 	var fields = query.fields || Table.ALL_FIELDS;
-	var queryFields = sb.sanitizeFieldClauses(path.table, fields);
+	var queryFields = path.db.sqlBuilder.sanitizeFieldClauses(path.table, fields);
 	var queryTables = _.uniq(_.pluck(queryFields, 'table'));
 
 	var acFilters = [];

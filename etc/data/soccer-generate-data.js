@@ -10,8 +10,7 @@ var assert = require('assert')
 var APP_PATH = "../../app/";
 global.log = require('./log.js').log;
 
-var Schema = require(APP_PATH + 'Schema').Schema
-	, Database = require(APP_PATH + 'Database').Database;
+var Database = require(APP_PATH + 'sqlite/DatabaseSqlite').DatabaseSqlite;
 	
 var log = require(APP_PATH + 'log').log;
 

@@ -20,6 +20,8 @@ var assert = require('assert');
 
 var log = require('./log.js').log;
 
+var SqlHelper = require('./SqlHelperFactory.js').SqlHelperFactory.create();
+
 var Field = function(fieldDef) {
 	//prototype defs call the ctor with no args, get out!
 	if (fieldDef == undefined) return;
@@ -74,15 +76,6 @@ Field.TABLE_FIELDS = ['name', 'table_name', 'props', 'disabled'];
 //adding or removing PROPERTIES needs no change in db schema
 Field.PROPERTIES = ['order', 'width', 'scale', 'visible', 'label'];
 
-Field.CreateTableSQL 
-	= " CREATE TABLE " + Field.TABLE + " ("
-		+ ' table_name VARCHAR NOT NULL, '
-		+ ' name VARCHAR NOT NULL, '
-		+ ' props VARCHAR, '
-		+ ' disabled INTEGER DEFAULT 0, '
-		+ ' PRIMARY KEY (name, table_name) '
-		+ ");\n\n";
-
 
 Field.create = function(fieldDef) {
 	var errMsg = util.format("Field.create(%s) failed. "
@@ -90,17 +83,10 @@ Field.create = function(fieldDef) {
 
 	assert(_.has(fieldDef, "type"), errMsg + " Type attr missing.");
 
-	if (fieldDef.type.indexOf(Field.TYPES.text) == 0) {
-		return new TextField(fieldDef);
-	} else if (fieldDef.type == Field.TYPES.integer) {
-		return new IntegerField(fieldDef);
-	} else if (fieldDef.type.indexOf(Field.TYPES.numeric) == 0) {
-		return new NumericField(fieldDef);
-	} else if (fieldDef.type == Field.TYPES.datetime 
-			|| fieldDef.type == Field.TYPES.date) {
-		return new DateTimeField(fieldDef);
+	if (_.contains(_.values(Field.TYPES), fieldDef.type)) {
+		return new Field(fieldDef);
 	}
-
+	
 	throw new Error(util.format("Field.create(%s) failed. Unknown type.", util.inspect(fieldDef)));
 
 }
@@ -117,60 +103,9 @@ Field.prototype.setDisabled = function(disabled) {
 	this.disabled = disabled == true;
 }
 
-Field.prototype.defaultSQL = function() {
-
-	if (_.contains(['mod_on', 'add_on'], this.name)) {
-		return "DEFAULT(datetime('now'))";
-
-	} else if (_.contains(['mod_by', 'add_by'], this.name)) {
-		return "DEFAULT 'sql'";
-
-	} else {
-		return '';
-	}
-}
-
-Field.prototype.foreignKeySQL = function() {
-	return this.fk 
-		? util.format("REFERENCES %s(%s)", this.fk_table, this.fk_field)
-		: "";
-}
-
-Field.prototype.toSQL = function() {
-	var sql = '"' + this.name + '" ' + this.type;
-	if (this.notnull) sql += ' NOT NULL';
-	sql += " " + this.defaultSQL();
-	sql += " " + this.foreignKeySQL();
-	return sql;
-}
 
 Field.prototype.persistentProps = function() {
 	return _.pick(this.props, Field.PROPERTIES);
-}
-
-Field.prototype.insertPropSQL = function(table) {
-
-	var props = this.persistentProps();
-
-	var values = _.map([
-			this.name, 
-			table.name, 
-			JSON.stringify(props)
-		], function(v) {
-		return "'" + v + "'";
-	}).concat([
-		this.disabled ? 1 : 0]
-	);
-
-	var fields = _.map(Field.TABLE_FIELDS, function(f) {
-		return '"' + f + '"';
-	});
-
-	var sql = 'INSERT INTO ' + Field.TABLE
-			+ ' (' + fields.join(',') + ') ' 
-			+ ' VALUES (' + values.join(',') + '); ';
-
-	return sql;
 }
 
 Field.prototype.updatePropSQL = function(table) {
@@ -185,11 +120,30 @@ Field.prototype.updatePropSQL = function(table) {
 	return sql;
 }
 
+Field.prototype.typeName = function() {
+	if (this.type.indexOf(Field.TYPES.text) == 0) {
+		return 'text';
+	} else if (this.type == Field.TYPES.integer) {
+		return 'integer';
+	} else if (this.type.indexOf(Field.TYPES.numeric) == 0) {
+		return 'numeric';
+	} else if (this.type == Field.TYPES.datetime) {
+		return 'datetime';
+	} else if (this.type == Field.TYPES.date) {
+		return 'date';
+	}
+	return null;
+}
+
 Field.prototype.defaultWidth = function() {
-	if (this instanceof IntegerField) return 4;
-	if (this instanceof NumericField) return 8;
-	if (this instanceof TextField) return 20;
-	if (this instanceof DateTimeField) return 16;
+	var typeName = this.typeName();
+
+	if (typeName == 'integer') return 4;
+	if (typeName == 'numeric') return 8;
+	if (typeName == 'text') return 20;
+	if (typeName == 'date') return 8;
+	if (typeName == 'datetime') return 16;
+
 	return 16;
 }
 
@@ -229,34 +183,44 @@ Field.TYPES = {
 	, 'datetime': 'DATETIME'
 }
 
-var TextField = function(fieldDef) {
-	Field.call(this, fieldDef);
-}
-
-TextField.prototype = new Field;	
-
-var IntegerField = function(fieldDef) {
-	Field.call(this, fieldDef);
-}
-
-IntegerField.prototype = new Field;	
-
-var NumericField = function(fieldDef) {
-	Field.call(this, fieldDef);
-}
-
-NumericField.prototype = new Field;	
-
-var DateTimeField = function(fieldDef) {
-	Field.call(this, fieldDef);
-}
-
-DateTimeField.prototype = new Field;	
-
-DateTimeField.toString = function(date) {
+Field.dateToString = function(date) {
 	return date.toISOString().replace('T', ' ').substr(0, 19); //up to secs
 }
 
+
+Field.prototype.insertPropSQL = function(table) {
+
+	var props = this.persistentProps();
+
+	var values = _.map([
+			this.name, 
+			table.name, 
+			JSON.stringify(props)
+		], function(v) {
+		return "'" + v + "'";
+	}).concat([
+		this.disabled ? 1 : 0]
+	);
+
+	var fields = _.map(Field.TABLE_FIELDS, function(f) {
+		return SqlHelper.EncloseSQL(f);
+	});
+
+	var sql = 'INSERT INTO ' + Field.TABLE
+			+ ' (' + fields.join(',') + ') ' 
+			+ ' VALUES (' + values.join(',') + '); ';
+
+	return sql;
+}
+
+Field.prototype.toSQL = function() {
+	var sql = '"' + this.name + '" ' + this.type;
+	if (this.notnull) sql += ' NOT NULL';
+	sql += " " + SqlHelper.Field.defaultSQL(this);
+	sql += " " +  SqlHelper.Field.foreignKeySQL(this);
+	return sql;
+}
+
+
 exports.Field = Field;
-exports.DateTimeField = DateTimeField;
 

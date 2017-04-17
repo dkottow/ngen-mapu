@@ -27,6 +27,16 @@ var SqlHelperSqlite = {
 }
 
 
+SqlHelperSqlite.EncloseSQL = function(name) {
+	return '"' + name + '"';
+}
+
+SqlHelperSqlite.ConcatSQL = function(values) {
+	return values.join(' || '); //'"' + name + '"';
+}
+
+
+/********** Schema stuff *********/
 
 SqlHelperSqlite.Schema.PragmaSQL = "PRAGMA journal_mode=WAL;\n\n";
 
@@ -38,10 +48,7 @@ SqlHelperSqlite.Schema.createPropsTableSQL = function(name) {
 		+ ");\n\n"
 }
 
-SqlHelperSqlite.EncloseSQL = function(name) {
-	return '"' + name + '"';
-}
-
+/******** Table stuff ********/
 
 SqlHelperSqlite.Table.createPropsTableSQL = function(name) {
 	return "CREATE TABLE " + name + " ("

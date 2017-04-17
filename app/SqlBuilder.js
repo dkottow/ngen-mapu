@@ -128,6 +128,7 @@ SqlBuilder.prototype.updatePropSQL = function(patches) {
 }
 */
 
+
 // private methods...
 
 SqlBuilder.prototype.sanitizeFieldClauses = function(table, fieldClauses) {
@@ -206,19 +207,17 @@ SqlBuilder.prototype.createRowAliasViewSQL = function(table) {
 				);
 		}
 		if ( ! _.isEmpty(memo)) {
-			result = memo + " || ' ' || " + result;
+			result = SqlHelper.ConcatSQL([memo, "' '", result]);
 		}
 		return result;
 	}, '', this);
 
+	var fmt = SqlHelper.ConcatSQL(["'['", '%s.id', "']'"]) + ' AS %s';
+	var ref_id =  util.format(fmt, table.name, Field.ROW_ALIAS);
+	var coalesceField = "COALESCE(" + ref_field + ", '')";
 
-	var ref_id =  util.format("'[' || %s.id || ']' AS %s", 
-		table.name,
-		Field.ROW_ALIAS
-	);
-	
 	ref_field = ref_field.length > 0
-		? "COALESCE(" + ref_field + ", '') || ' ' || " + ref_id 
+		? SqlHelper.ConcatSQL([coalesceField, "' '", ref_id]) 
 		: ref_id;
 
 	var id_field = util.format('%s.id AS id', table.name);
@@ -439,9 +438,9 @@ SqlBuilder.prototype.filterSQL = function(fromTable, filterClauses) {
 
 			} else {
 				//use LIKE on filter.field
-				var clause = util.format('(%s || ' + "''" + ' LIKE ?)',
-								fromFieldQN);
-			
+				var fmt = '(' + SqlHelper.ConcatSQL(['%s', "''"]) + ' LIKE ?)';
+				var clause = util.format(fmt, fromFieldQN);
+
 				sqlClauses.push(clause);
 
 				var searchValue = filter.value + '%';

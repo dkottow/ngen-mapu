@@ -73,57 +73,6 @@ SqlBuilderSqlite.prototype.createSQL = function(schema) {
 	return sql;
 }
 
-SqlBuilderSqlite.prototype.createRowAliasViewSQL = function(table) {
-
-	var ref_tables = _.map(_.filter(table.row_alias, function(ref) {
-			return ref.indexOf('.') >= 0;		
-		}), function(ref) {
-		return ref.split('.')[0];	
-	});
-
-	var ref_join = this.joinGraphSQL(table.name, ref_tables);
-
-	var ref_field = _.reduce(table.row_alias, function(memo, f) {
-		var result;
-		if (f.indexOf('.') < 0) {
-			result = util.format('%s.%s', table.name, SqlHelper.EncloseSQL(f));
-		} else {
-			result = util.format('%s.%s', 
-					this.graph.table(f.split('.')[0]).name,
-					SqlHelper.EncloseSQL(f.split('.')[1])
-				);
-		}
-		if ( ! _.isEmpty(memo)) {
-			result = memo + " || ' ' || " + result;
-		}
-		return result;
-	}, '', this);
-
-
-	var ref_id =  util.format("'[' || %s.id || ']' AS %s", 
-		table.name,
-		Field.ROW_ALIAS
-	);
-	
-	ref_field = ref_field.length > 0
-		? "COALESCE(" + ref_field + ", '') || ' ' || " + ref_id 
-		: ref_id;
-
-	var id_field = util.format('%s.id AS id', table.name);
-
-	var fields = [id_field, ref_field];
-	var tables = [table.name].concat(ref_join.tables);
-	var clauses = ['1=1'].concat(ref_join.clauses);
-
-	var sql = 'CREATE VIEW ' + table.rowAliasView() + ' AS '
-		+ ' SELECT ' + fields.join(', ')
-		+ ' FROM ' + tables.join(', ')
-		+ ' WHERE ' + clauses.join(' AND ') + ';';
-
-	return sql;
-}
-
-
 SqlBuilderSqlite.prototype.joinSearchSQL = function(filterClauses) {
 	//there can be only one search filter
 	var searchFilter = _.find(filterClauses, function(filter) {

@@ -32,46 +32,6 @@ var SqlBuilderSqlite = function(tableGraph) {
 
 SqlBuilderSqlite.prototype = Object.create(SqlBuilder.prototype);	
 
-SqlBuilderSqlite.prototype.createTableSQL = function(table) {
-	return table.createSQL()
-		+ this.createRowAliasViewSQL(table)
-		+ SqlHelper.Table.createSearchSQL(table);
-}
-
-SqlBuilderSqlite.prototype.createSQL = function(schema) {
-
-	var createSysTablesSQL = SqlHelper.Schema.PragmaSQL
-			+ SqlHelper.Schema.createPropsTableSQL(Schema.TABLE)
-			+ SqlHelper.Table.createPropsTableSQL(Table.TABLE)
-			+ SqlHelper.Field.createPropsTableSQL(Field.TABLE);
-
-	var sysTablesInsertSQL = schema.insertPropSQL({deep: true}); 
-
-	var tables = this.graph.tablesByDependencies();
-
-	var createTableSQL = _.map(tables, function(t) {
-		return t.createSQL();
-	}).join('\n');
-
-	var createRowAliasViewSQL = _.map(tables, function(t) {
-		var viewSQL = this.createRowAliasViewSQL(t);
-		//log.debug(viewSQL);
-		return viewSQL;
-	}, this).join('\n');
-
-	var createSearchSQL = _.map(tables, function(t) {
-		return SqlHelper.Table.createSearchSQL(t);
-	}).join('\n');
-
-	var sql = createSysTablesSQL + '\n\n'
-			+ sysTablesInsertSQL + '\n\n'
-			+ createTableSQL + '\n\n'
-			+ createRowAliasViewSQL + '\n\n'
-			+ createSearchSQL + '\n\n';
-	
-	log.debug({sql: sql}, 'SqlBuilder.createSQL');
-	return sql;
-}
 
 SqlBuilderSqlite.prototype.joinSearchSQL = function(filterClauses) {
 	//there can be only one search filter

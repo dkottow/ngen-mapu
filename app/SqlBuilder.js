@@ -26,18 +26,9 @@ var Table = TableFactory.class();
 */
 
 var SqlHelper = require('./SqlHelperFactory.js').SqlHelperFactory.create();
+var Schema = require('./Schema.js').Schema;
 var Table = require('./Table.js').Table;
 var Field = require('./Field.js').Field;
-
-//ugly but avoids circular requires with Schema.js
-var Schema = {
-	PragmaSQL: "PRAGMA journal_mode=WAL;\n\n",
-	CreateTableSQL: "CREATE TABLE __schemaprops__ ("
-		+ " name VARCHAR NOT NULL, "
-		+ "	value VARCHAR, "
-		+ "	PRIMARY KEY (name) "
-		+ ");\n\n"
-};
 
 var log = require('./log.js').log;
 
@@ -186,6 +177,47 @@ SqlBuilder.prototype.querySQL = function(table, fields, filterClauses) {
 	};
 }
 
+SqlBuilder.prototype.createTableSQL = function(table) {
+	return table.createSQL()
+		+ this.createRowAliasViewSQL(table)
+		+ SqlHelper.Table.createSearchSQL(table);
+}
+
+SqlBuilder.prototype.createSQL = function(schema) {
+
+	var createSysTablesSQL = SqlHelper.Schema.PragmaSQL
+			+ SqlHelper.Schema.createPropsTableSQL(Schema.TABLE)
+			+ SqlHelper.Table.createPropsTableSQL(Table.TABLE)
+			+ SqlHelper.Field.createPropsTableSQL(Field.TABLE);
+
+	var sysTablesInsertSQL = schema.insertPropSQL({deep: true}); 
+
+	var tables = this.graph.tablesByDependencies();
+
+	var createTableSQL = _.map(tables, function(t) {
+		return t.createSQL();
+	}).join('\n');
+
+	var createRowAliasViewSQL = _.map(tables, function(t) {
+		var viewSQL = this.createRowAliasViewSQL(t);
+		//log.debug(viewSQL);
+		return viewSQL;
+	}, this).join('\n');
+
+	var createSearchSQL = _.map(tables, function(t) {
+		return SqlHelper.Table.createSearchSQL(t);
+	}).join('\n');
+
+	var sql = createSysTablesSQL + '\n\n'
+			+ sysTablesInsertSQL + '\n\n'
+			+ createTableSQL + '\n\n'
+			+ createRowAliasViewSQL + '\n\n'
+			+ createSearchSQL + '\n\n';
+	
+	log.debug({sql: sql}, 'SqlBuilder.createSQL');
+	return sql;
+}
+
 SqlBuilder.prototype.createRowAliasViewSQL = function(table) {
 
 	var ref_tables = _.map(_.filter(table.row_alias, function(ref) {
@@ -197,22 +229,28 @@ SqlBuilder.prototype.createRowAliasViewSQL = function(table) {
 	var ref_join = this.joinGraphSQL(table.name, ref_tables);
 
 	var ref_field = _.reduce(table.row_alias, function(memo, f) {
-		var result;
+		var term;
+		var field;
 		if (f.indexOf('.') < 0) {
-			result = util.format('%s.%s', table.name, SqlHelper.EncloseSQL(f));
+			field = table.field(f);
+			term = util.format('%s.%s', table.name, SqlHelper.EncloseSQL(f));
 		} else {
-			result = util.format('%s.%s', 
+			field = this.graph.table(f.split('.')[0]).field(f.split('.')[1]);
+			term = util.format('%s.%s', 
 					this.graph.table(f.split('.')[0]).name,
 					SqlHelper.EncloseSQL(f.split('.')[1])
 				);
 		}
-		if ( ! _.isEmpty(memo)) {
-			result = SqlHelper.ConcatSQL([memo, "' '", result]);
+		if (field.typeName() != 'text') {
+			term = util.format('CAST(%s AS VARCHAR(256))', term);
 		}
-		return result;
+		if ( ! _.isEmpty(memo)) {
+			return SqlHelper.ConcatSQL([memo, "' '", term]);
+		}
+		return term;
 	}, '', this);
 
-	var fmt = SqlHelper.ConcatSQL(["'['", '%s.id', "']'"]) + ' AS %s';
+	var fmt = SqlHelper.ConcatSQL(["'['", 'CAST(%s.id AS VARCHAR(64))', "']'"]) + ' AS %s';
 	var ref_id =  util.format(fmt, table.name, Field.ROW_ALIAS);
 	var coalesceField = "COALESCE(" + ref_field + ", '')";
 

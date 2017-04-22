@@ -26,7 +26,7 @@ var log = require('./log.js').log;
 
 global.row_max_count = global.row_max_count || 1000;
 
-var Database = function(options) 
+var Database = function() 
 {
 	log.trace('new Database');
 	this.schema = new Schema();

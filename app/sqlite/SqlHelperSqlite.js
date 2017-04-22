@@ -192,13 +192,10 @@ SqlHelperSqlite.Field.defaultSQL = function(field) {
 	}
 }
 
-SqlHelperSqlite.Field.foreignKeySQL = function(field) {
-	return field.fk 
-		? util.format("REFERENCES %s(%s)", field.fk_table, field.fk_field)
-		: "";
+SqlHelperSqlite.Field.typeSQL = function(type)
+{
+	return type;
 }
-
-
 
 exports.SqlHelperSqlite = SqlHelperSqlite;
 

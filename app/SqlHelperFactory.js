@@ -23,12 +23,15 @@ var path = require('path');
 /**** sqlite *****/
 
 var SqlHelperSqlite = require('./sqlite/SqlHelperSqlite.js').SqlHelperSqlite;
+var SqlHelperMssql = require('./mssql/SqlHelperMssql.js').SqlHelperMssql;
 
 var SqlHelperFactory = {};
 
 SqlHelperFactory.create = function() {
 	if (global.sql_engine == 'sqlite') {
 		return SqlHelperSqlite;
+	} else if (global.sql_engine == 'mssql') {
+		return SqlHelperMssql;
 	}
 	throw new Error(util.format("unsupported sql engine '%s'", global.sql_engine));	
 }

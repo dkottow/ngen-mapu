@@ -183,7 +183,9 @@ SqlBuilder.prototype.createTableSQL = function(table) {
 		+ SqlHelper.Table.createSearchSQL(table);
 }
 
-SqlBuilder.prototype.createSQL = function(schema) {
+SqlBuilder.prototype.createSQL = function(schema, options) {
+
+	var exclude = (options && options.exclude) || {}; 
 
 	var createSysTablesSQL = SqlHelper.Schema.PragmaSQL
 			+ SqlHelper.Schema.createPropsTableSQL(Schema.TABLE)
@@ -210,10 +212,11 @@ SqlBuilder.prototype.createSQL = function(schema) {
 
 	var sql = createSysTablesSQL + '\n\n'
 			+ sysTablesInsertSQL + '\n\n'
-			+ createTableSQL + '\n\n'
-			+ createRowAliasViewSQL + '\n\n'
-			+ createSearchSQL + '\n\n';
-	
+			+ createTableSQL + '\n\n';
+			
+	if ( ! exclude.viewSQL) sql = sql + createRowAliasViewSQL + '\n\n';
+	if ( ! exclude.SearchSQLL) sql = sql + createSearchSQL + '\n\n';
+			
 	log.debug({sql: sql}, 'SqlBuilder.createSQL');
 	return sql;
 }

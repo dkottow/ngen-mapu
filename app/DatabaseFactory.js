@@ -23,13 +23,17 @@ var path = require('path');
 /**** sqlite *****/
 
 var DatabaseSqlite = require('./sqlite/DatabaseSqlite.js').DatabaseSqlite;
+var DatabaseMssql = require('./mssql/DatabaseMssql.js').DatabaseMssql;
 
 var DatabaseFactory = {};
 
-DatabaseFactory.create = function(name) {
+DatabaseFactory.create = function(config) {
 	if (global.sql_engine == 'sqlite') {
-		return new DatabaseSqlite(name);
+		return new DatabaseSqlite(config);
+	} else if (global.sql_engine == 'mssql') {
+		return new DatabaseMssql(config);
 	}
+
 	throw new Error(util.format("unsupported sql engine '%s'", global.sql_engine));	
 }
 

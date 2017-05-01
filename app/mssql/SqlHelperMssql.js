@@ -36,6 +36,7 @@ SqlHelperMssql.ConcatSQL = function(values) {
 }
 
 
+
 /********** Schema stuff *********/
 
 SqlHelperMssql.Schema.PragmaSQL = '';
@@ -47,6 +48,15 @@ SqlHelperMssql.Schema.createPropsTableSQL = function(name) {
 		+ "	PRIMARY KEY (name) "
 		+ ");\n\n"
 }
+
+SqlHelperMssql.Schema.dropSQL = function(dbName) {
+	return util.format("IF EXISTS(select * from sys.databases where name='%s')\n"
+			+ 'BEGIN\n'
+			+ '  ALTER DATABASE [%s] SET SINGLE_USER WITH ROLLBACK IMMEDIATE\n'
+			+ '  DROP DATABASE [%s]\n'
+			+ 'END\n\n', dbName, dbName, dbName);
+}
+
 
 /******** Table stuff ********/
 

@@ -51,11 +51,6 @@ var DatabaseSqlite = function(dbFile)
 DatabaseSqlite.prototype = Object.create(Database.prototype);	
 
 	
-DatabaseSqlite.prototype.setSchema = function(schemaData) {
-	this.schema.init(schemaData);
-	this.sqlBuilder = new SqlBuilder(this.schema.graph);
-}
-
 DatabaseSqlite.prototype.getCounts = function(cbResult) {
 	log.trace("Database.getCounts()...");
 	try {

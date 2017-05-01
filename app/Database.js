@@ -21,6 +21,7 @@ var util = require('util');
 var Schema = require('./Schema.js').Schema;
 var SchemaChange = require('./SchemaChange.js').SchemaChange;
 
+var SqlBuilderFactory = require('./SqlBuilderFactory.js').SqlBuilderFactory;
 
 var log = require('./log.js').log;
 
@@ -58,6 +59,11 @@ Database.prototype.tables = function() {
 Database.prototype.users = function() { 
 	var users = this.schema.users;
 	return _.object(_.pluck(users, 'name'), users); 
+}
+
+Database.prototype.setSchema = function(schemaData) {
+	this.schema.init(schemaData);
+	this.sqlBuilder = SqlBuilderFactory.create(this.schema.graph);
 }
 
 Database.prototype.getInfo = function(options, cbResult) {

@@ -12,6 +12,7 @@
     , "winston": "*"
     , "dotenv": "*"
     , "sqlite3": "*"
+    , "mssql": "4.x"
     , "graphlib": "*"
     , "pegjs": "*"
     , "fast-json-patch": "^1.1.2"

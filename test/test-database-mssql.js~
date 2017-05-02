@@ -9,37 +9,23 @@ var assert = require('assert')
 global.sql_engine = 'mssql';
 
 var Schema = require('../app/Schema').Schema; 
-var DatabaseFactory = require('../app/DatabaseFactory.js').DatabaseFactory;
-var Database = require('../app/mssql/DatabaseMssql.js').DatabaseMssql;
-
-var mssql = require('mssql');
-
+var DatabaseFactory = require('../app/DatabaseFactory').DatabaseFactory;
+var Database = require('../app/mssql/DatabaseMssql').DatabaseMssql;
+	
 var log = require('./log.js').log;
 
 describe('Database', function() {
 	var db = DatabaseFactory.create({
-		user: 'dkottow', 
-		password: 'G0lderPass.72', 
-		domain: 'GOLDER',
-		server: 'localhost\\HOLEBASE_SI', 
-		database: 'demo#sandwiches' 	
+	
 	});
 
 	before(function(done) {
-done(); return;
-		this.timeout(5000);	
 		db.readSchema(done);
 	});	
 
 	describe('readSchema()', function() {
 		it('guards file not found', function(done) {
-			var m = DatabaseFactory.create({
-				user: 'dkottow', 
-				password: 'G0lderPass.72', 
-				domain: 'GOLDER',
-				server: 'localhost\\HOLEBASE_SI', 
-				database: 'test#foo' 					
-			});
+			var m = DatabaseFactory.create("file-not-found.sqlite");
 			m.readSchema(function(err) {
 				assert(err instanceof Error);
 				done();	
@@ -390,72 +376,27 @@ done(); return;
 		});
 	});
 
-	describe('Database.remove()', function() {
-		var dbConfig = { 
-			user: 'dkottow', 
-			password: 'G0lderPass.72', 
-			domain: 'GOLDER',
-			server: 'localhost\\HOLEBASE_SI', 
-		};
-
-/*
-		it('select information schema', function(done) {
-
-			var sql = 'SELECT TOP (1000) [TABLE_CATALOG], [TABLE_SCHEMA, [TABLE_NAME], [TABLE_TYPE] FROM [master].[INFORMATION_SCHEMA].[TABLES]';
-
-			mssql.connect(dbConfig, err => {
-				// ... error checks
-				console.log(err);
-
-				new mssql.Request().query(sql, (err, result) => {
-					// ... error checks
-					console.log(err);
-					console.dir(result);
-					mssql.close();	
-					done();
-				});
-			});	
-		});
-*/
-		it('remove non-existent database', function(done) {
-			this.timeout(10000);
-			Database.remove(dbConfig, 'test#foo', function(err) {
-				assert(err == null);	
-				done();
-			});
-
-		});
-	});
-
 	describe('Database.schemaWrite()', function() {
 		var jsonSalesFile = "test/data/json/sales.json";
-		var dbConfig = { 
-			user: 'dkottow', 
-			password: 'G0lderPass.72', 
-			domain: 'GOLDER',
-			server: 'localhost\\HOLEBASE_SI', 
-			database: 'demo#sandwiches' 
-		};
-
+		var dbFile = "test/data/sqlite/test-create.sqlite";
+		
 		before(function(done) {
-
-			this.timeout(10000);
-			Database.remove(dbConfig, dbConfig.database, function(err) {
+			Database.remove(dbFile, function(err) {
 				done();
 			});
 		});	
 
 		it('write example', function(done) {
 	
-			this.timeout(5000);
-
-			var db = DatabaseFactory.create(dbConfig);
+			var db = DatabaseFactory.create(dbFile);
 			var schema = new Schema();
 
 			schema.jsonRead(jsonSalesFile, function(err) {
+				log.info(err);
 				assert(err == null, err);
 				db.setSchema(schema.get());
 				db.writeSchema(function(err) {
+					log.info(err);
 					assert(err == null, err);
 					done();	
 				});

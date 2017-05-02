@@ -17,6 +17,8 @@
 
 //var sqlite3 = require('sqlite3');
 var mssql = require('mssql');
+var Request = mssql.Request;
+
 var _ = require('underscore');
 
 var util = require('util');
@@ -59,7 +61,64 @@ DatabaseMssql.prototype.readSchema = function(cbAfter) {
 	var me = this;
 
 	try {
-		log.debug({db: path.basename(me.dbFile)}, "Schema.read()");
+		log.debug({db: this.config.database}, "Schema.read()");
+
+		mssql.connect(this.config).then(pool => {
+
+			var fields = _.map(Schema.TABLE_FIELDS, function(f) {
+				return '"' + f + '"';
+			});
+			var sql = 'SELECT ' + fields.join(',') 
+					+ ' FROM ' + Schema.TABLE;
+
+			//read schema properties 
+			pool.request().query(sql).then(result => {
+
+				var schemaProps = {
+					name: this.config.database
+				};
+				
+				_.each(result.recordset, function(r) {
+					schemaProps[r.name] = JSON.parse(r.value);
+				});
+
+				var fields = _.map(Table.TABLE_FIELDS, function(f) {
+					return '"' + f + '"';
+				});
+
+				var sql = 'SELECT ' + fields.join(',') 
+						+ ' FROM ' + Table.TABLE;
+
+				//read table properties 
+				return pool.request().query(sql);
+
+			}).then(result => {
+
+				console.dir(result);	
+
+			}).then(result => {
+				mssql.close();
+				cbAfter();
+
+			}).catch(err => {
+				log.error({err: err}, "Database.readSchema() batch exception.");
+				mssql.close();	
+				cbAfter(err);
+			});
+
+		}).catch(err => {
+			log.error({err: err}, "Database.readSchema() connect exception.");
+			cbAfter(err);
+		})
+
+	} catch(err) {
+		log.error({err: err}, "Schema.read() exception.");
+		cbAfter(err);
+	}
+}
+
+
+/*
 		var db = new sqlite3.Database(me.dbFile
 							, sqlite3.OPEN_READONLY
 							, function(err) {
@@ -214,7 +273,7 @@ DatabaseMssql.prototype.readSchema = function(cbAfter) {
 		log.error({err: err}, "Schema.read() exception.");
 		cbAfter(err);
 	}
-}
+*/
 
 
 
@@ -229,56 +288,79 @@ DatabaseMssql.prototype.writeSchema = function(cbAfter) {
 			return this.sqlBuilder.createRowAliasViewSQL(table); 	
 		}, this);
 
+		var dbTemp = tmp.tmpNameSync({template: 'tmp#XXXXXX'});
+
 		var config = _.clone(this.config);
 		config.database = 'master'; //connect to master
 
+		var transaction;	
+
 		mssql.connect(config).then(pool => {
+console.log('then create db');
+			var sql = util.format('CREATE DATABASE [%s]', dbTemp);		
+			return new Request().batch(sql);
 
-			var dbName = tmp.tmpNameSync({template: 'tmp#XXXXXX'});
-			var sql = util.format('CREATE DATABASE [%s]', dbName);
-			
-			pool.request().batch(sql).then(result => {
-				sql = util.format('USE [%s]', dbName);
-				return pool.request().batch(sql);
+		}).then(() => {
+console.log('then transaction begin');
+			transaction = new mssql.Transaction();
+			return transaction.begin();
 
-			}).then(result => {
-				return pool.request().batch(createSQL);
+		}).then(result => {
+console.log('then create objs');
+			var useSQL = util.format('USE [%s]\n', dbTemp);	
+			return new Request(transaction).batch(useSQL + createSQL);
 
-			}).then(result => {
-				var viewPromises = _.map(viewSQLs, function(sql) {
-					return pool.request().batch(sql);
-				});
+		}).then(result => {
+console.log('then all views');
+			var createViews = _.reduce(viewSQLs, function(createViews, sql) {
+				return createViews.then(result => {
+console.log('then view');
+					return new Request(transaction).batch(sql);	
+				});	
+			}, Promise.resolve());	
+			return createViews;
 
-				Promise.all(viewPromises).then(result => {
-					return pool.request().batch(SqlHelper.Schema.dropSQL(this.config.database));
-						
-				}).then(result => {
-					var sql = util.format('ALTER DATABASE [%s] Modify Name = [%s]', dbName, this.config.database);	
-					return pool.request().batch(sql);
+		}).then(result => {	
+console.log('then drop');
+			return new Request(transaction).batch(SqlHelper.Schema.dropSQL(this.config.database));
 
-				}).then(result => {
-					cbAfter();
+		}).then(result => {
+console.log('then commit');
+			return transaction.commit();
 
-				}).catch(err => {
-					log.error({err: err}, "Database.writeSchema() view batch exception.");
-					cbAfter(err);
-				});
+		}).then(result => {
+console.log('then rename');
+			var sql = util.format('ALTER DATABASE [%s] Modify Name = [%s]', dbTemp, this.config.database);	
+			return new Request().batch(sql);
 
-			}).catch(err => {
-				log.error({err: err}, "Database.writeSchema() batch exception.");
-			});
+		}).then(result => {
+console.log('then close');
+			mssql.close();	
+			cbAfter();
 
 		}).catch(err => {
-			log.error({err: err}, "Database.writeSchema() connect exception.");
-			cbAfter(err);
-		})
+			log.error({err: err}, "Database.writeSchema() exception.");
+	console.log('catch rollback');
+			transaction.rollback().then(() => {
+	console.log('then close');
+				mssql.close();	
+				DatabaseMssql.remove(config, dbTemp, function() { cbAfter(err); });	
+			}).catch(err => {
+	console.log('catch close');
+				log.error({err: err}, "Database.writeSchema() drop exception.");
+				mssql.close();	
+				cbAfter(err); 
+			});
+		});	
 
 		mssql.on('error', err => {
 			log.error({err: err}, "Database.writeSchema() SQL error.");
+			mssql.close();	
 			cbAfter(err);
-		})
+		});
 
 	} catch(err) {
+	console.log('catch ex');
 		log.error({err: err}, "Database.writeSchema() exception.");
 		cbAfter(err);
 	}
@@ -288,34 +370,33 @@ DatabaseMssql.remove = function(dbConfig, dbName, cbAfter) {
 	try {
 		log.info({dbConfig: dbConfig, dbName: dbName }, 'DatabaseMssql.remove..');
 
-		dbConfig.database = 'master'; //connect directly to master
+		var config = _.clone(dbConfig);
+		config.database = 'master'; //connect to master
 
-		mssql.connect(dbConfig).then(pool => {
-
-			pool.request().batch(SqlHelper.Schema.dropSQL(dbName)).then(result => {
-				cbAfter(); 	
-
-			}).catch(err => {
-				log.error({err: err}, "Database.remove() batch exception.");
-				cbAfter(err);
-				return;
-			});
+		mssql.connect(config).then(pool => {
+			return new Request().batch(SqlHelper.Schema.dropSQL(dbName));
+		
+		}).then(result => {
+			mssql.close();	
+			cbAfter(); 	
 
 		}).catch(err => {
-			log.error({err: err}, "Database.remove() connect exception.");
+			log.error({err: err}, "Database.remove() batch exception.");
+			mssql.close();	
 			cbAfter(err);
-		})
+			return;
+		});
 
 		mssql.on('error', err => {
 			log.error({err: err}, "Database.remove() SQL error.");
+			mssql.close();	
 			cbAfter(err);
-		})
+		});
 
 	} catch(err) {
 		log.error({err: err}, "Database.remove() exception.");
 		cbAfter(err);
 	}
 }
-
 
 exports.DatabaseMssql = DatabaseMssql;

@@ -121,6 +121,28 @@ Table.DEFAULT_ACCESS_CONTROL = [
 	, "read": Table.ROW_SCOPES.ALL }
 ];
 
+/*
+    { "role": "read_own"
+	, "write": Table.ROW_SCOPES.NONE
+	, "read": Table.ROW_SCOPES.OWN }
+
+    { "role": "read_all"
+	, "write": Table.ROW_SCOPES.NONE
+	, "read": Table.ROW_SCOPES.ALL }
+
+    , { "role": "write_own_read_all"
+	, "write": Table.ROW_SCOPES.OWN
+	, "read": Table.ROW_SCOPES.ALL }
+
+    , { "role": "write_own_read_own"
+	, "write": Table.ROW_SCOPES.OWN
+	, "read": Table.ROW_SCOPES.OWN }
+
+    , { "role": "write_all"
+	, "write": Table.ROW_SCOPES.ALL
+	, "read": Table.ROW_SCOPES.ALL }
+*/
+
 Table.TABLE = '__tableprops__';
 Table.TABLE_FIELDS = ['name', 'props', 'disabled'];
 Table.ALL_FIELDS = '*';

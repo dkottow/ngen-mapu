@@ -107,7 +107,8 @@ SqlHelperMssql.Field.defaultSQL = function(field) {
 
 SqlHelperMssql.Field.typeSQL = function(type)
 {
-	if (type == 'VARCHAR') return 'VARCHAR(MAX)';
+	if (type == 'VARCHAR') return 'VARCHAR(8000)';
+	if (type == 'NUMERIC') return 'NUMERIC(18,3)';
 	return type;
 }
 

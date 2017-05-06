@@ -26,7 +26,6 @@ describe('Database', function() {
 	});
 
 	before(function(done) {
-done(); return;
 		this.timeout(5000);	
 		db.readSchema(done);
 	});	

@@ -56,28 +56,82 @@ var DatabaseMssql = function(config)
 
 DatabaseMssql.prototype = Object.create(Database.prototype);	
 
+DatabaseMssql.prototype.getCounts = function(cbResult) {
+	log.trace("Database.getCounts()...");
+	try {
+
+		var counts = {};
+
+		if (_.size(this.tables()) == 0) {
+			cbResult(null, counts);
+			return;
+		}
+
+		mssql.connect(this.config).then(pool => {
+
+			//get row counts
+			var sql = _.map(_.keys(this.tables()), function(tn) {
+				return 'SELECT ' + "'" + tn + "'" + ' AS table_name' 
+						+ ', COUNT(*) AS count'
+						+ ' FROM "' + tn + '"';
+			});
+			sql = sql.join(' UNION ALL ');
+			//console.dir(sql);
+
+			pool.request().query(sql).then(result => {
+				//console.dir(result.recordset);
+
+				_.each(result.recordset, function(r) {
+					counts[r.table_name] = r.count;	
+				});
+
+			}).then(result => {
+
+				mssql.close();
+				cbResult(null, counts);
+
+			}).catch(err => {
+				log.error({err: err}, "Database.getCounts() query exception.");
+				mssql.close();	
+				cbResult(err, null);
+			});
+
+		}).catch(err => {
+			log.error({err: err}, "Database.getCounts() connect exception.");
+			cbResult(err, null);
+		});
+
+	} catch(err) {
+		log.error({err: err}, "Database.getCounts() exception. ");	
+		cbResult(err, null);
+	}
+}
+
 
 DatabaseMssql.prototype.readSchema = function(cbAfter) {
+
 	var me = this;
 
 	try {
 		log.debug({db: this.config.database}, "Schema.read()");
 
+		var schemaProps = {
+			name: this.config.database
+		};
+		
 		mssql.connect(this.config).then(pool => {
 
 			var fields = _.map(Schema.TABLE_FIELDS, function(f) {
 				return '"' + f + '"';
 			});
+
+			//read schema properties 
 			var sql = 'SELECT ' + fields.join(',') 
 					+ ' FROM ' + Schema.TABLE;
 
-			//read schema properties 
 			pool.request().query(sql).then(result => {
+				//console.dir(result.recordset);
 
-				var schemaProps = {
-					name: this.config.database
-				};
-				
 				_.each(result.recordset, function(r) {
 					schemaProps[r.name] = JSON.parse(r.value);
 				});
@@ -86,22 +140,128 @@ DatabaseMssql.prototype.readSchema = function(cbAfter) {
 					return '"' + f + '"';
 				});
 
+				//read table properties 
 				var sql = 'SELECT ' + fields.join(',') 
 						+ ' FROM ' + Table.TABLE;
 
-				//read table properties 
 				return pool.request().query(sql);
 
 			}).then(result => {
+				//console.dir(result.recordset);
 
-				console.dir(result);	
+				//handle empty schema
+				if (result.recordset.length == 0) {
+					me.setSchema(schemaProps);
+					mssql.close();
+					cbAfter();
+					return;
+				}
+
+				var tables = _.map(result.recordset, function(r) {
+					var table = { 
+						name: r.name,
+						disabled: r.disabled
+					};
+					var props =  JSON.parse(r.props);
+					table.row_alias = props.row_alias;
+					table.access_control = props.access_control;
+					table.props = _.pick(props, Table.PROPERTIES);
+					return table;
+				});
+
+				schemaProps.tables = _.object(_.pluck(tables, 'name'), tables);
+					
+				var fields = _.map(Field.TABLE_FIELDS, function(f) {
+					return '"' + f + '"';
+				});
+
+				//read field properties 
+				var sql = 'SELECT ' + fields.join(',') 
+						+ ' FROM ' + Field.TABLE;
+
+				return pool.request().query(sql);
 
 			}).then(result => {
+				//console.dir(result.recordset);
+
+				_.each(result.recordset, function(r) {
+					var field = { 
+						name: r.name,
+						disabled: r.disabled,
+						fk: 0	
+					};
+					var props =  JSON.parse(r.props);
+					field.props = _.pick(props, Field.PROPERTIES);
+					schemaProps.tables[r.table_name].fields = schemaProps.tables[r.table_name].fields || {};
+					schemaProps.tables[r.table_name].fields[r.name] = field;
+				});
+
+				//read field definitions from information schema 
+				var sql = 'SELECT table_name, column_name, data_type ' 
+						+ ', character_maximum_length, numeric_precision, numeric_scale'
+						+ ', is_nullable, column_default'  
+						+ ' FROM information_schema.columns'
+						+ util.format(' WHERE table_name in (%s)', "'" 
+							+ _.pluck(schemaProps.tables, 'name').join("', '") + "'");
+
+				return pool.request().query(sql);
+			}).then(result => {
+				//console.dir(result.recordset);
+
+				_.each(result.recordset, function(r) {
+					var field = schemaProps.tables[r.table_name].fields[r.column_name];
+					if (r.data_type == 'varchar') {
+						field.type = util.format('%s(%s)', r.data_type.toUpperCase(), 
+										(r.character_maximum_length > 0) ? r.character_maximum_length : 'MAX');
+					} else if (r.data_type == 'numeric') {
+						field.type = util.format('%s(%s,%s)', r.data_type.toUpperCase(), 
+										r.numeric_precision, r.numeric_scale);
+					} else if (r.data_type == 'int') {
+						field.type = 'INTEGER';
+					} else {
+						//int, datetime, date
+						field.type = r.data_type.toUpperCase();					
+					}
+					field.notnull = 1*(r.is_nullable == 'NO');	//0 or 1
+				});
+
+				//read foreign key definitions from information schema 
+				var sql = 'SELECT KCU1.column_name'
+						+ ', KCU1.table_name'
+						+ ', KCU2.TABLE_NAME AS fk_table'
+						+ ' FROM INFORMATION_SCHEMA.REFERENTIAL_CONSTRAINTS RC'
+						+ ' JOIN INFORMATION_SCHEMA.KEY_COLUMN_USAGE KCU1'
+						+ '		ON KCU1.CONSTRAINT_CATALOG = RC.CONSTRAINT_CATALOG' 
+						+ '		AND KCU1.CONSTRAINT_SCHEMA = RC.CONSTRAINT_SCHEMA'
+						+ '		AND KCU1.CONSTRAINT_NAME = RC.CONSTRAINT_NAME'
+						+ ' JOIN INFORMATION_SCHEMA.KEY_COLUMN_USAGE KCU2'
+						+ '		ON KCU2.CONSTRAINT_CATALOG = RC.UNIQUE_CONSTRAINT_CATALOG' 
+						+ '		AND KCU2.CONSTRAINT_SCHEMA = RC.UNIQUE_CONSTRAINT_SCHEMA'
+						+ '		AND KCU2.CONSTRAINT_NAME = RC.UNIQUE_CONSTRAINT_NAME'
+						+ '		AND KCU2.ORDINAL_POSITION = KCU1.ORDINAL_POSITION';
+
+				return pool.request().query(sql);
+
+			}).then(result => {
+				//console.log(result.recordset);
+
+				_.each(result.recordset, function(r) {
+					var field = schemaProps.tables[r.table_name].fields[r.column_name];
+					field.fk = 1;
+					field.fk_table = r.fk_table;
+				});
+
+				return result;
+
+			}).then(result => {
+				console.log(JSON.stringify(schemaProps));
+
 				mssql.close();
+				me.setSchema(schemaProps);
 				cbAfter();
 
 			}).catch(err => {
-				log.error({err: err}, "Database.readSchema() batch exception.");
+				log.error({err: err}, "Database.readSchema() query exception.");
 				mssql.close();	
 				cbAfter(err);
 			});
@@ -109,173 +269,13 @@ DatabaseMssql.prototype.readSchema = function(cbAfter) {
 		}).catch(err => {
 			log.error({err: err}, "Database.readSchema() connect exception.");
 			cbAfter(err);
-		})
+		});
 
 	} catch(err) {
-		log.error({err: err}, "Schema.read() exception.");
+		log.error({err: err}, "Database.readSchema() exception.");
 		cbAfter(err);
 	}
 }
-
-
-/*
-		var db = new sqlite3.Database(me.dbFile
-							, sqlite3.OPEN_READONLY
-							, function(err) {
-			if (err) {
-				log.error({err: err, file: me.dbFile}, 
-					"Schema.read() failed. Could not open file.");
-				cbAfter(err);
-				return;
-			}
-
-			var dbErrorHandlerFn = function(err) {
-				if (err) {
-					db.close();
-					log.error({err: err}, "Schema.read() failed.");
-					cbAfter(err);
-					return;
-				}
-			}
-
-			var fields = _.map(Schema.TABLE_FIELDS, function(f) {
-				return '"' + f + '"';
-			});
-			var sql = 'SELECT ' + fields.join(',') 
-					+ ' FROM ' + Schema.TABLE;
-
-			//read schema properties 
-			db.all(sql, function(err, rows) {
-				dbErrorHandlerFn(err);
-
-				var schemaProps = {
-					name: DatabaseSqlite.getName(me.dbFile)
-				};
-				
-				_.each(rows, function(r) {
-					schemaProps[r.name] = JSON.parse(r.value);
-				});
-				var fields = _.map(Table.TABLE_FIELDS, function(f) {
-					return '"' + f + '"';
-				});
-				var sql = 'SELECT ' + fields.join(',') 
-						+ ' FROM ' + Table.TABLE;
-
-				//read table properties 
-				db.all(sql, function(err, rows) {
-
-					dbErrorHandlerFn(err);
-
-					//handle empty schema
-					if (rows.length == 0) {
-						db.close(function() {
-							me.setSchema(schemaProps);
-							cbAfter();
-							return;
-						});
-					}
-
-					var tables = _.map(rows, function(r) {
-						var table = { 
-							name: r.name,
-							disabled: r.disabled
-						};
-						var props =  JSON.parse(r.props);
-						table.row_alias = props.row_alias;
-						table.access_control = props.access_control;
-						table.props = _.pick(props, Table.PROPERTIES);
-						return table;
-					});
-
-					//console.dir(rows);
-					tables = _.object(_.pluck(tables, 'name'), tables);
-						
-					var fields = _.map(Field.TABLE_FIELDS, function(f) {
-						return '"' + f + '"';
-					});
-					var sql = 'SELECT ' + fields.join(',') 
-							+ ' FROM ' + Field.TABLE;
-
-					//read field properties 
-					db.all(sql, function(err ,rows) {
-						
-						dbErrorHandlerFn(err);
-
-						var tableNames = _.uniq(_.pluck(rows, 'table_name'));
-
-						_.each(tableNames, function(tn) {
-							tables[tn]['fields'] = {};
-						});
-
-						_.each(rows, function(r) {
-							var field = { 
-								name: r.name,
-								disabled: r.disabled
-							};
-							var props = JSON.parse(r.props);
-							field.props = _.pick(props, Field.PROPERTIES);
-
-							tables[r.table_name].fields[r.name] = field;
-						});
-
-						var doAfter = _.after(2*tableNames.length, function() {
-							//after executing two SQL statements per table
-							db.close(function () {
-								var data = {
-									tables: tables
-								};
-								_.extend(data, schemaProps);
-
-								me.setSchema(data);
-								cbAfter();
-							});
-						});
-
-						//read field sql definition 
-						_.each(tableNames, function(tn) {
-							var sql = util.format("PRAGMA table_info(%s)", tn);
-							//console.log(sql);
-							db.all(sql, function(err, rows) {
-
-								dbErrorHandlerFn(err);
-
-								_.each(rows, function(r) {
-									//console.log(r);
-									_.extend(tables[tn].fields[r.name], r);	
-								});
-								doAfter();
-							});
-						});
-
-						//read fk sql definition 
-						_.each(tableNames, function(tn) {
-							var sql = util.format("PRAGMA foreign_key_list(%s)", tn);
-							db.all(sql, function(err, rows) {
-
-								dbErrorHandlerFn(err);
-
-								_.each(rows, function(r) {
-									//console.log(r);
-									_.extend(tables[tn].fields[r.from], {
-										fk: 1,
-										fk_table: r.table,
-										fk_field: r.to
-									});
-								});
-								doAfter();
-							});
-						});
-					});
-				});
-			});
-		});
-	} catch(err) {
-		log.error({err: err}, "Schema.read() exception.");
-		cbAfter(err);
-	}
-*/
-
-
 
 DatabaseMssql.prototype.writeSchema = function(cbAfter) {
 	var me = this;

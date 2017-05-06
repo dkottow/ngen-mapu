@@ -194,20 +194,30 @@ AccessControl.prototype.authRequest = function(op, req, path, cbResult) {
 
 		case 'putRows':			
 		case 'delRows':
-			var rowIds = op == 'delRows' ? req.body : _.pluck(req.body, 'id');
-			var owned = path.db.rowsOwned(path.table.name, rowIds, req.user, 
-				function(err, owned) {
-					if (err) {
-						cbResult(err, null);
-						return;
-					} 
-					var result = {
-						granted: owned,
-						message: 'Table write access is own.'
-					}
-					resultFn(result);
-				});
-			return;
+			var table_access = path.table.access(req.user);
+			if (table_access.write == Table.ROW_SCOPES.OWN) {
+				//check if rows affected are owned by callee 
+				var rowIds = op == 'delRows' ? req.body : _.pluck(req.body, 'id');
+				var owned = path.db.rowsOwned(path.table.name, rowIds, req.user, 
+					function(err, owned) {
+						if (err) {
+							cbResult(err, null);
+							return;
+						} 
+						var result = {
+							granted: owned,
+							message: 'Table write access is own.'
+						}
+						resultFn(result);
+					});
+			} else {
+				var result = { 
+					granted: table_access.write != Table.ROW_SCOPES.NONE
+					, message: 'Table write access is none.'
+				} 
+				resultFn(result);
+			}
+			return;						
 						
 		case 'putDatabase':			
 		case 'patchDatabase':			

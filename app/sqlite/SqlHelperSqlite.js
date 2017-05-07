@@ -35,6 +35,22 @@ SqlHelperSqlite.ConcatSQL = function(values) {
 	return values.join(' || '); //'"' + name + '"';
 }
 
+SqlHelperSqlite.OffsetLimitSQL = function(offset, limit) {
+	return ' LIMIT ' + limit
+		+ ' OFFSET ' + offset;
+}
+
+SqlHelperSqlite.params = function(filter)
+{
+	var values = _.isArray(filter.value) ? filter.value : [ filter.value ]; 
+	return _.map(values, function(v, idx) {
+		return { 
+			name: filter.alias + (idx+1), 
+			value: v, 
+			sql: '?'
+		};
+	});
+}
 
 /********** Schema stuff *********/
 

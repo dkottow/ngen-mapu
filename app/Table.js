@@ -327,13 +327,14 @@ Table.prototype.viewFields = function() {
 }
 
 Table.prototype.enabledFields = function() {
-	var enabledFields = _.pluck(_.filter(this.fields()
+	var enabledFields = _.sortBy(_.filter(this.fields()
 		, function(f) {
 			return f.disabled != true;
-		})
-	, 'name');
+		}), function(f) {
+			return f.props.order;
+		});
 
-	return enabledFields;
+	return _.pluck(enabledFields, 'name');
 }
 
 
@@ -355,16 +356,6 @@ Table.prototype.refFields = function() {
 	return result;
 }
 */
-
-Table.prototype.assertQueryField = function(fieldName) {
-	//must be a view field or the name of the table (for search filter)
-	if ( ! _.contains(this.viewFields(), fieldName) 
-		&& fieldName != Table.ALL_FIELDS) {
-
-		throw new Error("unknown field '" + fieldName + "'");
-	}			
-}
-
 
 /*
 function tableAlias(name, idx) {

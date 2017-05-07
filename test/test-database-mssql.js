@@ -26,8 +26,11 @@ describe('Database', function() {
 	});
 
 	before(function(done) {
-		this.timeout(5000);	
-		db.readSchema(done);
+//done(); return;
+		this.timeout(10000);	
+		db.init(function(err) {
+			db.readSchema(done);
+		});
 	});	
 
 	describe('readSchema()', function() {
@@ -39,9 +42,12 @@ describe('Database', function() {
 				server: 'localhost\\HOLEBASE_SI', 
 				database: 'test#foo' 					
 			});
-			m.readSchema(function(err) {
-				assert(err instanceof Error);
-				done();	
+			m.init(function(err) {
+		console.log('call readScehma');
+				m.readSchema(function(err) {
+					assert(err instanceof Error);
+					done();	
+				});
 			});
 		});
 	});
@@ -94,7 +100,7 @@ describe('Database', function() {
 
   	describe('all()', function() {		
 
-		it('get all customers/products', function(done) {
+		it('get all customers / products', function(done) {
 			var tables = [ 'products', 'customers' ];
 
 			var allDone = _.after(tables.length, done);			
@@ -104,15 +110,13 @@ describe('Database', function() {
 				db.all(tn, function(err, result) {
 					assert(err == null, err);
 					log.debug('got ' + result.rows.length + " of " 
-								+ result.count + " " + tn.name);
-					assert(result.count > 0, 'got some ' + tn.name);
+								+ result.count + " " + tn);
 					allDone();
 				});
 			});
-
 		});
 
-		it('all orders filtered by customer and limited amount', function(done) {
+		it('all orders of one customer and smaller than an amount', function(done) {
 
 			var table = 'orders';
 
@@ -140,7 +144,7 @@ describe('Database', function() {
 
 		});
 
-		it('all products ordered filtered by customer', function(done) {
+		it('all products ordered by a certain customer', function(done) {
 
 			var table = 'products';
 
@@ -162,7 +166,7 @@ describe('Database', function() {
 
 		});
 
-		it('all orders filtered by products.id in (1,2,3)', 
+		it('all orders having items with products.id in (1,2,3)', 
 		function(done) {
 
 			var table = 'orders';
@@ -426,7 +430,7 @@ describe('Database', function() {
 		});
 	});
 
-	describe('Database.schemaWrite()', function() {
+	describe('Database.writeSchema()', function() {
 		var jsonSalesFile = "test/data/json/sales.json";
 		var dbConfig = { 
 			user: 'dkottow', 

@@ -56,14 +56,18 @@ SqlBuilder.prototype.selectSQL
 	
 	var query = this.querySQL(table, s.fields, s.filters);
 
+	if (s.orders.length == 0) {
+		var defOrder = _.clone(s.fields[0]);
+		defOrder.order = 'asc';
+		s.orders.push(defOrder);
+	}
 	var orderSQL = this.orderSQL(table, s.orders);
 
-	var selectSQL = 'SELECT * FROM (' + query.sql + ') '
+	var selectSQL = 'SELECT * FROM (' + query.sql + ') AS T '
 					+ orderSQL
-					+ ' LIMIT ' + limit
-					+ ' OFFSET ' + offset;
+					+ SqlHelper.OffsetLimitSQL(offset, limit);
 
-	var countSQL = 'SELECT COUNT(*) as count FROM (' + query.sql + ')';
+	var countSQL = 'SELECT COUNT(*) as count FROM (' + query.sql + ') AS C';
 
 	var result = {
 		'query': selectSQL, 
@@ -91,14 +95,14 @@ SqlBuilder.prototype.statsSQL = function(table, fieldExpr, filterClauses)
 		return (memo.length == 0) ? s : memo + ', ' + s;
 	}, '');
 
-	var statsSQL = 'SELECT ' + outerSQL + ' FROM (' + query.sql + ')';
+	var statsSQL = 'SELECT ' + outerSQL + ' FROM (' + query.sql + ') AS S';
 
 	var result = {
 		'query': statsSQL, 
 		'params': query.params,
 		'sanitized': s
 	}
-	log.trace({result: result}, "SqlBuilder.statsSQL");
+	log.debug({result: result}, "SqlBuilder.statsSQL");
 	return result;
 }
 
@@ -144,14 +148,23 @@ SqlBuilder.prototype.sanitizeFieldClauses = function(table, fieldClauses) {
 		}
 
 		//validate
+		var fieldTable;
 		if (item.table != table.name) {
 			this.graph.assertTable(item.table);
-			var t = this.graph.table(item.table);
-			t.assertQueryField(item.field);
+			fieldTable = this.graph.table(item.table);
+
 		} else {
-			table.assertQueryField(item.field);
+			fieldTable = table;
 		}
-		
+		var field = fieldTable.field(item.field);
+		if (field) {
+			item.valueType = field.type;
+		} else if ( _.contains(fieldTable.refFields), item.field) {
+			item.valueType = 'VARCHAR';
+		} else {			
+			throw new Error("unknown field '" + item.field + "'");
+		}
+
 		return item;
 	}, this);
 	
@@ -385,6 +398,15 @@ SqlBuilder.prototype.filterSQL = function(fromTable, filterClauses) {
 	_.each(filterClauses, function(filter) {
 		var table = me.graph.table(filter.table);
 
+		var field;
+		var fromFieldQN;
+		if (_.contains(table.refFields(), filter.field)) {
+			//TODO this fails for ref fields from tables different than fromTable
+			fromFieldQN = SqlHelper.EncloseSQL(filter.field);
+		} else {
+			fromFieldQN = util.format('%s.%s', table.name, SqlHelper.EncloseSQL(filter.field));
+		}
+
 		var comparatorOperators = {
 			'eq' : '=', 
 			'ne' : '!=',	
@@ -393,23 +415,14 @@ SqlBuilder.prototype.filterSQL = function(fromTable, filterClauses) {
 			'le': '<=', 
 			'lt': '<'
 		};
-
-		var fromFieldQN;
-		if (_.contains(table.refFields(), filter.field)) {
-			//TODO this fails for ref fields from tables different than fromTable
-			fromFieldQN = '"' + filter.field + '"';
-		} else {
-			fromFieldQN = util.format('%s.%s', table.name, SqlHelper.EncloseSQL(filter.field));
-		}
-
-
 		if (comparatorOperators[filter.op] && filter.value !== null) {
 
-			var clause = util.format('(%s %s ?)', 
-							fromFieldQN, comparatorOperators[filter.op]);
+			var params = SqlHelper.params(filter);
+			var clause = util.format('(%s %s %s)', 
+							fromFieldQN, comparatorOperators[filter.op], params[0].sql);
 
 			sqlClauses.push(clause);
-			sqlParams.push(filter.value);
+			sqlParams.push(params[0]);
 
 		} else if (filter.op == 'eq' && filter.value === null) {
 			var clause = util.format('(%s is null)', fromFieldQN);
@@ -426,12 +439,13 @@ SqlBuilder.prototype.filterSQL = function(fromTable, filterClauses) {
 					util.format("filter.value %s mismatch", filter.value));
 			}
 
-			var clause = util.format('(%s BETWEEN ? AND ?)', fromFieldQN);
+			var params = SqlHelper.params(filter);
+				
+			var clause = util.format('(%s BETWEEN ? AND ?)', fromFieldQN, params[0].sql, params[1].sql);
 				
 			sqlClauses.push(clause);
-			sqlParams.push(filter.value[0]);
-			sqlParams.push(filter.value[1]);
-
+			sqlParams.push(params[0]);
+			sqlParams.push(params[1]);
 
 		} else if (filter.op == 'in') {
 
@@ -440,15 +454,13 @@ SqlBuilder.prototype.filterSQL = function(fromTable, filterClauses) {
 					util.format("filter.value %s mismatch", filter.value));
 			}
 
-			var inParams = _.times(filter.value.length, function(fn) { 
-					return "?"; 
-			});
+			var params = SqlHelper.params(filter);
 
 			var clause = util.format('(%s IN (%s))',
-							fromFieldQN, inParams.join(','));
+							fromFieldQN, _.pluck(params, 'sql').join(','));
 
 			sqlClauses.push(clause);
-			sqlParams = sqlParams.concat(filter.value); 
+			sqlParams = sqlParams.concat(params); 
 
 		} else if (filter.op == 'childless') {
 			//filter out all rows in filter.table 
@@ -591,24 +603,24 @@ SqlBuilder.prototype.fieldSQL = function(table, fieldClauses) {
 
 SqlBuilder.prototype.orderSQL = function(table, orderClauses) {
 
-	var orderSQL = '';
-	if ( ! _.isEmpty(orderClauses)) {	
-		
-		orderSQL = _.reduce(orderClauses, function(memo, order, idx) {
-			var dir = order.order.toUpperCase();
-			
-			if ( ! _.contains(['ASC', 'DESC'], dir)) {
-				throw new Error(util.format("order dir '%s' invalid", dir));
-			}
-			
-			var result = memo + util.format('%s %s', SqlHelper.EncloseSQL(order.alias), dir);
+	if ( _.isEmpty(orderClauses)) {	
+		throw new Error('no order clause given');
+	}
 
-			if (idx < orderClauses.length-1) result = result + ',';
-			return result;
-			
-		}, 'ORDER BY ');
+	var orderSQL = _.reduce(orderClauses, function(memo, order, idx) {
+		var dir = order.order.toUpperCase();
 		
-	} 
+		if ( ! _.contains(['ASC', 'DESC'], dir)) {
+			throw new Error(util.format("order dir '%s' invalid", dir));
+		}
+		
+		var result = memo + util.format('%s %s', SqlHelper.EncloseSQL(order.alias), dir);
+
+		if (idx < orderClauses.length-1) result = result + ',';
+		return result;
+		
+	}, 'ORDER BY ');
+		
 	return orderSQL;
 }
 

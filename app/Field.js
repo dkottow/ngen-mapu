@@ -91,6 +91,21 @@ Field.create = function(fieldDef) {
 
 }
 
+Field.typeName = function(sqlType) {
+	if (sqlType.indexOf(Field.TYPES.text) == 0) {
+		return 'text';
+	} else if (sqlType == Field.TYPES.integer) {
+		return 'integer';
+	} else if (sqlType.indexOf(Field.TYPES.numeric) == 0) {
+		return 'numeric';
+	} else if (sqlType == Field.TYPES.datetime) {
+		return 'datetime';
+	} else if (sqlType == Field.TYPES.date) {
+		return 'date';
+	}
+	return null;	
+}
+
 Field.prototype.setProp = function(name, value) {
 	if (_.contains(Field.PROPERTIES, name)) {
 		this.props[name] = value;
@@ -121,18 +136,7 @@ Field.prototype.updatePropSQL = function(table) {
 }
 
 Field.prototype.typeName = function() {
-	if (this.type.indexOf(Field.TYPES.text) == 0) {
-		return 'text';
-	} else if (this.type == Field.TYPES.integer) {
-		return 'integer';
-	} else if (this.type.indexOf(Field.TYPES.numeric) == 0) {
-		return 'numeric';
-	} else if (this.type == Field.TYPES.datetime) {
-		return 'datetime';
-	} else if (this.type == Field.TYPES.date) {
-		return 'date';
-	}
-	return null;
+	return Field.typeName(this.type);
 }
 
 Field.prototype.defaultWidth = function() {

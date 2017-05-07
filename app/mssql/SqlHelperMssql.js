@@ -26,6 +26,7 @@ var SqlHelperMssql = {
 	Schema: {}
 }
 
+var mssql = require('mssql');
 
 SqlHelperMssql.EncloseSQL = function(name) {
 	return '[' + name + ']';
@@ -35,7 +36,33 @@ SqlHelperMssql.ConcatSQL = function(values) {
 	return values.join(' + '); 
 }
 
+SqlHelperMssql.OffsetLimitSQL = function(offset, limit) {
+	return ' OFFSET ' + offset + ' ROWS' 
+		+ ' FETCH NEXT ' + limit + ' ROWS ONLY';
+}
 
+SqlHelperMssql.params = function(filter)
+{
+	var values = _.isArray(filter.value) ? filter.value : [ filter.value ]; 
+	return _.map(values, function(v, idx) {
+		return { 
+			name: filter.alias + (idx+1), 
+			value: v, 
+			sql: '@' + filter.alias + (idx+1),
+			type: filter.valueType
+		};
+	});
+}
+
+SqlHelperMssql.mssqlType = function(fieldType)
+{
+	if (fieldType == 'text') return mssql.NVarChar;
+	else if (fieldType == 'integer') return mssql.Int;
+	else if (fieldType == 'numeric') return mssql.Real;
+	else if (fieldType == 'datetime') return mssql.Date;
+	else if (fieldType == 'date') return mssql.DateTime;
+	else throw new Error("unknown type '" + fieldType + "'");
+}
 
 /********** Schema stuff *********/
 

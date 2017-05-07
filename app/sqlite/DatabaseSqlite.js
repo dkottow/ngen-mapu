@@ -143,7 +143,7 @@ DatabaseSqlite.prototype.all = function(tableName, options, cbResult) {
 
 		var table = this.table(tableName);
 
-		cbResult = cbResult || arguments[arguments.length - 1];	
+		cbResult = arguments[arguments.length - 1];	
 		options = typeof options == 'object' ? options : {};		
 
 		var filterClauses = options.filter || [];
@@ -174,7 +174,9 @@ DatabaseSqlite.prototype.all = function(tableName, options, cbResult) {
 		log.trace({sql: sql}, "Database.all()");
 
 		var db = new sqlite3.Database(this.dbFile, sqlite3.OPEN_READONLY);
-		db.all(sql.query, sql.params, function(err, rows) {
+		var params = _.pluck(sql.params, 'value');
+
+		db.all(sql.query, params, function(err, rows) {
 			if (err) {
 				db.close(function() {
 					log.error({err: err, sql: sql},
@@ -187,7 +189,7 @@ DatabaseSqlite.prototype.all = function(tableName, options, cbResult) {
 				var countSql = sql.countSql 
 					+ ' UNION ALL SELECT COUNT(*) as count FROM ' + table.name; 
 				
-				db.all(countSql, sql.params, function(err, countRows) {
+				db.all(countSql, params, function(err, countRows) {
 					db.close(function() {
 						if (err) {
 							log.error({err: err, sql: sql},

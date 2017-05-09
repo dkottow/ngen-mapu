@@ -441,7 +441,7 @@ SqlBuilder.prototype.filterSQL = function(fromTable, filterClauses) {
 
 			var params = SqlHelper.params(filter);
 				
-			var clause = util.format('(%s BETWEEN ? AND ?)', fromFieldQN, params[0].sql, params[1].sql);
+			var clause = util.format('(%s BETWEEN %s AND %s)', fromFieldQN, params[0].sql, params[1].sql);
 				
 			sqlClauses.push(clause);
 			sqlParams.push(params[0]);

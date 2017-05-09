@@ -23,6 +23,8 @@ var log = require('./log.js').log;
 var Table = require('./Table.js').Table;
 var Field = require('./Field.js').Field;
 
+var SqlHelper = require('./SqlHelperFactory.js').SqlHelperFactory.create();
+
 var SchemaChange = function(patch, schema) {
 	this.schema = schema;
 }
@@ -171,16 +173,16 @@ SCAddField.prototype.apply = function() {
 	this.table.addField(field);	
 }
 
-SCAddField.prototype.toSQL = function() {
+SCAddField.prototype.toSQL = function(sqlBuilder) {
 	var field = this.table.field(this.fieldDef.name);
 
 	var addSQL = this.table.addFieldSQL(field);
 
 	var viewSQL = this.table.dropViewSQL()
-		+ this.schema.sqlBuilder.createRowAliasViewSQL(this.table);
+		+ sqlBuilder.createRowAliasViewSQL(this.table);
 
-	var searchTriggerSQL = this.table.dropTriggerSQL()
-		+ this.table.createTriggerSQL();
+	var searchTriggerSQL = SqlHelper.Table.dropTriggerSQL(this.table)
+		+ SqlHelper.Table.createTriggerSQL(this.table);
 
 	var insertPropSQL = field.insertPropSQL(this.table);
 
@@ -223,7 +225,7 @@ SCFieldProps.prototype.apply = function() {
 	}, this);
 }
 
-SCFieldProps.prototype.toSQL = function() {
+SCFieldProps.prototype.toSQL = function(sqlBuilder) {
 	return this.field.updatePropSQL(this.table);
 }
 
@@ -259,7 +261,7 @@ SCDisableField.prototype.apply = function() {
 	this.field.setDisabled(this.obj.disabled);
 }
 
-SCDisableField.prototype.toSQL = function() {
+SCDisableField.prototype.toSQL = function(sqlBuilder) {
 	return this.field.updatePropSQL(this.table);
 }
 
@@ -294,9 +296,9 @@ SCAddTable.prototype.apply = function() {
 	this.schema.addTable(table);	
 }
 
-SCAddTable.prototype.toSQL = function() {	
+SCAddTable.prototype.toSQL = function(sqlBuilder) {	
 	var table = this.schema.table(this.tableDef.name);
-	var createSQL = this.schema.sqlBuilder.createTableSQL(table);
+	var createSQL = sqlBuilder.createTableSQL(table);
 	var insertPropSQL = table.insertPropSQL({deep: true});
 
 	return createSQL + insertPropSQL;
@@ -334,12 +336,12 @@ SCSetTable.prototype.apply = function() {
 	this.schema.setTable(new Table(this.obj));
 }
 
-SCSetTable.prototype.toSQL = function() {
+SCSetTable.prototype.toSQL = function(sqlBuilder) {
 	var table = this.schema.table(this.obj.name);
 	var deletePropSQL = table.deletePropSQL({deep: true});
 	var dropSQL = table.dropSQL();
 
-	var createSQL = this.schema.sqlBuilder.createTableSQL(table);
+	var createSQL = sqlBuilder.createTableSQL(table);
 	var insertPropSQL = table.insertPropSQL({deep: true});
 
 	return deletePropSQL + dropSQL + createSQL + insertPropSQL;
@@ -375,7 +377,7 @@ SCDelTable.prototype.apply = function() {
 	this.schema.removeTable(this.table.name);
 }
 
-SCDelTable.prototype.toSQL = function() {
+SCDelTable.prototype.toSQL = function(sqlBuilder) {
 	var deletePropSQL = this.table.deletePropSQL({deep: true});
 	var dropSQL = this.table.dropSQL();
 	return deletePropSQL + dropSQL;
@@ -411,7 +413,7 @@ SCTableAccess.prototype.apply = function() {
 	this.table.access_control = this.obj;
 }
 
-SCTableAccess.prototype.toSQL = function() {
+SCTableAccess.prototype.toSQL = function(sqlBuilder) {
 	return this.table.updatePropSQL();
 }
 
@@ -444,13 +446,13 @@ SCTableRowAlias.prototype.apply = function() {
 	this.table.row_alias = this.obj;
 }
 
-SCTableRowAlias.prototype.toSQL = function() {
+SCTableRowAlias.prototype.toSQL = function(sqlBuilder) {
 
 	var viewSQL = this.table.dropViewSQL()
-		+ this.schema.sqlBuilder.createRowAliasViewSQL(this.table);
+		+ sqlBuilder.createRowAliasViewSQL(this.table);
 
-	var searchTriggerSQL = this.table.dropTriggerSQL()
-		+ this.table.createTriggerSQL();
+	var searchTriggerSQL = SqlHelper.Table.dropTriggerSQL(this.table)
+		+ SqlHelper.Table.createTriggerSQL(this.table);
 
 	var updatePropSQL = this.table.updatePropSQL();
 
@@ -488,7 +490,7 @@ SCTableProps.prototype.apply = function() {
 	}, this);
 }
 
-SCTableProps.prototype.toSQL = function() {
+SCTableProps.prototype.toSQL = function(sqlBuilder) {
 	return this.table.updatePropSQL();
 }
 
@@ -522,7 +524,7 @@ SCUsers.prototype.apply = function() {
 	}, this);
 }
 
-SCUsers.prototype.toSQL = function() {
+SCUsers.prototype.toSQL = function(sqlBuilder) {
 	return this.schema.updatePropSQL();
 }
 

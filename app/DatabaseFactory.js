@@ -27,6 +27,8 @@ var DatabaseMssql = require('./mssql/DatabaseMssql.js').DatabaseMssql;
 
 var DatabaseFactory = {};
 
+global.sql_engine = global.sql_engine || 'sqlite';
+
 DatabaseFactory.create = function(config) {
 	if (global.sql_engine == 'sqlite') {
 		return new DatabaseSqlite(config);

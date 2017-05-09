@@ -26,6 +26,8 @@ var AccountSqlite = require('./sqlite/AccountSqlite.js').AccountSqlite;
 
 var AccountFactory = {};
 
+global.sql_engine = global.sql_engine || 'sqlite';
+
 AccountFactory.create = function(name) {
 	if (global.sql_engine == 'sqlite') {
 		return new AccountSqlite(name);

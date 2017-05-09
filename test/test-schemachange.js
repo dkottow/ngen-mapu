@@ -6,6 +6,8 @@ var assert = require('assert')
 	, sqlite3 = require('sqlite3').verbose()
 	, jsonpatch = require('fast-json-patch');
 
+global.sql_engine = 'sqlite';
+
 var Schema = require('../app/Schema').Schema;
 var SchemaChange = require('../app/SchemaChange').SchemaChange;
 	
@@ -146,11 +148,14 @@ describe('SchemaChange', function() {
 			
 			//modify schema
 			db.table('customers').props.order = 77;
+			db.table('products').addField(new Field({ name: 'foo', type: 'VARCHAR' }));
 
 			var patches = jsonpatch.compare(prevSchema, db.schema.get());			
 			db.patchSchema(patches, function(err, schema) {
 				assert(err == null && schema.tables.customers.props.order == 77
 					, 'could not set table props order = 77');
+				assert(schema.tables.products.fields['foo'].type == 'VARCHAR'
+					, 'could not add field foo of type VARCHAR');
 				log.trace({schema: db.schema.get()}, 
 					"schema after failing to write patches");
 				done();				

@@ -25,6 +25,8 @@ var path = require('path');
 var SqlHelperSqlite = require('./sqlite/SqlHelperSqlite.js').SqlHelperSqlite;
 var SqlHelperMssql = require('./mssql/SqlHelperMssql.js').SqlHelperMssql;
 
+global.sql_engine = global.sql_engine || 'sqlite';
+
 var SqlHelperFactory = {};
 
 SqlHelperFactory.create = function() {

@@ -27,6 +27,8 @@ var SqlBuilderMssql = require('./mssql/SqlBuilderMssql.js').SqlBuilderMssql;
 
 var SqlBuilderFactory = {};
 
+global.sql_engine = global.sql_engine || 'sqlite';
+
 SqlBuilderFactory.create = function(tableGraph) {
 	if (global.sql_engine == 'sqlite') {
 		return new SqlBuilderSqlite(tableGraph);

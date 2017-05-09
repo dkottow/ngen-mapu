@@ -805,10 +805,11 @@ DatabaseSqlite.prototype.readSchema = function(cbAfter) {
 
 
 DatabaseSqlite.prototype.writeSchemaChanges = function(changes, cbAfter) {
+	var me = this;
 	try {
 
 		var sql = _.reduce(changes, function(sql, change) {
-			return sql + change.toSQL() + '; \n';
+			return sql + change.toSQL(me.sqlBuilder) + '; \n';
 		}, '');
 
 

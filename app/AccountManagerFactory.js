@@ -20,9 +20,10 @@ var log = require('./log.js').log;
 
 var path = require('path');
 
-/**** sqlite *****/
-
 var AccountManagerSqlite = require('./sqlite/AccountManagerSqlite.js').AccountManagerSqlite;
+
+global.sql_engine = global.sql_engine || 'sqlite';
+
 
 if (global.sql_engine == 'sqlite') {
 

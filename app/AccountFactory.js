@@ -20,16 +20,14 @@ var log = require('./log.js').log;
 
 var path = require('path');
 
-/**** sqlite *****/
-
-var AccountSqlite = require('./sqlite/AccountSqlite.js').AccountSqlite;
-
 var AccountFactory = {};
 
 global.sql_engine = global.sql_engine || 'sqlite';
 
 AccountFactory.create = function(name) {
+   
 	if (global.sql_engine == 'sqlite') {
+      var AccountSqlite = require('./sqlite/AccountSqlite.js').AccountSqlite;
 		return new AccountSqlite(name);
 	}
 	throw new Error(util.format("unsupported sql engine '%s'", global.sql_engine));	

@@ -26,7 +26,6 @@ var SqlHelperSqlite = {
 	Schema: {}
 }
 
-
 SqlHelperSqlite.EncloseSQL = function(name) {
 	return '"' + name + '"';
 }

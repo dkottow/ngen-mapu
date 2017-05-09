@@ -15,7 +15,6 @@
 */
 
 
-//var sqlite3 = require('sqlite3');
 var mssql = require('mssql');
 var Request = mssql.Request;
 

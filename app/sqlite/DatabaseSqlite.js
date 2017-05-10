@@ -749,12 +749,12 @@ DatabaseSqlite.prototype.readSchema = function(cbAfter) {
 						var doAfter = _.after(2*tableNames.length, function() {
 							//after executing two SQL statements per table
 							db.close(function () {
-								var data = {
+								var schemaData = {
 									tables: tables
 								};
-								_.extend(data, schemaProps);
+								_.extend(schemaData, schemaProps);
 
-								me.setSchema(data);
+								me.setSchema(schemaData);
 								cbAfter();
 							});
 						});

@@ -61,8 +61,15 @@ Database.prototype.users = function() {
 	return _.object(_.pluck(users, 'name'), users); 
 }
 
-Database.prototype.setSchema = function(schemaData) {
-	this.schema.init(schemaData);
+Database.prototype.setSchema = function(newSchema) {
+
+	if (newSchema instanceof Schema) {
+		this.schema = newSchema;
+	} else {
+		//expecting a json rep of the schema 
+		this.schema.init(newSchema);
+	}
+
 	this.sqlBuilder = SqlBuilderFactory.create(this.schema.graph);
 }
 
@@ -224,7 +231,7 @@ Database.prototype.patchSchema = function(patches, cbResult) {
 				}
 
 				//replace database schema by patched one 
-				me.schema = patchedSchema;
+				me.setSchema(patchedSchema);
 
 				//return patched schema info (use getInfo to return rowCounts)
 				me.getInfo(cbResult);

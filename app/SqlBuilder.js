@@ -480,27 +480,36 @@ SqlBuilder.prototype.filterSQL = function(fromTable, filterClauses) {
 
 			if (filter.field == Table.ALL_FIELDS) {
 				//use full text search (fts)
-				var clause = util.format('(%s.%s MATCH ?)', 
-								table.ftsName(), table.ftsName()); 	
 
-				sqlClauses.push(clause);
-		
 				//(prefix last + phrase query) - see sqlite fts
 				var searchValue = '"' + filter.value + '*"';  
-				sqlParams.push(searchValue);
+				filter.value = searchValue;
+				
+				var params = SqlHelper.params(filter);
+
+				var clause = util.format('(%s.%s MATCH %s)', 
+								table.ftsName(), table.ftsName(), params[0].sql); 	
+
+				sqlClauses.push(clause);
+				sqlParams.push(params[0]); 
 
 			} else {
 				//use LIKE on filter.field
-				var fmt = '(' + SqlHelper.ConcatSQL(['%s', "''"]) + ' LIKE ?)';
-				var clause = util.format(fmt, fromFieldQN);
-
-				sqlClauses.push(clause);
 
 				var searchValue = filter.value + '%';
 				if (filter.value[0] == '*') {
 					searchValue = '%' + filter.value.substr(1) + '%';
 				}
-				sqlParams.push(searchValue); 
+				
+				filter.value = searchValue;
+
+				var params = SqlHelper.params(filter);
+
+				var fmt = '(' + SqlHelper.ConcatSQL(['%s', "''"]) + ' LIKE %s)';
+				var clause = util.format(fmt, fromFieldQN, params[0].sql);
+				
+				sqlClauses.push(clause);
+				sqlParams.push(params[0]); 
 			}
 
 		} else {

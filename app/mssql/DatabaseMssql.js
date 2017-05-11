@@ -156,6 +156,7 @@ DatabaseMssql.prototype.all = function(tableName, options, cbResult) {
 
 		_.each(sql.params, function(param) {
 			var typeName = Field.typeName(param.type);
+console.log(JSON.stringify({param: param, typeName: typeName}) +  'ALL*********');
 			req.input(param.name, SqlHelper.mssqlType(typeName), param.value);
 		});
 

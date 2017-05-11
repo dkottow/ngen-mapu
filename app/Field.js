@@ -76,6 +76,31 @@ Field.TABLE_FIELDS = ['name', 'table_name', 'props', 'disabled'];
 //adding or removing PROPERTIES needs no change in db schema
 Field.PROPERTIES = ['order', 'width', 'scale', 'visible', 'label'];
 
+Field.TYPES = {
+	'text': 'VARCHAR'
+	, 'integer': 'INTEGER'
+	, 'numeric': 'NUMERIC'
+	, 'date': 'DATE'
+	, 'datetime': 'DATETIME'
+}
+
+Field.typeName = function(sqlType) {
+	if (sqlType.indexOf(Field.TYPES.text) == 0) {
+		return 'text';
+	} else if (sqlType.indexOf("NVARCHAR") == 0) {
+		return 'text';
+	} else if (sqlType == Field.TYPES.integer) {
+		return 'integer';
+	} else if (sqlType.indexOf(Field.TYPES.numeric) == 0) {
+		return 'numeric';
+	} else if (sqlType == Field.TYPES.datetime) {
+		return 'datetime';
+	} else if (sqlType == Field.TYPES.date) {
+		return 'date';
+	}
+	return null;	
+}
+
 
 Field.create = function(fieldDef) {
 	var errMsg = util.format("Field.create(%s) failed. "
@@ -89,21 +114,6 @@ Field.create = function(fieldDef) {
 	
 	throw new Error(util.format("Field.create(%s) failed. Unknown type.", util.inspect(fieldDef)));
 
-}
-
-Field.typeName = function(sqlType) {
-	if (sqlType.indexOf(Field.TYPES.text) == 0) {
-		return 'text';
-	} else if (sqlType == Field.TYPES.integer) {
-		return 'integer';
-	} else if (sqlType.indexOf(Field.TYPES.numeric) == 0) {
-		return 'numeric';
-	} else if (sqlType == Field.TYPES.datetime) {
-		return 'datetime';
-	} else if (sqlType == Field.TYPES.date) {
-		return 'date';
-	}
-	return null;	
 }
 
 Field.prototype.setProp = function(name, value) {
@@ -177,14 +187,6 @@ Field.ROW_ALIAS = 'ref';
 Field.prototype.refName = function() {
 	if (this.name.match(/id$/)) return this.name.replace(/id$/, "ref");
 	else return this.name + "_ref";
-}
-
-Field.TYPES = {
-	'text': 'VARCHAR'
-	, 'integer': 'INTEGER'
-	, 'numeric': 'NUMERIC'
-	, 'date': 'DATE'
-	, 'datetime': 'DATETIME'
 }
 
 Field.dateToString = function(date) {

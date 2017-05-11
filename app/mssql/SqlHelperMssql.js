@@ -134,8 +134,10 @@ SqlHelperMssql.Field.defaultSQL = function(field) {
 
 SqlHelperMssql.Field.typeSQL = function(type)
 {
-	if (type == 'VARCHAR') return 'VARCHAR(8000)';
+	if (type == 'VARCHAR') return 'NVARCHAR(4000)';
 	if (type == 'NUMERIC') return 'NUMERIC(18,3)';
+	type = type.replace(/VARCHAR(\([0-9]+\))/,'NVARCHAR$1');
+
 	return type;
 }
 

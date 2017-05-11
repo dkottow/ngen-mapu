@@ -74,6 +74,133 @@ DatabaseMssql.prototype.conn = function() {
 	return this.pool;
 } 
 
+
+DatabaseMssql.prototype.get = function(tableName, options, cbResult) {
+
+	try {
+
+		var table = this.table(tableName);
+
+		cbResult = cbResult || arguments[arguments.length - 1];	
+		options = typeof options == 'object' ? options : {};		
+
+		var filterClauses = options.filter || [];
+		var fields = options.fields || Table.ALL_FIELDS; 
+
+		var sql = this.sqlBuilder.selectSQL(table, fields, filterClauses, [], 1, 0, false);
+
+		var req = this.conn().request();
+
+		_.each(sql.params, function(param) {
+			var typeName = Field.typeName(param.type);
+			req.input(param.name, SqlHelper.mssqlType(typeName), param.value);
+		});
+
+		req.query(sql.query).then(result => {
+			//console.dir(result.recordset);
+			var row = result.recordset[0];
+			cbResult(null, row);
+
+		}).catch(err => {
+			log.error({err: err}, "Database.get() query exception.");
+			cbResult(err, null);
+		});
+
+	} catch(err) {
+		log.error({err: err}, "Database.get() exception.");	
+		cbResult(err, []);
+	}
+}
+
+DatabaseMssql.prototype.all = function(tableName, options, cbResult) {
+
+	log.trace("Database.all()...");
+	try {
+
+		var table = this.table(tableName);
+
+		cbResult = arguments[arguments.length - 1];	
+		options = typeof options == 'object' ? options : {};		
+
+		var filterClauses = options.filter || [];
+		var fields = options.fields || Table.ALL_FIELDS; 
+		var order = options.order || [];
+		var limit = options.limit || global.row_max_count;
+		var offset = options.offset || 0;
+
+		var query = {
+			table : tableName
+			, select: fields
+			, filter : filterClauses
+			, orderby: order
+			, top: limit
+			, skip: offset 
+		};
+
+		var debug = options.debug || false;
+
+		log.trace(fields + " from " + table.name 
+				+ " filtered by " + util.inspect(filterClauses));
+
+		var resultAll = { 
+			query: query
+		}
+
+		var sql = this.sqlBuilder.selectSQL(
+					table, fields, filterClauses, 
+					order, limit, offset);
+		//console.dir(sql);
+		log.debug({sql: sql.query}, "Database.all()");
+		//log.warn({sql: sql.params}, "Database.all()");
+
+		var req = this.conn().request();
+
+		_.each(sql.params, function(param) {
+			var typeName = Field.typeName(param.type);
+			req.input(param.name, SqlHelper.mssqlType(typeName), param.value);
+		});
+
+		req.query(sql.query).then(result => {
+			log.trace({rows : result.recordset});
+			resultAll.rows = result.recordset;
+
+		}).then(result => {
+			
+			var countSql = sql.countSql 
+				+ ' UNION ALL SELECT COUNT(*) as count FROM ' + table.name; 
+
+			return req.query(countSql);
+		
+		}).then(result => {
+			//console.dir(result.recordset);
+			resultAll.count = result.recordset[0].count;
+			resultAll.totalCount = result.recordset[1].count;
+
+			var expectedCount = result.recordset[0].count - offset;
+
+			if (resultAll.rows.length < expectedCount) {
+				resultAll.nextOffset = offset + limit;
+			}
+
+			if (debug) {
+				resultAll.sql = sql.query;
+				resultAll.sqlParams = sql.params;
+			}		
+
+			cbResult(null, resultAll);
+			log.trace({ result: resultAll }, "...Database.all()");
+
+		}).catch(err => {
+			log.error({err: err}, "Database.all() query exception.");
+			cbResult(err, null);
+		});
+
+	} catch(err) {
+		log.error({err: err}, "Database.all() exception.");	
+		cbResult(err, null);
+	}
+}
+
 DatabaseMssql.prototype.getCounts = function(cbResult) {
 	log.trace("Database.getCounts()...");
 	try {
@@ -166,132 +293,6 @@ DatabaseMssql.prototype.getStats = function(tableName, options, cbResult) {
 	}
 }	
 
-
-DatabaseMssql.prototype.all = function(tableName, options, cbResult) {
-
-	log.trace("Database.all()...");
-	try {
-
-		var table = this.table(tableName);
-
-		cbResult = arguments[arguments.length - 1];	
-		options = typeof options == 'object' ? options : {};		
-
-		var filterClauses = options.filter || [];
-		var fields = options.fields || Table.ALL_FIELDS; 
-		var order = options.order || [];
-		var limit = options.limit || global.row_max_count;
-		var offset = options.offset || 0;
-
-		var query = {
-			table : tableName
-			, select: fields
-			, filter : filterClauses
-			, orderby: order
-			, top: limit
-			, skip: offset 
-		};
-
-		var debug = options.debug || false;
-
-		log.trace(fields + " from " + table.name 
-				+ " filtered by " + util.inspect(filterClauses));
-
-		var resultAll = { 
-			query: query
-		}
-
-		var sql = this.sqlBuilder.selectSQL(
-					table, fields, filterClauses, 
-					order, limit, offset);
-		//console.dir(sql);
-		log.debug({sql: sql.query}, "Database.all()");
-		//log.warn({sql: sql.params}, "Database.all()");
-
-		var req = this.conn().request();
-
-		_.each(sql.params, function(param) {
-			var typeName = Field.typeName(param.type);
-			req.input(param.name, SqlHelper.mssqlType(typeName), param.value);
-		});
-
-		req.query(sql.query).then(result => {
-			log.trace({rows : result.recordset});
-			resultAll.rows = result.recordset;
-
-		}).then(result => {
-			
-			var countSql = sql.countSql 
-				+ ' UNION ALL SELECT COUNT(*) as count FROM ' + table.name; 
-
-			return req.query(countSql);
-		
-		}).then(result => {
-			//console.dir(result.recordset);
-			resultAll.count = result.recordset[0].count;
-			resultAll.totalCount = result.recordset[1].count;
-
-			var expectedCount = result.recordset[0].count - offset;
-
-			if (resultAll.rows.length < expectedCount) {
-				resultAll.nextOffset = offset + limit;
-			}
-
-			if (debug) {
-				resultAll.sql = sql.query;
-				resultAll.sqlParams = sql.params;
-			}		
-
-			cbResult(null, resultAll);
-			log.trace({ result: resultAll }, "...Database.all()");
-
-		}).catch(err => {
-			log.error({err: err}, "Database.all() query exception.");
-			cbResult(err, null);
-		});
-
-	} catch(err) {
-		log.error({err: err}, "Database.all() exception.");	
-		cbResult(err, null);
-	}
-}
-
-DatabaseMssql.prototype.get = function(tableName, options, cbResult) {
-
-	try {
-
-		var table = this.table(tableName);
-
-		cbResult = cbResult || arguments[arguments.length - 1];	
-		options = typeof options == 'object' ? options : {};		
-
-		var filterClauses = options.filter || [];
-		var fields = options.fields || Table.ALL_FIELDS; 
-
-		var sql = this.sqlBuilder.selectSQL(table, fields, filterClauses, [], 1, 0, false);
-
-		var req = this.conn().request();
-
-		_.each(sql.params, function(param) {
-			var typeName = Field.typeName(param.type);
-			req.input(param.name, SqlHelper.mssqlType(typeName), param.value);
-		});
-
-		req.query(sql.query).then(result => {
-			//console.dir(result.recordset);
-			var row = result.recordset[0];
-			cbResult(null, row);
-
-		}).catch(err => {
-			log.error({err: err}, "Database.get() query exception.");
-			cbResult(err, null);
-		});
-
-	} catch(err) {
-		log.error({err: err}, "Database.get() exception.");	
-		cbResult(err, []);
-	}
-}
 
 DatabaseMssql.prototype.readSchema = function(cbAfter) {
 
@@ -448,6 +449,104 @@ DatabaseMssql.prototype.readSchema = function(cbAfter) {
 	} catch(err) {
 		log.error({err: err}, "Database.readSchema() exception.");
 		cbAfter(err);
+	}
+}
+DatabaseMssql.prototype.insert = function(tableName, rows, options, cbResult) {
+
+	try {
+		log.trace('Database.insert()...');
+		log.trace({table: tableName, rows: rows, options: options});
+
+		cbResult = cbResult || arguments[arguments.length - 1];	
+		options = typeof options == 'object' ? options : {};		
+
+		var returnModifiedRows = options.retmod || false;
+
+		var table = this.table(tableName);
+		if ( ! _.isArray(rows)) throw new Error("rows type mismatch");
+
+		if (rows.length == 0) {
+			cbResult(null, []);
+			return;
+		}
+
+		var fieldNames = _.filter(_.keys(rows[0]), function(fn) { 
+			//filter out any non-field key
+			return _.has(table.fields(), fn); // && fn != 'id'; 
+		});
+
+		fieldNames = _.union(fieldNames, 
+					_.pluck(Table.MANDATORY_FIELDS, 'name'));
+	
+		var add_by = options.user ? options.user.name : 'unk';
+		var mod_by = add_by;
+
+		var fieldParams = _.times(fieldNames.length, function(fn) { 
+			return "?"; 
+		});
+
+		var sql = "INSERT INTO " + table.name 
+				+ '("' + fieldNames.join('", "') + '")'
+				+ " VALUES (" + fieldParams.join(', ') + ");"
+
+		log.debug({sql: sql}, "Database.insert()");
+
+		var err = null;
+		var rowIds = [];
+		var db = new sqlite3.Database(this.dbFile, sqlite3.OPEN_READWRITE);
+		var me = this;
+
+		db.serialize(function() {
+			db.run("PRAGMA foreign_keys = ON;");
+			db.run("BEGIN TRANSACTION");
+
+			var stmt = db.prepare(sql, function(e) {
+				err = err || e;
+			});
+
+			_.each(rows, function(r) {
+
+				r.add_on = r.mod_on = Field.dateToString(new Date());
+				r.add_by = r.mod_by = mod_by;
+				r.own_by = r.own_by || mod_by;
+				//console.log(r);				
+				if (err == null) {					
+
+					var result = me.getFieldValues(r, table, fieldNames);
+					err = err || result.err;
+
+					//console.log(result);
+					stmt.run(result.values, function(e) { 
+						err = err || e;
+						rowIds.push(this.lastID);
+					});
+				}
+			});
+
+			stmt.finalize(function() { 
+				if (err == null) {
+					db.run("COMMIT TRANSACTION");			
+				} else {
+					log.error({err: err, rows: rows, sql: sql}, 
+						"Database.insert() failed. Rollback.");
+					db.run("ROLLBACK TRANSACTION");
+				}
+				db.close(function() {
+					if (err == null && returnModifiedRows) {
+						me.allById(tableName, rowIds, cbResult);
+					} else {
+						var rows = _.map(rowIds, function(id) { 
+							return { id: id };
+						});
+						cbResult(err, { rows: rows }); 
+					}
+				});
+			});	
+		});
+
+	} catch(err) {
+		log.error({err: err, rows: rows}, "Database.insert() exception.");	
+		cbResult(err, []);
 	}
 }
 

@@ -431,13 +431,15 @@ describe('Database', function() {
 	});
 
 	describe('Database.writeSchema()', function() {
-		var jsonSalesFile = "test/data/json/sales.json";
+		//var jsonSalesFile = "test/data/json/sales.json";
+		var jsonSalesFile = "Soils08.json";
 		var dbConfig = { 
 			user: 'dkottow', 
 			password: 'G0lderPass.72', 
 			domain: 'GOLDER',
 			server: 'localhost\\HOLEBASE_SI', 
-			database: 'demo#sandwiches' 
+//			database: 'demo#sandwiches' 
+			database: 'jstianson#Soils08' 
 		};
 
 		before(function(done) {

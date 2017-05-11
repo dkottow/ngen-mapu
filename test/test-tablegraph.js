@@ -217,6 +217,7 @@ describe('RowsToObj Sandwiches DB', function() {
 				]
 			};	
 			db.all('orders', options, function(err, result) {
+				assert(err == null, 'got error ' + err);
 				customerCount = result.rows.length;
 				done();
 			});

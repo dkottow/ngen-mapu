@@ -26,9 +26,6 @@ var Database = require('./DatabaseSqlite.js').DatabaseSqlite;
 
 var log = require('../log.js').log;
 
-global.sqlite_ext = global.sqlite_ext || '.sqlite';
-
-
 function AccountSqlite(name) {
 	this.baseDir = path.join(global.data_dir, name);
 

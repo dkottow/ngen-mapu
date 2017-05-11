@@ -22,15 +22,19 @@ var path = require('path');
 
 /**** sqlite *****/
 
-var SqlBuilderSqlite = require('./sqlite/SqlBuilderSqlite.js').SqlBuilderSqlite;
-var SqlBuilderMssql = require('./mssql/SqlBuilderMssql.js').SqlBuilderMssql;
 
 var SqlBuilderFactory = {};
 
+global.sql_engine = global.sql_engine || 'sqlite';
+
 SqlBuilderFactory.create = function(tableGraph) {
+
 	if (global.sql_engine == 'sqlite') {
+      var SqlBuilderSqlite = require('./sqlite/SqlBuilderSqlite.js').SqlBuilderSqlite;	   
 		return new SqlBuilderSqlite(tableGraph);
+
 	} else if (global.sql_engine == 'mssql') {
+      var SqlBuilderMssql = require('./mssql/SqlBuilderMssql.js').SqlBuilderMssql;
 		return new SqlBuilderMssql(tableGraph);
 	}
 	throw new Error(util.format("unsupported sql engine '%s'", global.sql_engine));	

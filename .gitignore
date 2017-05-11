@@ -4,3 +4,4 @@ test/data
 data
 logs
 *.swp
+*~

@@ -3,6 +3,8 @@ var assert = require('assert')
 	, _ = require('underscore')
 	, util = require('util')
 	, sqlite3 = require('sqlite3').verbose();
+
+global.sql_engine = 'sqlite';
 	
 var Schema = require('../app/Schema').Schema;
 	

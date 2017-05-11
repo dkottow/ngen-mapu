@@ -20,17 +20,18 @@ var log = require('./log.js').log;
 
 var path = require('path');
 
-/**** sqlite *****/
-
-var DatabaseSqlite = require('./sqlite/DatabaseSqlite.js').DatabaseSqlite;
-var DatabaseMssql = require('./mssql/DatabaseMssql.js').DatabaseMssql;
-
 var DatabaseFactory = {};
 
+global.sql_engine = global.sql_engine || 'sqlite';
+
 DatabaseFactory.create = function(config) {
+
 	if (global.sql_engine == 'sqlite') {
+      var DatabaseSqlite = require('./sqlite/DatabaseSqlite.js').DatabaseSqlite;
 		return new DatabaseSqlite(config);
+
 	} else if (global.sql_engine == 'mssql') {
+      var DatabaseMssql = require('./mssql/DatabaseMssql.js').DatabaseMssql;
 		return new DatabaseMssql(config);
 	}
 

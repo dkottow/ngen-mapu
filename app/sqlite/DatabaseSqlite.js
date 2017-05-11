@@ -749,12 +749,12 @@ DatabaseSqlite.prototype.readSchema = function(cbAfter) {
 						var doAfter = _.after(2*tableNames.length, function() {
 							//after executing two SQL statements per table
 							db.close(function () {
-								var data = {
+								var schemaData = {
 									tables: tables
 								};
-								_.extend(data, schemaProps);
+								_.extend(schemaData, schemaProps);
 
-								me.setSchema(data);
+								me.setSchema(schemaData);
 								cbAfter();
 							});
 						});
@@ -805,10 +805,11 @@ DatabaseSqlite.prototype.readSchema = function(cbAfter) {
 
 
 DatabaseSqlite.prototype.writeSchemaChanges = function(changes, cbAfter) {
+	var me = this;
 	try {
 
 		var sql = _.reduce(changes, function(sql, change) {
-			return sql + change.toSQL() + '; \n';
+			return sql + change.toSQL(me.sqlBuilder) + '; \n';
 		}, '');
 
 

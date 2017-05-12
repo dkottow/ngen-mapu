@@ -113,7 +113,7 @@ DatabaseMssql.prototype.get = function(tableName, options, cbResult) {
 
 DatabaseMssql.prototype.all = function(tableName, options, cbResult) {
 
-	log.trace("Database.all()...");
+	log.debug("Database.all()...");
 	try {
 
 		var table = this.table(tableName);
@@ -156,7 +156,6 @@ DatabaseMssql.prototype.all = function(tableName, options, cbResult) {
 
 		_.each(sql.params, function(param) {
 			var typeName = Field.typeName(param.type);
-console.log(JSON.stringify({param: param, typeName: typeName}) +  'ALL*********');
 			req.input(param.name, SqlHelper.mssqlType(typeName), param.value);
 		});
 
@@ -452,8 +451,8 @@ DatabaseMssql.prototype.readSchema = function(cbAfter) {
 	}
 }
 DatabaseMssql.prototype.insert = function(tableName, rows, options, cbResult) {
-
-	try {
+	var me = this;
+	try {		
 		log.trace('Database.insert()...');
 		log.trace({table: tableName, rows: rows, options: options});
 
@@ -475,77 +474,141 @@ DatabaseMssql.prototype.insert = function(tableName, rows, options, cbResult) {
 			return _.has(table.fields(), fn); // && fn != 'id'; 
 		});
 
+		var autoId = ! _.has(table.fields(), 'id');
+autoId = false;
+
 		fieldNames = _.union(fieldNames, 
 					_.pluck(Table.MANDATORY_FIELDS, 'name'));
 	
 		var add_by = options.user ? options.user.name : 'unk';
 		var mod_by = add_by;
 
-		var fieldParams = _.times(fieldNames.length, function(fn) { 
-			return "?"; 
+		var transaction = new mssql.Transaction(this.conn());
+		var stmt = new mssql.PreparedStatement(transaction);
+
+		_.each(fieldNames, function(fn) {
+			var field = table.field(fn);
+			var sqlType = SqlHelper.mssqlType(Field.typeName(field.type));
+			stmt.input(fn, sqlType);
 		});
 
-		var sql = "INSERT INTO " + table.name 
-				+ '("' + fieldNames.join('", "') + '")'
-				+ " VALUES (" + fieldParams.join(', ') + ");"
+		stmt.output('__id__', mssql.Int);
 
-		log.debug({sql: sql}, "Database.insert()");
-
-		var err = null;
 		var rowIds = [];
-		var db = new sqlite3.Database(this.dbFile, sqlite3.OPEN_READWRITE);
-		var me = this;
+		var sql;
 
-		db.serialize(function() {
-			db.run("PRAGMA foreign_keys = ON;");
-			db.run("BEGIN TRANSACTION");
+		transaction.begin().then(() => {
+			log.warn('transaction begin');
 
-			var stmt = db.prepare(sql, function(e) {
-				err = err || e;
+			if (false && _.contains(fieldNames, 'id')) {
+				var sql = util.format('SET IDENTITY_INSERT %s ON;', table.name);
+			log.warn(sql);
+				return new Request(transaction).batch(sql);
+			} else {
+				return Promise.resolve();
+			}
+
+		}).then(result => {
+
+			log.warn('transaction began');
+			var fieldParams = _.map(fieldNames, function(fn) { return '@' + fn; });
+
+			var sql = "INSERT INTO " + table.name 
+					+ '([' + fieldNames.join('], [') + '])'
+					+ " VALUES (" + fieldParams.join(', ') + ");"
+
+			if (autoId) {
+				sql += "\nSELECT @__id__ = SCOPE_IDENTITY();";		
+			} else {
+				sql += "\nSELECT @__id__ = @id;"; 
+			}
+
+			log.debug({sql: sql}, "Database.insert()");
+
+			return stmt.prepare(sql);
+
+		}).then(result => {
+
+			var doInsert = function(row, prevResult) {
+				if (prevResult) {
+					log.debug(JSON.stringify(prevResult) + ' res insert');
+					rowIds.push(prevResult.output.__id__);
+				}
+
+				if (row) {	
+
+					row.add_on = row.mod_on = Field.dateToString(new Date());
+					row.add_by = row.mod_by = mod_by;
+					row.own_by = row.own_by || mod_by;
+
+					var values = me.getFieldValues(row, table, fieldNames);
+					log.debug({values: values}, 'insert row');
+					if (values.err) throw new Error(values.err);
+					var valObj = _.object(fieldNames, values.values);	
+					return stmt.execute(valObj);					
+				} 
+
+				return Promise.resolve();		
+			};
+		
+			log.warn('stmt prepare');
+			var insertRows = _.reduce(rows, function(insertRows, row) {
+				return insertRows.then(result => {
+					return doInsert(row, result);
+				});	
+			}, Promise.resolve());	
+			return insertRows.then(result => {
+				return doInsert(null, result);
 			});
 
-			_.each(rows, function(r) {
+		}).then(() => {
 
-				r.add_on = r.mod_on = Field.dateToString(new Date());
-				r.add_by = r.mod_by = mod_by;
-				r.own_by = r.own_by || mod_by;
-				//console.log(r);				
-				if (err == null) {					
+			return stmt.unprepare();	
 
-					var result = me.getFieldValues(r, table, fieldNames);
-					err = err || result.err;
+		}).then(() => {
 
-					//console.log(result);
-					stmt.run(result.values, function(e) { 
-						err = err || e;
-						rowIds.push(this.lastID);
-					});
-				}
-			});
+			if (false && _.contains(fieldNames, 'id')) {
+				sql = util.format('SET IDENTITY_INSERT %s OFF;', table.name);
+				return new Request(transaction).batch(sql);
+			} else {
+				return Promise.resolve();
+			}
 
-			stmt.finalize(function() { 
-				if (err == null) {
-					db.run("COMMIT TRANSACTION");			
-				} else {
-					log.error({err: err, rows: rows, sql: sql}, 
-						"Database.insert() failed. Rollback.");
-					db.run("ROLLBACK TRANSACTION");
-				}
-				db.close(function() {
-					if (err == null && returnModifiedRows) {
-						me.allById(tableName, rowIds, cbResult);
-					} else {
-						var rows = _.map(rowIds, function(id) { 
-							return { id: id };
-						});
-						cbResult(err, { rows: rows }); 
-					}
+		}).then(() => {
+
+			return transaction.commit();
+
+		}).then(() => {
+			log.warn({rowIds: rowIds}, 'committed');	
+			if (returnModifiedRows) {
+				return me.allById(tableName, rowIds, cbResult);
+			} else {
+				var rows = _.map(rowIds, function(id) { 
+					return { id: id };
 				});
-			});	
+				cbResult(null, { rows: rows }); 
+			}
+
+		}).catch(err => {
+
+			stmt.unprepare().then(() => {
+
+				log.error({err: err}, 
+					"Database.insert() failed. Rollback.");
+				return transaction.rollback();
+
+			}).then(() => {
+				cbResult(err, null);	
+
+			}).catch(err => {
+				log.error({err: err}, "Database.insert() sql error.");
+				cbResult(err, null);
+				return;			
+			});
 		});
 
 	} catch(err) {
-		log.error({err: err, rows: rows}, "Database.insert() exception.");	
+		log.error({err: err}, "Database.insert() exception.");	
 		cbResult(err, []);
 	}
 }
@@ -618,7 +681,7 @@ DatabaseMssql.prototype.writeSchema = function(cbAfter) {
 					conn.close();
 					DatabaseMssql.remove(config, dbTemp, function() { cbAfter(err); });	
 				}).catch(err => {
-					log.error({err: err}, "Database.writeSchema() drop exception.");
+					log.error({err: err}, "Database.writeSchema() remove exception.");
 					cbAfter(err); 
 				});
 			});	

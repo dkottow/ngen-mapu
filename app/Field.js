@@ -103,17 +103,10 @@ Field.typeName = function(sqlType) {
 
 
 Field.create = function(fieldDef) {
-	var errMsg = util.format("Field.create(%s) failed. "
-				, util.inspect(fieldDef));
-
-	assert(_.has(fieldDef, "type"), errMsg + " Type attr missing.");
-
-	if (_.contains(_.values(Field.TYPES), fieldDef.type)) {
+	if (fieldDef.type && Field.typeName(fieldDef.type)) {
 		return new Field(fieldDef);
 	}
-	
 	throw new Error(util.format("Field.create(%s) failed. Unknown type.", util.inspect(fieldDef)));
-
 }
 
 Field.prototype.setProp = function(name, value) {

@@ -211,6 +211,7 @@ describe('Database', function() {
 				var r = _.clone(row);
 				r.customer_id = _.sample([1,2]);
 				r.total_amount = Math.round(1000*Math.random(), 2);
+r.id = 1000 + i;
 				rows.push(r);
 			}
 

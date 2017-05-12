@@ -59,8 +59,8 @@ SqlHelperMssql.mssqlType = function(fieldType)
 	if (fieldType == 'text') return mssql.NVarChar;
 	else if (fieldType == 'integer') return mssql.Int;
 	else if (fieldType == 'numeric') return mssql.Real;
-	else if (fieldType == 'datetime') return mssql.Date;
-	else if (fieldType == 'date') return mssql.DateTime;
+	else if (fieldType == 'datetime') return mssql.VarChar; //TODO - use real js dates?
+	else if (fieldType == 'date') return mssql.VarChar; //TODO - use real js dates?
 	else throw new Error("unknown type '" + fieldType + "'");
 }
 

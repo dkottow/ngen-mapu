@@ -161,7 +161,7 @@ var parseFn = function(fieldType) {
 	} else if (fieldType.indexOf('DATE') == 0) {
 		return function(val) { 
 			return Number.isFinite(Date.parse(val))
-				? String(val) : NaN; 
+				? String(val) : NaN; //return NaN on error 
 		}
 	}
 	throw new Error('unkown type ' + fieldType);
@@ -174,8 +174,9 @@ Database.prototype.getFieldValues = function(row, table, fieldNames) {
 		var val = ( _.isNull(row[fn]) || _.isUndefined(row[fn]))
 			? null : parseFn(t)(row[fn]);
 		if (t.indexOf('CHAR') < 0 && Number.isNaN(val)) {
-			err = new Error('Conversion failed for ' 
-				+ row[fn] + ' [' + fn + ']');
+			//parseFn returns NaN on parse error (fwded from parseInt, parseFloat)
+			err = new Error("Conversion failed for '" 
+				+ row[fn] + '" [' + fn + ']');
 		}
 		//console.log(val + ' ' + row[fn] + ' ' + fn + ' ' + t);
 		return val; 

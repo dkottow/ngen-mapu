@@ -298,7 +298,7 @@ DatabaseMssql.prototype.readSchema = function(cbAfter) {
 	var me = this;
 
 	try {
-		log.debug({db: this.config.database}, "Schema.read()");
+		log.trace({db: this.config.database}, "Schema.read()");
 
 		var schemaProps = {
 			name: this.config.database
@@ -435,7 +435,7 @@ DatabaseMssql.prototype.readSchema = function(cbAfter) {
 				field.fk_table = r.fk_table;
 			});
 
-			log.info({ schema: JSON.stringify(schemaProps) }, '...Database.readSchema()');
+			log.trace({ schema: JSON.stringify(schemaProps) }, '...Database.readSchema()');
 
 			me.setSchema(schemaProps);
 			cbAfter();
@@ -450,6 +450,7 @@ DatabaseMssql.prototype.readSchema = function(cbAfter) {
 		cbAfter(err);
 	}
 }
+
 DatabaseMssql.prototype.insert = function(tableName, rows, options, cbResult) {
 	var me = this;
 	try {		
@@ -474,12 +475,11 @@ DatabaseMssql.prototype.insert = function(tableName, rows, options, cbResult) {
 			return _.has(table.fields(), fn); // && fn != 'id'; 
 		});
 
-		var autoId = ! _.has(table.fields(), 'id');
-autoId = false;
+		var autoId = ! _.contains(fieldNames, 'id');
 
 		fieldNames = _.union(fieldNames, 
-					_.pluck(Table.MANDATORY_FIELDS, 'name'));
-	
+					_.without(_.pluck(Table.MANDATORY_FIELDS, 'name'), 'id'));
+
 		var add_by = options.user ? options.user.name : 'unk';
 		var mod_by = add_by;
 
@@ -500,7 +500,7 @@ autoId = false;
 		transaction.begin().then(() => {
 			log.warn('transaction begin');
 
-			if (false && _.contains(fieldNames, 'id')) {
+			if ( ! autoId) {
 				var sql = util.format('SET IDENTITY_INSERT %s ON;', table.name);
 			log.warn(sql);
 				return new Request(transaction).batch(sql);
@@ -552,12 +552,13 @@ autoId = false;
 			};
 		
 			log.warn('stmt prepare');
-			var insertRows = _.reduce(rows, function(insertRows, row) {
-				return insertRows.then(result => {
+			var promiseRows = _.reduce(rows, function(promiseRows, row) {
+				return promiseRows.then(result => {
 					return doInsert(row, result);
 				});	
 			}, Promise.resolve());	
-			return insertRows.then(result => {
+
+			return promiseRows.then(result => {
 				return doInsert(null, result);
 			});
 
@@ -567,7 +568,7 @@ autoId = false;
 
 		}).then(() => {
 
-			if (false && _.contains(fieldNames, 'id')) {
+			if ( ! autoId) {
 				sql = util.format('SET IDENTITY_INSERT %s OFF;', table.name);
 				return new Request(transaction).batch(sql);
 			} else {
@@ -610,6 +611,275 @@ autoId = false;
 	} catch(err) {
 		log.error({err: err}, "Database.insert() exception.");	
 		cbResult(err, []);
+	}
+}
+
+DatabaseMssql.prototype.update = function(tableName, rows, options, cbResult) {
+	var me = this;
+	try {
+		log.trace('Database.update()...');
+		log.debug({table: tableName, rows: rows, options: options});
+
+		if (rows.length == 0) {
+			cbResult(null, []);
+			return;
+		}
+
+		var table = this.table(tableName);
+		if ( ! _.isArray(rows)) throw new Error("rows type mismatch");
+
+		cbResult = cbResult || arguments[arguments.length - 1];	
+		options = typeof options == 'object' ? options : {};		
+
+		var returnModifiedRows = options.retmod || false;
+
+		var fieldNames = _.intersection(_.keys(rows[0]), 
+							_.keys(table.fields()));
+
+		fieldNames = _.without(fieldNames, 'id', 'add_by', 'add_on');
+		fieldNames = _.union(fieldNames, ['mod_on', 'mod_by']);
+
+		var mod_by = options.user ? options.user.name : 'unk';
+
+		var transaction = new mssql.Transaction(this.conn());
+		var stmt = new mssql.PreparedStatement(transaction);
+
+		_.each(fieldNames, function(fn) {
+			var field = table.field(fn);
+			var sqlType = SqlHelper.mssqlType(Field.typeName(field.type));
+			stmt.input(fn, sqlType);
+		});
+
+		stmt.input('id', SqlHelper.mssqlType('integer'));
+
+		var modCount = 0;	
+
+		transaction.begin().then(() => {
+			log.warn('transaction begin');
+
+			var setSQL = _.reduce(fieldNames, function(memo, fn) {
+				var term = SqlHelper.EncloseSQL(fn) + ' = @' + fn;
+				if (memo.length == 0) return term;
+				return memo + ', ' + term;
+			}, '');
+
+			var sql = "UPDATE " + table.name
+					+ ' SET ' + setSQL
+					+ " WHERE id = @id";
+
+			log.debug({sql: sql}, "Database.update()");
+
+			return stmt.prepare(sql);
+
+		}).then(result => {
+
+			var doUpdate = function(row, prevResult) {
+
+				if (prevResult) {
+					log.trace({prevResult: prevResult}, 'doUpdate result');
+					modCount += prevResult.rowsAffected[0];
+				}
+
+				if (row) {	
+					row.mod_on = Field.dateToString(new Date());
+					row.mod_by = mod_by;
+
+					var values = me.getFieldValues(row, table, fieldNames);
+					if (values.err) throw new Error(values.err);
+					var valObj = _.object(fieldNames, values.values);	
+					valObj['id'] = row.id;
+					log.trace({values: valObj}, 'doUpdate values');
+
+					return stmt.execute(valObj);				
+				}
+
+				return Promise.resolve();		
+			};	
+
+			var promiseRows = _.reduce(rows, function(promiseRows, row) {
+				return promiseRows.then(result => {
+					return doUpdate(row, result);
+				});	
+			}, Promise.resolve());
+
+			return promiseRows.then(result => {
+				return doUpdate(null, result);
+			});
+
+		}).then(result => {
+			if (modCount != rows.length) {
+				throw new Error("G6_MODEL_ERROR: Update row count mismatch. Expected " + rows.length + " got " + modCount);
+			}
+
+			return stmt.unprepare();	
+
+		}).then(() => {
+			return transaction.commit();
+
+		}).then(() => {
+			var rowIds = _.pluck(rows, 'id');
+			log.warn({rowIds: rowIds}, 'committed');	
+			if (returnModifiedRows) {
+				return me.allById(tableName, rowIds, cbResult);
+			} else {
+				rowIds = _.map(rowIds, function(id) { 
+					return { id: id };
+				});
+				cbResult(null, { rows: rowIds }); 
+			}
+
+		}).catch(err => {
+			log.error({err: err}, "Database.update() failed.");
+
+			stmt.unprepare().then(() => {
+
+				log.error({err: err}, 
+					"Database.update() failed. Rollback.");
+				return transaction.rollback();
+
+			}).then(() => {
+				cbResult(err, null);	
+
+			}).catch(err => {
+				log.error({err: err}, "Database.update() sql error.");
+				cbResult(err, null);
+				return;			
+			});
+		});
+
+	} catch(err) {
+		log.error({err: err, rows: rows}, "Database.update() exception.");	
+		cbResult(err, null);
+	}
+}
+
+DatabaseMssql.prototype.delete = function(tableName, rowIds, cbResult) {
+
+	try {
+		log.trace('Database.delete()...');
+		log.trace({table: tableName, rowIds: rowIds});
+
+		var table = this.table(tableName);
+		if ( ! _.isArray(rowIds)) throw new Error("rowIds type mismatch");
+
+		if (rowIds.length == 0) {
+			cbResult(null, []);
+			return;
+		}
+
+		var idParams = _.times(rowIds.length, function(fn) { return "?"; });
+
+		var sql = "DELETE FROM " + table.name 
+				+ " WHERE id IN (" + idParams.join(', ') + ")";
+
+		log.debug({sql: sql}, "Database.delete()");
+
+		var err = null;
+		var delCount = 0;
+		var db = new sqlite3.Database(this.dbFile, sqlite3.OPEN_READWRITE);
+		
+		db.serialize(function() {
+			db.run("PRAGMA foreign_keys = ON;");
+			db.run("BEGIN TRANSACTION");
+
+			var stmt = db.prepare(sql, function(e) {
+				err = err || e;
+			});
+
+			if (err == null) 
+			{
+				var params = rowIds;
+				stmt.run(params, function(e) { 
+					err = err || e;
+					delCount = this.changes;
+				});
+			}
+
+			stmt.finalize(function() { 
+				if (err == null && delCount != rowIds.length) {
+					//console.log(delCount + " <> " + rowIds.length);
+					err = new Error("G6_MODEL_ERROR: Delete row count mismatch. Expected " + rowIds.length + " got " + delCount);
+				}
+
+				if (err == null) {
+					db.run("COMMIT TRANSACTION");
+				} else {
+					log.error({err: err, rowIds: rowIds, sql: sql}, 
+						"Database.delete() failed. Rollback.");
+					db.run("ROLLBACK TRANSACTION");
+				}
+				db.close(function() {
+					cbResult(err, rowIds); 
+				});
+			});	
+
+		});
+
+	} catch(err) {
+		log.error({err: err, rowIds: rowIds}, "Database.delete() exception.");	
+		cbResult(err, null);
+	}
+}
+
+DatabaseMssql.prototype.chown = function(tableName, rowIds, owner, cbResult) {
+	try {
+		log.trace('Database.chown()...');
+		log.trace({table: tableName, rowIds: rowIds, owner: owner});
+
+		var me = this;
+
+		var table = this.table(tableName);
+		if ( ! _.isArray(rowIds)) throw new Error("rowIds type mismatch");
+
+		if (rowIds.length == 0) {
+			cbResult(null, 0);
+			return;
+		}
+
+		var db = new sqlite3.Database(this.dbFile, sqlite3.OPEN_READWRITE);
+		
+		db.serialize(function() {
+			db.run("PRAGMA foreign_keys = ON;");
+			db.run("BEGIN TRANSACTION");
+
+			var err = null;
+			var chownCount = 0;
+			var chownTables = [ table ];
+
+			while(err == null && chownTables.length > 0) {
+				var t = chownTables.shift();
+
+				var query = me.sqlBuilder.chownSQL(table, rowIds, t, owner);
+
+				log.debug({query: query}, "Database.chown()");
+
+				db.run(query.sql, query.params, function(e) {
+					err = err || e;
+					chownCount += this.changes;
+				});
+			
+				var childTables = me.schema.graph.childTables(t);
+				chownTables = chownTables.concat(childTables);
+			}
+
+			if (err == null) {
+				db.run("COMMIT TRANSACTION");
+			} else {
+				log.error({err: err, rowIds: rowIds, sql: sql}, 
+					"Database.chown() failed. Rollback.");
+				db.run("ROLLBACK TRANSACTION");
+			}
+
+			db.close(function() {
+				cbResult(err, { rowCount: chownCount }); 
+			});
+
+		});
+
+
+	} catch(err) {
+		log.error({err: err, rowIds: rowIds}, "Database.chown() exception.");	
+		cbResult(err, null);
 	}
 }
 

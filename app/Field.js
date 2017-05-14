@@ -220,12 +220,12 @@ Field.prototype.foreignKeySQL = function() {
 
 Field.prototype.toSQL = function() {
 	var sql = '"' + this.name + '" ' + SqlHelper.Field.typeSQL(this.type);
+	if (this.name == 'id') sql += ' ' + SqlHelper.Field.autoIncrementSQL();
 	if (this.notnull) sql += ' NOT NULL';
-	sql += " " + SqlHelper.Field.defaultSQL(this);
-	sql += " " +  this.foreignKeySQL(); //SqlHelper.Field.foreignKeySQL(this);
+	sql += ' ' + SqlHelper.Field.defaultSQL(this);
+	sql += ' ' +  this.foreignKeySQL(); //SqlHelper.Field.foreignKeySQL(this);
 	return sql;
 }
-
 
 exports.Field = Field;
 

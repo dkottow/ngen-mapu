@@ -141,6 +141,11 @@ SqlHelperMssql.Field.typeSQL = function(type)
 	return type;
 }
 
+SqlHelperMssql.Field.autoIncrementSQL = function() 
+{
+	return 'IDENTITY(1,1)';
+}
+
 
 exports.SqlHelperMssql = SqlHelperMssql;
 

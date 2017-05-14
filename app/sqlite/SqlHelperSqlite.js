@@ -212,5 +212,10 @@ SqlHelperSqlite.Field.typeSQL = function(type)
 	return type;
 }
 
+SqlHelperSqlite.Field.autoIncrementSQL = function() 
+{
+	return '';
+}
+
 exports.SqlHelperSqlite = SqlHelperSqlite;
 

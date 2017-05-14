@@ -211,7 +211,6 @@ describe('Database', function() {
 				var r = _.clone(row);
 				r.customer_id = _.sample([1,2]);
 				r.total_amount = Math.round(1000*Math.random(), 2);
-r.id = 1000 + i;
 				rows.push(r);
 			}
 
@@ -296,10 +295,10 @@ r.id = 1000 + i;
 				'modified_on': '2001-01-01' 
 			};
 
-			for(var i = 5; i < 20; ++i) {
+			for(var i = 3; i < 10; ++i) {
 				var r = _.clone(row);
 				r.id = i;
-				r.total_amount = i*10 + 0.5;
+				r.total_amount = i*100 + 0.5;
 				rows.push(r);
 			}
 
@@ -432,15 +431,15 @@ r.id = 1000 + i;
 	});
 
 	describe('Database.writeSchema()', function() {
-		//var jsonSalesFile = "test/data/json/sales.json";
-		var jsonSalesFile = "Soils08.json";
+		var jsonSalesFile = "test/data/json/sales.json";
+		//var jsonSalesFile = "Soils08.json";
 		var dbConfig = { 
 			user: 'dkottow', 
 			password: 'G0lderPass.72', 
 			domain: 'GOLDER',
 			server: 'localhost\\HOLEBASE_SI', 
-//			database: 'demo#sandwiches' 
-			database: 'jstianson#Soils08' 
+			database: 'demo#sandwiches' 
+//			database: 'jstianson#Soils08' 
 		};
 
 		before(function(done) {

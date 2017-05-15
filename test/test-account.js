@@ -47,10 +47,10 @@ describe('Account', function() {
 		it('getInfo', function(done) {
 			account.getInfo(function(err, accountData) {
 				assert(_.size(accountData.databases) > 0);
-				assert(accountData.databases.sandwiches
-					, 'sandwiches db not found');
-				assert(accountData.databases.sandwiches.tables.customers
-					, 'sandwiches table customers not found.');
+				assert(accountData.databases.sales
+					, 'sales db not found');
+				assert(accountData.databases.sales.tables.customers
+					, 'sales table customers not found.');
 				done();
 			});
 		});

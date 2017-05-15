@@ -661,7 +661,7 @@ DatabaseSqlite.prototype.readSchema = function(cbAfter) {
 			var dbErrorHandlerFn = function(err) {
 				if (err) {
 					db.close();
-					log.error({err: err}, "Schema.read() failed.");
+					log.error({err: err}, util.format("Schema.read(%s) failed.", me.dbFile));
 					cbAfter(err);
 					return;
 				}

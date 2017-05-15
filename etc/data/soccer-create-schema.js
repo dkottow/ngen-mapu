@@ -467,7 +467,7 @@ describe('Schema', function() {
 			this.timeout(5000);
 	
 			var db = new Database(dbFile);
-			db.schema.init(soccerSchema);
+			db.setSchema(soccerSchema);
 
 			var allDone = _.after(2, function() {
 				done();

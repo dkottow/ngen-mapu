@@ -5,7 +5,7 @@ var assert = require('assert')
 	, _ = require('underscore')
 	, util = require('util')
 	, sqlite3 = require('sqlite3').verbose()
-	, Database = require(APP_PATH + 'DatabaseSqlite').DatabaseSqlite;
+	, Database = require(APP_PATH + 'sqlite/DatabaseSqlite').DatabaseSqlite;
 	
 var log = require(APP_PATH + 'log').log;
 
@@ -451,7 +451,7 @@ describe('Schema', function() {
 		it('create ' + dbFile, function(done) {
 	
 			var db = new Database(dbFile);
-			db.schema.init(rentalsSchema);
+			db.setSchema(rentalsSchema);
 			var allDone = _.after(2, function() {
 				done();
 			});
@@ -459,7 +459,7 @@ describe('Schema', function() {
 				log.info(err);
 				//Add status
 				var db = new Database(dbFile);
-				db.init(function(err) {
+				db.readSchema(function(err) {
 					log.debug(err);
 					var rows = [
 						{ id: 0, name: 'closed'}

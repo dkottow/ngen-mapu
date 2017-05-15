@@ -8,7 +8,6 @@ var assert = require('assert')
 	, Random = require('random-js');
 
 var APP_PATH = "../../app/";
-global.log = require('./log.js').log;
 
 var Database = require(APP_PATH + 'sqlite/DatabaseSqlite').DatabaseSqlite;
 	
@@ -33,7 +32,7 @@ describe('Database', function() {
 
 
 		before(function(done) {
-			db.init(function(err) {
+			db.readSchema(function(err) {
 				if (err) {
 					log.info(err);
 				} else {

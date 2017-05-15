@@ -17,8 +17,8 @@ mocha $SRC_DIR/soccer-generate-data.js
 
 mocha $SRC_DIR/rentals-create-schema.js
 
-cp sales.json sandwiches.json soccer.json $TEST_DIR/json
-cp sales.sqlite sandwiches.sqlite soccer.sqlite $TEST_DIR/sqlite
-cp sandwiches.sqlite soccer.sqlite rentals.sqlite $DATA_DIR/demo
-rm sales.json sandwiches.json soccer.json rentals.json
-rm sales.sqlite sandwiches.sqlite soccer.sqlite rentals.sqlite
+#cp sales.json sandwiches.json soccer.json $TEST_DIR/json
+#cp sales.sqlite sandwiches.sqlite soccer.sqlite $TEST_DIR/sqlite
+#cp sandwiches.sqlite soccer.sqlite rentals.sqlite $DATA_DIR/demo
+#rm sales.json sandwiches.json soccer.json rentals.json
+#rm sales.sqlite sandwiches.sqlite soccer.sqlite rentals.sqlite

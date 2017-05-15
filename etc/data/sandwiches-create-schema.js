@@ -339,7 +339,7 @@ describe('Schema', function() {
 			this.timeout(5000);
 	
 			var db = new Database(dbFile);
-			db.schema.init(salesSchema);
+			db.setSchema(salesSchema);
 			var allDone = _.after(2, function() {
 				done();
 			});

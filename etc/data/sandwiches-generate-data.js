@@ -23,7 +23,7 @@ describe('Database', function() {
 		var sandwiches;
 		
 		before(function(done) {
-			db.init(function(err) {
+			db.readSchema(function(err) {
 				if (err) {
 					log.info(err);
 				} else {

@@ -371,7 +371,7 @@ describe('Database', function() {
 
 		it('delete some rows', function(done) {
 
-			db.delete(table, [11, 12, 15], function(err, result) {
+			db.delete(table, [6, 7, 9], function(err, result) {
 				assert(err == null, 'deleted some rows');
 				log.info(err);
 				done(); 

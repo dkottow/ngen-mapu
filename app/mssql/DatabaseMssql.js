@@ -767,52 +767,71 @@ DatabaseMssql.prototype.delete = function(tableName, rowIds, cbResult) {
 			return;
 		}
 
-		var idParams = _.times(rowIds.length, function(fn) { return "?"; });
+		var transaction = new mssql.Transaction(this.conn());
+		var stmt = new mssql.PreparedStatement(transaction);
 
-		var sql = "DELETE FROM " + table.name 
-				+ " WHERE id IN (" + idParams.join(', ') + ")";
+		var paramNames = [];
+		_.each(rowIds, function(id) {
+			var param = 'id' + id;
+			stmt.input(param, SqlHelper.mssqlType('integer'));
+			paramNames.push(param);
+		});
 
-		log.debug({sql: sql}, "Database.delete()");
-
-		var err = null;
 		var delCount = 0;
-		var db = new sqlite3.Database(this.dbFile, sqlite3.OPEN_READWRITE);
-		
-		db.serialize(function() {
-			db.run("PRAGMA foreign_keys = ON;");
-			db.run("BEGIN TRANSACTION");
 
-			var stmt = db.prepare(sql, function(e) {
-				err = err || e;
-			});
+		transaction.begin().then(() => {
+			log.warn('transaction begin');
 
-			if (err == null) 
-			{
-				var params = rowIds;
-				stmt.run(params, function(e) { 
-					err = err || e;
-					delCount = this.changes;
-				});
+			var idSQL = _.reduce(paramNames, function(memo, param) {
+				var term = '@' + param;
+				if (memo.length == 0) return term;
+				return memo + ', ' + term;
+			}, '');
+
+			var sql = "DELETE FROM " + table.name 
+					+ " WHERE id IN (" + idSQL + ")";
+
+			log.debug({sql: sql}, "Database.delete()");
+			return stmt.prepare(sql);
+
+		}).then(result => {
+			var valObj = _.object(paramNames, rowIds);
+			return stmt.execute(valObj);				
+
+		}).then(result => {
+			log.warn({result: result}, 'delete result');
+			delCount = result.rowsAffected[0];
+
+			if (delCount != rowIds.length) {
+				//console.log(delCount + " <> " + rowIds.length);
+				throw Error("G6_MODEL_ERROR: Delete row count mismatch. Expected " + rowIds.length + " got " + delCount);
 			}
 
-			stmt.finalize(function() { 
-				if (err == null && delCount != rowIds.length) {
-					//console.log(delCount + " <> " + rowIds.length);
-					err = new Error("G6_MODEL_ERROR: Delete row count mismatch. Expected " + rowIds.length + " got " + delCount);
-				}
+			return stmt.unprepare();	
 
-				if (err == null) {
-					db.run("COMMIT TRANSACTION");
-				} else {
-					log.error({err: err, rowIds: rowIds, sql: sql}, 
-						"Database.delete() failed. Rollback.");
-					db.run("ROLLBACK TRANSACTION");
-				}
-				db.close(function() {
-					cbResult(err, rowIds); 
-				});
-			});	
+		}).then(() => {
+			return transaction.commit();
 
+		}).then(() => {
+			cbResult(null, rowIds); 
+
+		}).catch(err => {
+			log.error({err: err}, "Database.delete() failed.");
+
+			stmt.unprepare().then(() => {
+
+				log.error({err: err}, 
+					"Database.delete() failed. Rollback.");
+				return transaction.rollback();
+
+			}).then(() => {
+				cbResult(err, null);	
+
+			}).catch(err => {
+				log.error({err: err}, "Database.delete() sql error.");
+				cbResult(err, null);
+				return;			
+			});
 		});
 
 	} catch(err) {

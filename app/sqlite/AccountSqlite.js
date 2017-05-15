@@ -85,6 +85,18 @@ AccountSqlite.prototype.init = function(cbAfter) {
 	});
 }
 
+AccountSqlite.prototype.doRemoveDatabase = function(name, cbResult) {
+	var dbFile = this.databases[name].dbFile;
+	Database.remove(dbFile, cbResult);
+}
+
+AccountSqlite.prototype.doCreateDatabase = function(name) {
+	var dbFile = util.format('%s/%s', this.baseDir, 
+				name + global.sqlite_ext);
+	return new Database(dbFile);			
+}
+
+/*
 AccountSqlite.prototype.createDatabase = function(schemaData, options, cbResult) {
 	var me = this;
 	var name = schemaData.name;
@@ -183,6 +195,7 @@ AccountSqlite.prototype.delDatabase = function(name, options, cbResult) {
 		cbResult(err, false);
 	}
 }
+*/
 
 exports.AccountSqlite = AccountSqlite;
 

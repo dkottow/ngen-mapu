@@ -608,16 +608,17 @@ DatabaseSqlite.prototype.writeSchema = function(cbAfter) {
 				return;
 			}
 			db.exec(createSQL, function(err) {
-				db.close();
-				if (err) {
-					log.error("Schema.write() failed. " + err);	
-					fs.unlink(tmpFile);
-					cbAfter(err);
-					return;
-				}
-				log.debug('rename ' + tmpFile + ' to ' + me.dbFile);	
-				fs.rename(tmpFile, me.dbFile, function(err) {						
-					cbAfter(err);
+				db.close(function(err) {
+					if (err) {
+						log.error("Schema.write() failed. " + err);	
+						fs.unlink(tmpFile);
+						cbAfter(err);
+						return;
+					}
+					log.debug('rename ' + tmpFile + ' to ' + me.dbFile);	
+					fs.rename(tmpFile, me.dbFile, function(err) {						
+						cbAfter(err);
+					});
 				});
 			});
 		});

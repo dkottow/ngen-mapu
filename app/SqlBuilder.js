@@ -158,9 +158,9 @@ SqlBuilder.prototype.sanitizeFieldClauses = function(table, fieldClauses) {
 		}
 		var field = fieldTable.field(item.field);
 		if (field) {
-			item.valueType = field.type;
+			item.valueType = Field.typeName(field.type);
 		} else if ( _.contains(fieldTable.refFields), item.field) {
-			item.valueType = 'VARCHAR';
+			item.valueType = 'text';
 		} else {			
 			throw new Error("unknown field '" + item.field + "'");
 		}
@@ -389,6 +389,18 @@ SqlBuilder.prototype.joinGraphSQL = function(fromTable, tables) {
 
 }
 
+SqlBuilder.prototype.filterToParams = function(filter)
+{
+	var values = _.isArray(filter.value) ? filter.value : [ filter.value ]; 
+	return _.map(values, function(v, idx) {
+		return SqlHelper.param({
+			name: filter.alias + (idx+1), 
+			value: v,
+			type: filter.valueType
+		});
+	});
+}
+
 SqlBuilder.prototype.filterSQL = function(fromTable, filterClauses) {
 
 	var me = this;
@@ -417,7 +429,7 @@ SqlBuilder.prototype.filterSQL = function(fromTable, filterClauses) {
 		};
 		if (comparatorOperators[filter.op] && filter.value !== null) {
 
-			var params = SqlHelper.params(filter);
+			var params = me.filterToParams(filter);
 			var clause = util.format('(%s %s %s)', 
 							fromFieldQN, comparatorOperators[filter.op], params[0].sql);
 
@@ -439,7 +451,7 @@ SqlBuilder.prototype.filterSQL = function(fromTable, filterClauses) {
 					util.format("filter.value %s mismatch", filter.value));
 			}
 
-			var params = SqlHelper.params(filter);
+			var params = me.filterToParams(filter);
 				
 			var clause = util.format('(%s BETWEEN %s AND %s)', fromFieldQN, params[0].sql, params[1].sql);
 				
@@ -454,7 +466,7 @@ SqlBuilder.prototype.filterSQL = function(fromTable, filterClauses) {
 					util.format("filter.value %s mismatch", filter.value));
 			}
 
-			var params = SqlHelper.params(filter);
+			var params = me.filterToParams(filter);
 
 			var clause = util.format('(%s IN (%s))',
 							fromFieldQN, _.pluck(params, 'sql').join(','));
@@ -485,7 +497,7 @@ SqlBuilder.prototype.filterSQL = function(fromTable, filterClauses) {
 				var searchValue = '"' + filter.value + '*"';  
 				filter.value = searchValue;
 				
-				var params = SqlHelper.params(filter);
+				var params = me.filterToParams(filter);
 
 				var clause = util.format('(%s.%s MATCH %s)', 
 								table.ftsName(), table.ftsName(), params[0].sql); 	
@@ -503,7 +515,7 @@ SqlBuilder.prototype.filterSQL = function(fromTable, filterClauses) {
 				
 				filter.value = searchValue;
 
-				var params = SqlHelper.params(filter);
+				var params = me.filterToParams(filter);
 
 				var fmt = '(' + SqlHelper.ConcatSQL(['%s', "''"]) + ' LIKE %s)';
 				var clause = util.format(fmt, fromFieldQN, params[0].sql);
@@ -636,17 +648,27 @@ SqlBuilder.prototype.orderSQL = function(table, orderClauses) {
 SqlBuilder.prototype.chownSQL = function(rowTable, rowIds, chownTable, owner) {
 	var fieldClauses = this.sanitizeFieldClauses(chownTable, ['id']);
 
-	var filterClauses = [{ table: rowTable.name
-						, field: 'id', op: 'in'
-						, value: rowIds }];
+	var filter = { 
+		table: rowTable.name
+		, field: 'id'
+		, op: 'in'
+		, value: rowIds 
+	};
 
+	var filterClauses = this.sanitizeFieldClauses(rowTable, [ filter ]);						
 	var inQuery = this.querySQL(chownTable, fieldClauses, filterClauses);
 
+	var ownParam = SqlHelper.param({
+		name: 'owner', value: owner, type: 'text'
+	});
+
+console.log(JSON.stringify(ownParam));
+
 	var sql = "UPDATE " + chownTable.name 
-			+ " SET own_by = ?"
+			+ " SET own_by = " + ownParam.sql
 			+ " WHERE id IN (" + inQuery.sql + ")";
 
-	return 	{ sql: sql, params: [ owner ].concat(rowIds) };
+	return 	{ sql: sql, params: [ ownParam ].concat(inQuery.params) };
 }
 
 exports.SqlBuilder = SqlBuilder;

@@ -41,17 +41,22 @@ SqlHelperMssql.OffsetLimitSQL = function(offset, limit) {
 		+ ' FETCH NEXT ' + limit + ' ROWS ONLY';
 }
 
-SqlHelperMssql.params = function(filter)
+SqlHelperMssql.param = function(attrs)
 {
-	var values = _.isArray(filter.value) ? filter.value : [ filter.value ]; 
-	return _.map(values, function(v, idx) {
-		return { 
-			name: filter.alias + (idx+1), 
-			value: v, 
-			sql: '@' + filter.alias + (idx+1),
-			type: filter.valueType
-		};
-	});
+	return { 
+		name: attrs.name, 
+		value: attrs.value, 
+		type: attrs.type,
+		sql: '@' + attrs.name
+	};
+}
+
+SqlHelperMssql.addInputParams = function(req, params)
+{
+	_.each(params, function(param) {
+//console.log(param.name, SqlHelperMssql.mssqlType(param.type), param.value);
+		req.input(param.name, SqlHelperMssql.mssqlType(param.type), param.value);
+	});	
 }
 
 SqlHelperMssql.mssqlType = function(fieldType)
@@ -59,8 +64,8 @@ SqlHelperMssql.mssqlType = function(fieldType)
 	if (fieldType == 'text') return mssql.NVarChar;
 	else if (fieldType == 'integer') return mssql.Int;
 	else if (fieldType == 'numeric') return mssql.Real;
-	else if (fieldType == 'datetime') return mssql.VarChar; //TODO - use real js dates?
-	else if (fieldType == 'date') return mssql.VarChar; //TODO - use real js dates?
+	else if (fieldType == 'datetime') return mssql.VarChar(256); //TODO - use real js dates?
+	else if (fieldType == 'date') return mssql.VarChar(256); //TODO - use real js dates?
 	else throw new Error("unknown type '" + fieldType + "'");
 }
 

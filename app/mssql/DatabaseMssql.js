@@ -90,10 +90,7 @@ DatabaseMssql.prototype.get = function(tableName, options, cbResult) {
 
 		var req = this.conn().request();
 
-		_.each(sql.params, function(param) {
-			var typeName = Field.typeName(param.type);
-			req.input(param.name, SqlHelper.mssqlType(typeName), param.value);
-		});
+		SqlHelper.addInputParams(req, sql.params);
 
 		req.query(sql.query).then(result => {
 			//console.dir(result.recordset);
@@ -154,10 +151,7 @@ DatabaseMssql.prototype.all = function(tableName, options, cbResult) {
 
 		var req = this.conn().request();
 
-		_.each(sql.params, function(param) {
-			var typeName = Field.typeName(param.type);
-			req.input(param.name, SqlHelper.mssqlType(typeName), param.value);
-		});
+		SqlHelper.addInputParams(req, sql.params);
 
 		req.query(sql.query).then(result => {
 			log.trace({rows : result.recordset});
@@ -260,10 +254,7 @@ DatabaseMssql.prototype.getStats = function(tableName, options, cbResult) {
 
 		var req = this.conn().request();
 
-		_.each(sql.params, function(param) {
-			var typeName = Field.typeName(param.type);
-			req.input(param.name, SqlHelper.mssqlType(typeName), param.value);
-		});
+		SqlHelper.addInputParams(req, sql.params);
 
 		req.query(sql.query).then(result => {
 			log.trace({rows : result.recordset});
@@ -841,11 +832,10 @@ DatabaseMssql.prototype.delete = function(tableName, rowIds, cbResult) {
 }
 
 DatabaseMssql.prototype.chown = function(tableName, rowIds, owner, cbResult) {
+	var me = this;
 	try {
 		log.trace('Database.chown()...');
 		log.trace({table: tableName, rowIds: rowIds, owner: owner});
-
-		var me = this;
 
 		var table = this.table(tableName);
 		if ( ! _.isArray(rowIds)) throw new Error("rowIds type mismatch");
@@ -855,47 +845,78 @@ DatabaseMssql.prototype.chown = function(tableName, rowIds, owner, cbResult) {
 			return;
 		}
 
-		var db = new sqlite3.Database(this.dbFile, sqlite3.OPEN_READWRITE);
-		
-		db.serialize(function() {
-			db.run("PRAGMA foreign_keys = ON;");
-			db.run("BEGIN TRANSACTION");
+		var transaction = new mssql.Transaction(this.conn());
+		var stmt = new mssql.PreparedStatement(transaction);
 
-			var err = null;
-			var chownCount = 0;
+		var chownCount = 0;
+
+		transaction.begin().then(() => {
+
+			var doChown = function(chownTable, prevResult) {
+
+				if (prevResult) {
+					log.warn({prevResult: prevResult}, 'doChown result');
+					chownCount += prevResult.rowsAffected[0];
+				}
+
+				if (chownTable) {	
+
+					var sql = me.sqlBuilder.chownSQL(table, rowIds, chownTable, owner);
+					log.warn({sql: sql}, 'doChown sql');
+
+					var req = new Request(transaction);
+					SqlHelper.addInputParams(req, sql.params);
+					return req.query(sql.sql);				
+				}
+
+				return Promise.resolve();		
+			};	
+
+			var promiseQueries = Promise.resolve();	
+
 			var chownTables = [ table ];
-
-			while(err == null && chownTables.length > 0) {
-				var t = chownTables.shift();
-
-				var query = me.sqlBuilder.chownSQL(table, rowIds, t, owner);
-
-				log.debug({query: query}, "Database.chown()");
-
-				db.run(query.sql, query.params, function(e) {
-					err = err || e;
-					chownCount += this.changes;
-				});
-			
+			while(chownTables.length > 0) {
+				let t = chownTables.shift(); //only let (not var) will work here!
 				var childTables = me.schema.graph.childTables(t);
 				chownTables = chownTables.concat(childTables);
+				
+				promiseQueries = promiseQueries.then(result => {
+					return doChown(t, result);
+				});
 			}
 
-			if (err == null) {
-				db.run("COMMIT TRANSACTION");
-			} else {
-				log.error({err: err, rowIds: rowIds, sql: sql}, 
-					"Database.chown() failed. Rollback.");
-				db.run("ROLLBACK TRANSACTION");
-			}
-
-			db.close(function() {
-				cbResult(err, { rowCount: chownCount }); 
+			return promiseQueries.then(result => {
+				return doChown(null, result);
 			});
 
+/*
+			var promiseRows = _.reduce(rows, function(promiseRows, row) {
+				return promiseRows.then(result => {
+					return doUpdate(row, result);
+				});	
+			}, Promise.resolve());
+*/
+
+		}).then(() => {
+console.log('commit');
+			return transaction.commit();
+
+		}).then(() => {
+			cbResult(null, { rowCount: chownCount }); 
+
+		}).catch(err => {
+			log.error({err: err}, "Database.chown() failed.");
+
+			transaction.rollback().then(() => {
+				cbResult(err, null);	
+
+			}).catch(err => {
+				log.error({err: err}, "Database.chown() rollback error.");
+				cbResult(err, null);
+				return;			
+			});
 		});
-
-
+			
 	} catch(err) {
 		log.error({err: err, rowIds: rowIds}, "Database.chown() exception.");	
 		cbResult(err, null);

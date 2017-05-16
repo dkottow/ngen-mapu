@@ -105,9 +105,10 @@ DatabaseSqlite.prototype.getStats = function(tableName, options, cbResult) {
 		var fields = options.fields || Table.ALL_FIELDS; 
 
 		var sql = this.sqlBuilder.statsSQL(table, fields, filterClauses);
+		var params = _.pluck(sql.params, 'value');
 		
 		var db = new sqlite3.Database(this.dbFile, sqlite3.OPEN_READONLY);
-		db.get(sql.query, sql.params, function(err, row) {
+		db.get(sql.query, params, function(err, row) {
 			db.close(function() {
 				if (err) {
 					log.error({err: err, sql: sql}, 
@@ -173,8 +174,9 @@ DatabaseSqlite.prototype.all = function(tableName, options, cbResult) {
 		log.debug({sql: sql.query}, "Database.all()");
 		log.trace({sql: sql}, "Database.all()");
 
-		var db = new sqlite3.Database(this.dbFile, sqlite3.OPEN_READONLY);
 		var params = _.pluck(sql.params, 'value');
+
+		var db = new sqlite3.Database(this.dbFile, sqlite3.OPEN_READONLY);
 
 		db.all(sql.query, params, function(err, rows) {
 			if (err) {
@@ -241,9 +243,11 @@ DatabaseSqlite.prototype.get = function(tableName, options, cbResult) {
 		var fields = options.fields || Table.ALL_FIELDS; 
 
 		var sql = this.sqlBuilder.selectSQL(table, fields, filterClauses, [], 1, 0, false);
+		var params = _.pluck(sql.params, 'value');
 
 		var db = new sqlite3.Database(this.dbFile, sqlite3.OPEN_READONLY);
-		db.get(sql.query, sql.params, function(err, row) {
+
+		db.get(sql.query, params, function(err, row) {
 			db.close(function() {
 				if (err) {
 					log.error({err: err, sql: sql}, 
@@ -558,10 +562,11 @@ DatabaseSqlite.prototype.chown = function(tableName, rowIds, owner, cbResult) {
 				var t = chownTables.shift();
 
 				var query = me.sqlBuilder.chownSQL(table, rowIds, t, owner);
+				var params = _.pluck(query.params, 'value');
 
 				log.debug({query: query}, "Database.chown()");
 
-				db.run(query.sql, query.params, function(e) {
+				db.run(query.sql, params, function(e) {
 					err = err || e;
 					chownCount += this.changes;
 				});

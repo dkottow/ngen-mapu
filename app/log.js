@@ -22,7 +22,7 @@ function init() {
 	var loglevel = 'debug'
 
 	if (global.config) {
-		logfile = path.join(global.config.logdir, logfile);
+		logfile = path.join(global.config.logdir || '.', logfile);
 		loglevel = global.config.loglevel;
 	}
 
@@ -37,7 +37,7 @@ function init() {
     		}
 		    , file: {
 				filename: logfile
-				, level: 'error'
+				, level: 'warn'
 				, timestamp: true
 				, tailable: true
 				, maxFiles: 10

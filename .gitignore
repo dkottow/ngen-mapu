@@ -1,7 +1,8 @@
-node_modules
-tmp
-test/data
-data
-logs
+/node_modules
+/tmp
+/test/data
+/data
+/logs
 *.swp
 *~
+donkey-error-log.json

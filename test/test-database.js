@@ -3,11 +3,11 @@
 */
 var assert = require('assert')
 	, _ = require('underscore')
-	, util = require('util')
-	, fsext = require('fs-extra')
-	, sqlite3 = require('sqlite3').verbose();
+	, util = require('util');
 
 global.sql_engine = 'mssql';
+
+//global.config = { loglevel : 'info' };
 
 var DatabaseFactory = require('../app/DatabaseFactory').DatabaseFactory;
 var Database = DatabaseFactory.getClass();
@@ -70,11 +70,6 @@ describe('Database', function() {
 				});
 			});
 		});
-/*			
-		fsext.copy(dbFile, dbCopy, function(err) {
-			db.readSchema(done);
-		});
-*/		
 	});	
 
 	describe('readSchema()', function() {

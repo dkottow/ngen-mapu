@@ -442,6 +442,17 @@ DatabaseMssql.prototype.readSchema = function(cbAfter) {
 	}
 }
 
+DatabaseMssql.prototype.logTransactionError = function(err, fn) {
+	log.debug({err: err}, fn + " log transaction error.");					
+	if (err.code == 'EREQUEST' && err.originalError) {		
+		err.originalError.stack = undefined;
+		log.warn({err: err.originalError}, fn + " request sql error. Rollback.");					
+	} else {
+		err.stack = undefined;
+		log.warn({err: err}, fn + " request error. Rollback");				
+	}			
+}
+
 DatabaseMssql.prototype.insert = function(tableName, rows, options, cbResult) {
 	var me = this;
 	try {		
@@ -554,11 +565,9 @@ DatabaseMssql.prototype.insert = function(tableName, rows, options, cbResult) {
 			});
 
 		}).then(() => {
-
 			return stmt.unprepare();	
 
 		}).then(() => {
-
 			if ( ! autoId) {
 				sql = util.format('SET IDENTITY_INSERT %s OFF;', table.name);
 				return new Request(transaction).batch(sql);
@@ -567,7 +576,6 @@ DatabaseMssql.prototype.insert = function(tableName, rows, options, cbResult) {
 			}
 
 		}).then(() => {
-
 			return transaction.commit();
 
 		}).then(() => {
@@ -582,18 +590,16 @@ DatabaseMssql.prototype.insert = function(tableName, rows, options, cbResult) {
 			}
 
 		}).catch(err => {
+			this.logTransactionError(err, 'Database.insert()');
 
 			stmt.unprepare().then(() => {
-
-				log.error({err: err}, 
-					"Database.insert() failed. Rollback.");
 				return transaction.rollback();
 
 			}).then(() => {
 				cbResult(err, null);	
 
 			}).catch(err => {
-				log.error({err: err}, "Database.insert() sql error.");
+				log.error({err: err}, "Database.insert() rollback error.");
 				cbResult(err, null);
 				return;			
 			});
@@ -720,19 +726,16 @@ DatabaseMssql.prototype.update = function(tableName, rows, options, cbResult) {
 			}
 
 		}).catch(err => {
-			log.error({err: err}, "Database.update() failed.");
+			this.logTransactionError(err, 'Database.update()');
 
 			stmt.unprepare().then(() => {
-
-				log.error({err: err}, 
-					"Database.update() failed. Rollback.");
 				return transaction.rollback();
 
 			}).then(() => {
 				cbResult(err, null);	
 
 			}).catch(err => {
-				log.error({err: err}, "Database.update() sql error.");
+				log.error({err: err}, "Database.update() rollback error.");
 				cbResult(err, null);
 				return;			
 			});
@@ -807,19 +810,16 @@ DatabaseMssql.prototype.delete = function(tableName, rowIds, cbResult) {
 			cbResult(null, rowIds); 
 
 		}).catch(err => {
-			log.error({err: err}, "Database.delete() failed.");
+			this.logTransactionError(err, 'Database.delete()');
 
 			stmt.unprepare().then(() => {
-
-				log.error({err: err}, 
-					"Database.delete() failed. Rollback.");
 				return transaction.rollback();
 
 			}).then(() => {
 				cbResult(err, null);	
 
 			}).catch(err => {
-				log.error({err: err}, "Database.delete() sql error.");
+				log.error({err: err}, "Database.delete() rollback error.");
 				cbResult(err, null);
 				return;			
 			});

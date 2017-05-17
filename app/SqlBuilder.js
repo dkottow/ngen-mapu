@@ -230,7 +230,7 @@ SqlBuilder.prototype.createSQL = function(schema, options) {
 	if ( ! exclude.viewSQL) sql = sql + createRowAliasViewSQL + '\n\n';
 	if ( ! exclude.SearchSQLL) sql = sql + createSearchSQL + '\n\n';
 			
-	log.debug({sql: sql}, 'SqlBuilder.createSQL');
+	log.trace({sql: sql}, 'SqlBuilder.createSQL');
 	return sql;
 }
 

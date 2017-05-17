@@ -292,7 +292,7 @@ Schema.prototype.insertPropSQL = function(opts) {
 		}, this);
 	}
 
-	log.debug({sql: sql}, "Schema.insertPropSQL()");
+	log.trace({sql: sql}, "Schema.insertPropSQL()");
 	return sql;
 }
 

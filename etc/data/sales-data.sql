@@ -1,5 +1,5 @@
 INSERT INTO customers (id,name,email) VALUES(1,'Daniel','dkottow@gmail.com');
-INSERT INTO customers (id,name,email) VALUES(2,'Soledad','sgaspar@foo.mail');
+INSERT INTO customers (id,name,email) VALUES(2,'Maria','maria@foo.mail');
 INSERT INTO products (id,name,price) VALUES(1,'Car',9000);
 INSERT INTO products (id,name,price) VALUES(2,'Apple',0.99);
 INSERT INTO products (id,name,price) VALUES(3,'Doll',29.5);

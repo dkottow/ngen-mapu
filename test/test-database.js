@@ -7,23 +7,74 @@ var assert = require('assert')
 	, fsext = require('fs-extra')
 	, sqlite3 = require('sqlite3').verbose();
 
-global.sql_engine = 'sqlite';
+global.sql_engine = 'mssql';
 
 var DatabaseFactory = require('../app/DatabaseFactory').DatabaseFactory;
+var Database = DatabaseFactory.getClass();
+
 var Schema = require('../app/Schema').Schema; //only for some static var
-var Database = require('../app/sqlite/DatabaseSqlite').DatabaseSqlite;
-	
+
+var salesDefs = require('../etc/data/sales-defs.js'); 
+
 var log = require('./log.js').log;
 
-describe('Database', function() {
-	var dbFile = "test/data/sqlite/sales.sqlite";
-	var dbCopy = "test/data/sqlite/sales.tmp.sqlite";
-	var db = DatabaseFactory.create(dbCopy);
+function createDatabase(name, cbAfter) {
+	var config;
 
+	if (global.sql_engine == 'sqlite') {
+		var testDataDir = "test/data/sqlite/";
+		config = testDataDir + name + ".sqlite";
+		log.debug({config: config}, 'creating sqlite db');
+		Database.remove(config, function(err) {
+			var db = new Database(config);
+			cbAfter(null, db);
+			return;
+		});
+
+	} else if (global.sql_engine == 'mssql') {
+		config = {
+			user: 'dkottow', 
+			password: 'G0lderPass.72', 
+			domain: 'GOLDER',
+			server: 'localhost\\HOLEBASE_SI', 
+			database: 'test#' + name
+		};
+		log.debug({config: config.database}, 'creating mssql db');
+		Database.remove(config, config.database, function(err) {
+			cbAfter(null, new Database(config));
+			return;	
+		});
+	}
+
+	cbAfter(new Error('sql not supported'));
+}
+
+describe('Database', function() {
+	var database;
 	before(function(done) {
+		this.timeout(10000); //10secs
+		createDatabase('temp-sales', function(err, db) {
+			if ( ! db) return; //db is null first time.. weird. 
+			database = db;
+			database.setSchema(salesDefs.schema);
+			database.writeSchema(function(err) {
+				assert(err == null, err);
+				database.insert('customers', salesDefs.data.customers, function(err) {
+					database.insert('products', salesDefs.data.products, function(err) {
+						database.insert('orders', salesDefs.data.orders, function(err) {
+							database.insert('products_in_orders', salesDefs.data.products_in_orders, function(err) {
+								done();	
+							});
+						});
+					});
+				});
+			});
+		});
+/*			
 		fsext.copy(dbFile, dbCopy, function(err) {
 			db.readSchema(done);
 		});
+*/		
 	});	
 
 	describe('readSchema()', function() {
@@ -41,9 +92,9 @@ describe('Database', function() {
 		var defs;
 		
 		before(function(done) {
-			db.getInfo(function(err, result) {
+			database.getInfo(function(err, result) {
 				defs = result;
-				log.info(defs);
+				//log.info(defs);
 				done();
 			});
 			//console.log(defs);
@@ -65,14 +116,14 @@ describe('Database', function() {
 
   	describe('getStats()', function() {		
 		it('getStats for orders', function(done) {
-			db.getStats('orders', function(err, result) {
+			database.getStats('orders', function(err, result) {
 				assert(err == null, err);
 				log.info(result);
 				done();
 			});
 		});
 		it('getStats for orders.total_amount', function(done) {
-			db.getStats('orders', { fields: ['total_amount'] }, 
+			database.getStats('orders', { fields: ['total_amount'] }, 
 				function(err, result) {
 					assert(err == null, err);
 					log.info(result);
@@ -91,7 +142,7 @@ describe('Database', function() {
 
 			_.each(tables, function(tn) {
 
-				db.all(tn, function(err, result) {
+				database.all(tn, function(err, result) {
 					assert(err == null, err);
 					log.debug('got ' + result.rows.length + " of " 
 								+ result.count + " " + tn.name);
@@ -121,7 +172,7 @@ describe('Database', function() {
 				limit: 10
 			};
 			
-			db.all(table, options, function(err, result) {
+			database.all(table, options, function(err, result) {
 				assert(err == null, err);
 				log.info('got ' + result.count + " " + table);
 				assert(result.count > 0, 'got some ' + table);
@@ -143,7 +194,7 @@ describe('Database', function() {
 					}]
 			};
 
-			db.all(table, options, function(err, result) {
+			database.all(table, options, function(err, result) {
 				assert(err == null, err);
 				log.info('got ' + result.count + " " + table);
 				assert(result.count > 0, 'got some ' + table);
@@ -166,7 +217,7 @@ describe('Database', function() {
 				}]
 			};
 
-			db.all(table, options, function(err, result) {
+			database.all(table, options, function(err, result) {
 				assert(err == null, err);
 				log.info('got ' + result.count + " " + table);
 				assert(result.count == 4, 'got 4 ' + table);
@@ -200,7 +251,7 @@ describe('Database', function() {
 				rows.push(r);
 			}
 
-			db.insert(table, rows, {}, function(err, result) { 
+			database.insert(table, rows, {}, function(err, result) { 
 				assert(err == null, err);
 				done(); 
 			});
@@ -240,7 +291,7 @@ describe('Database', function() {
 				'modified_by': 'mocha', 
 				'modified_on': '2000-01-01' 
 			};
-			db.insert(table, [row], {}, function(err, result) { 
+			database.insert(table, [row], {}, function(err, result) { 
 				log.info(err);
 				assert(err instanceof Error, 'sqlite check constraint holds');
 				done();
@@ -256,7 +307,7 @@ describe('Database', function() {
 				'modified_by': 'mocha', 
 				'modified_on': '2000-01-01' 
 			};
-			db.insert(table, [row], { retmod: true }, function(err, result) { 
+			database.insert(table, [row], { retmod: true }, function(err, result) { 
 				log.info(err);
 				assert(err == null, 'sqlite insert specific id');
 				assert(result.rows[0].id == row.id);
@@ -288,7 +339,7 @@ describe('Database', function() {
 				rows.push(r);
 			}
 
-			db.update(table, rows, { retmod: true }, function(err, result) { 
+			database.update(table, rows, { retmod: true }, function(err, result) { 
 				assert(err == null, 'update some rows');
 				assert(result.rows.length == rows.length);
 				done(); 
@@ -306,7 +357,7 @@ describe('Database', function() {
 				'modified_on': '2001-01-01' 
 			};
 
-			db.update(table, [row], {}, function(err, result) { 
+			database.update(table, [row], {}, function(err, result) { 
 				log.info(err);
 				assert(err instanceof Error, 'row does not exist');
 				done(); 
@@ -324,7 +375,7 @@ describe('Database', function() {
 				'modified_on': '2001-01-01' 
 			};
 
-			db.update(table, [row], {}, function(err, result) { 
+			database.update(table, [row], {}, function(err, result) { 
 				log.info(err);
 				assert(err instanceof Error, 'update did not fail');
 				done(); 
@@ -343,7 +394,7 @@ describe('Database', function() {
 				'modified_on': '2001-01-01' 
 			};
 
-			db.update(table, [row], {}, function(err, result) { 
+			database.update(table, [row], {}, function(err, result) { 
 				log.info(err);
 				assert(err instanceof Error, 'update did not fail');
 				done(); 
@@ -357,7 +408,7 @@ describe('Database', function() {
 
 		it('delete some rows', function(done) {
 
-			db.delete(table, [11, 12, 15], function(err, result) {
+			database.delete(table, [11, 12, 15], function(err, result) {
 				assert(err == null, 'deleted some rows');
 				log.info(err);
 				done(); 
@@ -371,7 +422,7 @@ describe('Database', function() {
 
 		it('chown some rows', function(done) {
 
-			db.chown(table, [1], 'new-owner', function(err, result) {
+			database.chown(table, [1], 'new-owner', function(err, result) {
 				assert(err == null, 'changed owner of some rows');
 				log.info(err);
 				done(); 
@@ -381,24 +432,27 @@ describe('Database', function() {
 
 	describe('Database.schemaWrite()', function() {
 		var jsonSalesFile = "test/data/json/sales.json";
-		var dbFile = "test/data/sqlite/test-create.sqlite";
-		
-		before(function(done) {
-			Database.remove(dbFile, function(err) {
+		var newDb;
+
+		before(function(done) {			
+
+			createDatabase('temp-create', function(err, db) {
+				if ( ! db) return;
+				newDb = db;
 				done();
-			});
+			});	
 		});	
 
 		it('write example', function(done) {
 	
-			var db = DatabaseFactory.create(dbFile);
+			this.timeout(10000); //10secs
 			var schema = new Schema();
 
 			schema.jsonRead(jsonSalesFile, function(err) {
 				log.info(err);
 				assert(err == null, err);
-				db.setSchema(schema.get());
-				db.writeSchema(function(err) {
+				newDb.setSchema(schema.get());
+				newDb.writeSchema(function(err) {
 					log.info(err);
 					assert(err == null, err);
 					done();	

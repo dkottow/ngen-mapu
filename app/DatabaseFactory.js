@@ -38,5 +38,16 @@ DatabaseFactory.create = function(config) {
 	throw new Error(util.format("unsupported sql engine '%s'", global.sql_engine));	
 }
 
+DatabaseFactory.getClass = function() {
+	if (global.sql_engine == 'sqlite') {
+      return require('./sqlite/DatabaseSqlite.js').DatabaseSqlite;
+
+	} else if (global.sql_engine == 'mssql') {
+      return require('./mssql/DatabaseMssql.js').DatabaseMssql;
+	}
+
+	throw new Error(util.format("unsupported sql engine '%s'", global.sql_engine));	
+}
+
 exports.DatabaseFactory = DatabaseFactory;
 

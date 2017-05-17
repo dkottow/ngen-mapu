@@ -629,7 +629,7 @@ DatabaseSqlite.prototype.writeSchema = function(cbAfter) {
 		});
 
 	} catch(err) {
-		log.error({err: err}, "Schema.write() exception.");
+		log.error({err: err}, "DatabaseSqlite.write() exception.");
 		cbAfter(err);
 	}
 }
@@ -637,7 +637,7 @@ DatabaseSqlite.prototype.writeSchema = function(cbAfter) {
 DatabaseSqlite.remove = function(dbFile, cbAfter) {
 	fs.unlink(dbFile, function(err) {
 		if (err) {
-			log.error({err: err}, "Schema.remove() failed.");	
+			log.error({err: err}, "DatabaseSqlite.remove() failed.");	
 		}
 		cbAfter(err);
 	});

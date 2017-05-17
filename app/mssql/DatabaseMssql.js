@@ -534,7 +534,7 @@ DatabaseMssql.prototype.insert = function(tableName, rows, options, cbResult) {
 
 					var values = me.getFieldValues(row, table, fieldNames);
 					log.debug({values: values}, 'insert row');
-					if (values.err) throw new Error(values.err);
+					if (values.err) return Promise.reject(new Error(values.err));
 					var valObj = _.object(fieldNames, values.values);	
 					return stmt.execute(valObj);					
 				} 
@@ -676,7 +676,7 @@ DatabaseMssql.prototype.update = function(tableName, rows, options, cbResult) {
 					row.mod_by = mod_by;
 
 					var values = me.getFieldValues(row, table, fieldNames);
-					if (values.err) throw new Error(values.err);
+					if (values.err) return Promise.reject(new Error(values.err));
 					var valObj = _.object(fieldNames, values.values);	
 					valObj['id'] = row.id;
 					log.trace({values: valObj}, 'doUpdate values');
@@ -699,7 +699,7 @@ DatabaseMssql.prototype.update = function(tableName, rows, options, cbResult) {
 
 		}).then(result => {
 			if (modCount != rows.length) {
-				throw new Error("G6_MODEL_ERROR: Update row count mismatch. Expected " + rows.length + " got " + modCount);
+				return Promise.reject(new Error("Update row count mismatch. Expected " + rows.length + " got " + modCount));
 			}
 
 			return stmt.unprepare();	
@@ -795,7 +795,7 @@ DatabaseMssql.prototype.delete = function(tableName, rowIds, cbResult) {
 
 			if (delCount != rowIds.length) {
 				//console.log(delCount + " <> " + rowIds.length);
-				throw Error("G6_MODEL_ERROR: Delete row count mismatch. Expected " + rowIds.length + " got " + delCount);
+				Promise.reject(new Error("Delete row count mismatch. Expected " + rowIds.length + " got " + delCount));
 			}
 
 			return stmt.unprepare();	
@@ -1015,23 +1015,21 @@ DatabaseMssql.remove = function(dbConfig, dbName, cbAfter) {
 		var config = _.clone(dbConfig);
 		config.database = 'master'; //connect to master
 
-		mssql.connect(config).then(pool => {
-			return new Request().batch(SqlHelper.Schema.dropSQL(dbName));
+		var conn = new mssql.ConnectionPool(config);
+		conn.connect().then(pool => {
+			return new Request(conn).batch(SqlHelper.Schema.dropSQL(dbName));
 		
 		}).then(result => {
-			mssql.close();	
 			cbAfter(); 	
 
 		}).catch(err => {
 			log.error({err: err}, "Database.remove() batch exception.");
-			mssql.close();	
 			cbAfter(err);
 			return;
 		});
 
-		mssql.on('error', err => {
+		conn.on('error', err => {
 			log.error({err: err}, "Database.remove() SQL error.");
-			mssql.close();	
 			cbAfter(err);
 		});
 

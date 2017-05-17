@@ -77,6 +77,7 @@ DatabaseMssql.prototype.conn = function() {
 DatabaseMssql.prototype.get = function(tableName, options, cbResult) {
 
 	try {
+		log.debug("Database.get()...");
 
 		var table = this.table(tableName);
 
@@ -110,8 +111,8 @@ DatabaseMssql.prototype.get = function(tableName, options, cbResult) {
 
 DatabaseMssql.prototype.all = function(tableName, options, cbResult) {
 
-	log.debug("Database.all()...");
 	try {
+		log.debug("Database.all()...");
 
 		var table = this.table(tableName);
 
@@ -147,7 +148,6 @@ DatabaseMssql.prototype.all = function(tableName, options, cbResult) {
 					order, limit, offset);
 		//console.dir(sql);
 		log.debug({sql: sql.query}, "Database.all()");
-		//log.warn({sql: sql.params}, "Database.all()");
 
 		var req = this.conn().request();
 
@@ -289,7 +289,7 @@ DatabaseMssql.prototype.readSchema = function(cbAfter) {
 	var me = this;
 
 	try {
-		log.trace({db: this.config.database}, "Schema.read()");
+		log.debug({db: this.config.database}, "Schema.read()");
 
 		var schemaProps = {
 			name: this.config.database
@@ -445,7 +445,7 @@ DatabaseMssql.prototype.readSchema = function(cbAfter) {
 DatabaseMssql.prototype.insert = function(tableName, rows, options, cbResult) {
 	var me = this;
 	try {		
-		log.trace('Database.insert()...');
+		log.debug('Database.insert()...');
 		log.trace({table: tableName, rows: rows, options: options});
 
 		cbResult = cbResult || arguments[arguments.length - 1];	
@@ -489,11 +489,11 @@ DatabaseMssql.prototype.insert = function(tableName, rows, options, cbResult) {
 		var sql;
 
 		transaction.begin().then(() => {
-			log.warn('transaction begin');
+			log.trace('transaction begin');
 
 			if ( ! autoId) {
 				var sql = util.format('SET IDENTITY_INSERT %s ON;', table.name);
-			log.warn(sql);
+			log.trace(sql);
 				return new Request(transaction).batch(sql);
 			} else {
 				return Promise.resolve();
@@ -501,7 +501,7 @@ DatabaseMssql.prototype.insert = function(tableName, rows, options, cbResult) {
 
 		}).then(result => {
 
-			log.warn('transaction began');
+			log.trace('transaction began');
 			var fieldParams = _.map(fieldNames, function(fn) { return '@' + fn; });
 
 			var sql = "INSERT INTO " + table.name 
@@ -522,7 +522,7 @@ DatabaseMssql.prototype.insert = function(tableName, rows, options, cbResult) {
 
 			var doInsert = function(row, prevResult) {
 				if (prevResult) {
-					log.debug(JSON.stringify(prevResult) + ' res insert');
+					log.trace(JSON.stringify(prevResult) + ' res insert');
 					rowIds.push(prevResult.output.__id__);
 				}
 
@@ -533,7 +533,7 @@ DatabaseMssql.prototype.insert = function(tableName, rows, options, cbResult) {
 					row.own_by = row.own_by || mod_by;
 
 					var values = me.getFieldValues(row, table, fieldNames);
-					log.debug({values: values}, 'insert row');
+					log.trace({values: values}, 'insert row');
 					if (values.err) return Promise.reject(new Error(values.err));
 					var valObj = _.object(fieldNames, values.values);	
 					return stmt.execute(valObj);					
@@ -542,7 +542,7 @@ DatabaseMssql.prototype.insert = function(tableName, rows, options, cbResult) {
 				return Promise.resolve();		
 			};
 		
-			log.warn('stmt prepare');
+			log.trace('stmt prepare');
 			var promiseRows = _.reduce(rows, function(promiseRows, row) {
 				return promiseRows.then(result => {
 					return doInsert(row, result);
@@ -571,7 +571,7 @@ DatabaseMssql.prototype.insert = function(tableName, rows, options, cbResult) {
 			return transaction.commit();
 
 		}).then(() => {
-			log.warn({rowIds: rowIds}, 'committed');	
+			log.trace({rowIds: rowIds}, 'committed');	
 			if (returnModifiedRows) {
 				return me.allById(tableName, rowIds, cbResult);
 			} else {
@@ -608,8 +608,8 @@ DatabaseMssql.prototype.insert = function(tableName, rows, options, cbResult) {
 DatabaseMssql.prototype.update = function(tableName, rows, options, cbResult) {
 	var me = this;
 	try {
-		log.trace('Database.update()...');
-		log.debug({table: tableName, rows: rows, options: options});
+		log.debug('Database.update()...');
+		log.trace({table: tableName, rows: rows, options: options});
 
 		if (rows.length == 0) {
 			cbResult(null, []);
@@ -646,7 +646,7 @@ DatabaseMssql.prototype.update = function(tableName, rows, options, cbResult) {
 		var modCount = 0;	
 
 		transaction.begin().then(() => {
-			log.warn('transaction begin');
+			log.trace('transaction begin');
 
 			var setSQL = _.reduce(fieldNames, function(memo, fn) {
 				var term = SqlHelper.EncloseSQL(fn) + ' = @' + fn;
@@ -709,7 +709,7 @@ DatabaseMssql.prototype.update = function(tableName, rows, options, cbResult) {
 
 		}).then(() => {
 			var rowIds = _.pluck(rows, 'id');
-			log.warn({rowIds: rowIds}, 'committed');	
+			log.trace({rowIds: rowIds}, 'committed');	
 			if (returnModifiedRows) {
 				return me.allById(tableName, rowIds, cbResult);
 			} else {
@@ -771,7 +771,7 @@ DatabaseMssql.prototype.delete = function(tableName, rowIds, cbResult) {
 		var delCount = 0;
 
 		transaction.begin().then(() => {
-			log.warn('transaction begin');
+			log.trace('transaction begin');
 
 			var idSQL = _.reduce(paramNames, function(memo, param) {
 				var term = '@' + param;
@@ -790,7 +790,7 @@ DatabaseMssql.prototype.delete = function(tableName, rowIds, cbResult) {
 			return stmt.execute(valObj);				
 
 		}).then(result => {
-			log.warn({result: result}, 'delete result');
+			log.trace({result: result}, 'delete result');
 			delCount = result.rowsAffected[0];
 
 			if (delCount != rowIds.length) {
@@ -855,14 +855,14 @@ DatabaseMssql.prototype.chown = function(tableName, rowIds, owner, cbResult) {
 			var doChown = function(chownTable, prevResult) {
 
 				if (prevResult) {
-					log.warn({prevResult: prevResult}, 'doChown result');
+					log.trace({prevResult: prevResult}, 'doChown result');
 					chownCount += prevResult.rowsAffected[0];
 				}
 
 				if (chownTable) {	
 
 					var sql = me.sqlBuilder.chownSQL(table, rowIds, chownTable, owner);
-					log.warn({sql: sql}, 'doChown sql');
+					log.trace({sql: sql}, 'doChown sql');
 
 					var req = new Request(transaction);
 					SqlHelper.addInputParams(req, sql.params);
@@ -898,7 +898,6 @@ DatabaseMssql.prototype.chown = function(tableName, rowIds, owner, cbResult) {
 */
 
 		}).then(() => {
-console.log('commit');
 			return transaction.commit();
 
 		}).then(() => {
@@ -926,7 +925,7 @@ console.log('commit');
 DatabaseMssql.prototype.writeSchema = function(cbAfter) {
 	var me = this;
 	try {
-
+		log.debug('DatabaseMssql.writeSchema..');
 		var dbTemp = tmp.tmpNameSync({template: 'tmp#XXXXXX'});
 
 		var config = _.clone(this.config);
@@ -1002,7 +1001,6 @@ DatabaseMssql.prototype.writeSchema = function(cbAfter) {
 		});	
 
 	} catch(err) {
-	console.log('catch ex');
 		log.error({err: err}, "Database.writeSchema() exception.");
 		cbAfter(err);
 	}
@@ -1010,7 +1008,7 @@ DatabaseMssql.prototype.writeSchema = function(cbAfter) {
 
 DatabaseMssql.remove = function(dbConfig, dbName, cbAfter) {
 	try {
-		log.info({dbConfig: dbConfig, dbName: dbName }, 'DatabaseMssql.remove..');
+		log.debug({dbConfig: dbConfig, dbName: dbName }, 'DatabaseMssql.remove..');
 
 		var config = _.clone(dbConfig);
 		config.database = 'master'; //connect to master

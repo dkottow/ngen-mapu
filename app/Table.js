@@ -85,7 +85,7 @@ var Table = function(tableDef) {
 		if (tableDef.disabled) me.disabled = true;
 
 		//property values
-		me.props = tableDef.props;
+		me.props = tableDef.props || {};
 
 	}
 }

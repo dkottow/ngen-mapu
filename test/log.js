@@ -1,7 +1,10 @@
 
-var log =  require('../app/log');
-var wlog = log.winston.loggers.get('dl');
+var log =  require('../app/log').log;
+var wlog = require('../app/log').winston.loggers.get('dl');
 
 //wlog.remove(wlog.transports.console);
 
-exports.log = log.log;
+
+module.exports = { 
+    log: log,
+};

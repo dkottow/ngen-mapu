@@ -1006,6 +1006,31 @@ DatabaseMssql.prototype.writeSchema = function(cbAfter) {
 	}
 }
 
+DatabaseMssql.prototype.writeSchemaChanges = function(changes, cbAfter) {
+	var me = this;
+	try {
+
+		var sql = _.reduce(changes, function(sql, change) {
+			return sql + change.toSQL(me.sqlBuilder) + '; \n';
+		}, '');
+
+
+		log.debug({sql: sql}, "DatabaseMssql.writeSchemaChanges()");
+		if (sql.length == 0) {
+			cbAfter();
+			return;
+		}
+
+
+		; //TODO execute sql on database
+
+	} catch(err) {
+		log.error({err: err}, 
+			"DatabaseMssql.writeSchemaChanges() exception.");
+		cbAfter(err);
+	}
+}
+
 DatabaseMssql.remove = function(dbConfig, dbName, cbAfter) {
 	try {
 		log.debug({dbConfig: dbConfig, dbName: dbName }, 'DatabaseMssql.remove..');

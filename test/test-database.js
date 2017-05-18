@@ -13,64 +13,24 @@ var DatabaseFactory = require('../app/DatabaseFactory').DatabaseFactory;
 var Database = DatabaseFactory.getClass();
 
 var Schema = require('../app/Schema').Schema; //only for some static var
+var Field = require('../app/Field').Field; //only for some static var
 
 var salesDefs = require('../etc/data/sales-defs.js'); 
 
 var log = require('./log.js').log;
-
-function createDatabase(name, cbAfter) {
-	var config;
-
-	if (global.sql_engine == 'sqlite') {
-		var testDataDir = "test/data/sqlite/";
-		config = testDataDir + name + ".sqlite";
-		log.debug({config: config}, 'creating sqlite db');
-		Database.remove(config, function(err) {
-			var db = new Database(config);
-			cbAfter(null, db);
-			return;
-		});
-
-	} else if (global.sql_engine == 'mssql') {
-		config = {
-			user: 'dkottow', 
-			password: 'G0lderPass.72', 
-			domain: 'GOLDER',
-			server: 'localhost\\HOLEBASE_SI', 
-			database: 'test#' + name
-		};
-		log.debug({config: config.database}, 'creating mssql db');
-		Database.remove(config, config.database, function(err) {
-			cbAfter(null, new Database(config));
-			return;	
-		});
-	}
-
-	cbAfter(new Error('sql not supported'));
-}
+var funcs = require('./utils.js').funcs;
 
 describe('Database', function() {
 	var database;
+
 	before(function(done) {
 		this.timeout(10000); //10secs
-		createDatabase('temp-sales', function(err, db) {
+		funcs.createDatabase('temp-sales', salesDefs, function(err, db) {
 			if ( ! db) return; //db is null first time.. weird. 
 			database = db;
-			database.setSchema(salesDefs.schema);
-			database.writeSchema(function(err) {
-				assert(err == null, err);
-				database.insert('customers', salesDefs.data.customers, function(err) {
-					database.insert('products', salesDefs.data.products, function(err) {
-						database.insert('orders', salesDefs.data.orders, function(err) {
-							database.insert('products_in_orders', salesDefs.data.products_in_orders, function(err) {
-								done();	
-							});
-						});
-					});
-				});
-			});
+			done();	
 		});
-	});	
+	});
 
 	describe('readSchema()', function() {
 		it('guards file not found', function(done) {
@@ -252,32 +212,6 @@ describe('Database', function() {
 			});
 		});
 
-/* TODO not-nullable
-		it('fail on 2nd row', function(done) {
-			var rows = [
-				{
-					'order_date': '2015-01-01', 
-					'customer_id': 1,
-					'total_amount': 10.50,
-					'modified_by': 'mocha', 
-					'modified_by': '2000-01-01' 
-				},
-				{
-					'order_date': '2015-01-01', 
-					'customer_id': 2,
-					'total_amount': 9.50,
-					'modified_on': '2000-01-01' 
-				}
-			];				
-			db.insert(table, rows, function(err, result) { 
-				console.log(err);
-				console.log(result);
-				assert(err instanceof Error, 'sqlite null constraint holds on 2nd row');
-				done();
-			});
-		});
-*/ 
-
 		it('field type mismatch (date)', function(done) {
 			var row = {
 				'order_date': 'foo', 
@@ -431,7 +365,7 @@ describe('Database', function() {
 
 		before(function(done) {			
 
-			createDatabase('temp-create', function(err, db) {
+			funcs.createDatabase('temp-create', function(err, db) {
 				if ( ! db) return;
 				newDb = db;
 				done();

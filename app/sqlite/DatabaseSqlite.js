@@ -819,7 +819,7 @@ DatabaseSqlite.prototype.writeSchemaChanges = function(changes, cbAfter) {
 		}, '');
 
 
-		log.debug({sql: sql}, "Schema.writePatches()");
+		log.debug({sql: sql}, "DatabaseSqlite.writeSchemaChanges()");
 		if (sql.length == 0) {
 			cbAfter();
 			return;
@@ -843,7 +843,7 @@ DatabaseSqlite.prototype.writeSchemaChanges = function(changes, cbAfter) {
 			db.run("ROLLBACK TRANSACTION");
 			db.close(function() {
 				log.error({err: err, sql: sql}, 
-					"Schema.writePatches() exception. Rollback.");
+					"DatabaseSqlite.writeSchemaChanges() exception. Rollback.");
 				cbAfter(err);				
 			});
 		}

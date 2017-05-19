@@ -5,7 +5,7 @@ var assert = require('assert')
 	, _ = require('underscore')
 	, util = require('util');
 
-global.sql_engine = 'mssql';
+global.sql_engine = 'sqlite';
 
 //global.config = { loglevel : 'info' };
 
@@ -28,7 +28,7 @@ describe('Database', function() {
 		funcs.createDatabase('temp-sales', salesDefs, function(err, db) {
 			if ( ! db) return; //db is null first time.. weird. 
 			database = db;
-			done();	
+			done();
 		});
 	});
 

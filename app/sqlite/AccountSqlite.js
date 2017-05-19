@@ -23,11 +23,13 @@ var util = require('util');
 var Account = require('../Account.js').Account;
 var Schema = require('../Schema.js').Schema;
 var Database = require('./DatabaseSqlite.js').DatabaseSqlite;
+var SqlHelper = require('./SqlHelperSqlite.js').SqlHelperSqlite;
 
 var log = require('../log.js').log;
 
-function AccountSqlite(name) {
-	this.baseDir = path.join(global.data_dir, name);
+function AccountSqlite(dir) {
+	this.baseDir = dir;
+	var name = path.basename(dir);
 
 	Account.call(this, name);
 }
@@ -50,7 +52,7 @@ AccountSqlite.prototype.init = function(cbAfter) {
 
 
 		var dbFiles = files.filter(function (file) {
-			return (path.extname(file) == global.sqlite_ext);
+			return (path.extname(file) == SqlHelper.FileExtension);
 		});
 
 		log.trace({dbFiles: dbFiles});
@@ -64,7 +66,7 @@ AccountSqlite.prototype.init = function(cbAfter) {
 		dbFiles.forEach(function (file, i, files) {
 			log.trace({dbFile: file}, "init");
 
-			var name = path.basename(file, global.sqlite_ext);
+			var name = path.basename(file, SqlHelper.FileExtension);
 			var dbFile = path.join(me.baseDir, file);					
 
 			me.databases[name] = new Database(dbFile);
@@ -91,111 +93,11 @@ AccountSqlite.prototype.doRemoveDatabase = function(name, cbResult) {
 }
 
 AccountSqlite.prototype.doCreateDatabase = function(name) {
-	var dbFile = util.format('%s/%s', this.baseDir, 
-				name + global.sqlite_ext);
+	var dbFile = util.format('%s/%s%s',
+						this.baseDir, name, SqlHelper.FileExtension);
 	return new Database(dbFile);			
 }
 
-/*
-AccountSqlite.prototype.createDatabase = function(schemaData, options, cbResult) {
-	var me = this;
-	var name = schemaData.name;
-
-	var dbFile = util.format('%s/%s', me.baseDir, 
-				name + global.sqlite_ext);
-
-	cbResult = cbResult || arguments[arguments.length - 1];	
-	options = typeof options == 'object' ? options : {};		
-
-	var createSchemaFn = function() {
-
-		var newDb = new Database(dbFile);
-
-		newDb.setSchema(schemaData);
-		newDb.writeSchema(function(err) {
-			if (err) {
-				cbResult(err, null);
-				return;
-			} 
-			log.info("Created database file " + dbFile);
-			me.databases[name] = newDb;
-			cbResult(null, newDb);
-		});
-
-	}
-
-	var db = me.databases[name];
-	if (db) {
-			
-		db.isEmpty(function(err, isEmpty) {
-
-			if (isEmpty) {
-				createSchemaFn();
-
-			} else {
-				var err = new Error(util.format(
-					"Database %s exists and is not empty.", name
-				));
-				log.warn({err: err}, "Account.createDatabase()");
-				cbResult(err, null);
-			}	
-		});
-
-	} else {
-		createSchemaFn();
-	}
-}
-
-AccountSqlite.prototype.delDatabase = function(name, options, cbResult) {
-	var me = this;
-
-	cbResult = cbResult || arguments[arguments.length - 1];	
-	options = typeof options == 'object' ? options : {};		
-
-	var checkEmpty = ! options.force; 
-	if (name == "demo") checkEmpty = true; //do not delete demo data
-
-	var removeDatabaseFn = function() {
-		var dbFile = me.databases[name].dbFile;
-		Database.remove(dbFile, function(err) {
-			if (err) {
-				cbResult(err, false);
-				return;
-			}
-			log.info("Deleted database file " + dbFile);
-			delete me.databases[name];
-			cbResult(null, true);
-		});
-	}
-
-	var db = me.databases[name];
-	if (db) {
-		if (checkEmpty) {	
-			db.isEmpty(function(err, isEmpty) {
-
-				if (isEmpty) {
-					removeDatabaseFn();
-
-				} else {
-					var err = new Error(util.format(
-						"Database %s is not empty.", name
-					));
-					log.warn({err: err}, "Account.delDatabase()");
-					cbResult(err, false);
-				}	
-			});
-		} else {
-			removeDatabaseFn();
-		}
-	} else {
-		var err = new Error(util.format(
-			"Database %s not found.", name
-		));
-		log.warn({err: err}, "Account.delDatabase()");
-		cbResult(err, false);
-	}
-}
-*/
 
 exports.AccountSqlite = AccountSqlite;
 

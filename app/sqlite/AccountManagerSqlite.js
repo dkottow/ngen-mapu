@@ -72,7 +72,7 @@ AccountManagerSqlite.prototype.init = function(cbAfter) {
 		accountDirs.forEach(function (dir, i, subDirs) {
 			log.trace(dir + " from " + subDirs);
 			var name = path.basename(dir);
-			var account = new Account(name);
+			var account = new Account(dir);
 			me.accounts[name] = account;	
 			account.init(function(err) {
 				doAfter();

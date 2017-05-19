@@ -33,10 +33,10 @@ function Account(name) {
 Account.prototype.init = function(cbAfter) {
 }
 
-Account.prototype.createDatabase = function(schemaData, options, cbResult) {
+Account.prototype.doCreateDatabase = function(name, cbResult) {
 }
 
-Account.prototype.delDatabase = function(name, options, cbResult) {
+Account.prototype.doRemoveDatabase = function(name, cbResult) {
 }
 
 */
@@ -44,9 +44,6 @@ Account.prototype.delDatabase = function(name, options, cbResult) {
 Account.prototype.createDatabase = function(schemaData, options, cbResult) {
 	var me = this;
 	var name = schemaData.name;
-
-	var dbFile = util.format('%s/%s', me.baseDir, 
-				name + global.sqlite_ext);
 
 	cbResult = cbResult || arguments[arguments.length - 1];	
 	options = typeof options == 'object' ? options : {};		
@@ -61,7 +58,7 @@ Account.prototype.createDatabase = function(schemaData, options, cbResult) {
 				cbResult(err, null);
 				return;
 			} 
-			log.info("Created database file " + dbFile);
+			log.info("Created database " + name);
 			me.databases[name] = newDb;
 			cbResult(null, newDb);
 		});

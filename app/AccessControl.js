@@ -24,6 +24,8 @@ var Table = require('./Table.js').Table;
 
 var log = require('./log.js').log;
 
+global.tmp_dir = global.tmp_dir || '.';
+
 function AccessControl(options) {
 	options = options || {};
 	this.auth = options.auth || false;

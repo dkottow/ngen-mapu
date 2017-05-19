@@ -16,6 +16,7 @@
 
 var util = require('util');
 var url = require('url');
+var path = require('path');
 
 var _ = require('underscore');
 
@@ -27,6 +28,23 @@ global.sql_engine = 'sqlite'; //supported are: sqlite, mssql
 
 //max number of rows queried by any SELECT
 global.row_max_count = 1000;
+
+//tmp dir
+var tmp_dir = path.join(process.cwd(), 'tmp');
+if (process.env.OPENSHIFT_DATA_DIR) {
+	tmp_dir = path.join(process.env.OPENSHIFT_DATA_DIR, 'tmp');
+	data_dir = path.join(process.env.OPENSHIFT_DATA_DIR, 'data');
+}
+global.tmp_dir = tmp_dir;
+
+//data dir (sqlite)
+if (global.sql_engine == 'sqlite') {
+	var data_dir = path.join(process.cwd(), 'data');	
+	if (process.env.OPENSHIFT_DATA_DIR) {
+		data_dir = path.join(process.env.OPENSHIFT_DATA_DIR, 'data');
+	}
+	global.data_dir = data_dir;
+}
 
 /*** end globals ***/
 

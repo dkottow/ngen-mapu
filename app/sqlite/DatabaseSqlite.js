@@ -36,7 +36,6 @@ var SqlBuilder = require('./SqlBuilderSqlite.js').SqlBuilderSqlite;
 
 var log = require('../log.js').log;
 
-global.sqlite_ext = global.sqlite_ext || '.sqlite';
 global.tmp_dir = global.tmp_dir || '.';
 
 var DatabaseSqlite = function(dbFile) 
@@ -815,9 +814,8 @@ DatabaseSqlite.prototype.writeSchemaChanges = function(changes, cbAfter) {
 	try {
 
 		var changesSQL = _.reduce(changes, function(sql, change) {			
-			var comment = util.format('\n-- %s --\n', change.op);
 			var changeSQL = change.toSQL(me.sqlBuilder).join('\n');
-			return sql + comment + changeSQL + '; \n';
+			return sql + changeSQL + '; \n';
 		}, '');
 
 

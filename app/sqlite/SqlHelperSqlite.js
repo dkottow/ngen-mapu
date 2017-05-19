@@ -49,6 +49,8 @@ SqlHelperSqlite.param = function(attrs)
 	};
 }
 
+SqlHelperSqlite.FileExtension = '.sqlite';
+
 /********** Schema stuff *********/
 
 SqlHelperSqlite.Schema.PragmaSQL = "PRAGMA journal_mode=WAL;\n\n";

@@ -73,6 +73,10 @@ SqlHelperMssql.mssqlType = function(fieldType)
 
 SqlHelperMssql.Schema.PragmaSQL = '';
 
+SqlHelperMssql.Schema.fullName = function(account, db) {
+	return account + '#' + db;
+}
+
 SqlHelperMssql.Schema.createPropsTableSQL = function(name) {
 	return "CREATE TABLE " + name + " ("
 		+ " name VARCHAR(256) NOT NULL, "

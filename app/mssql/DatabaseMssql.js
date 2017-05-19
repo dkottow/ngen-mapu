@@ -918,7 +918,7 @@ DatabaseMssql.prototype.writeSchema = function(cbAfter) {
 	var me = this;
 	try {
 		log.debug('DatabaseMssql.writeSchema..');
-		var dbTemp = tmp.tmpNameSync({template: 'tmp#XXXXXX'});
+		var dbTemp = tmp.tmpNameSync({ template: SqlHelper.Schema.fullName('tmp', 'XXXXXX') });
 
 		var config = _.clone(this.config);
 		config.database = 'master'; //connect to master

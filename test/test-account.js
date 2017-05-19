@@ -6,7 +6,6 @@ var assert = require('assert')
 	, fse = require('fs-extra');
 
 global.sql_engine = 'sqlite';
-global.data_dir = "./test/data";
 	
 var AccountFactory = require('../app/AccountFactory').AccountFactory
 	, Schema = require('../app/Schema').Schema;
@@ -16,11 +15,25 @@ var log =  require('./log').log;
 describe('Account', function() {
 
 	var accountName = 'sqlite';
-	var accountDir = path.join(global.data_dir, accountName);
+	var accountConfig;
+
+	if (global.sql_engine == 'sqlite') {
+		accountConfig = path.join('./test/data', accountName);
+
+	} else if (global.sql_engine == 'mssql') {
+		accountConfig = {
+			user: 'dkottow', 
+			password: 'G0lderPass.72', 
+			domain: 'GOLDER',
+			server: 'localhost\\HOLEBASE_SI', 
+			account: 'test'
+		};
+			
+	}
 
 	describe('Account.init()', function() {
 		it('account init', function(done) {
-			var account = AccountFactory.create(accountName);
+			var account = AccountFactory.create(accountConfig);
 			account.init(function(err) {
 				done();
 			});
@@ -38,7 +51,7 @@ describe('Account', function() {
 	
 	describe('Account.getInfo()', function() {
 		
-		var account = AccountFactory.create(accountName);
+		var account = AccountFactory.create(accountConfig);
 
 		before(function(done) {
 			account.init(function(err) { done(); });
@@ -60,7 +73,7 @@ describe('Account', function() {
 
 		var jsonSalesFile = "test/data/json/sales.json";
 		
-		var account = AccountFactory.create(accountName);
+		var account = AccountFactory.create(accountConfig);
 		var schema = new Schema();
 
 		before(function(done) {
@@ -74,7 +87,7 @@ describe('Account', function() {
 		});	
 
 		after(function(done) {
-			var newSalesFile = accountDir + '/new_sales.sqlite';
+			var newSalesFile = accountConfig + '/new_sales.sqlite';
 			fse.unlink(newSalesFile, function(err) {
 				done();
 			});
@@ -102,12 +115,14 @@ describe('Account', function() {
 
 
 	describe('Account.delDatabase()', function() {
+
+		var accountDir = accountConfig;
 		var salesDbFile = accountDir + "/sales.sqlite";
 		var emptySalesFile = accountDir + "/sales_empty.sqlite";
 		var emptyCopySalesFile = accountDir + "/sales_empty_copy.sqlite";
 		var copySalesFile = accountDir + "/sales_copy.sqlite";
 		
-		var account = AccountFactory.create(accountName);
+		var account = AccountFactory.create(accountConfig);
 		var schema = new Schema();
 
 		before(function(done) {

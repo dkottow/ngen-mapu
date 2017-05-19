@@ -27,11 +27,11 @@ global.sql_engine = global.sql_engine || 'sqlite';
 DatabaseFactory.create = function(config) {
 
 	if (global.sql_engine == 'sqlite') {
-      var DatabaseSqlite = require('./sqlite/DatabaseSqlite.js').DatabaseSqlite;
+            var DatabaseSqlite = require('./sqlite/DatabaseSqlite.js').DatabaseSqlite;
 		return new DatabaseSqlite(config);
 
 	} else if (global.sql_engine == 'mssql') {
-      var DatabaseMssql = require('./mssql/DatabaseMssql.js').DatabaseMssql;
+            var DatabaseMssql = require('./mssql/DatabaseMssql.js').DatabaseMssql;
 		return new DatabaseMssql(config);
 	}
 
@@ -40,10 +40,10 @@ DatabaseFactory.create = function(config) {
 
 DatabaseFactory.getClass = function() {
 	if (global.sql_engine == 'sqlite') {
-      return require('./sqlite/DatabaseSqlite.js').DatabaseSqlite;
+            return require('./sqlite/DatabaseSqlite.js').DatabaseSqlite;
 
 	} else if (global.sql_engine == 'mssql') {
-      return require('./mssql/DatabaseMssql.js').DatabaseMssql;
+            return require('./mssql/DatabaseMssql.js').DatabaseMssql;
 	}
 
 	throw new Error(util.format("unsupported sql engine '%s'", global.sql_engine));	

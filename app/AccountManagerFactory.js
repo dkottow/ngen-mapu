@@ -22,31 +22,6 @@ var path = require('path');
 
 global.sql_engine = global.sql_engine || 'sqlite';
 
-if (global.sql_engine == 'sqlite') {
-
-	global.sqlite_ext = global.sqlite_ext || '.sqlite';
-	
-	var data_dir = path.join(process.cwd(), 'data');
-	var tmp_dir = path.join(process.cwd(), 'tmp');
-	
-	if (process.env.OPENSHIFT_DATA_DIR) {
-		tmp_dir = path.join(process.env.OPENSHIFT_DATA_DIR, 'tmp');
-		data_dir = path.join(process.env.OPENSHIFT_DATA_DIR, 'data');
-	}
-	
-	global.tmp_dir = global.tmp_dir || tmp_dir;
-	global.data_dir = global.data_dir || data_dir;
-
-} else if (global.sql_engine == 'mssql') {
-	
-	global.mssql_config = {
-		user: 'dl_user',
-		password: 'dl_pass',
-		server: 'localhost\\HOLEBASE_SI'
-	};
-	
-}
-
 var AccountManagerFactory = {};
 
 AccountManagerFactory.create = function() {

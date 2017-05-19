@@ -190,12 +190,6 @@ SqlBuilder.prototype.querySQL = function(table, fields, filterClauses) {
 	};
 }
 
-SqlBuilder.prototype.createTableSQL = function(table) {
-	return table.createSQL()
-		+ this.createRowAliasViewSQL(table)
-		+ SqlHelper.Table.createSearchSQL(table);
-}
-
 SqlBuilder.prototype.createSQL = function(schema, options) {
 
 	var exclude = (options && options.exclude) || {}; 
@@ -283,7 +277,7 @@ SqlBuilder.prototype.createRowAliasViewSQL = function(table) {
 	var sql = 'CREATE VIEW ' + table.rowAliasView() + ' AS '
 		+ ' SELECT ' + fields.join(', ')
 		+ ' FROM ' + tables.join(', ')
-		+ ' WHERE ' + clauses.join(' AND ') + ';';
+		+ ' WHERE ' + clauses.join(' AND ') + ';\n';
 
 	return sql;
 }

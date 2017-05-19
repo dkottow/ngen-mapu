@@ -72,6 +72,7 @@ SqlHelperSqlite.Table.createPropsTableSQL = function(name) {
 		+ ");\n\n";
 }
 
+
 /* 
 
 use triggers to populate FTS full text search
@@ -84,6 +85,8 @@ sqlite> create trigger <table>_ai after insert on <table>
 			where id = new.id; 
 		end;
 */
+
+SqlHelperSqlite.Table.hasTriggers = function() { return true; }
 
 SqlHelperSqlite.Table.dropTriggerSQL = function(table) {
 	var sql = 'DROP TRIGGER IF EXISTS tgr_' + table.name + '_ai;\n'
@@ -179,6 +182,9 @@ SqlHelperSqlite.Table.createSearchSQL = function(table) {
 	return sql;
 }
 
+SqlHelperSqlite.Table.dropSearchSQL = function(table) {
+	return 'DROP TABLE IF EXISTS ' + table.ftsName() + ';\n';
+}
 
 /********** Field **********/
 

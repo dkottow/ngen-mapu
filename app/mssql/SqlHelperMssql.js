@@ -101,15 +101,18 @@ SqlHelperMssql.Table.createPropsTableSQL = function(name) {
 		+ ");\n\n";
 }
 
+SqlHelperMssql.Table.hasTriggers = function() { return false; }
 
 /*** TODO see here
 https://docs.microsoft.com/en-us/sql/t-sql/statements/create-fulltext-index-transact-sql
 ****/
 
 SqlHelperMssql.Table.createSearchSQL = function(table) {
-	var sql = '';
-	log.trace({ sql: sql }, 'Table.createSearchSQL()');
-	return sql;
+	return '';
+}
+
+SqlHelperMssql.Table.dropSearchSQL = function(table) {
+	return '';
 }
 
 /********** Field **********/

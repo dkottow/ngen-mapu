@@ -814,13 +814,15 @@ DatabaseSqlite.prototype.writeSchemaChanges = function(changes, cbAfter) {
 	var me = this;
 	try {
 
-		var sql = _.reduce(changes, function(sql, change) {
-			return sql + change.toSQL(me.sqlBuilder) + '; \n';
+		var changesSQL = _.reduce(changes, function(sql, change) {			
+			var comment = util.format('\n-- %s --\n', change.op);
+			var changeSQL = change.toSQL(me.sqlBuilder).join('\n');
+			return sql + comment + changeSQL + '; \n';
 		}, '');
 
 
-		log.debug({sql: sql}, "DatabaseSqlite.writeSchemaChanges()");
-		if (sql.length == 0) {
+		log.debug({changesSQL: changesSQL}, "DatabaseSqlite.writeSchemaChanges()");
+		if (changesSQL.length == 0) {
 			cbAfter();
 			return;
 		}
@@ -832,7 +834,7 @@ DatabaseSqlite.prototype.writeSchemaChanges = function(changes, cbAfter) {
 			db.serialize(function() {
 				db.run("PRAGMA foreign_keys = ON;");
 				db.run("BEGIN TRANSACTION");
-				db.exec(sql);
+				db.exec(changesSQL);
 				db.run("COMMIT TRANSACTION");
 				db.close(function() {
 					cbAfter();

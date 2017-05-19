@@ -408,7 +408,7 @@ Table.prototype.createSQL = function() {
 
 Table.prototype.addFieldSQL = function(field) {
 	var sql = "ALTER TABLE " + this.name 
-		+ " ADD COLUMN " + field.toSQL() + ";\n";
+		+ " ADD " + field.toSQL() + ";\n";
 
 	log.trace(sql);
 	return sql;
@@ -443,13 +443,11 @@ Table.prototype.fkAliasSQL = function(fk, idx) {
 }
 
 Table.prototype.dropViewSQL = function() {
-	return 'DROP VIEW IF EXISTS ' + this.rowAliasView() + ';\n'
+	return 'DROP VIEW ' + this.rowAliasView() + ';\n'
 }
 
 Table.prototype.dropSQL = function() {
-	return this.dropViewSQL()
-		+  'DROP TABLE IF EXISTS ' + this.ftsName() + ';\n'
-		+  'DROP TABLE IF EXISTS ' + this.name + ';\n\n'
+	return 'DROP TABLE ' + this.name + ';\n\n';
 }
 
 Table.TABLE_FIELD_SEPARATOR = '$';

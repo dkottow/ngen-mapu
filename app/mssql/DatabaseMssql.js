@@ -554,13 +554,13 @@ DatabaseMssql.prototype.insert = function(tableName, rows, options, cbResult) {
 			};
 		
 			log.trace('stmt prepare');
-			var promiseRows = _.reduce(rows, function(promiseRows, row) {
-				return promiseRows.then(result => {
+			var chainPromises = _.reduce(rows, function(chainPromises, row) {
+				return chainPromises.then(result => {
 					return doInsert(row, result);
 				});	
 			}, Promise.resolve());	
 
-			return promiseRows.then(result => {
+			return chainPromises.then(result => {
 				return doInsert(null, result);
 			});
 
@@ -693,13 +693,13 @@ DatabaseMssql.prototype.update = function(tableName, rows, options, cbResult) {
 				return Promise.resolve();		
 			};	
 
-			var promiseRows = _.reduce(rows, function(promiseRows, row) {
-				return promiseRows.then(result => {
+			var chainPromises = _.reduce(rows, function(chainPromises, row) {
+				return chainPromises.then(result => {
 					return doUpdate(row, result);
 				});	
 			}, Promise.resolve());
 
-			return promiseRows.then(result => {
+			return chainPromises.then(result => {
 				return doUpdate(null, result);
 			});
 
@@ -872,7 +872,7 @@ DatabaseMssql.prototype.chown = function(tableName, rowIds, owner, cbResult) {
 				return Promise.resolve();		
 			};	
 
-			var promiseQueries = Promise.resolve();	
+			var chainPromises = Promise.resolve();	
 
 			var chownTables = [ table ];
 			while(chownTables.length > 0) {
@@ -880,22 +880,14 @@ DatabaseMssql.prototype.chown = function(tableName, rowIds, owner, cbResult) {
 				var childTables = me.schema.graph.childTables(t);
 				chownTables = chownTables.concat(childTables);
 				
-				promiseQueries = promiseQueries.then(result => {
+				chainPromises = chainPromises.then(result => {
 					return doChown(t, result);
 				});
 			}
 
-			return promiseQueries.then(result => {
+			return chainPromises.then(result => {
 				return doChown(null, result);
 			});
-
-/*
-			var promiseRows = _.reduce(rows, function(promiseRows, row) {
-				return promiseRows.then(result => {
-					return doUpdate(row, result);
-				});	
-			}, Promise.resolve());
-*/
 
 		}).then(() => {
 			return transaction.commit();
@@ -904,7 +896,7 @@ DatabaseMssql.prototype.chown = function(tableName, rowIds, owner, cbResult) {
 			cbResult(null, { rowCount: chownCount }); 
 
 		}).catch(err => {
-			log.error({err: err}, "Database.chown() failed.");
+			this.logTransactionError(err, 'Database.chown()');
 
 			transaction.rollback().then(() => {
 				cbResult(err, null);	
@@ -954,13 +946,15 @@ DatabaseMssql.prototype.writeSchema = function(cbAfter) {
 				var viewSQLs = _.map(this.schema.tables(), function(table) {
 					return this.sqlBuilder.createRowAliasViewSQL(table); 	
 				}, this);
-				var createViews = _.reduce(viewSQLs, function(createViews, sql) {
-					return createViews.then(result => {
+
+				var chainPromises = _.reduce(viewSQLs, function(chainPromises, sql) {
+					return chainPromises.then(result => {
 						log.trace('create view');
 						return new Request(transaction).batch(sql);	
 					});	
-				}, Promise.resolve());	
-				return createViews;
+				}, Promise.resolve());
+
+				return chainPromises;
 
 			}).then(result => {	
 				log.trace('then drop');
@@ -985,12 +979,14 @@ DatabaseMssql.prototype.writeSchema = function(cbAfter) {
 				});	
 
 			}).catch(err => {
-				log.error({err: err}, "Database.writeSchema() exception.");
+				this.logTransactionError(err, 'Database.writeSchema()');
+
 				transaction.rollback().then(() => {
 					conn.close();
 					DatabaseMssql.remove(config, dbTemp, function() { cbAfter(err); });	
+					
 				}).catch(err => {
-					log.error({err: err}, "Database.writeSchema() remove exception.");
+					log.error({err: err}, "Database.writeSchema() rollback exception.");
 					cbAfter(err); 
 				});
 			});	
@@ -1010,19 +1006,45 @@ DatabaseMssql.prototype.writeSchemaChanges = function(changes, cbAfter) {
 	var me = this;
 	try {
 
-		var sql = _.reduce(changes, function(sql, change) {
-			return sql + change.toSQL(me.sqlBuilder) + '; \n';
-		}, '');
+		var transaction = new mssql.Transaction(this.conn());
+		var stmt = new mssql.PreparedStatement(transaction);
 
+		transaction.begin().then(() => {
 
-		log.debug({sql: sql}, "DatabaseMssql.writeSchemaChanges()");
-		if (sql.length == 0) {
-			cbAfter();
-			return;
-		}
+			var changesSQL = _.reduce(changes, function(acc, change) {
+				var changeSQL = change.toSQL(me.sqlBuilder);
+				return acc.concat(changeSQL);
+			}, []);
 
+			var chainPromises = _.reduce(changesSQL, function(chainPromises, sql) {
+				return chainPromises.then(result => {
+					console.log('change batch SQL ' + sql);
+					return new Request(transaction).batch(sql);	
+				});	
+			}, Promise.resolve());	
 
-		; //TODO execute sql on database
+			return chainPromises;
+
+		}).then(result => {
+			log.trace('then commit');
+			return transaction.commit();
+
+		}).then(() => {
+			cbAfter(); 
+
+		}).catch(err => {
+			this.logTransactionError(err, 'Database.writeSchemaChanges()');
+
+			transaction.rollback().then(() => {
+				cbAfter(err);	
+
+			}).catch(err => {
+				log.error({err: err}, "Database.writeSchemaChanges() rollback error.");
+				cbResult(err);
+				return;			
+			});
+		});
+
 
 	} catch(err) {
 		log.error({err: err}, 

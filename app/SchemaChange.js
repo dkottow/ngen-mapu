@@ -176,18 +176,20 @@ SCAddField.prototype.apply = function() {
 SCAddField.prototype.toSQL = function(sqlBuilder) {
 	var field = this.table.field(this.fieldDef.name);
 
-	var addSQL = this.table.addFieldSQL(field);
+	var sqlBatches = [];
 
-	var viewSQL = this.table.dropViewSQL()
-		+ sqlBuilder.createRowAliasViewSQL(this.table);
+	sqlBatches.push(this.table.addFieldSQL(field));
+	sqlBatches.push(this.table.dropViewSQL());
+	sqlBatches.push(sqlBuilder.createRowAliasViewSQL(this.table));
 
-	var searchTriggerSQL = SqlHelper.Table.dropTriggerSQL(this.table)
-		+ SqlHelper.Table.createTriggerSQL(this.table);
+	if (SqlHelper.Table.hasTriggers()) {
+		sqlBatches.push(SqlHelper.Table.dropTriggerSQL(this.table));		
+		sqlBatches.push(SqlHelper.Table.createTriggerSQL(this.table));		
+	}
 
-	var insertPropSQL = field.insertPropSQL(this.table);
-
-	var sql = addSQL + viewSQL + searchTriggerSQL + insertPropSQL;
-	return sql;
+	sqlBatches.push(field.insertPropSQL(this.table));
+	
+	return sqlBatches;
 }
 
 
@@ -226,7 +228,7 @@ SCFieldProps.prototype.apply = function() {
 }
 
 SCFieldProps.prototype.toSQL = function(sqlBuilder) {
-	return this.field.updatePropSQL(this.table);
+	return [ this.field.updatePropSQL(this.table) ];
 }
 
 
@@ -262,7 +264,7 @@ SCDisableField.prototype.apply = function() {
 }
 
 SCDisableField.prototype.toSQL = function(sqlBuilder) {
-	return this.field.updatePropSQL(this.table);
+	return [ this.field.updatePropSQL(this.table) ];
 }
 
 /*
@@ -297,11 +299,19 @@ SCAddTable.prototype.apply = function() {
 }
 
 SCAddTable.prototype.toSQL = function(sqlBuilder) {	
-	var table = this.schema.table(this.tableDef.name);
-	var createSQL = sqlBuilder.createTableSQL(table);
-	var insertPropSQL = table.insertPropSQL({deep: true});
 
-	return createSQL + insertPropSQL;
+	var table = this.schema.table(this.tableDef.name);
+
+	var sqlBatches = [];
+
+	sqlBatches.push(table.createSQL());
+	sqlBatches.push(sqlBuilder.createRowAliasViewSQL(table));
+	var searchSQL = SqlHelper.Table.createSearchSQL(table);
+	if (searchSQL.length > 0) sqlBatches.push(searchSQL);
+
+	sqlBatches.push(table.insertPropSQL({deep: true}));
+
+	return sqlBatches;
 }
 
 /*
@@ -338,13 +348,24 @@ SCSetTable.prototype.apply = function() {
 
 SCSetTable.prototype.toSQL = function(sqlBuilder) {
 	var table = this.schema.table(this.obj.name);
-	var deletePropSQL = table.deletePropSQL({deep: true});
-	var dropSQL = table.dropSQL();
 
-	var createSQL = sqlBuilder.createTableSQL(table);
-	var insertPropSQL = table.insertPropSQL({deep: true});
+	var sqlBatches = [];
 
-	return deletePropSQL + dropSQL + createSQL + insertPropSQL;
+	sqlBatches.push(table.deletePropSQL({deep: true}));
+
+	var searchSQL = SqlHelper.Table.dropSearchSQL(table);
+	if (searchSQL.length > 0) sqlBatches.push(searchSQL);
+	sqlBatches.push(table.dropViewSQL());
+	sqlBatches.push(table.dropSQL());
+
+	sqlBatches.push(table.createSQL());
+	sqlBatches.push(sqlBuilder.createRowAliasViewSQL(table));
+	var searchSQL = SqlHelper.Table.createSearchSQL(table);
+	if (searchSQL.length > 0) sqlBatches.push(searchSQL);
+
+	sqlBatches.push(table.insertPropSQL({deep: true}));
+
+	return sqlBatches;
 }
 
 /*
@@ -378,9 +399,16 @@ SCDelTable.prototype.apply = function() {
 }
 
 SCDelTable.prototype.toSQL = function(sqlBuilder) {
-	var deletePropSQL = this.table.deletePropSQL({deep: true});
-	var dropSQL = this.table.dropSQL();
-	return deletePropSQL + dropSQL;
+	var sqlBatches = [];
+
+	sqlBatches.push(this.table.deletePropSQL({deep: true}));
+
+	var searchSQL = SqlHelper.Table.dropSearchSQL(table);
+	if (searchSQL.length > 0) sqlBatches.push(searchSQL);
+	sqlBatches.push(table.dropViewSQL());
+	sqlBatches.push(table.dropSQL());
+
+ 	return sqlBatches;
 }
 
 
@@ -414,7 +442,7 @@ SCTableAccess.prototype.apply = function() {
 }
 
 SCTableAccess.prototype.toSQL = function(sqlBuilder) {
-	return this.table.updatePropSQL();
+	return [ this.table.updatePropSQL() ];
 }
 
 /*
@@ -447,16 +475,19 @@ SCTableRowAlias.prototype.apply = function() {
 }
 
 SCTableRowAlias.prototype.toSQL = function(sqlBuilder) {
+	var sqlBatches = [];
 
-	var viewSQL = this.table.dropViewSQL()
-		+ sqlBuilder.createRowAliasViewSQL(this.table);
+	sqlBatches.push(this.table.dropViewSQL());
+	sqlBatches.push(sqlBuilder.createRowAliasViewSQL(this.table));
 
-	var searchTriggerSQL = SqlHelper.Table.dropTriggerSQL(this.table)
-		+ SqlHelper.Table.createTriggerSQL(this.table);
+	if (SqlHelper.Table.hasTriggers()) {
+		sqlBatches.push(SqlHelper.Table.dropTriggerSQL(this.table));
+		sqlBatches.push(SqlHelper.Table.createTriggerSQL(this.table));
+	}
 
-	var updatePropSQL = this.table.updatePropSQL();
+	sqlBatches.push(this.table.updatePropSQL());
 
-	return viewSQL + searchTriggerSQL + updatePropSQL;
+	return sqlBatches;
 }
 
 /*
@@ -491,7 +522,7 @@ SCTableProps.prototype.apply = function() {
 }
 
 SCTableProps.prototype.toSQL = function(sqlBuilder) {
-	return this.table.updatePropSQL();
+	return [ this.table.updatePropSQL() ];
 }
 
 /*
@@ -525,7 +556,7 @@ SCUsers.prototype.apply = function() {
 }
 
 SCUsers.prototype.toSQL = function(sqlBuilder) {
-	return this.schema.updatePropSQL();
+	return [ this.schema.updatePropSQL() ];
 }
 
 exports.SchemaChange = SchemaChange;

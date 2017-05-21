@@ -77,6 +77,11 @@ SqlHelperMssql.Schema.fullName = function(account, db) {
 	return account + '#' + db;
 }
 
+SqlHelperMssql.Schema.name = function(dbName) {
+	if (dbName.indexOf('#') > 0) return dbName.substr(dbName.indexOf('#')+1);
+	else return dbName; //or error?	
+}
+
 SqlHelperMssql.Schema.createPropsTableSQL = function(name) {
 	return "CREATE TABLE " + name + " ("
 		+ " name VARCHAR(256) NOT NULL, "

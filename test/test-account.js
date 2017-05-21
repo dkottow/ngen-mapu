@@ -33,8 +33,11 @@ describe('Account', function() {
 
 	describe('Account.init()', function() {
 		it('account init', function(done) {
+			
+			this.timeout(10000); //10secs
 			var account = AccountFactory.create(accountConfig);
 			account.init(function(err) {
+				assert(account.database('temp-sales').table('customers'));
 				done();
 			});
 		});
@@ -54,6 +57,7 @@ describe('Account', function() {
 		var account = AccountFactory.create(accountConfig);
 
 		before(function(done) {
+			this.timeout(10000); //10secs
 			account.init(function(err) { done(); });
 		});	
 

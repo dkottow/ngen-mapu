@@ -55,18 +55,8 @@ var DatabaseMssql = function(config)
 
 DatabaseMssql.prototype = Object.create(Database.prototype);	
 
-DatabaseMssql.prototype.init = function(cbAfter) {
-	log.debug('Database.init()...');
-	this.pool.connect(err => { 
-		log.info({config: this.config }, 'mssql.connect() succeeded.');
-		cbAfter(err); 
-	});
-}
-
-DatabaseMssql.prototype.connect = function(cbAfter) {
-	this.pool.connect(err => {
-		cbAfter(err);
-	});
+DatabaseMssql.prototype.connect = function() {
+	return this.pool.connected ? Promise.resolve() : this.pool.connect();
 }
 
 DatabaseMssql.prototype.conn = function() {
@@ -89,11 +79,14 @@ DatabaseMssql.prototype.get = function(tableName, options, cbResult) {
 
 		var sql = this.sqlBuilder.selectSQL(table, fields, filterClauses, [], 1, 0, false);
 
-		var req = this.conn().request();
+		this.connect().then(() => {
 
-		SqlHelper.addInputParams(req, sql.params);
+			var req = this.conn().request();
+			SqlHelper.addInputParams(req, sql.params);
 
-		req.query(sql.query).then(result => {
+			return req.query(sql.query);
+
+		}).then(result => {
 			//console.dir(result.recordset);
 			var row = result.recordset[0];
 			cbResult(null, row);
@@ -139,25 +132,27 @@ DatabaseMssql.prototype.all = function(tableName, options, cbResult) {
 		log.trace(fields + " from " + table.name 
 				+ " filtered by " + util.inspect(filterClauses));
 
-		var resultAll = { 
-			query: query
-		}
-
 		var sql = this.sqlBuilder.selectSQL(
 					table, fields, filterClauses, 
 					order, limit, offset);
 		//console.dir(sql);
 		log.debug({sql: sql.query}, "Database.all()");
 
-		var req = this.conn().request();
+		var resultAll = { 
+			query: query
+		}
+		var req;
 
-		SqlHelper.addInputParams(req, sql.params);
+		this.connect().then(() => {
 
-		req.query(sql.query).then(result => {
-			log.trace({rows : result.recordset});
-			resultAll.rows = result.recordset;
+			req = this.conn().request();
+			SqlHelper.addInputParams(req, sql.params);
+
+			return req.query(sql.query);
 
 		}).then(result => {
+			log.trace({rows : result.recordset});
+			resultAll.rows = result.recordset;
 			
 			var countSql = sql.countSql 
 				+ ' UNION ALL SELECT COUNT(*) as count FROM ' + table.name; 
@@ -205,16 +200,19 @@ DatabaseMssql.prototype.getCounts = function(cbResult) {
 			return;
 		}
 
-		//get row counts
-		var sql = _.map(_.keys(this.tables()), function(tn) {
-			return 'SELECT ' + "'" + tn + "'" + ' AS table_name' 
-					+ ', COUNT(*) AS count'
-					+ ' FROM "' + tn + '"';
-		});
-		sql = sql.join(' UNION ALL ');
-		//console.dir(sql);
+		this.connect().then(() => {
+			//get row counts
+			var sql = _.map(_.keys(this.tables()), function(tn) {
+				return 'SELECT ' + "'" + tn + "'" + ' AS table_name' 
+						+ ', COUNT(*) AS count'
+						+ ' FROM "' + tn + '"';
+			});
+			sql = sql.join(' UNION ALL ');
+			//console.dir(sql);
 
-		this.conn().request().query(sql).then(result => {
+			return this.conn().request().query(sql);
+
+		}).then(result => {
 			//console.dir(result.recordset);
 
 			_.each(result.recordset, function(r) {
@@ -252,11 +250,13 @@ DatabaseMssql.prototype.getStats = function(tableName, options, cbResult) {
 
 		var sql = this.sqlBuilder.statsSQL(table, fields, filterClauses);
 
-		var req = this.conn().request();
+		this.connect().then(() => {
 
-		SqlHelper.addInputParams(req, sql.params);
+			var req = this.conn().request();
+			SqlHelper.addInputParams(req, sql.params);
+			return req.query(sql.query);
 
-		req.query(sql.query).then(result => {
+		}).then(result => {
 			log.trace({rows : result.recordset});
 			var row = result.recordset[0];
 			var result = {};
@@ -292,18 +292,21 @@ DatabaseMssql.prototype.readSchema = function(cbAfter) {
 		log.debug({db: this.config.database}, "Schema.read()");
 
 		var schemaProps = {
-			name: this.config.database
+			name: SqlHelper.Schema.name(this.config.database)
 		};
 		
 		var fields = _.map(Schema.TABLE_FIELDS, function(f) {
 			return '"' + f + '"';
 		});
 
-		//read schema properties 
-		var sql = 'SELECT ' + fields.join(',') 
-				+ ' FROM ' + Schema.TABLE;
+		this.connect().then(() => {
+			//read schema properties 
+			var sql = 'SELECT ' + fields.join(',') 
+					+ ' FROM ' + Schema.TABLE;
 
-		this.conn().request().query(sql).then(result => {
+			return this.conn().request().query(sql);
+
+		}).then(result => {
 			//console.dir(result.recordset);
 
 			_.each(result.recordset, function(r) {
@@ -477,29 +480,36 @@ DatabaseMssql.prototype.insert = function(tableName, rows, options, cbResult) {
 			return _.has(table.fields(), fn); // && fn != 'id'; 
 		});
 
-		var autoId = ! _.contains(fieldNames, 'id');
-
 		fieldNames = _.union(fieldNames, 
 					_.without(_.pluck(Table.MANDATORY_FIELDS, 'name'), 'id'));
+
+		var autoId = ! _.contains(fieldNames, 'id');
 
 		var add_by = options.user ? options.user.name : 'unk';
 		var mod_by = add_by;
 
-		var transaction = new mssql.Transaction(this.conn());
-		var stmt = new mssql.PreparedStatement(transaction);
-
-		_.each(fieldNames, function(fn) {
-			var field = table.field(fn);
-			var sqlType = SqlHelper.mssqlType(Field.typeName(field.type));
-			stmt.input(fn, sqlType);
-		});
-
-		stmt.output('__id__', mssql.Int);
-
 		var rowIds = [];
 		var sql;
 
-		transaction.begin().then(() => {
+		var transaction;
+		var stmt;
+
+		this.connect().then(() => {
+
+			transaction = new mssql.Transaction(this.conn());
+			stmt = new mssql.PreparedStatement(transaction);
+
+			_.each(fieldNames, function(fn) {
+				var field = table.field(fn);
+				var sqlType = SqlHelper.mssqlType(Field.typeName(field.type));
+				stmt.input(fn, sqlType);
+			});
+
+			stmt.output('__id__', mssql.Int);
+
+			return transaction.begin();
+
+		}).then(() => {
 			log.trace('transaction begin');
 
 			if ( ! autoId) {
@@ -637,21 +647,27 @@ DatabaseMssql.prototype.update = function(tableName, rows, options, cbResult) {
 		fieldNames = _.union(fieldNames, ['mod_on', 'mod_by']);
 
 		var mod_by = options.user ? options.user.name : 'unk';
-
-		var transaction = new mssql.Transaction(this.conn());
-		var stmt = new mssql.PreparedStatement(transaction);
-
-		_.each(fieldNames, function(fn) {
-			var field = table.field(fn);
-			var sqlType = SqlHelper.mssqlType(Field.typeName(field.type));
-			stmt.input(fn, sqlType);
-		});
-
-		stmt.input('id', SqlHelper.mssqlType('integer'));
-
 		var modCount = 0;	
 
-		transaction.begin().then(() => {
+		var transaction;
+		var stmt;
+
+		this.connect().then(() => {
+
+			transaction = new mssql.Transaction(this.conn());
+			stmt = new mssql.PreparedStatement(transaction);
+
+			_.each(fieldNames, function(fn) {
+				var field = table.field(fn);
+				var sqlType = SqlHelper.mssqlType(Field.typeName(field.type));
+				stmt.input(fn, sqlType);
+			});
+
+			stmt.input('id', SqlHelper.mssqlType('integer'));
+
+			return transaction.begin();
+
+		}).then(() => {
 			log.trace('transaction begin');
 
 			var setSQL = _.reduce(fieldNames, function(memo, fn) {
@@ -761,19 +777,26 @@ DatabaseMssql.prototype.delete = function(tableName, rowIds, cbResult) {
 			return;
 		}
 
-		var transaction = new mssql.Transaction(this.conn());
-		var stmt = new mssql.PreparedStatement(transaction);
-
 		var paramNames = [];
-		_.each(rowIds, function(id) {
-			var param = 'id' + id;
-			stmt.input(param, SqlHelper.mssqlType('integer'));
-			paramNames.push(param);
-		});
-
 		var delCount = 0;
 
-		transaction.begin().then(() => {
+		var transaction;
+		var stmt;
+
+		this.connect().then(() => {
+
+			transaction = new mssql.Transaction(this.conn());
+			stmt = new mssql.PreparedStatement(transaction);
+
+			_.each(rowIds, function(id) {
+				var param = 'id' + id;
+				stmt.input(param, SqlHelper.mssqlType('integer'));
+				paramNames.push(param);
+			});
+
+			return transaction.begin();
+
+		}).then(() => {
 			log.trace('transaction begin');
 
 			var idSQL = _.reduce(paramNames, function(memo, param) {
@@ -845,12 +868,17 @@ DatabaseMssql.prototype.chown = function(tableName, rowIds, owner, cbResult) {
 			return;
 		}
 
-		var transaction = new mssql.Transaction(this.conn());
-		var stmt = new mssql.PreparedStatement(transaction);
-
 		var chownCount = 0;
+		var transaction;
+		var stmt;
 
-		transaction.begin().then(() => {
+		this.connect().then(() => {
+
+			transaction = new mssql.Transaction(this.conn());
+			stmt = new mssql.PreparedStatement(transaction);
+			return transaction.begin();
+
+		}).then(() => {
 
 			var doChown = function(chownTable, prevResult) {
 
@@ -971,12 +999,9 @@ DatabaseMssql.prototype.writeSchema = function(cbAfter) {
 				return conn.request().batch(sql);
 
 			}).then(result => {
+				log.trace('Database.writeSchema()');
 				conn.close();
-
-				this.connect(err => {
-					log.trace('Database.writeSchema()');
-					cbAfter();
-				});	
+				cbAfter();
 
 			}).catch(err => {
 				this.logTransactionError(err, 'Database.writeSchema()');
@@ -1006,10 +1031,16 @@ DatabaseMssql.prototype.writeSchemaChanges = function(changes, cbAfter) {
 	var me = this;
 	try {
 
-		var transaction = new mssql.Transaction(this.conn());
-		var stmt = new mssql.PreparedStatement(transaction);
+		var transaction;
+		var stmt;
 
-		transaction.begin().then(() => {
+		this.connect().then(() => {
+
+			transaction = new mssql.Transaction(this.conn());
+			stmt = new mssql.PreparedStatement(transaction);
+			return transaction.begin();
+
+		}).then(() => {
 
 			var changesSQL = _.reduce(changes, function(acc, change) {
 				var changeSQL = change.toSQL(me.sqlBuilder);

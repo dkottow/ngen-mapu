@@ -66,11 +66,11 @@ AccountSqlite.prototype.init = function(cbAfter) {
 		dbFiles.forEach(function (file, i, files) {
 			log.trace({dbFile: file}, "init");
 
-			var name = path.basename(file, SqlHelper.FileExtension);
 			var dbFile = path.join(me.baseDir, file);					
+			var db = new Database(dbFile);
 
-			me.databases[name] = new Database(dbFile);
-			me.databases[name].readSchema(function(err) {
+			db.readSchema(function(err) {
+				me.databases[db.name()] = db;
 				if (err) {
 					cbAfter(err);
 					return;

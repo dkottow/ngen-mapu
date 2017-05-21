@@ -53,13 +53,31 @@ AccountMssql.prototype.init = function(cbAfter) {
             log.debug({sql: sql}, 'Account.init()');
 
             conn.request().query(sql).then(result => {
-                console.dir(result.recordset);
+                log.trace(JSON.stringify(result.recordset));
 
+				var doAfter = _.after(result.recordset.length, function() {
+					log.trace("...Account.init()");
+	                conn.close();
+					if (cbAfter) cbAfter();
+					return;
+				});
 
+				var dbConfig = _.clone(config);
 
-                //me.setSchema(schemaProps);
-                conn.close();
-                cbAfter();
+				result.recordset.forEach(function (row, i, rows) {
+
+					dbConfig.database = row.name;
+					var db = new Database(dbConfig);
+					db.readSchema(function(err) {
+						log.init({db: db.name() }, "initXXX");
+						me.databases[db.name()] = db;
+						if (err) {
+							cbAfter(err);
+							return;
+						} 
+						doAfter();
+					});
+				});
 
             }).catch(err => {
                 log.error({err: err}, "Account.init() sql exception.");
@@ -76,55 +94,6 @@ AccountMssql.prototype.init = function(cbAfter) {
 		log.error({err: err}, "Account.init() exception.");
 		cbAfter(err);
 	}
-
-/*
-	//serve each database
-	fs.readdir(me.baseDir, function(err, files) {
-		log.trace('Scanning ' + me.baseDir);
-
-		if (err) {
-			log.error({err: err}, "Account.init failed.");
-			if (cbAfter) cbAfter(err);
-			return;
-		}
-
-
-		var dbFiles = files.filter(function (file) {
-			return (path.extname(file) == global.sqlite_ext);
-		});
-
-		log.trace({dbFiles: dbFiles});
-
-		var doAfter = _.after(dbFiles.length, function() {
-			log.trace("...Account.init()");
-			if (cbAfter) cbAfter();
-			return;
-		});
-
-		dbFiles.forEach(function (file, i, files) {
-			log.trace({dbFile: file}, "init");
-
-			var name = path.basename(file, global.sqlite_ext);
-			var dbFile = path.join(me.baseDir, file);					
-
-			me.databases[name] = new Database(dbFile);
-			me.databases[name].readSchema(function(err) {
-				if (err) {
-					cbAfter(err);
-					return;
-				} 
-				doAfter();
-			});
-		});
-
-		//handle empty dir
-		if (dbFiles.length == 0) {
-			log.debug("Account " + me.name + " is empty.");
-			if (cbAfter) cbAfter();
-		}
-	});
-*/
-
 }
 
 AccountMssql.prototype.doRemoveDatabase = function(name, cbResult) {

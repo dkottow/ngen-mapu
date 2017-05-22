@@ -41,6 +41,41 @@ AccountManagerMssql.prototype.init = function(cbAfter) {
         config.database = 'master';
 
         log.trace({name: me.name}, "AccountManager.init()...");
+
+        this.readAccounts(function(err, accounts) {
+            var doAfter = _.after(accounts.length, function() {
+                log.trace("...AccountManager.init()");
+                if (cbAfter) cbAfter();
+                return;
+            });
+
+            var config = _.clone(me.config);
+            _.each(accounts, function(name) {
+                config.account = name;    
+                var account = new Account(config);
+                account.init(function(err) {
+                    if (err) {
+                        cbAfter(err);
+                        return;
+                    } 
+                    me.accounts[account.name] = account;
+                    doAfter();
+                });
+            });            
+        });
+
+	} catch(err) {
+		log.error({err: err}, "AccountManager.init() exception.");
+		cbAfter(err);
+	}
+}
+
+AccountManagerMssql.prototype.readAccounts = function(cbResult) {
+    try {
+        var config = _.clone(this.config);
+        config.database = 'master';
+
+        log.trace({name: this.name}, "AccountManager.readAccounts()...");
         var conn = new mssql.ConnectionPool(config);
         conn.connect().then(err => {
 
@@ -49,52 +84,60 @@ AccountManagerMssql.prototype.init = function(cbAfter) {
                                 + " FROM sys.databases WHERE CHARINDEX('%s', [name]) > 0;"
                                 , '#', '#');
 
-            log.debug({sql: sql}, 'AccountManager.init()');
+            log.debug({sql: sql}, 'AccountManager.readAccounts()');
 
             conn.request().query(sql).then(result => {
                 log.trace(JSON.stringify(result.recordset));
 
-				var doAfter = _.after(result.recordset.length, function() {
-					log.trace("...Account.init()");
-	                conn.close();
-					if (cbAfter) cbAfter();
-					return;
-				});
-
-                var config = _.clone(me.config);
-				result.recordset.forEach(function (row, i, rows) {
-                    config.account = row.account;    
-					var account = new Account(config);
-					account.init(function(err) {
-						if (err) {
-			                conn.close();
-							cbAfter(err);
-							return;
-						} 
-						me.accounts[account.name] = account;
-						doAfter();
-					});
-				});
+                var accounts = _.map(result.recordset, function(row) {
+                    return row.account;
+                });
+                conn.close();
+                cbResult(null, accounts);
 
             }).catch(err => {
-                log.error({err: err}, "Account.init() sql exception.");
+                log.error({err: err}, "AccountManager.readAccounts() sql exception.");
                 conn.close();
-                cbAfter(err);
+                cbResult(err);
             });
 
         }).catch(err => {
-            log.error({err: err}, "Account.init() connection exception.");
-            cbAfter(err);
+            log.error({err: err}, "AccountManager.readAccounts() connection exception.");
+            cbResult(err);
         });	
 
 	} catch(err) {
-		log.error({err: err}, "Account.init() exception.");
-		cbAfter(err);
+		log.error({err: err}, "AccountManager.readAccounts() exception.");
+		cbResult(err);
 	}
 }
 
 AccountManagerMssql.prototype.create = function(name, cbAfter) {
-    throw new Error();
+    try {
+        if (this.accounts[name]) {
+            var err = new Error(util.format("Account %s exists.", name));
+            log.warn({err: err}, "AccountManager.create()");
+            cbAfter(err, null);
+            return;
+        }
+
+        var config = _.clone(this.config);
+        config.account = name;    
+
+        var account = new Account(config);
+        account.init(function(err) {
+            if (err) {
+                cbAfter(err);
+                return;
+            } 
+            me.accounts[account.name] = account;
+            doAfter();
+        });
+    
+	} catch(err) {
+		log.error({err: err}, "AccountManager.create() exception.");
+		cbResult(err);
+	}
 }
 
 exports.AccountManagerMssql = AccountManagerMssql;

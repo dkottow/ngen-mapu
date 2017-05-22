@@ -27,12 +27,14 @@ global.config = global.config || {};
 global.config.sqlengine = global.config.sqlengine || 'sqlite'; //supported are: sqlite, mssql
 
 //tmp dir
-var tmp_dir = path.join(process.cwd(), 'tmp');
-if (process.env.OPENSHIFT_DATA_DIR) {
-	tmp_dir = path.join(process.env.OPENSHIFT_DATA_DIR, 'tmp');
-}
+if ( ! global.config.tmpdir) {
+	var tmp_dir = path.join(process.cwd(), 'tmp');
+	if (process.env.OPENSHIFT_DATA_DIR) {
+		tmp_dir = path.join(process.env.OPENSHIFT_DATA_DIR, 'tmp');
+	}
 
-global.config.tmpdir = tmp_dir;
+	global.config.tmpdir = tmp_dir;
+}
 
 var accountConfig;
 

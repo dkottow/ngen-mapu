@@ -16,6 +16,7 @@
 
 var path = require('path');
 var winston = require('winston');
+//add winston-azure
 
 function init() {
 	var logfile = 'donkey-error-log.json';

@@ -22,31 +22,32 @@ var path = require('path');
 
 var DatabaseFactory = {};
 
-global.sql_engine = global.sql_engine || 'sqlite';
+global.config = global.config || {};
+var sql_engine = global.config.sqlengine || 'sqlite';
 
 DatabaseFactory.create = function(config) {
 
-	if (global.sql_engine == 'sqlite') {
+	if (sql_engine == 'sqlite') {
             var DatabaseSqlite = require('./sqlite/DatabaseSqlite.js').DatabaseSqlite;
 		return new DatabaseSqlite(config);
 
-	} else if (global.sql_engine == 'mssql') {
+	} else if (sql_engine == 'mssql') {
             var DatabaseMssql = require('./mssql/DatabaseMssql.js').DatabaseMssql;
 		return new DatabaseMssql(config);
 	}
 
-	throw new Error(util.format("unsupported sql engine '%s'", global.sql_engine));	
+	throw new Error(util.format("unsupported sql engine '%s'", gsql_engine));	
 }
 
 DatabaseFactory.getClass = function() {
-	if (global.sql_engine == 'sqlite') {
+	if (sql_engine == 'sqlite') {
             return require('./sqlite/DatabaseSqlite.js').DatabaseSqlite;
 
-	} else if (global.sql_engine == 'mssql') {
+	} else if (gsql_engine == 'mssql') {
             return require('./mssql/DatabaseMssql.js').DatabaseMssql;
 	}
 
-	throw new Error(util.format("unsupported sql engine '%s'", global.sql_engine));	
+	throw new Error(util.format("unsupported sql engine '%s'", gsql_engine));	
 }
 
 exports.DatabaseFactory = DatabaseFactory;

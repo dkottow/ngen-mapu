@@ -49,7 +49,7 @@ var DatabaseMssql = function(config)
 {
 	log.trace('new Database ' + config.database);
 	Database.call(this);
-	this.config = config;
+	this.config = _.clone(config);
 	this.pool = new mssql.ConnectionPool(this.config);
 }
 
@@ -115,8 +115,8 @@ DatabaseMssql.prototype.all = function(tableName, options, cbResult) {
 		var filterClauses = options.filter || [];
 		var fields = options.fields || Table.ALL_FIELDS; 
 		var order = options.order || [];
-		var limit = options.limit || global.row_max_count;
-		var offset = options.offset || 0;
+		var limit = options.limit;
+		var offset = options.offset;
 
 		var query = {
 			table : tableName
@@ -329,7 +329,6 @@ DatabaseMssql.prototype.readSchema = function(cbAfter) {
 			//handle empty schema
 			if (result.recordset.length == 0) {
 				me.setSchema(schemaProps);
-				this.close();
 				cbAfter();
 				return;
 			}

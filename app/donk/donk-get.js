@@ -25,9 +25,9 @@ var _ = require('underscore');
 var program = require('commander');
 
 /** globals **/
-
-//max number of rows queried by any SELECT
-global.row_max_count = 1000 * 1000;
+global.config = {
+	rowspage: 1000
+};
 
 /*** end globals ***/
 

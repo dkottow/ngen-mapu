@@ -22,20 +22,20 @@ var path = require('path');
 
 var AccountFactory = {};
 
-global.sql_engine = global.sql_engine || 'sqlite';
+global.config = global.config || {};
+var sql_engine = global.config.sqlengine || 'sqlite';
 
 AccountFactory.create = function(config) {
    
-	if (global.sql_engine == 'sqlite') {
+	if (sql_engine == 'sqlite') {
         var AccountSqlite = require('./sqlite/AccountSqlite.js').AccountSqlite;
 		return new AccountSqlite(config);
 
-	} else if (global.sql_engine == 'mssql') {
+	} else if (sql_engine == 'mssql') {
         var AccountMssql = require('./mssql/AccountMssql.js').AccountMssql;
         return new AccountMssql(config);
-
 	}
-	throw new Error(util.format("unsupported sql engine '%s'", global.sql_engine));	
+	throw new Error(util.format("unsupported sql engine '%s'", sql_engine));	
 }
 
 exports.AccountFactory = AccountFactory;

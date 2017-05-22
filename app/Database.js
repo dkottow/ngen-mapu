@@ -25,8 +25,6 @@ var SqlBuilderFactory = require('./SqlBuilderFactory.js').SqlBuilderFactory;
 
 var log = require('./log.js').log;
 
-global.row_max_count = global.row_max_count || 1000;
-
 var Database = function() 
 {
 	log.trace('new Database');

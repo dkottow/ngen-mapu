@@ -27,9 +27,14 @@ require('dotenv').config({path: envPath});
 var config = {
 	'ip'      : 'localhost',
 	'port'    : 3000, 
+	
 	'auth'	  : true,
+	
 	'logdir'  : 'logs',
 	'loglevel' : 'debug',
+
+	'rowspage': 1000,
+	'sqlengine': 'mssql'
 }
 
 if (process.env.DONKEYLIFT_AUTH) {

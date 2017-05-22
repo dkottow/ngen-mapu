@@ -15,39 +15,41 @@
 */
 
 var _ = require('underscore');
+
+var fs = require('fs');
+var path = require('path');
 var util = require('util');
 var mssql = require('mssql');
 
-var Account = require('../Account.js').Account;
-var Schema = require('../Schema.js').Schema;
-var Database = require('./DatabaseMssql.js').DatabaseMssql;
-var SqlHelper = require('./SqlHelperMssql.js').SqlHelperMssql;
+var Account = require('./AccountMssql.js').AccountMssql;
+var AccountManager = require('../AccountManager.js').AccountManager;
 
 var log = require('../log.js').log;
 
-function AccountMssql(config) {
+function AccountManagerMssql(config) {
 	this.config = _.clone(config);
-    log.debug({config: this.config}, "AccountMssql()...");
-	Account.call(this, config.account);
+	AccountManager.call(this);
 }
 
-AccountMssql.prototype = Object.create(Account.prototype);	
+AccountManagerMssql.prototype = Object.create(AccountManager.prototype);	
 
-AccountMssql.prototype.init = function(cbAfter) {
+
+AccountManagerMssql.prototype.init = function(cbAfter) {
 	var me = this;
     try {
-        var config = _.omit(this.config, 'account');
+        var config = _.clone(this.config);
         config.database = 'master';
 
-        log.trace({name: me.name}, "Account.init()...");
+        log.trace({name: me.name}, "AccountManager.init()...");
         var conn = new mssql.ConnectionPool(config);
         conn.connect().then(err => {
 
             //read all databases 
-            var sql = util.format("SELECT [name] FROM sys.databases WHERE [name] LIKE '%s';"
-                            , SqlHelper.Schema.fullName(this.name, '%'));
+            var sql = util.format("SELECT DISTINCT SUBSTRING([name], 0, CHARINDEX('%s', [name])) AS account" 
+                                + " FROM sys.databases WHERE CHARINDEX('%s', [name]) > 0;"
+                                , '#', '#');
 
-            log.debug({sql: sql}, 'Account.init()');
+            log.debug({sql: sql}, 'AccountManager.init()');
 
             conn.request().query(sql).then(result => {
                 log.trace(JSON.stringify(result.recordset));
@@ -59,20 +61,17 @@ AccountMssql.prototype.init = function(cbAfter) {
 					return;
 				});
 
-				var dbConfig = _.clone(config);
-
+                var config = _.clone(me.config);
 				result.recordset.forEach(function (row, i, rows) {
-
-					dbConfig.database = row.name;
-					var db = new Database(dbConfig);
-					db.readSchema(function(err) {
-						log.debug({ db: db.name() }, "Account.init()");
-						me.databases[db.name()] = db;
+                    config.account = row.account;    
+					var account = new Account(config);
+					account.init(function(err) {
 						if (err) {
 			                conn.close();
 							cbAfter(err);
 							return;
 						} 
+						me.accounts[account.name] = account;
 						doAfter();
 					});
 				});
@@ -94,16 +93,9 @@ AccountMssql.prototype.init = function(cbAfter) {
 	}
 }
 
-AccountMssql.prototype.doRemoveDatabase = function(name, cbResult) {
-	Database.remove(this.config, name, cbResult);
+AccountManagerMssql.prototype.create = function(name, cbAfter) {
+    throw new Error();
 }
 
-AccountMssql.prototype.doCreateDatabase = function(name) {
-    var config = _.clone(this.config);
-    config.database = SqlHelper.fullName(this.name, name); 
-	return new Database(config);			
-}
-
-
-exports.AccountMssql = AccountMssql;
+exports.AccountManagerMssql = AccountManagerMssql;
 

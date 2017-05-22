@@ -36,7 +36,8 @@ var SqlBuilder = require('./SqlBuilderSqlite.js').SqlBuilderSqlite;
 
 var log = require('../log.js').log;
 
-global.tmp_dir = global.tmp_dir || '.';
+global.config = global.config || {};
+var tmp_dir = global.config.tmpdir || '.';
 
 var DatabaseSqlite = function(dbFile) 
 {
@@ -149,8 +150,8 @@ DatabaseSqlite.prototype.all = function(tableName, options, cbResult) {
 		var filterClauses = options.filter || [];
 		var fields = options.fields || Table.ALL_FIELDS; 
 		var order = options.order || [];
-		var limit = options.limit || global.row_max_count;
-		var offset = options.offset || 0;
+		var limit = options.limit;
+		var offset = options.offset;
 
 		var query = {
 			table : tableName
@@ -601,7 +602,7 @@ DatabaseSqlite.prototype.writeSchema = function(cbAfter) {
 
 		var createSQL = this.sqlBuilder.createSQL(this.schema);
 
-		var tmpFile = path.join(global.tmp_dir,
+		var tmpFile = path.join(tmp_dir,
 						tmp.tmpNameSync({template: 'dl-XXXXXX.sqlite'}));
 
 		var db = new sqlite3.Database(tmpFile 

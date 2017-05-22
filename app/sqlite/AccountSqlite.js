@@ -30,7 +30,6 @@ var log = require('../log.js').log;
 function AccountSqlite(dir) {
 	this.baseDir = dir;
 	var name = path.basename(dir);
-
 	Account.call(this, name);
 }
 

@@ -24,7 +24,8 @@ var Table = require('./Table.js').Table;
 
 var log = require('./log.js').log;
 
-global.tmp_dir = global.tmp_dir || '.';
+global.config = global.config || {};
+var tmp_dir = global.config.tmpdir || '.';
 
 function AccessControl(options) {
 	options = options || {};
@@ -32,7 +33,7 @@ function AccessControl(options) {
 }
 
 AccessControl.prototype.getNoncePath = function(nonce) {
-	var nonceDir = global.tmp_dir;
+	var nonceDir = tmp_dir;
 	return path.join(nonceDir, nonce + ".nonce");
 }
 

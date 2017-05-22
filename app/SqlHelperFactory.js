@@ -22,23 +22,23 @@ var path = require('path');
 
 /**** sqlite *****/
 
-
-global.sql_engine = global.sql_engine || 'sqlite';
+global.config = global.config || {};
+var sql_engine = global.config.sqlengine || 'sqlite';
 
 var SqlHelperFactory = {};
 
 SqlHelperFactory.create = function() {
 
-	if (global.sql_engine == 'sqlite') {
+	if (sql_engine == 'sqlite') {
       var SqlHelperSqlite = require('./sqlite/SqlHelperSqlite.js').SqlHelperSqlite;
 		return SqlHelperSqlite;
 
-	} else if (global.sql_engine == 'mssql') {
+	} else if (sql_engine == 'mssql') {
       var SqlHelperMssql = require('./mssql/SqlHelperMssql.js').SqlHelperMssql;
 		return SqlHelperMssql;
 	}
 
-	throw new Error(util.format("unsupported sql engine '%s'", global.sql_engine));	
+	throw new Error(util.format("unsupported sql engine '%s'", sql_engine));	
 }
 
 exports.SqlHelperFactory = SqlHelperFactory;

@@ -23,27 +23,32 @@ var _ = require('underscore');
 var express = require('express');
 
 /** globals **/
-
-global.sql_engine = 'sqlite'; //supported are: sqlite, mssql
-
-//max number of rows queried by any SELECT
-global.row_max_count = 1000;
+global.config = global.config || {};
+global.config.sqlengine = global.config.sqlengine || 'sqlite'; //supported are: sqlite, mssql
 
 //tmp dir
 var tmp_dir = path.join(process.cwd(), 'tmp');
 if (process.env.OPENSHIFT_DATA_DIR) {
 	tmp_dir = path.join(process.env.OPENSHIFT_DATA_DIR, 'tmp');
-	data_dir = path.join(process.env.OPENSHIFT_DATA_DIR, 'data');
 }
-global.tmp_dir = tmp_dir;
 
-//data dir (sqlite)
-if (global.sql_engine == 'sqlite') {
+global.config.tmpdir = tmp_dir;
+
+var accountConfig;
+
+if (global.config.sqlengine == 'sqlite') {
 	var data_dir = path.join(process.cwd(), 'data');	
 	if (process.env.OPENSHIFT_DATA_DIR) {
 		data_dir = path.join(process.env.OPENSHIFT_DATA_DIR, 'data');
 	}
-	global.data_dir = data_dir;
+	accountConfig = data_dir;
+} else {
+	accountConfig = {
+		user: 'dkottow', 
+		password: 'G0lderPass.72', 
+		domain: 'GOLDER',
+		server: 'localhost\\HOLEBASE_SI', 
+	};
 }
 
 /*** end globals ***/
@@ -62,9 +67,13 @@ var controller;
 app.init = function(options, cbAfter) {
 	log.info('app.init()...');
 
-	accounts = AccountManager.create();
+	accounts = AccountManager.create(accountConfig);
 
-	accounts.init(function() {
+	accounts.init(function(err) {
+		if (err) {
+			cbAfter(err);
+			return;
+		}
 		initRoutes(options);
 		log.info('...app.init()');
 		cbAfter();

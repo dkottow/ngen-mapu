@@ -25,19 +25,20 @@ var path = require('path');
 
 var SqlBuilderFactory = {};
 
-global.sql_engine = global.sql_engine || 'sqlite';
+global.config = global.config || {};
+var sql_engine = global.config.sqlengine || 'sqlite';
 
 SqlBuilderFactory.create = function(tableGraph) {
 
-	if (global.sql_engine == 'sqlite') {
+	if (sql_engine == 'sqlite') {
       var SqlBuilderSqlite = require('./sqlite/SqlBuilderSqlite.js').SqlBuilderSqlite;	   
 		return new SqlBuilderSqlite(tableGraph);
 
-	} else if (global.sql_engine == 'mssql') {
+	} else if (sql_engine == 'mssql') {
       var SqlBuilderMssql = require('./mssql/SqlBuilderMssql.js').SqlBuilderMssql;
 		return new SqlBuilderMssql(tableGraph);
 	}
-	throw new Error(util.format("unsupported sql engine '%s'", global.sql_engine));	
+	throw new Error(util.format("unsupported sql engine '%s'", sql_engine));	
 }
 
 exports.SqlBuilderFactory = SqlBuilderFactory;

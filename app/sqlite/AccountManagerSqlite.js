@@ -25,8 +25,11 @@ var AccountManager = require('../AccountManager.js').AccountManager;
 
 var log = require('../log.js').log;
 
-function AccountManagerSqlite() {
-	this.path = global.data_dir;
+global.config = global.config || {};
+var tmp_dir = global.config.tmpdir || '.';
+
+function AccountManagerSqlite(path) {
+	this.path = path;
 	AccountManager.call(this);
 }
 
@@ -37,11 +40,11 @@ AccountManagerSqlite.prototype.init = function(cbAfter) {
 	var me = this;
 
 	//make sure tmp dir exists
-	try { fs.mkdirSync(global.tmp_dir); } 
+	try { fs.mkdirSync(tmp_dir); } 
 	catch(err) { 
 		//ignore EEXIST
 		if (err.code != 'EEXIST') {
-			log.error({err: err, tmp_dir: global.tmp_dir}, 
+			log.error({err: err, tmp_dir: tmp_dir}, 
 				'app.init() failed. mkdirSync()');
 			cbAfter(err);
 			return;
@@ -71,10 +74,9 @@ AccountManagerSqlite.prototype.init = function(cbAfter) {
 		
 		accountDirs.forEach(function (dir, i, subDirs) {
 			log.trace(dir + " from " + subDirs);
-			var name = path.basename(dir);
 			var account = new Account(dir);
-			me.accounts[name] = account;	
 			account.init(function(err) {
+				me.accounts[account.name] = account;	
 				doAfter();
 			});
 		});

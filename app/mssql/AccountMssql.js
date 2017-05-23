@@ -50,19 +50,20 @@ AccountMssql.prototype.init = function(cbAfter) {
             log.debug({sql: sql}, 'Account.init()');
 
             conn.request().query(sql).then(result => {
-                log.trace(JSON.stringify(result.recordset));
+                log.debug(JSON.stringify(result.recordset));
 
-				var doAfter = _.after(result.recordset.length, function() {
-					log.trace("...Account.init()");
+                var doReturn = function() {
+					log.debug("...Account.init()");
 	                conn.close();
 					if (cbAfter) cbAfter();
 					return;
-				});
-
-				var dbConfig = _.clone(config);
+				};
+                
+                if (result.recordset.length == 0) doReturn();
+				var doAfter = _.after(result.recordset.length, doReturn);
 
 				result.recordset.forEach(function (row, i, rows) {
-
+    				var dbConfig = _.clone(config);
 					dbConfig.database = row.name;
 					var db = new Database(dbConfig);
 					db.readSchema(function(err) {
@@ -100,7 +101,7 @@ AccountMssql.prototype.doRemoveDatabase = function(name, cbResult) {
 
 AccountMssql.prototype.doCreateDatabase = function(name) {
     var config = _.clone(this.config);
-    config.database = SqlHelper.fullName(this.name, name); 
+    config.database = SqlHelper.Schema.fullName(this.name, name); 
 	return new Database(config);			
 }
 

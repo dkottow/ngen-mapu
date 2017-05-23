@@ -113,6 +113,7 @@ AccountManagerMssql.prototype.readAccounts = function(cbResult) {
 }
 
 AccountManagerMssql.prototype.create = function(name, cbAfter) {
+    var me = this;
     try {
         if (this.accounts[name]) {
             var err = new Error(util.format("Account %s exists.", name));
@@ -127,16 +128,16 @@ AccountManagerMssql.prototype.create = function(name, cbAfter) {
         var account = new Account(config);
         account.init(function(err) {
             if (err) {
-                cbAfter(err);
+                cbAfter(err, null);
                 return;
             } 
             me.accounts[account.name] = account;
-            doAfter();
+            cbAfter(null, account);
         });
     
 	} catch(err) {
 		log.error({err: err}, "AccountManager.create() exception.");
-		cbResult(err);
+		cbAfter(err, null);
 	}
 }
 

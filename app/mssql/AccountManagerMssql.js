@@ -96,6 +96,7 @@ AccountManagerMssql.prototype.readAccounts = function(cbResult) {
                 var accounts = _.map(result.recordset, function(row) {
                     return row.account;
                 });
+                accounts = _.without(accounts, 'tmp');
                 conn.close();
                 cbResult(null, accounts);
 

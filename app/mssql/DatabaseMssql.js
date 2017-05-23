@@ -949,75 +949,99 @@ DatabaseMssql.prototype.writeSchema = function(cbAfter) {
 
 		var config = _.clone(this.config);
 		config.database = 'master'; //connect to master
+		config.requestTimeout = 100*1000; //100s - create db can take some time..
 
 		var transaction;	
-
 		var conn = new mssql.ConnectionPool(config);
+
 		conn.connect().then(err => {
-
+			log.debug('create database ' + dbTemp);
 			var sql = util.format('CREATE DATABASE [%s]', dbTemp);
-			conn.request().batch(sql).then(err => {
-				log.trace('then transaction begin');
-				transaction = new mssql.Transaction(conn);
-				return transaction.begin();
+			return conn.request().batch(sql);
 
-			}).then(result => {
-				log.trace('then create objs');
-				var opts = { exclude: { viewSQL: true, searchSQL: true }};
-				var createSQL = this.sqlBuilder.createSQL(this.schema, opts);
-				var useSQL = util.format('USE [%s]\n', dbTemp);	
-				return new Request(transaction).batch(useSQL + createSQL);
+		}).then(err => {
+			log.debug('close conn');
+			return conn.close();	
 
-			}).then(result => {
-				log.trace('then all views');
-				var viewSQLs = _.map(this.schema.tables(), function(table) {
-					return this.sqlBuilder.createRowAliasViewSQL(table); 	
-				}, this);
+		}).then(err => {
+			log.debug('then connect to ' + dbTemp);
+			config.database = dbTemp;
+			return conn.connect();
 
-				var chainPromises = _.reduce(viewSQLs, function(chainPromises, sql) {
-					return chainPromises.then(result => {
-						log.trace('create view');
-						return new Request(transaction).batch(sql);	
-					});	
-				}, Promise.resolve());
+		}).then(err => {
 
-				return chainPromises;
+			log.debug('then transaction begin');
+			transaction = new mssql.Transaction(conn);
+			return transaction.begin();
 
-			}).then(result => {	
-				log.trace('then drop');
-				return new Request(transaction).batch(SqlHelper.Schema.dropSQL(this.config.database));
+		}).then(result => {
+			log.debug('then create objs');
+			var opts = { exclude: { viewSQL: true, searchSQL: true }};
+			var createSQL = this.sqlBuilder.createSQL(this.schema, opts);
+			return new Request(transaction).batch(createSQL);
 
-			}).then(result => {
-				log.trace('then commit');
-				return transaction.commit();
+		}).then(result => {
+			log.debug('then all views');
+			var viewSQLs = _.map(this.schema.tables(), function(table) {
+				return this.sqlBuilder.createRowAliasViewSQL(table); 	
+			}, this);
 
-			}).then(result => {
-				log.trace('then rename');
-				var sql = util.format('ALTER DATABASE [%s] Modify Name = [%s];'
-							, dbTemp, this.config.database);	
-				return conn.request().batch(sql);
+			var chainPromises = _.reduce(viewSQLs, function(chainPromises, sql) {
+				return chainPromises.then(result => {
+					log.debug('create view');
+					return new Request(transaction).batch(sql);	
+				});	
+			}, Promise.resolve());
 
-			}).then(result => {
-				log.trace('Database.writeSchema()');
-				conn.close();
-				cbAfter();
+			return chainPromises;
 
-			}).catch(err => {
-				this.logTransactionError(err, 'Database.writeSchema()');
+		}).then(result => {
+			log.debug('then commit');
+			return transaction.commit();
 
+		}).then(err => {
+			log.debug('close conn');
+			return conn.close();	
+
+		}).then(err => {
+			log.debug('then connect to master');
+			config.database = 'master';
+			return conn.connect();
+
+		}).then(result => {	
+			log.debug('then drop');
+			var dropSQL = SqlHelper.Schema.dropSQL(this.config.database);
+			return conn.request().batch(dropSQL);
+
+		}).then(result => {
+			log.debug('then rename');
+			var sql = util.format('ALTER DATABASE [%s] Modify Name = [%s];'
+						, dbTemp, this.config.database);	
+			return conn.request().batch(sql);
+
+		}).then(result => {
+			log.debug('...Database.writeSchema()');
+			conn.close();
+			cbAfter();
+
+		}).catch(err => {
+			this.logTransactionError(err, 'Database.writeSchema()');
+
+			if (transaction) {
 				transaction.rollback().then(() => {
-					conn.close();
+					return conn.close();
+
+				}).then(() => {
 					DatabaseMssql.remove(config, dbTemp, function() { cbAfter(err); });	
-					
+
 				}).catch(err => {
 					log.error({err: err}, "Database.writeSchema() rollback exception.");
 					cbAfter(err); 
 				});
-			});	
 
-		}).catch(err => {
-			log.error({err: err}, "Database.writeSchema() connection exception.");
-			cbAfter(err);
+			} else if (conn.connected) {
+				conn.close();
+			}
 		});	
 
 	} catch(err) {

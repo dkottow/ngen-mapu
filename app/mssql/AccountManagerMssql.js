@@ -43,11 +43,15 @@ AccountManagerMssql.prototype.init = function(cbAfter) {
         log.trace({name: me.name}, "AccountManager.init()...");
 
         this.readAccounts(function(err, accounts) {
-            var doAfter = _.after(accounts.length, function() {
+
+            var doReturn = function() {
                 log.trace("...AccountManager.init()");
                 if (cbAfter) cbAfter();
                 return;
-            });
+            };
+            
+            if (accounts.length == 0) doReturn();
+			var doAfter = _.after(accounts.length, doReturn);
 
             var config = _.clone(me.config);
             _.each(accounts, function(name) {

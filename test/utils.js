@@ -47,7 +47,7 @@ function createDatabase(name, options, cbAfter) {
 
 	var config;
 
-	if (global.sql_engine == 'sqlite') {
+	if (global.config.sql_engine == 'sqlite') {
 		var testDataDir = "test/data/sqlite/";
 		config = testDataDir + name + ".sqlite";
 		log.debug({config: config}, 'creating sqlite db');
@@ -58,14 +58,10 @@ function createDatabase(name, options, cbAfter) {
 			return;
 		});
 
-	} else if (global.sql_engine == 'mssql') {
-		config = {
-			user: 'dkottow', 
-			password: 'G0lderPass.72', 
-			domain: 'GOLDER',
-			server: 'localhost\\HOLEBASE_SI', 
-			database: 'test#' + name
-		};
+	} else if (global.config.sql_engine == 'mssql') {
+		config = _.clone(global.config.mssql_connection);
+		config.database = 'test#' + name;
+
 		log.debug({config: config.database}, 'creating mssql db');
 		Database.remove(config, config.database, function(err) {
 			let db = new Database(config);

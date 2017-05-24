@@ -4,7 +4,8 @@ var assert = require('assert')
 	, util = require('util')
 	, sqlite3 = require('sqlite3').verbose();
 
-global.sql_engine = 'sqlite';
+global.config = global.config || {},
+global.config.sql_engine = 'sqlite';
 	
 var Schema = require('../app/Schema').Schema;
 	

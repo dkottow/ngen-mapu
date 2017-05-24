@@ -24,44 +24,15 @@ var express = require('express');
 
 /** globals **/
 global.config = global.config || {};
-global.config.sqlengine = global.config.sqlengine || 'sqlite'; //supported are: sqlite, mssql
+global.config.sql_engine = global.config.sql_engine || 'sqlite'; //supported are: sqlite, mssql
 
-//tmp dir
-if ( ! global.config.tmpdir) {
-	var tmp_dir = path.join(process.cwd(), 'tmp');
-	if (process.env.OPENSHIFT_DATA_DIR) {
-		tmp_dir = path.join(process.env.OPENSHIFT_DATA_DIR, 'tmp');
-	}
-
-	global.config.tmpdir = tmp_dir;
-}
 
 var accountConfig;
+if (global.config.sql_engine == 'sqlite') {
+	accountConfig = global.config.data_dir;
 
-if (global.config.sqlengine == 'sqlite') {
-	var data_dir = path.join(process.cwd(), 'data');	
-	if (process.env.OPENSHIFT_DATA_DIR) {
-		data_dir = path.join(process.env.OPENSHIFT_DATA_DIR, 'data');
-	}
-	accountConfig = data_dir;
-} else {
-/*	
-	accountConfig = {
-		user: 'dkottow', 
-		password: 'G0lderPass.72', 
-		domain: 'GOLDER',
-		server: 'localhost\\HOLEBASE_SI', 
-	};
-*/
-	 accountConfig = {
-		user: 'Xidvv3jyCxQcSjbQYpf9zbiYv5MqE8Vp',
-		password: 'tI27k7i06mEUVh4TAxoavL$ErZwH@c49',
-		server: 'azwu-test.database.windows.net',
-		options: {
-			encrypt: true // Use this if you're on Windows Azure
-		}
-   	};
-	
+} else if (global.config.sql_engine == 'mssql') {
+	accountConfig = global.config.mssql_connection;
 }
 
 /*** end globals ***/

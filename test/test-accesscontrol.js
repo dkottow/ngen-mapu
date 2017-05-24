@@ -4,7 +4,8 @@ var assert = require('assert')
 	, util = require('util')
 	, fse = require('fs-extra');
 
-global.sql_engine = 'sqlite';
+global.config = global.config || {},
+global.config.sql_engine = 'sqlite';
 	
 var APP_PATH = "../app/";
 

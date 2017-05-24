@@ -3,9 +3,20 @@
 */
 var assert = require('assert')
 	, _ = require('underscore')
+	, path = require('path')
 	, util = require('util');
 
-global.sql_engine = 'sqlite';
+global.config = global.config || {},
+global.config.sql_engine = 'sqlite';
+
+global.config.data_dir = path.join(process.cwd(), 'data');
+
+global.config.mssql_connection = {
+	user: 'dkottow', 
+	password: '', 
+	domain: 'GOLDER',
+	server: 'localhost\\HOLEBASE_SI', 
+};
 
 //global.config = { loglevel : 'info' };
 

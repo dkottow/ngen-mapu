@@ -5,7 +5,8 @@ var assert = require('assert')
 	, path = require('path')
 	, fse = require('fs-extra');
 
-global.sql_engine = 'sqlite';
+global.config = global.config || {},
+global.config.sql_engine = 'sqlite';
 	
 var AccountFactory = require('../app/AccountFactory').AccountFactory
 	, Schema = require('../app/Schema').Schema;
@@ -17,13 +18,13 @@ describe('Account', function() {
 	var accountName = 'sqlite';
 	var accountConfig;
 
-	if (global.sql_engine == 'sqlite') {
+	if (global.config.sql_engine == 'sqlite') {
 		accountConfig = path.join('./test/data', accountName);
 
-	} else if (global.sql_engine == 'mssql') {
+	} else if (global.config.sql_engine == 'mssql') {
 		accountConfig = {
 			user: 'dkottow', 
-			password: 'G0lderPass.72', 
+			password: '', 
 			domain: 'GOLDER',
 			server: 'localhost\\HOLEBASE_SI', 
 			account: 'test'

@@ -25,7 +25,7 @@ var Table = require('./Table.js').Table;
 var log = require('./log.js').log;
 
 global.config = global.config || {};
-var tmp_dir = global.config.tmpdir || '.';
+var tmp_dir = global.config.tmp_dir || '.';
 
 function AccessControl(options) {
 	options = options || {};

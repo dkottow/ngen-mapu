@@ -23,7 +23,7 @@ var path = require('path');
 /**** sqlite *****/
 
 global.config = global.config || {};
-var sql_engine = global.config.sqlengine || 'sqlite';
+var sql_engine = global.config.sql_engine || 'sqlite';
 
 var SqlHelperFactory = {};
 

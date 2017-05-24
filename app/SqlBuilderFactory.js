@@ -26,7 +26,7 @@ var path = require('path');
 var SqlBuilderFactory = {};
 
 global.config = global.config || {};
-var sql_engine = global.config.sqlengine || 'sqlite';
+var sql_engine = global.config.sql_engine || 'sqlite';
 
 SqlBuilderFactory.create = function(tableGraph) {
 

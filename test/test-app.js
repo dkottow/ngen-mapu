@@ -3,6 +3,7 @@ var assert = require('assert')
 	, _ = require('underscore')
 	, util = require('util')
 	, request = require('request')
+	, path = require('path')
 	, jwt = require('jsonwebtoken');
 	
 require('dotenv').config();
@@ -11,6 +12,9 @@ var log = require('./log.js').log;
 
 var useAuth = false;
 var authToken = null;
+
+global.config = global.config || {};
+global.config.data_dir = path.join(process.cwd(), 'data');
 
 var app = require('../app/app.js').app;
 

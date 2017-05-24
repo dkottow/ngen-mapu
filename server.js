@@ -34,7 +34,17 @@ var config = {
 	'loglevel' : 'debug',
 
 	'rowspage': 1000,
-	'sqlengine': 'mssql'
+	'sqlengine': 'mssql',
+
+	'mssql_connection': { 
+		'server': 'azwu-test.database.windows.net',
+		'user': 'Xidvv3jyCxQcSjbQYpf9zbiYv5MqE8Vp',
+		'password': 'tI27k7i06mEUVh4TAxoavL$ErZwH@c49',
+		'domain': undefined, //AD user domain
+		options: {
+			encrypt: true // Use this if you're on Windows Azure
+		}
+	}
 }
 
 if (process.env.DONKEYLIFT_AUTH) {
@@ -54,6 +64,25 @@ if (process.env.OPENSHIFT_DATA_DIR) {
 	config.ip = process.env.IP;
 	config.port = process.env.PORT;
 }
+
+if (process.env.DONKEYLIFT_MSSQL_CONNECTIONSTRING) {
+	var conn_string = process.env.DONKEYLIFT_MSSQL_CONNECTIONSTRING;
+	var resolve = require('mssql/lib/connectionstring.js').resolve;
+	config.mssql_connection = resolve(conn_string);
+}
+
+//tmp dir (sqlite)
+config.tmp_dir = path.join(process.cwd(), 'tmp');
+if (process.env.OPENSHIFT_DATA_DIR) {
+	config.tmp_dir = path.join(process.env.OPENSHIFT_DATA_DIR, 'tmp');
+}
+
+//data dir (sqlite)
+config.data_dir = path.join(process.cwd(), 'data');	
+if (process.env.OPENSHIFT_DATA_DIR) {
+	config.data_dir = path.join(process.env.OPENSHIFT_DATA_DIR, 'data');
+}
+
 
 global.config = config;
 

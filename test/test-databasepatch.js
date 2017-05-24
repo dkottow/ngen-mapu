@@ -4,7 +4,8 @@ var assert = require('assert')
 	, util = require('util')
 	, jsonpatch = require('fast-json-patch');
 
-global.sql_engine = 'sqlite';
+global.config = global.config || {},
+global.config.sql_engine = 'sqlite';
 
 var salesDefs = require('../etc/data/sales-defs.js'); 
 

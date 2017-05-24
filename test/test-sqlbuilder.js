@@ -4,7 +4,8 @@ var assert = require('assert')
 	, util = require('util')
 	, fs = require('fs');
 
-global.sql_engine = 'sqlite';
+global.config = global.config || {},
+global.config.sql_engine = 'sqlite';
 	
 var Table = require('../app/Table.js').Table
 	, Schema = require('../app/Schema.js').Schema //to read json

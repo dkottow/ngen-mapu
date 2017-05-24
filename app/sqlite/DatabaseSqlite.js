@@ -37,7 +37,7 @@ var SqlBuilder = require('./SqlBuilderSqlite.js').SqlBuilderSqlite;
 var log = require('../log.js').log;
 
 global.config = global.config || {};
-var tmp_dir = global.config.tmpdir || '.';
+var tmp_dir = global.config.tmp_dir || '.';
 
 var DatabaseSqlite = function(dbFile) 
 {

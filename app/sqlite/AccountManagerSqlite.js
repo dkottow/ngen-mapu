@@ -26,7 +26,7 @@ var AccountManager = require('../AccountManager.js').AccountManager;
 var log = require('../log.js').log;
 
 global.config = global.config || {};
-var tmp_dir = global.config.tmpdir || '.';
+var tmp_dir = global.config.tmp_dir || '.';
 
 function AccountManagerSqlite(path) {
 	this.path = path;

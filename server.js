@@ -28,13 +28,14 @@ var config = {
 	'ip'      : 'localhost',
 	'port'    : 3000, 
 	
-	'auth'	  : true,
+	'auth'	  : false, //TODO change me back
 	
-	'logdir'  : 'logs',
-	'loglevel' : 'debug',
+	'log_dir'  : 'logs',
+	'log_level' : 'debug',
 
-	'rowspage': 1000,
-	'sqlengine': 'mssql',
+	'rows_page': 1000,
+
+	'sql_engine': 'mssql',
 
 	'mssql_connection': { 
 		'server': 'azwu-test.database.windows.net',

@@ -26,7 +26,7 @@ var program = require('commander');
 
 /** globals **/
 global.config = {
-	rowspage: 1000
+	rows_page: 1000
 };
 
 /*** end globals ***/

@@ -33,7 +33,7 @@ var Field = require('./Field.js').Field;
 var log = require('./log.js').log;
 
 global.config = global.config || {};
-var rowspage = global.config.rowspage || 1000;
+var rows_page = global.config.rows_page || 1000;
 
 var SqlBuilder = function(tableGraph) {
 	this.graph = tableGraph;
@@ -52,7 +52,7 @@ SqlBuilder.prototype.selectSQL
 	}, "SqlBuilder.selectSQL");
 	
 	offset = (offset | 0);
-	limit = limit || rowspage;
+	limit = limit || rows_page;
 	var s = {};
 
 	s.fields = this.sanitizeFieldClauses(table, fieldExpr);

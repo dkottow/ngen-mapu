@@ -509,6 +509,7 @@ Controller.prototype.nextUrl = function(req, offset) {
 
 Controller.prototype.getRows = function(req, res, opts) {
 	log.info({req: req}, 'Controller.getRows()...');
+	//console.dir(req);
 	var me = this;
 	opts = opts || { obj: false };	
 

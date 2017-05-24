@@ -19,25 +19,25 @@ var winston = require('winston');
 //add winston-azure
 
 function init() {
-	var logfile = 'donkey-error-log.json';
-	var loglevel = 'debug'
+	var log_file = 'donkey-error-log.json';
+	var log_level = 'debug'
 
 	if (global.config) {
-		logfile = path.join(global.config.logdir || '.', logfile);
-		loglevel = global.config.loglevel;
+		log_file = path.join(global.config.log_dir || '.', log_file);
+		log_level = global.config.log_level;
 	}
 
 	if ( ! global.init_log) {
 
 		winston.loggers.add('dl', {
 			console: {
-				level: loglevel
+				level: log_level
 				, timestamp: true
 				, colorize: true
 				//, prettyPrint: prettyPrint
     		}
 		    , file: {
-				filename: logfile
+				filename: log_file
 				, level: 'warn'
 				, timestamp: true
 				, tailable: true

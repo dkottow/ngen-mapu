@@ -966,6 +966,7 @@ DatabaseMssql.prototype.writeSchema = function(cbAfter) {
 		}).then(err => {
 			log.debug('then connect to ' + dbTemp);
 			config.database = dbTemp;
+			conn = new mssql.ConnectionPool(config);
 			return conn.connect();
 
 		}).then(err => {

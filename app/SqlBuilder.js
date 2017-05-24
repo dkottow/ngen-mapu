@@ -661,7 +661,7 @@ SqlBuilder.prototype.chownSQL = function(rowTable, rowIds, chownTable, owner) {
 		name: 'owner', value: owner, type: 'text'
 	});
 
-console.log(JSON.stringify(ownParam));
+	//console.log(JSON.stringify(ownParam));
 
 	var sql = "UPDATE " + chownTable.name 
 			+ " SET own_by = " + ownParam.sql

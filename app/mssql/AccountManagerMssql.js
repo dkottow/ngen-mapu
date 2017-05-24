@@ -83,7 +83,7 @@ AccountManagerMssql.prototype.readAccounts = function(cbResult) {
         var conn = new mssql.ConnectionPool(config);
         conn.connect().then(err => {
 
-            //read all databases 
+            //read all accounts 
             var sql = util.format("SELECT DISTINCT SUBSTRING([name], 0, CHARINDEX('%s', [name])) AS account" 
                                 + " FROM sys.databases WHERE CHARINDEX('%s', [name]) > 0;"
                                 , '#', '#');

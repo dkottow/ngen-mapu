@@ -149,6 +149,7 @@ Schema.prototype.setUser = function(name, role) {
 
 //used in ApiController, smells bad..
 Schema.setAdmin = function(schemaDef, name) {
+	schemaDef.users = schemaDef.users || [];
 	if (_.findIndex(schemaDef.users, { name : name }) < 0) {
 		schemaDef.users.push({name: name, role: Schema.ADMIN_ROLE });
 	}

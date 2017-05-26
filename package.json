@@ -20,11 +20,11 @@
     , "tmp": "*"
     , "validator": "*"
     , "commander": "*"
+    , "request": "*"
   }
   , "devDependencies": {
     "mocha": "*"
-    , "request": "*"
-    , "fs-extra": "1.x"
+    , "fs-extra": "*"
     , "probdist": "*"
     , "random-js": "*"
   }
@@ -34,5 +34,8 @@
     "install" : "node etc/post-install.js"
     , "start": "node server.js"
     , "test": "mocha"
+  }
+  , "engines": {
+    "node": "6.x"
   }
 }

@@ -35,7 +35,7 @@ var config = {
 
 	'rows_page': 1000,
 
-	'sql_engine': 'mssql',
+	'sql_engine': 'sqlite',
 
 	'mssql_connection': { 
 		'server': 'azwu-test.database.windows.net',
@@ -46,6 +46,10 @@ var config = {
 			encrypt: true // Use this if you're on Windows Azure
 		}
 	}
+}
+
+if (process.env.PORT) { //azure uses this
+	config.port = process.env.PORT;
 }
 
 if (process.env.DONKEYLIFT_AUTH) {

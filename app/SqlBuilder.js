@@ -163,7 +163,7 @@ SqlBuilder.prototype.sanitizeFieldClauses = function(table, fieldClauses) {
 		}
 		var field = fieldTable.field(item.field);
 		if (field) {
-			item.valueType = Field.typeName(field.type);
+			item.valueType = field.type;
 		} else if ( _.contains(fieldTable.refFields), item.field) {
 			item.valueType = 'text';
 		} else {			
@@ -256,7 +256,7 @@ SqlBuilder.prototype.createRowAliasViewSQL = function(table) {
 					SqlHelper.EncloseSQL(f.split('.')[1])
 				);
 		}
-		if (field.typeName() != 'text') {
+		if (field.type != 'text') {
 			term = util.format('CAST(%s AS VARCHAR(256))', term);
 		}
 		if ( ! _.isEmpty(memo)) {

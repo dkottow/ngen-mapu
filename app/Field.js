@@ -76,34 +76,13 @@ Field.TABLE_FIELDS = ['name', 'table_name', 'props', 'disabled'];
 //adding or removing PROPERTIES needs no change in db schema
 Field.PROPERTIES = ['order', 'width', 'scale', 'visible', 'label'];
 
-Field.TYPES = {
-	'text': 'VARCHAR'
-	, 'integer': 'INTEGER'
-	, 'numeric': 'NUMERIC'
-	, 'date': 'DATE'
-	, 'datetime': 'DATETIME'
-}
-
-Field.typeName = function(sqlType) {
-	if (sqlType.indexOf(Field.TYPES.text) == 0) {
-		return 'text';
-	} else if (sqlType.indexOf("NVARCHAR") == 0) {
-		return 'text';
-	} else if (sqlType == Field.TYPES.integer) {
-		return 'integer';
-	} else if (sqlType.indexOf(Field.TYPES.numeric) == 0) {
-		return 'numeric';
-	} else if (sqlType == Field.TYPES.datetime) {
-		return 'datetime';
-	} else if (sqlType == Field.TYPES.date) {
-		return 'date';
-	}
-	return null;	
-}
-
+//logical field type names - mapped to SQL types through SqlHelper.typeSQL
+//	text has optional length arg, e.g. text(256) or text(MAX)
+//	decimal has optional precision and scale args, e.g. decimal(6,2) 
+Field.TYPES = ['text', 'integer', 'decimal', 'date', 'timestamp', 'float' ];
 
 Field.create = function(fieldDef) {
-	if (fieldDef.type && Field.typeName(fieldDef.type)) {
+	if (_.contains(Field.TYPES, SqlHelper.typeName(fieldDef.type))) {
 		return new Field(fieldDef);
 	}
 	throw new Error(util.format("Field.create(%s) failed. Unknown type.", util.inspect(fieldDef)));
@@ -138,12 +117,8 @@ Field.prototype.updatePropSQL = function(table) {
 	return sql;
 }
 
-Field.prototype.typeName = function() {
-	return Field.typeName(this.type);
-}
-
 Field.prototype.defaultWidth = function() {
-	var typeName = this.typeName();
+	var typeName = SqlHelper.typeName(this.type);
 
 	if (typeName == 'integer') return 4;
 	if (typeName == 'numeric') return 8;

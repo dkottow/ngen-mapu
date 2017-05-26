@@ -21,6 +21,7 @@ var util = require('util');
 var Schema = require('./Schema.js').Schema;
 var SchemaChange = require('./SchemaChange.js').SchemaChange;
 
+var SqlHelper = require('./SqlHelperFactory.js').SqlHelperFactory.create();
 var SqlBuilderFactory = require('./SqlBuilderFactory.js').SqlBuilderFactory;
 
 var log = require('./log.js').log;
@@ -149,29 +150,29 @@ Database.prototype.rowsOwned = function(tableName, rowIds, user, cbResult) {
 	});
 }
 
-var parseFn = function(fieldType) {
-	if (fieldType.indexOf('CHAR') >= 0) {
+var parseFn = function(typeName) {
+	if (typeName == 'text') {
 		return function(val) { return String(val); }
-	} else if (fieldType.indexOf('NUMERIC') == 0) {
+	} else if (typeName == 'decimal') {
 		return function(val) { return parseFloat(val); }
-	} else if (fieldType == 'INTEGER') {
+	} else if (typeName == 'integer') {
 		return function(val) { return parseInt(val); }
-	} else if (fieldType.indexOf('DATE') == 0) {
+	} else if (typeName == 'date' || typeName == 'timestamp') {
 		return function(val) { 
 			return Number.isFinite(Date.parse(val))
 				? String(val) : NaN; //return NaN on error 
 		}
 	}
-	throw new Error('unkown type ' + fieldType);
+	throw new Error('unkown type ' + typeName);
 }
 		
 Database.prototype.getFieldValues = function(row, table, fieldNames) {
 	var err = null;
 	var values = _.map(fieldNames, function(fn) { 
-		var t = table.field(fn).type;
+		var typeName = SqlHelper.typeName(table.field(fn).type);
 		var val = ( _.isNull(row[fn]) || _.isUndefined(row[fn]))
-			? null : parseFn(t)(row[fn]);
-		if (t.indexOf('CHAR') < 0 && Number.isNaN(val)) {
+			? null : parseFn(typeName)(row[fn]);
+		if (typeName != 'text' && Number.isNaN(val)) {
 			//parseFn returns NaN on parse error (fwded from parseInt, parseFloat)
 			err = new Error("Conversion failed for '" 
 				+ row[fn] + '" [' + fn + ']');

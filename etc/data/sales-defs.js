@@ -12,14 +12,14 @@ var schema = {
             , "fields": [
                 {
                         "name": "id"
-                    , "type": "INTEGER"
+                    , "type": "integer"
                     , "props": {
                         "order": 0
                     }
                 }
                 , {
                         "name": "name"
-                    , "type": "VARCHAR"
+                    , "type": "text"
                     , "props": {
                         "width": 40
                         , "order": 1
@@ -27,7 +27,7 @@ var schema = {
                 }
                 , {
                         "name": "email"
-                    , "type": "VARCHAR(256)"
+                    , "type": "text(256)"
                     , "props": {
                         "width": 60
                         , "order": 2
@@ -35,14 +35,14 @@ var schema = {
                 }
                 , {
                         "name": "mod_by"
-                    , "type": "VARCHAR(64)"
+                    , "type": "text(64)"
                     , "props": {
                         "order": 91
                     }
                 }
                 , {
                         "name": "mod_on"
-                    , "type": "DATETIME"
+                    , "type": "timestamp"
                     , "props": {
                         "order": 92,
                         "width": 11
@@ -50,14 +50,14 @@ var schema = {
                 }
                 , {
                         "name": "add_by"
-                    , "type": "VARCHAR(64)"
+                    , "type": "text(64)"
                     , "props": {
                         "order": 93
                     }
                 }
                 , {
                         "name": "add_on"
-                    , "type": "DATETIME"
+                    , "type": "timestamp"
                     , "props": {
                         "order": 94,
                         "width": 11
@@ -65,7 +65,7 @@ var schema = {
                 }
                 , {
                         "name": "own_by"
-                    , "type": "VARCHAR(64)"
+                    , "type": "text(64)"
                     , "props": {
                         "order": 95
                     }
@@ -77,14 +77,14 @@ var schema = {
             , "fields": [
                 {
                         "name": "id"
-                    , "type": "INTEGER"
+                    , "type": "integer"
                     , "props": {
                         "order": 0
                     }
                 }
                 , {
                         "name": "name"
-                    , "type": "VARCHAR"
+                    , "type": "text"
                     , "props": {
                         "width": 30
                         , "order": 1
@@ -92,7 +92,7 @@ var schema = {
                 }
                 , {
                         "name": "price"
-                    , "type": "NUMERIC(8,2)"
+                    , "type": "decimal(8,2)"
                     , "props": {
                         "scale": 2
                         , "order": 2
@@ -100,14 +100,14 @@ var schema = {
                 }
                 , {
                         "name": "mod_by"
-                    , "type": "VARCHAR(64)"
+                    , "type": "text(64)"
                     , "props": {
                         "order": 91
                     }
                 }
                 , {
                         "name": "mod_on"
-                    , "type": "DATETIME"
+                    , "type": "timestamp"
                     , "props": {
                         "order": 92,
                         "width": 11
@@ -115,14 +115,14 @@ var schema = {
                 }
                 , {
                         "name": "add_by"
-                    , "type": "VARCHAR(64)"
+                    , "type": "text(64)"
                     , "props": {
                         "order": 93
                     }
                 }
                 , {
                         "name": "add_on"
-                    , "type": "DATETIME"
+                    , "type": "timestamp"
                     , "props": {
                         "order": 94,
                         "width": 11
@@ -130,7 +130,7 @@ var schema = {
                 }
                 , {
                         "name": "own_by"
-                    , "type": "VARCHAR(64)"
+                    , "type": "text(64)"
                     , "props": {
                         "order": 95
                     }
@@ -142,21 +142,21 @@ var schema = {
             , "fields": [
                 {
                         "name": "id"
-                    , "type": "INTEGER"
+                    , "type": "integer"
                     , "props": {
                         "order": 0
                     }
                 }
                 , {
                         "name": "order_date"
-                    , "type": "DATE"
+                    , "type": "date"
                     , "props": {
                         "order": 1
                     }
                 }
                 , {
                         "name": "customer_id"
-                    , "type": "INTEGER"
+                    , "type": "integer"
                     , "fk_table": "customers"
                     , "props": {
                         "order": 2
@@ -165,7 +165,7 @@ var schema = {
                 }
                 , {
                         "name": "total_amount"
-                    , "type": "NUMERIC(8,2)"
+                    , "type": "decimal(8,2)"
                     , "props": {
                         "scale": 2
                         , "width": 12
@@ -174,14 +174,14 @@ var schema = {
                 }
                 , {
                         "name": "mod_by"
-                    , "type": "VARCHAR(64)"
+                    , "type": "text(64)"
                     , "props": {
                         "order": 91
                     }
                 }
                 , {
                         "name": "mod_on"
-                    , "type": "DATETIME"
+                    , "type": "timestamp"
                     , "props": {
                         "order": 92,
                         "width": 11
@@ -189,14 +189,14 @@ var schema = {
                 }
                 , {
                         "name": "add_by"
-                    , "type": "VARCHAR(64)"
+                    , "type": "text(64)"
                     , "props": {
                         "order": 93
                     }
                 }
                 , {
                         "name": "add_on"
-                    , "type": "DATETIME"
+                    , "type": "timestamp"
                     , "props": {
                         "order": 94,
                         "width": 11
@@ -204,7 +204,7 @@ var schema = {
                 }
                 , {
                         "name": "own_by"
-                    , "type": "VARCHAR(64)"
+                    , "type": "text(64)"
                     , "props": {
                         "order": 95
                     }
@@ -215,14 +215,14 @@ var schema = {
             , "fields": [
                 {
                         "name": "id"
-                    , "type": "INTEGER"
+                    , "type": "integer"
                     , "props": {
                         "order": 0
                     }
                 }
                 , {
                         "name": "order_id"
-                    , "type": "INTEGER"
+                    , "type": "integer"
                     , "fk_table": "orders"
                     , "props": {
                         "order": 1
@@ -231,7 +231,7 @@ var schema = {
                 }
                 , {
                         "name": "product_id"
-                    , "type": "INTEGER"
+                    , "type": "integer"
                     , "fk_table": "products"
                     , "props": {
                         "order": 2
@@ -240,7 +240,7 @@ var schema = {
                 }
                 , {
                         "name": "unit_price"
-                    , "type": "NUMERIC(8,2)"
+                    , "type": "decimal(8,2)"
                     , "props": {
                         "scale": 2
                         , "order": 3
@@ -248,21 +248,21 @@ var schema = {
                 }
                 , {
                         "name": "quantity"
-                    , "type": "INTEGER"
+                    , "type": "integer"
                     , "props": {
                         "order": 4
                     }
                 }
                 , {
                         "name": "mod_by"
-                    , "type": "VARCHAR(64)"
+                    , "type": "text(64)"
                     , "props": {
                         "order": 91
                     }
                 }
                 , {
                         "name": "mod_on"
-                    , "type": "DATETIME"
+                    , "type": "timestamp"
                     , "props": {
                         "order": 92,
                         "width": 11
@@ -270,14 +270,14 @@ var schema = {
                 }
                 , {
                         "name": "add_by"
-                    , "type": "VARCHAR(64)"
+                    , "type": "text(64)"
                     , "props": {
                         "order": 93
                     }
                 }
                 , {
                         "name": "add_on"
-                    , "type": "DATETIME"
+                    , "type": "timestamp"
                     , "props": {
                         "order": 94,
                         "width": 11
@@ -285,7 +285,7 @@ var schema = {
                 }
                 , {
                       "name": "own_by"
-                    , "type": "VARCHAR(64)"
+                    , "type": "text(64)"
                     , "props": {
                         "order": 95
                     }

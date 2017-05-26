@@ -26,15 +26,6 @@ var express = require('express');
 global.config = global.config || {};
 global.config.sql_engine = global.config.sql_engine || 'sqlite'; //supported are: sqlite, mssql
 
-
-var accountConfig;
-if (global.config.sql_engine == 'sqlite') {
-	accountConfig = global.config.data_dir;
-
-} else if (global.config.sql_engine == 'mssql') {
-	accountConfig = global.config.mssql_connection;
-}
-
 /*** end globals ***/
 
 var AccountManager = require('./AccountManagerFactory.js').AccountManagerFactory;
@@ -47,6 +38,14 @@ var log = require('./log.js').log;
 
 var accounts;
 var controller;
+
+var accountConfig;
+if (global.config.sql_engine == 'sqlite') {
+	accountConfig = global.config.data_dir;
+
+} else if (global.config.sql_engine == 'mssql') {
+	accountConfig = global.config.mssql_connection;
+}
 
 app.init = function(options, cbAfter) {
 	log.info('app.init()...');

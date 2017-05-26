@@ -33,6 +33,7 @@ var Field = require('../Field.js').Field;
 var Table = require('../Table.js').Table;
 
 var SqlBuilder = require('./SqlBuilderSqlite.js').SqlBuilderSqlite;
+var SqlHelper = require('./SqlHelperSqlite.js').SqlHelperSqlite;
 
 var log = require('../log.js').log;
 
@@ -776,6 +777,7 @@ DatabaseSqlite.prototype.readSchema = function(cbAfter) {
 								_.each(rows, function(r) {
 									//console.log(r);
 									_.extend(tables[tn].fields[r.name], r);	
+									tables[tn].fields[r.name].type = SqlHelper.Field.fromSQLType(r.type);
 								});
 								doAfter();
 							});
@@ -851,7 +853,7 @@ DatabaseSqlite.prototype.writeSchemaChanges = function(changes, cbAfter) {
 
 	} catch(err) {
 		log.error({err: err}, 
-			"Schema.writeChanges() exception.");
+			"DatabaseSqlite.writeSchemaChanges() exception.");
 		cbAfter(err);
 	}
 }

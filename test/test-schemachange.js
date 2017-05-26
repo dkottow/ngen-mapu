@@ -87,7 +87,7 @@ describe('SchemaChange', function() {
 
 		it('add field', function(done) {
 
-			var field = Field.create({ name: 'test', type: Field.TYPES.text });
+			var field = Field.create({ name: 'test', type: 'text' });
 			schema.table('customers').addField(field);	
 	
 			var patches = jsonpatch.compare(orgJSON, schema.get());		

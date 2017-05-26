@@ -61,11 +61,13 @@ SqlHelperMssql.addInputParams = function(req, params)
 
 SqlHelperMssql.mssqlType = function(fieldType)
 {
-	if (fieldType == 'text') return mssql.NVarChar;
-	else if (fieldType == 'integer') return mssql.Int;
-	else if (fieldType == 'numeric') return mssql.Real;
-	else if (fieldType == 'datetime') return mssql.VarChar(256); //TODO - use real js dates?
-	else if (fieldType == 'date') return mssql.VarChar(256); //TODO - use real js dates?
+	var typeName = SqlHelperMssql.typeName(fieldType);
+
+	if (typeName == 'text') return mssql.NVarChar;
+	else if (typeName == 'integer') return mssql.Int;
+	else if (typeName == 'decimal') return mssql.Real;
+	else if (typeName == 'timestamp') return mssql.VarChar(256); //TODO - use real js dates?
+	else if (typeName == 'date') return mssql.VarChar(256); //TODO - use real js dates?
 	else throw new Error("unknown type '" + fieldType + "'");
 }
 
@@ -149,13 +151,37 @@ SqlHelperMssql.Field.defaultSQL = function(field) {
 	}
 }
 
-SqlHelperMssql.Field.typeSQL = function(type)
-{
-	if (type == 'VARCHAR') return 'NVARCHAR(4000)';
-	if (type == 'NUMERIC') return 'NUMERIC(18,3)';
-	type = type.replace(/VARCHAR(\([0-9]+\))/,'NVARCHAR$1');
 
-	return type;
+SqlHelperMssql.Field.typeSQL = function(fieldType)
+{
+	var typeName = SqlHelperMssql.typeName(fieldType);
+	
+	if (typeName == 'text') return fieldType == 'text' ? 'NVARCHAR(4000)' : fieldType.replace(/^text/, 'NVARCHAR');
+	else if (typeName == 'integer') return 'INTEGER';
+	else if (typeName == 'decimal') return fieldType == 'decimal' ? 'DECIMAL(12,2)' : fieldType.replace(/^decimal/, 'DECIMAL');
+	else if (typeName == 'timestamp') return 'DATETIME';
+	else if (typeName == 'date') return 'DATE'; 
+	else throw new Error("SqlHelperMssql unknown type '" + fieldType + "'");
+}
+
+SqlHelperMssql.Field.fromSQLType = function(sqlTypeInfo)
+{
+	if (sqlTypeInfo.data_type == 'nvarchar' || sqlTypeInfo.data_type == 'varchar') {
+		return util.format('text(%s)', (sqlTypeInfo.character_maximum_length > 0) ?
+										sqlTypeInfo.character_maximum_length : 'MAX');
+
+	} else if (sqlTypeInfo.data_type == 'decimal' || sqlTypeInfo.data_type == 'numeric') {
+		return util.format('decimal(%s,%s)', 
+						sqlTypeInfo.numeric_precision, sqlTypeInfo.numeric_scale);
+
+	} else if (sqlTypeInfo.data_type == 'int') {
+		return 'integer';
+	} else if (sqlTypeInfo.data_type == 'datetime') {
+		return 'timestamp';
+	} else if (sqlTypeInfo.data_type == 'date') {
+		return 'date';
+	} 
+	throw new Error("SqlHelperMssql.Field.fromSQLType '" + sqlTypeInfo.data_type + "'");
 }
 
 SqlHelperMssql.Field.autoIncrementSQL = function() 

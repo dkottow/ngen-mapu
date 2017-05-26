@@ -64,7 +64,7 @@ var Table = function(tableDef) {
 		});
 		
 		_.each(fields, function(f) {
-			me._fields[f.name] = new Field(f);
+			me._fields[f.name] = Field.create(f);
 		});
 
 		me.name = tableDef.name;
@@ -91,12 +91,12 @@ var Table = function(tableDef) {
 }
 
 Table.MANDATORY_FIELDS = [
-	{ name: 'id', type: 'INTEGER', props: { order: 0} }
-	, { name : 'own_by', type: 'VARCHAR', props: {order: 90} }
-	, { name : 'mod_by', type: 'VARCHAR', props: {order: 91} }
-	, { name : 'mod_on', type: 'DATETIME', props: {order: 92} }
-	, { name : 'add_by', type: 'VARCHAR', props: {order: 93} }
-	, { name : 'add_on', type: 'DATETIME', props: {order: 94} }
+	{ name: 'id', type: 'integer', props: { order: 0} }
+	, { name : 'own_by', type: 'text(256)', props: {order: 90} }
+	, { name : 'mod_by', type: 'text(256)', props: {order: 91} }
+	, { name : 'mod_on', type: 'timestamp', props: {order: 92} }
+	, { name : 'add_by', type: 'text(256)', props: {order: 93} }
+	, { name : 'add_on', type: 'timestamp', props: {order: 94} }
 ];
 
 Table.ROW_SCOPES = {

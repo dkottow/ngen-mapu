@@ -80,13 +80,13 @@ describe('Database.patchSchema', function() {
 
 		var prevSchema = JSON.parse(JSON.stringify(patchDb.schema.get())); 
 		//modify schema
-		patchDb.table('products').addField(new Field({ name: 'foo', type: 'VARCHAR' }));
+		patchDb.table('products').addField(new Field({ name: 'foo', type: 'text' }));
 
 		var patches = jsonpatch.compare(prevSchema, patchDb.schema.get());			
 		
 		patchDb.patchSchema(patches, function(err, schema) {
-			assert(schema.tables.products.fields['foo'].type == 'VARCHAR'
-				, 'could not add field foo of type VARCHAR');
+			assert(schema.tables.products.fields['foo'].type == 'text'
+				, 'could not add field foo of type text');
 			log.trace({schema: patchDb.schema.get()}, 
 				"schema after failing to write patches");
 			done();				
@@ -94,26 +94,6 @@ describe('Database.patchSchema', function() {
 	
 	});
 
-	it('patch add table', function(done) {
-
-		var prevSchema = JSON.parse(JSON.stringify(patchDb.schema.get())); 
-		var newSchema = JSON.parse(JSON.stringify(patchDb.schema.get())); 
-		//modify schema
-		var newTable = new Table({ name: 'PatchTest' });
-		newSchema.tables[newTable.name] = newTable.toJSON();
-
-		var patches = jsonpatch.compare(prevSchema, newSchema);			
-		
-		patchDb.patchSchema(patches, function(err, schema) {
-			assert(schema.tables['PatchTest'].fields.id
-				, 'could not add table PatchTest');
-
-			log.trace({schema: patchDb.schema.get()}, 
-				"schema after failing to write patches");
-			done();				
-		});
-	
-	});
 
 });
 

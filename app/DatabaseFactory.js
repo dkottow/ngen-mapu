@@ -43,7 +43,7 @@ DatabaseFactory.getClass = function() {
 	if (sql_engine == 'sqlite') {
             return require('./sqlite/DatabaseSqlite.js').DatabaseSqlite;
 
-	} else if (gsql_engine == 'mssql') {
+	} else if (sql_engine == 'mssql') {
             return require('./mssql/DatabaseMssql.js').DatabaseMssql;
 	}
 

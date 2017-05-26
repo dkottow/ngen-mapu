@@ -213,10 +213,29 @@ SqlHelperSqlite.Field.defaultSQL = function(field) {
 	}
 }
 
-SqlHelperSqlite.Field.typeSQL = function(type)
+SqlHelperSqlite.Field.typeSQL = function(fieldType)
 {
-	return type;
+	var typeName = SqlHelperSqlite.typeName(fieldType);
+	
+	if (typeName == 'text') return fieldType.replace(/^text/, 'VARCHAR');
+	else if (typeName == 'integer') return 'INTEGER';
+	else if (typeName == 'decimal') return fieldType.replace(/^decimal/, 'DECIMAL');
+	else if (typeName == 'timestamp') return 'DATETIME';
+	else if (typeName == 'date') return 'DATE'; 
+	else throw new Error("SqlHelperSqlite unknown type '" + fieldType + "'");
 }
+
+SqlHelperSqlite.Field.fromSQLType = function(sqlType)
+{
+	if (sqlType.startsWith('VARCHAR')) return sqlType.replace(/^VARCHAR/, 'text');
+	else if (sqlType == 'INTEGER') return 'integer';
+	else if (sqlType.startsWith('DECIMAL')) return sqlType.replace(/^DECIMAL/, 'decimal');
+	else if (sqlType.startsWith('NUMERIC')) return sqlType.replace(/^NUMERIC/, 'decimal'); //backward compat.
+	else if (sqlType == 'DATETIME') return 'timestamp';
+	else if (sqlType == 'DATE') return 'date'; 
+	else throw new Error("SqlHelperSqlite unknown type '" + sqlType + "'");	
+}
+
 
 SqlHelperSqlite.Field.autoIncrementSQL = function() 
 {

@@ -8,12 +8,13 @@ var assert = require('assert')
 
 global.config = global.config || {},
 global.config.sql_engine = 'sqlite';
+//global.config.sql_engine = 'mssql';
 
 global.config.data_dir = path.join(process.cwd(), 'data');
 
 global.config.mssql_connection = {
 	user: 'dkottow', 
-	password: '', 
+	password: 'G0lderPass.72', 
 	domain: 'GOLDER',
 	server: 'localhost\\HOLEBASE_SI', 
 };

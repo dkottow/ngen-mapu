@@ -387,18 +387,7 @@ DatabaseMssql.prototype.readSchema = function(cbAfter) {
 
 			_.each(result.recordset, function(r) {
 				var field = schemaProps.tables[r.table_name].fields[r.column_name];
-				if (r.data_type == 'varchar') {
-					field.type = util.format('%s(%s)', r.data_type.toUpperCase(), 
-									(r.character_maximum_length > 0) ? r.character_maximum_length : 'MAX');
-				} else if (r.data_type == 'numeric') {
-					field.type = util.format('%s(%s,%s)', r.data_type.toUpperCase(), 
-									r.numeric_precision, r.numeric_scale);
-				} else if (r.data_type == 'int') {
-					field.type = 'INTEGER';
-				} else {
-					//int, datetime, date
-					field.type = r.data_type.toUpperCase();					
-				}
+				field.type = SqlHelper.Field.fromSQLType(r);
 				field.notnull = 1*(r.is_nullable == 'NO');	//0 or 1
 			});
 
@@ -500,7 +489,7 @@ DatabaseMssql.prototype.insert = function(tableName, rows, options, cbResult) {
 
 			_.each(fieldNames, function(fn) {
 				var field = table.field(fn);
-				var sqlType = SqlHelper.mssqlType(Field.typeName(field.type));
+				var sqlType = SqlHelper.mssqlType(SqlHelper.typeName(field.type));
 				stmt.input(fn, sqlType);
 			});
 
@@ -658,7 +647,7 @@ DatabaseMssql.prototype.update = function(tableName, rows, options, cbResult) {
 
 			_.each(fieldNames, function(fn) {
 				var field = table.field(fn);
-				var sqlType = SqlHelper.mssqlType(Field.typeName(field.type));
+				var sqlType = SqlHelper.mssqlType(field.type);
 				stmt.input(fn, sqlType);
 			});
 
@@ -1073,7 +1062,7 @@ DatabaseMssql.prototype.writeSchemaChanges = function(changes, cbAfter) {
 
 			var chainPromises = _.reduce(changesSQL, function(chainPromises, sql) {
 				return chainPromises.then(result => {
-					console.log('change batch SQL ' + sql);
+					//console.log('change batch SQL ' + sql);
 					return new Request(transaction).batch(sql);	
 				});	
 			}, Promise.resolve());	

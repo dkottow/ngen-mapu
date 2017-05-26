@@ -35,7 +35,7 @@ var config = {
 
 	'rows_page': 1000,
 
-	'sql_engine': 'sqlite',
+	'sql_engine': 'mssql',
 
 	'mssql_connection': { 
 		'server': 'azwu-test.database.windows.net',

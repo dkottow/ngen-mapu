@@ -2,10 +2,20 @@
 var assert = require('assert')
 	, _ = require('underscore')
 	, util = require('util')
+	, path = require('path')
 	, jsonpatch = require('fast-json-patch');
 
 global.config = global.config || {},
 global.config.sql_engine = 'sqlite';
+//global.config.sql_engine = 'mssql';
+global.config.data_dir = path.join(process.cwd(), 'data');
+
+global.config.mssql_connection = {
+	user: 'dkottow', 
+	password: '', 
+	domain: 'GOLDER',
+	server: 'localhost\\HOLEBASE_SI', 
+};
 
 var salesDefs = require('../etc/data/sales-defs.js'); 
 

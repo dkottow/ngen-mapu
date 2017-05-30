@@ -14,7 +14,7 @@ global.config.data_dir = path.join(process.cwd(), 'data');
 
 global.config.mssql_connection = {
 	user: 'dkottow', 
-	password: 'G0lderPass.72', 
+	password: '', 
 	domain: 'GOLDER',
 	server: 'localhost\\HOLEBASE_SI', 
 };

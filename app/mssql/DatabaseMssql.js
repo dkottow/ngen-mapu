@@ -941,6 +941,7 @@ DatabaseMssql.prototype.writeSchema = function(cbAfter) {
 		config.requestTimeout = 100*1000; //100s - create db can take some time..
 
 		var transaction;	
+		var doRollback;
 		var conn = new mssql.ConnectionPool(config);
 
 		conn.connect().then(err => {
@@ -966,6 +967,12 @@ DatabaseMssql.prototype.writeSchema = function(cbAfter) {
 
 		}).then(result => {
 			log.debug('then create objs');
+			doRollBack = true;
+			transaction.on('rollback', aborted => {
+				// emitted with aborted === true
+				doRollBack = false;
+			});
+			
 			var opts = { exclude: { viewSQL: true, searchSQL: true }};
 			var createSQL = this.sqlBuilder.createSQL(this.schema, opts);
 			return new Request(transaction).batch(createSQL);
@@ -1017,7 +1024,7 @@ DatabaseMssql.prototype.writeSchema = function(cbAfter) {
 		}).catch(err => {
 			this.logTransactionError(err, 'Database.writeSchema()');
 
-			if (transaction) {
+			if (transaction && doRollback) {
 				transaction.rollback().then(() => {
 					return conn.close();
 
@@ -1046,6 +1053,7 @@ DatabaseMssql.prototype.writeSchemaChanges = function(changes, cbAfter) {
 
 		var transaction;
 		var stmt;
+		var doRollBack;
 
 		this.connect().then(() => {
 
@@ -1054,6 +1062,12 @@ DatabaseMssql.prototype.writeSchemaChanges = function(changes, cbAfter) {
 			return transaction.begin();
 
 		}).then(() => {
+
+			doRollBack = true;
+			transaction.on('rollback', aborted => {
+				// emitted with aborted === true
+				doRollBack = false;
+			});
 
 			var changesSQL = _.reduce(changes, function(acc, change) {
 				var changeSQL = change.toSQL(me.sqlBuilder);
@@ -1078,15 +1092,16 @@ DatabaseMssql.prototype.writeSchemaChanges = function(changes, cbAfter) {
 
 		}).catch(err => {
 			this.logTransactionError(err, 'Database.writeSchemaChanges()');
+			if (doRollback) {
+				transaction.rollback().then(() => {
+					cbAfter(err);	
 
-			transaction.rollback().then(() => {
-				cbAfter(err);	
-
-			}).catch(err => {
-				log.error({err: err}, "Database.writeSchemaChanges() rollback error.");
-				cbResult(err);
-				return;			
-			});
+				}).catch(err => {
+					log.error({err: err}, "Database.writeSchemaChanges() rollback error.");
+					cbAfter(err);
+					return;			
+				});
+			}	
 		});
 
 

@@ -21,7 +21,8 @@ var winston = require('winston');
 
 function init() {
 	var log_file = 'donkey-error-log.json';
-	var log_level = 'debug'
+	var log_level = 'debug';
+	var log_colorize = false;
 
 	if (global.config && global.config.log_level) {
 		log_file = path.join(global.config.log_dir || '.', log_file);
@@ -34,7 +35,7 @@ function init() {
 		winston.loggers.add('dl', {
 			console: {
 				level: log_level
-				, colorize: true
+				, colorize: log_colorize
 				, prettyPrint: prettyPrint
     		}
 		    , file: {

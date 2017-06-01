@@ -27,7 +27,7 @@ var SqlHelperSqlite = {
 }
 
 SqlHelperSqlite.EncloseSQL = function(name) {
-	return '"' + name + '"';
+	return '[' + name + ']';
 }
 
 SqlHelperSqlite.ConcatSQL = function(values) {

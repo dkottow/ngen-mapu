@@ -37,6 +37,15 @@ var config = {
 
 	'sql_engine': 'mssql',
 
+/*
+	'mssql_connection': { 
+		'server': 'localhost\\HOLEBASE_SI',
+		'user': 'dkottow',
+		'password': '',
+		'domain': 'GOLDER', //AD user domain
+	}
+*/
+
 	'mssql_connection': { 
 		'server': 'azwu-test.database.windows.net',
 		'user': 'Xidvv3jyCxQcSjbQYpf9zbiYv5MqE8Vp',
@@ -46,6 +55,11 @@ var config = {
 			encrypt: true // Use this if you're on Windows Azure
 		}
 	}
+	
+}
+
+if (config.sql_engine != 'mssql') {
+	delete config.mssql_connection;
 }
 
 if (process.env.PORT) { //azure uses this
@@ -83,11 +97,12 @@ if (process.env.OPENSHIFT_DATA_DIR) {
 }
 
 //data dir (sqlite)
-config.data_dir = path.join(process.cwd(), 'data');	
-if (process.env.OPENSHIFT_DATA_DIR) {
-	config.data_dir = path.join(process.env.OPENSHIFT_DATA_DIR, 'data');
+if (config.sql_engine == 'sqlite') {
+	config.sqlite_data_dir = path.join(process.cwd(), 'data');	
+	if (process.env.OPENSHIFT_DATA_DIR) {
+		config.sqlite_data_dir = path.join(process.env.OPENSHIFT_DATA_DIR, 'data');
+	}
 }
-
 
 global.config = config;
 

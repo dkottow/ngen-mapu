@@ -30,16 +30,6 @@ var Table = require('./Table.js').Table;
 
 var log = require('./log.js').log;
 
-
-/*
-var envPath = './.env'; 
-if (process.env.OPENSHIFT_DATA_DIR) { 
-    envPath = process.env.OPENSHIFT_DATA_DIR + '/.env'; 
-} 
- 
-require('dotenv').config({path: envPath}); 
-*/
-
 function sendError(req, res, err, code) {
 	log.error({req: req, code: code, err: err}, 'Controller.sendError()');
 	code = code || 500;

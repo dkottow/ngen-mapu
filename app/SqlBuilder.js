@@ -307,7 +307,7 @@ SqlBuilder.prototype.joinSQL = function(fromTable, fields, filterClauses) {
 	result.tables = result.tables.concat(searchSQL.tables);
 	result.clauses = result.clauses.concat(searchSQL.clauses);
 
-	log.debug({ result: result }, '...SqlBuilder.joinSQL()');
+	log.trace({ result: result }, '...SqlBuilder.joinSQL()');
 	return result;
 }
 
@@ -341,7 +341,7 @@ SqlBuilder.prototype.joinRowAliasSQL = function(fieldClauses, filterClauses) {
 
 	//TODO filterClauses
 
-	log.debug({ result: result }, '...SqlBuilder.joinRowAliasSQL()');
+	log.trace({ result: result }, '...SqlBuilder.joinRowAliasSQL()');
 	return result;
 }
 

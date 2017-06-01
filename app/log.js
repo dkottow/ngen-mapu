@@ -15,6 +15,7 @@
 */
 
 var path = require('path');
+var _ = require('underscore');
 var winston = require('winston');
 //add winston-azure
 
@@ -25,6 +26,7 @@ function init() {
 	if (global.config && global.config.log_level) {
 		log_file = path.join(global.config.log_dir || '.', log_file);
 		log_level = global.config.log_level;
+		log_level = log_level == 'trace' ? 'silly' : log_level;
 	}
 
 	if ( ! global.init_log) {
@@ -32,9 +34,8 @@ function init() {
 		winston.loggers.add('dl', {
 			console: {
 				level: log_level
-				, timestamp: true
 				, colorize: true
-				//, prettyPrint: prettyPrint
+				, prettyPrint: prettyPrint
     		}
 		    , file: {
 				filename: log_file
@@ -50,6 +51,7 @@ function init() {
 
 		winston.loggers.get('dl').rewriters.push(rewriteRequest);
 		winston.loggers.get('dl').rewriters.push(rewriteError);
+		winston.loggers.get('dl').rewriters.push(rewriteConfig);
 
 		global.init_log = true;
 	}
@@ -98,6 +100,15 @@ var rewriteError = function(level, msg, obj) {
 	return obj;
 }
 
+var rewriteConfig = function(level, msg, obj) {
+	if (obj && obj.config) {
+		var mssql_connection = _.omit(obj.config.mssql_connection, 'password');
+		obj.config = _.clone(obj.config);
+		obj.config.mssql_connection = mssql_connection; 
+	}
+	return obj;
+}
+
 var rewriteRequest = function(level, msg, obj) {
 
 	if (obj && obj.req) {
@@ -120,7 +131,8 @@ var rewriteRequest = function(level, msg, obj) {
 }
 
 var prettyPrint = function(obj) {
-	return JSON.stringify(obj);
+	var json = JSON.stringify(obj, null, 2);
+	return json.replace(/\"([^(\")"]+)\":/g,"$1:");
 }
 
 init();

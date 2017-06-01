@@ -41,7 +41,7 @@ var controller;
 
 var accountConfig;
 if (global.config.sql_engine == 'sqlite') {
-	accountConfig = global.config.data_dir;
+	accountConfig = global.config.sqlite_data_dir;
 
 } else if (global.config.sql_engine == 'mssql') {
 	accountConfig = global.config.mssql_connection;

@@ -16,7 +16,7 @@
 
 var _ = require('underscore');
 var util = require('util');
-var assert = require('assert');
+var crypto = require('crypto'); //md5
 
 var log = require('../log.js').log;
 
@@ -126,6 +126,33 @@ SqlHelperMssql.Table.dropSearchSQL = function(table) {
 	return '';
 }
 
+SqlHelperMssql.Table.constraintName = function(table, fk) {
+	return 'FKDL__' + crypto.createHash('md5').update(table.name + '.' + fk.name).digest('hex');
+}
+
+SqlHelperMssql.Table.addForeignKeysSQL = function(table, fk_table) {
+	var foreignKeys = _.where(table.foreignKeys(), { fk_table: fk_table.name });
+	return _.reduce(foreignKeys, function(sql, fk) {
+		return sql + util.format('ALTER TABLE %s ADD CONSTRAINT %s FOREIGN KEY (%s) REFERENCES %s(%s);\n',
+							table.name,
+							SqlHelperMssql.Table.constraintName(table, fk),
+							fk.name,
+							fk.fk_table,
+							fk.fk_field);			
+	}, '');
+}
+
+SqlHelperMssql.Table.dropForeignKeysSQL = function(table, fk_table) {
+	var foreignKeys = _.where(table.foreignKeys(), { fk_table: fk_table.name });
+	return _.reduce(foreignKeys, function(sql, fk) {
+		console.log('drop ' + table.name + '.' + fk.name);
+		return sql + util.format('ALTER TABLE %s DROP CONSTRAINT %s;\n',
+							table.name, 
+							SqlHelperMssql.Table.constraintName(table, fk));			
+	}, '');
+}
+
+
 /********** Field **********/
 
 SqlHelperMssql.Field.createPropsTableSQL = function(name) {
@@ -182,6 +209,17 @@ SqlHelperMssql.Field.fromSQLType = function(sqlTypeInfo)
 		return 'date';
 	} 
 	throw new Error("SqlHelperMssql.Field.fromSQLType '" + sqlTypeInfo.data_type + "'");
+}
+
+SqlHelperMssql.Field.foreignKeySQL = function(table, fk)
+{
+if (fk.fk) console.log('fk ' + table.name + '.' + fk.name);
+	return fk.fk 
+		? util.format(' CONSTRAINT %s REFERENCES %s(%s)',
+				SqlHelperMssql.Table.constraintName(table, fk),
+				fk.fk_table,
+				fk.fk_field)
+		: '';
 }
 
 SqlHelperMssql.Field.autoIncrementSQL = function() 

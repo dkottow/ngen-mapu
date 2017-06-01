@@ -80,7 +80,6 @@ Schema.prototype.init = function(schemaData) {
 Schema.prototype.get = function() {
 
 	try {
-		
 		var result = this.graph.toJSON();
 		result.name = this.name;
 		result.users = this.users; 
@@ -107,19 +106,29 @@ Schema.prototype.setTable = function(table) {
 	return this.addTable(table);
 }
 
-Schema.prototype.addTable = function(table) { 
+Schema.prototype.addTable = function(table, options) { 
 	if ( ! table instanceof Table) 
 		throw new Error('Type mismatch error on addTable'); 
 
 	var schemaData = this.get();
+	var replace = schemaData.tables.hasOwnProperty(table.name);
 	schemaData.tables[table.name] = table.toJSON();
+	if ( ! replace) delete schemaData.join_trees;  //resets to default (minimum spanning tree)
 	this.init(schemaData);	
 }
 
 Schema.prototype.removeTable = function(name) { 
+	log.info({name: name},'Schema.removeTable()');
 	var schemaData = this.get();
 	delete schemaData.tables[name];
-	//TODO - remove table from possible join_trees?
+	_.each(schemaData.tables, function(table) {
+		// remove fk's (in mem) that reference deleted table 
+		var staleForeignKeys = _.filter(table.fields, function(field) {
+			return field.fk && field.fk_table == name; 
+		});
+		_.each(staleForeignKeys, function(fk) { delete fk.fk_table; });
+	});
+	delete schemaData.join_trees; //resets to default (minimum spanning tree)
 	this.init(schemaData);	
 }
 
@@ -221,6 +230,7 @@ Schema.prototype.applyChanges = function(changes) {
 
 	_.each(changes, function(change) {
 		try {
+			log.debug({change: change.obj}, 'apply()');
 			if (change.schema != this) {
 				throw new Error('Schema mismatch. Internal Error.');
 			}

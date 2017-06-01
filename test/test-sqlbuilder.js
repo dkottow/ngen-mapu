@@ -2,10 +2,20 @@
 var assert = require('assert')
 	, _ = require('underscore')
 	, util = require('util')
+	, path = require('path')
 	, fs = require('fs');
 
 global.config = global.config || {},
 global.config.sql_engine = 'sqlite';
+//global.config.sql_engine = 'mssql';
+
+global.config.data_dir = path.join(process.cwd(), 'data');
+global.config.mssql_connection = {
+	user: 'dkottow', 
+	password: 'G0lderPass.72', 
+	domain: 'GOLDER',
+	server: 'localhost\\HOLEBASE_SI', 
+};
 	
 var Table = require('../app/Table.js').Table
 	, Schema = require('../app/Schema.js').Schema //to read json
@@ -168,6 +178,17 @@ describe('Sandwiches DB', function() {
 		fs.writeFile('create.sql', result);
 		log.info(result);
 	});
+
+	it('SqlBuilder.addDependenciesSQL', function() {
+		var table = sqlBuilder.graph.table('orders');
+		var result = sqlBuilder.addDependenciesSQL(table);
+		log.info({deps: result, table: table.name}, 'addDependenciesSQL');
+
+		var table = sqlBuilder.graph.table('customers');
+		var result = sqlBuilder.dropDependenciesSQL(table);
+		log.info({deps: result, table: table.name}, 'dropDependenciesSQL');
+	});
+
 });
 
 
@@ -222,5 +243,7 @@ describe('Soccer DB', function() {
 		var result = sqlBuilder.createRowAliasViewSQL(table);
 		log.info(result);
 	});
+
+
 });
 

@@ -223,7 +223,7 @@ Database.prototype.patchSchema = function(patches, cbResult) {
 				function(err) {
 
 				if (err) {
-					log.error({err: err, changes: changes}, 
+					log.error({err: err}, 
 						"Database.patchSchema() failed.");
 
 					cbResult(err, null);

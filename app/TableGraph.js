@@ -23,7 +23,6 @@ var graphutil = require('./graph_util.js');
 //var SqlHelper = require('./SqlHelperFactory.js').SqlHelperFactory.create();
 var Table = require('./Table.js').Table;
 
-
 var log = require('./log.js').log;
 
 var TableGraph = function(tables, options) {
@@ -33,10 +32,9 @@ var TableGraph = function(tables, options) {
 
 	var me = this;
 	init(tables, options);
-
 	function init(tables, options) {	
 		log.trace('TableGraph.init()...');
-		log.trace({tables: _.pluck(tables, 'name'), options: options});
+		log.trace({tables: _.pluck(tables, 'name'), options: options}, 'TableGraph.init()');
 
 		_.each(tables, function(table) {
 			me.graph.setNode(table.name, table);					
@@ -49,10 +47,10 @@ var TableGraph = function(tables, options) {
 
 			_.each(fkGroups, function(fkGroup, fk_table) {
 				var fkNames = _.pluck(fkGroup, 'name');
+				log.trace({table: table.name, fk_table: fk_table, fkNames: fkNames}, 'TableGraph.init()');
 				me.graph.setEdge(table.name, fk_table, fkNames);
 			});
 		});
-
 
 		/** build table trees **/
 		if (options.join_trees && options.join_trees.length > 0) {
@@ -123,10 +121,6 @@ TableGraph.prototype.table = function(name) {
 	var table = this.graph.node(name);
 	if ( ! table) throw new Error(util.format('table %s not found.', name));
 	return table;
-}
-
-TableGraph.prototype.assertTable = function(name) {
-	this.table(name);
 }
 
 TableGraph.prototype.parentTables = function(table) {
@@ -431,6 +425,7 @@ TableGraph.prototype.joinTreeJSON = function(tree) {
 }
 
 TableGraph.prototype.tableJSON = function(table) {
+	log.trace({table: table}, 'TableGraph.tableJSON()');
 	var me = this;
 	var tableName = _.isObject(table) ? table.name : table;
 

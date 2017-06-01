@@ -61,39 +61,44 @@ SchemaChange._create = function(patch, schema) {
 		}
 	}
 
+	var result;
 	//ordering is important, test more specific paths first
 	if (SCFieldProps.test(patch)) {
-		return new SCFieldProps(patch, schema);
+		result = new SCFieldProps(patch, schema);
 		
 	} else if (SCDisableField.test(patch)) {
-		return new SCDisableField(patch, schema);
+		result = new SCDisableField(patch, schema);
 
 	} else if (SCTableProps.test(patch)) {
-		return new SCTableProps(patch, schema);
+		result = new SCTableProps(patch, schema);
 
 	} else if (SCTableAccess.test(patch)) {
-		return new SCTableAccess(patch, schema);
+		result = new SCTableAccess(patch, schema);
 
 	} else if (SCTableRowAlias.test(patch)) {
-		return new SCTableRowAlias(patch, schema);
+		result = new SCTableRowAlias(patch, schema);
 
 	} else if (SCUsers.test(patch)) {
-		return new SCUsers(patch, schema);
-	
+		result = new SCUsers(patch, schema);
+
 	} else if (SCAddTable.test(patch)) {
-		return new SCAddTable(patch, schema);
+		result = new SCAddTable(patch, schema);
+
+	} else if (SCAddField.test(patch)) {
+		result = new SCAddField(patch, schema);
 
 	} else if (isEmpty && SCSetTable.test(patch)) {
-		return new SCSetTable(patch, schema);
+		result = new SCSetTable(patch, schema);
 
 	} else if (isEmpty && SCDelTable.test(patch)) {
-		return new SCDelTable(patch, schema);
-
-	} else if ( ! isEmpty && SCAddField.test(patch)) {
-		return new SCAddField(patch, schema);
+		result = new SCDelTable(patch, schema);
 	}
-
-	return null;	
+	if (result) {
+		log.debug({SchemaChange: result.constructor.name, patch: patch, empty: isEmpty}, 'SchemaChange._create()');
+		return result;
+	}	
+	log.warn({patch: patch, empty: isEmpty}, 'No patch found. Schema._create()');
+	throw new Error('Patch sequence contains unsupported patch ');
 } 
 
 
@@ -114,12 +119,8 @@ SchemaChange.create = function(patches, schema) {
 				patch: patch,
 				change: change
 			});						
-
-		} else {
-			log.warn({patch: patch}, 'Schema.patchesToChanges()');
-			throw new Error('Patch sequence contains unsupported patch');
 		}
-		
+
 	}, this);
 	
 	var changes = [];
@@ -288,6 +289,7 @@ var SCAddTable = function(patch, schema) {
 }
 
 SCAddTable.prototype = new SchemaChange;	
+SCAddTable.prototype.constructor = SCAddTable;
 
 SCAddTable.test = function(patch) {
 	return (patch.op == 'add' && /^\/tables\/(\w+)$/.test(patch.path)); 
@@ -323,7 +325,6 @@ SCAddTable.prototype.toSQL = function(sqlBuilder) {
  */
 
 var SCSetTable = function(patch, schema) {
-	log.trace({patch: patch}, "SchemaChange.SCSetTable()");
 	SchemaChange.call(this, patch, schema);
 	this.op = SchemaChange.OPS.SET_TABLE;
 	
@@ -337,31 +338,42 @@ var SCSetTable = function(patch, schema) {
 }
 
 SCSetTable.prototype = new SchemaChange;	
+SCSetTable.prototype.constructor = SCSetTable;
 
 SCSetTable.test = function(patch) {
 	return /^\/tables\/(\w+)\//.test(patch.path);	
 }
 
 SCSetTable.prototype.apply = function() {
+	log.trace({table: this.obj}, 'SCSetTable.apply()');
 	this.schema.setTable(new Table(this.obj));
 }
 
 SCSetTable.prototype.toSQL = function(sqlBuilder) {
 	var table = this.schema.table(this.obj.name);
 
+	var sql;
 	var sqlBatches = [];
 
 	sqlBatches.push(table.deletePropSQL({deep: true}));
 
-	var searchSQL = SqlHelper.Table.dropSearchSQL(table);
-	if (searchSQL.length > 0) sqlBatches.push(searchSQL);
+	sql = SqlHelper.Table.dropSearchSQL(table);
+	if (sql.length > 0) sqlBatches.push(sql);
+
+	sql = sqlBuilder.dropDependenciesSQL(table);
+	if (sql.length > 0) sqlBatches.push(sql);
+
 	sqlBatches.push(table.dropViewSQL());
 	sqlBatches.push(table.dropSQL());
 
 	sqlBatches.push(table.createSQL());
 	sqlBatches.push(sqlBuilder.createRowAliasViewSQL(table));
-	var searchSQL = SqlHelper.Table.createSearchSQL(table);
-	if (searchSQL.length > 0) sqlBatches.push(searchSQL);
+
+	sql = sqlBuilder.addDependenciesSQL(table);
+	if (sql.length > 0) sqlBatches.push(sql);
+
+	sql = SqlHelper.Table.createSearchSQL(table);
+	if (sql.length > 0) sqlBatches.push(sql);
 
 	sqlBatches.push(table.insertPropSQL({deep: true}));
 
@@ -384,14 +396,16 @@ var SCDelTable = function(patch, schema) {
 	var pathArray = patch.path.split('/');
 	pathArray.shift(); // leading slash,
 	pathArray.shift(); // 'tables' keyword
-	this.table = this.schema.table(pathArray.shift());
+	var table = this.schema.table(pathArray.shift());
+	this.table = new Table(table.toJSON());
 	this.path = '/' + this.table.name;
 }
 
 SCDelTable.prototype = new SchemaChange;	
 
 SCDelTable.test = function(patch) {
-	return /^\/tables\/(\w+)$/.test(patch.path); 
+	log.trace({patch: patch});
+	return (patch.op == 'remove' && /^\/tables\/(\w+)$/.test(patch.path)); 
 }
 
 SCDelTable.prototype.apply = function() {
@@ -399,14 +413,20 @@ SCDelTable.prototype.apply = function() {
 }
 
 SCDelTable.prototype.toSQL = function(sqlBuilder) {
+
+	var sql;
 	var sqlBatches = [];
 
 	sqlBatches.push(this.table.deletePropSQL({deep: true}));
 
-	var searchSQL = SqlHelper.Table.dropSearchSQL(table);
-	if (searchSQL.length > 0) sqlBatches.push(searchSQL);
-	sqlBatches.push(table.dropViewSQL());
-	sqlBatches.push(table.dropSQL());
+	sql = SqlHelper.Table.dropSearchSQL(this.table);
+	if (sql.length > 0) sqlBatches.push(sql);
+
+	sql = sqlBuilder.dropDependenciesSQL(this.table);
+	if (sql.length > 0) sqlBatches.push(sql);
+
+	sqlBatches.push(this.table.dropViewSQL());
+	sqlBatches.push(this.table.dropSQL());
 
  	return sqlBatches;
 }

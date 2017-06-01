@@ -12,7 +12,7 @@ global.config.data_dir = path.join(process.cwd(), 'data');
 
 global.config.mssql_connection = {
 	user: 'dkottow', 
-	password: '', 
+	password: 'G0lderPass.72', 
 	domain: 'GOLDER',
 	server: 'localhost\\HOLEBASE_SI', 
 };
@@ -30,9 +30,11 @@ var funcs =  require('./utils').funcs;
 
 describe('Database.patchSchema', function() {
 	var patchDb;
+	var oldSchema, newSchema;
 
 	before(function(done) {
 		this.timeout(10000); //10secs
+		delete salesDefs.data;
 		funcs.createDatabase('temp-patches', salesDefs, function(err, db) {
 			if ( ! db) return; //db is null first time.. weird. 
 			patchDb = db;
@@ -40,15 +42,20 @@ describe('Database.patchSchema', function() {
 		});			
 	});
 
+	beforeEach(function() {
+		//work on a JSON level: modify newSchema first, then do a json diff and patch db with it.
+		oldSchema = JSON.parse(JSON.stringify(patchDb.schema.get())); 
+		newSchema = JSON.parse(JSON.stringify(patchDb.schema.get())); 
+	});
+
 	it('patch table and field props', function(done) {
 
-		var prevSchema = JSON.parse(JSON.stringify(patchDb.schema.get())); 
 		//modify schema
-		patchDb.table('customers').props.order = 77;
-		patchDb.table('products').field('price').props.visible = false;
-		patchDb.table('products').field('name').props.order = 100;
+		newSchema.tables['customers'].props.order = 77;
+		newSchema.tables['products'].fields['price'].props.visible = false;
+		newSchema.tables['products'].fields['name'].props.order = 100;
 
-		var patches = jsonpatch.compare(prevSchema, patchDb.schema.get());			
+		var patches = jsonpatch.compare(oldSchema, newSchema);			
 		
 		patchDb.patchSchema(patches, function(err, schema) {
 			assert(err == null && schema.tables.customers.props.order == 77
@@ -64,16 +71,12 @@ describe('Database.patchSchema', function() {
 	
 	});
 
-	it('patch add table', function(done) {
+	it('add table', function(done) {
 
-		var prevSchema = JSON.parse(JSON.stringify(patchDb.schema.get())); 
-
-		//we cannot add table directly to patchDb obj.. instead take another JSON copy and add table json to it
-		var newSchema = JSON.parse(JSON.stringify(patchDb.schema.get())); 
 		var newTable = new Table({ name: 'PatchTest' });
 		newSchema.tables[newTable.name] = newTable.toJSON();
 
-		var patches = jsonpatch.compare(prevSchema, newSchema);			
+		var patches = jsonpatch.compare(oldSchema, newSchema);			
 		
 		patchDb.patchSchema(patches, function(err, schema) {
 			assert(schema.tables['PatchTest'].fields.id
@@ -86,13 +89,12 @@ describe('Database.patchSchema', function() {
 	
 	});
 
-	it('patch add field', function(done) {
+	it('add field', function(done) {
 
-		var prevSchema = JSON.parse(JSON.stringify(patchDb.schema.get())); 
-		//modify schema
-		patchDb.table('products').addField(new Field({ name: 'foo', type: 'text' }));
+		var newField = new Field({ name: 'foo', type: 'text' });
+		newSchema.tables['products'].fields[newField.name] = newField.toJSON();
 
-		var patches = jsonpatch.compare(prevSchema, patchDb.schema.get());			
+		var patches = jsonpatch.compare(oldSchema, newSchema);			
 		
 		patchDb.patchSchema(patches, function(err, schema) {
 			assert(schema.tables.products.fields['foo'].type == 'text'
@@ -104,6 +106,31 @@ describe('Database.patchSchema', function() {
 	
 	});
 
+	it('set table', function(done) {
+		//var newTable = new Table({ name: 'products' });
+		delete newSchema.tables['products'].fields['price'];
+		var patches = jsonpatch.compare(oldSchema, newSchema);			
+console.dir(patches);		
+		patchDb.patchSchema(patches, function(err, schema) {
+			assert(schema.tables['orders'], 'could not set table orders');
+			log.trace({schema: patchDb.schema.get()}, 
+				"schema after failing to write patches");
+			done();				
+		});
+	});
+
+	it('del table', function(done) {
+		var tableName = 'orders';
+		delete newSchema.tables[tableName];
+		var patches = jsonpatch.compare(oldSchema, newSchema);			
+		
+		patchDb.patchSchema(patches, function(err, schema) {
+			assert( ! schema.tables[tableName], 'could not del table ' + tableName);
+			log.trace({schema: patchDb.schema.get()}, 
+				"schema after failing to write patches");
+			done();				
+		});
+	});
 
 });
 

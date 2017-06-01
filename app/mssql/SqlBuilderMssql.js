@@ -57,5 +57,21 @@ SqlBuilderMssql.prototype.joinSearchSQL = function(filterClauses) {
 	}
 }
 
+SqlBuilderMssql.prototype.dropDependenciesSQL = function(table) {
+	var childTables = this.graph.childTables(table);
+	var result = _.reduce(childTables, function(sql, child) {
+		return SqlHelper.Table.dropForeignKeysSQL(child, table);
+	}, '');
+	return result;
+}
+
+SqlBuilderMssql.prototype.addDependenciesSQL = function(table) {
+	var childTables = this.graph.childTables(table);
+	var result = _.reduce(childTables, function(sql, child) {
+		return SqlHelper.Table.addForeignKeysSQL(child, table);
+	}, '');
+	return result;
+}
+
 exports.SqlBuilderMssql = SqlBuilderMssql;
 

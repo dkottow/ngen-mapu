@@ -188,6 +188,14 @@ SqlHelperSqlite.Table.dropSearchSQL = function(table) {
 	return 'DROP TABLE IF EXISTS ' + table.ftsName() + ';\n';
 }
 
+SqlHelperSqlite.Table.addForeignKeysSQL = function(table) {
+	return ''; //no-op since it is not supported
+}
+
+SqlHelperSqlite.Table.dropForeignKeysSQL = function(table) {
+	return ''; //no-op since it is not supported
+}
+
 /********** Field **********/
 
 SqlHelperSqlite.Field.createPropsTableSQL = function(name) {
@@ -236,6 +244,12 @@ SqlHelperSqlite.Field.fromSQLType = function(sqlType)
 	else throw new Error("SqlHelperSqlite unknown type '" + sqlType + "'");	
 }
 
+SqlHelperSqlite.Field.foreignKeySQL = function(table, field)
+{
+	return field.fk 
+		? util.format('REFERENCES %s(%s)', field.fk_table, field.fk_field)
+		: '';
+}
 
 SqlHelperSqlite.Field.autoIncrementSQL = function() 
 {

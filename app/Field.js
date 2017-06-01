@@ -187,18 +187,12 @@ Field.prototype.insertPropSQL = function(table) {
 	return sql;
 }
 
-Field.prototype.foreignKeySQL = function() {
-	return this.fk 
-		? util.format("REFERENCES %s(%s)", this.fk_table, this.fk_field)
-		: "";
-}
-
-Field.prototype.toSQL = function() {
+Field.prototype.toSQL = function(table) {
 	var sql = '"' + this.name + '" ' + SqlHelper.Field.typeSQL(this.type);
 	if (this.name == 'id') sql += ' ' + SqlHelper.Field.autoIncrementSQL();
 	if (this.notnull) sql += ' NOT NULL';
 	sql += ' ' + SqlHelper.Field.defaultSQL(this);
-	sql += ' ' +  this.foreignKeySQL(); //SqlHelper.Field.foreignKeySQL(this);
+	sql += ' ' +  SqlHelper.Field.foreignKeySQL(table, this);
 	return sql;
 }
 

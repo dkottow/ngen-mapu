@@ -155,9 +155,7 @@ SqlBuilder.prototype.sanitizeFieldClauses = function(table, fieldClauses) {
 		//validate
 		var fieldTable;
 		if (item.table != table.name) {
-			this.graph.assertTable(item.table);
 			fieldTable = this.graph.table(item.table);
-
 		} else {
 			fieldTable = table;
 		}
@@ -227,7 +225,7 @@ SqlBuilder.prototype.createSQL = function(schema, options) {
 			+ createTableSQL + '\n\n';
 			
 	if ( ! exclude.viewSQL) sql = sql + createRowAliasViewSQL + '\n\n';
-	if ( ! exclude.SearchSQLL) sql = sql + createSearchSQL + '\n\n';
+	if ( ! exclude.SearchSQL) sql = sql + createSearchSQL + '\n\n';
 			
 	log.trace({sql: sql}, 'SqlBuilder.createSQL');
 	return sql;
@@ -242,7 +240,6 @@ SqlBuilder.prototype.createRowAliasViewSQL = function(table) {
 	});
 
 	var ref_join = this.joinGraphSQL(table.name, ref_tables);
-
 	var ref_field = _.reduce(table.row_alias, function(memo, f) {
 		var term;
 		var field;

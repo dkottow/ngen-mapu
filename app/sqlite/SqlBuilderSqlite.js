@@ -57,5 +57,14 @@ SqlBuilderSqlite.prototype.joinSearchSQL = function(filterClauses) {
 	}
 }
 
+SqlBuilderSqlite.prototype.dropDependenciesSQL = function(table) {
+	return '';
+}
+
+SqlBuilderSqlite.prototype.addDependenciesSQL = function(table) {
+	return '';
+}
+
+
 exports.SqlBuilderSqlite = SqlBuilderSqlite;
 

@@ -396,9 +396,9 @@ Table.prototype.toJSON = function() {
 
 Table.prototype.createSQL = function() {
 	var sql = "CREATE TABLE " + this.name + "(";
-	_.each(this.fields(), function(f) {
-		sql += "\n" + f.toSQL() + ",";
-	});
+	_.each(this.fields(), function(field) {
+		sql += "\n" + field.toSQL(this) + ",";
+	}, this);
 	sql += "\n PRIMARY KEY (id)";
 	sql += "\n);";
 
@@ -408,7 +408,7 @@ Table.prototype.createSQL = function() {
 
 Table.prototype.addFieldSQL = function(field) {
 	var sql = "ALTER TABLE " + this.name 
-		+ " ADD " + field.toSQL() + ";\n";
+		+ " ADD " + field.toSQL(this) + ";\n";
 
 	log.trace(sql);
 	return sql;

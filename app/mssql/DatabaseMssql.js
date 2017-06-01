@@ -967,10 +967,10 @@ DatabaseMssql.prototype.writeSchema = function(cbAfter) {
 
 		}).then(result => {
 			log.debug('then create objs');
-			doRollBack = true;
+			doRollback = true;
 			transaction.on('rollback', aborted => {
 				// emitted with aborted === true
-				doRollBack = false;
+				doRollback = false;
 			});
 			
 			var opts = { exclude: { viewSQL: true, searchSQL: true }};
@@ -1052,27 +1052,26 @@ DatabaseMssql.prototype.writeSchemaChanges = function(changes, cbAfter) {
 	try {
 
 		var transaction;
-		var stmt;
-		var doRollBack;
+		var doRollback;
 
 		this.connect().then(() => {
 
 			transaction = new mssql.Transaction(this.conn());
-			stmt = new mssql.PreparedStatement(transaction);
 			return transaction.begin();
 
 		}).then(() => {
 
-			doRollBack = true;
+			doRollback = true;
 			transaction.on('rollback', aborted => {
 				// emitted with aborted === true
-				doRollBack = false;
+				doRollback = false;
 			});
 
 			var changesSQL = _.reduce(changes, function(acc, change) {
 				var changeSQL = change.toSQL(me.sqlBuilder);
 				return acc.concat(changeSQL);
 			}, []);
+			log.debug({changes: changesSQL}, 'DatabaseMssql.writeSchemaChanges()');
 
 			var chainPromises = _.reduce(changesSQL, function(chainPromises, sql) {
 				return chainPromises.then(result => {

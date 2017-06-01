@@ -107,9 +107,10 @@ describe('SchemaChange', function() {
 		it('add table', function(done) {
 
 			var table = new Table({ name: 'test' });
-			schema.addTable(table);	
-	
-			var patches = jsonpatch.compare(orgJSON, schema.get());		
+			var newSchema = schema.get();	
+			newSchema.tables[table.name] = table;
+
+			var patches = jsonpatch.compare(orgJSON, newSchema);		
 			log.debug({patches: patches});
 
 			var changes = SchemaChange.create(patches, schema);

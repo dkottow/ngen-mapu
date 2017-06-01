@@ -71,17 +71,21 @@ SqlHelperMssql.mssqlType = function(fieldType)
 	else throw new Error("unknown type '" + fieldType + "'");
 }
 
+SqlHelperMssql.ACCOUNT_DATABASE_SEPARATOR = '$';
+
 /********** Schema stuff *********/
 
 SqlHelperMssql.Schema.PragmaSQL = '';
 
 SqlHelperMssql.Schema.fullName = function(account, db) {
-	return account + '#' + db;
+	return account + SqlHelperMssql.ACCOUNT_DATABASE_SEPARATOR + db;
 }
 
-SqlHelperMssql.Schema.name = function(dbName) {
-	if (dbName.indexOf('#') > 0) return dbName.substr(dbName.indexOf('#')+1);
-	else return dbName; //or error?	
+SqlHelperMssql.Schema.name = function(fullName) {
+	if (fullName.indexOf(SqlHelperMssql.ACCOUNT_DATABASE_SEPARATOR) > 0) {
+		return fullName.substr(fullName.indexOf(SqlHelperMssql.ACCOUNT_DATABASE_SEPARATOR) + 1);
+	}
+	else return null; // error
 }
 
 SqlHelperMssql.Schema.createPropsTableSQL = function(name) {

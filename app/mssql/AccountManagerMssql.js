@@ -23,6 +23,7 @@ var mssql = require('mssql');
 
 var Account = require('./AccountMssql.js').AccountMssql;
 var AccountManager = require('../AccountManager.js').AccountManager;
+var SqlHelper = require('./SqlHelperMssql.js').SqlHelperMssql;
 
 var log = require('../log.js').log;
 
@@ -86,7 +87,7 @@ AccountManagerMssql.prototype.readAccounts = function(cbResult) {
             //read all accounts 
             var sql = util.format("SELECT DISTINCT SUBSTRING([name], 0, CHARINDEX('%s', [name])) AS account" 
                                 + " FROM sys.databases WHERE CHARINDEX('%s', [name]) > 0;"
-                                , '#', '#');
+                                , SqlHelper.ACCOUNT_DATABASE_SEPARATOR, SqlHelper.ACCOUNT_DATABASE_SEPARATOR);
 
             log.debug({sql: sql}, 'AccountManager.readAccounts()');
 

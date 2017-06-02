@@ -189,10 +189,18 @@ Database.prototype.patchSchema = function(patches, cbResult) {
 		log.debug({patches: patches}, 'Database.patchSchema()...');
 		var me = this;
 
+		function cbPatchError(err) {
+			me.getInfo(function(errInfo, schemaInfo) {
+				log.debug({schemaInfo: schemaInfo}, 'Database.patchSchema()');
+				if (errInfo) throw new Error('Error trying to obtain getInfo');
+				cbResult(err, schemaInfo);
+			});									
+		}
+
 		//obtains table row counts
 		me.getInfo(function(err, schemaInfo) {
 			if (err) {
-				cbResult(err, null);
+				cbPatchError(err);
 				return;
 			}
 	
@@ -211,7 +219,7 @@ Database.prototype.patchSchema = function(patches, cbResult) {
 			} catch (err) {
 				log.warn({err: err, patches: patches}, 
 					"SchemaChange.create() failed. Unsupported patches");
-				cbResult(err, null);
+				cbPatchError(err);
 				return;
 			}
 
@@ -222,14 +230,8 @@ Database.prototype.patchSchema = function(patches, cbResult) {
 			me.writeSchemaChanges(changes, function(err) {
 
 				if (err) {
-					log.error({err: err}, 
-						"Database.patchSchema() failed.");
-
-					me.getInfo(function(errInfo, schemaInfo) {
-						if (errInfo) throw new Error('Error trying to obtain getInfo');
-						cbResult(err, schemaInfo);
-					});							
-
+					log.error({err: err}, "Database.patchSchema() failed.");
+					cbPatchError(err);
 					return;
 				}
 

@@ -386,7 +386,9 @@ Controller.prototype.patchDatabase = function(req, res) {
 		var patches = req.body;
 		path.db.patchSchema(patches, function(err, result) {
 			if (err) {
-				sendError(req, res, err, 400);
+				//dont simply sendError but send old schema	as well
+				log.error({req: req, code: 400, err: err}, 'Controller.sendError()');
+				res.status(400).send({error: err.message, schema: result});
 				return;
 			}
 			log.trace({'res.body': result});

@@ -175,7 +175,7 @@ describe('Sandwiches DB', function() {
 	it('SqlBuilder.createSQL', function() {
 		//var table = sqlBuilder.graph.table('products_in_orders');
 		var result = sqlBuilder.createSQL(schema, { exclude: {viewSQL: true, searchSQL: true }});
-		fs.writeFile('create.sql', result);
+		fs.writeFile(path.join('tmp', 'create.sql'), result);
 		log.info(result);
 	});
 

@@ -947,6 +947,8 @@ DatabaseMssql.prototype.writeSchema = function(cbAfter) {
 		conn.connect().then(err => {
 			log.debug('create database ' + dbTemp);
 			var sql = util.format('CREATE DATABASE [%s]', dbTemp);
+			//TODO? add pricing tier 
+			//sql = sql + ' (SERVICE_OBJECTIVE = ELASTIC_POOL(name = [S3M100]))'; 
 			return conn.request().batch(sql);
 
 		}).then(err => {

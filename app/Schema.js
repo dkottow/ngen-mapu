@@ -230,7 +230,13 @@ Schema.prototype.applyChanges = function(changes) {
 
 	_.each(changes, function(change) {
 		try {
-			log.debug({change: change.obj}, 'apply()');
+			log.debug({
+				op: change.op, 
+				path: change.path, 
+				patchObj: change.patchObj, 
+				changeObj: change.changeObj 
+			}, 'apply()');
+			
 			if (change.schema != this) {
 				throw new Error('Schema mismatch. Internal Error.');
 			}

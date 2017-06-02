@@ -219,14 +219,17 @@ Database.prototype.patchSchema = function(patches, cbResult) {
 			patchedSchema.applyChanges(changes);
 
 			//write patches to database
-			me.writeSchemaChanges(changes, 
-				function(err) {
+			me.writeSchemaChanges(changes, function(err) {
 
 				if (err) {
 					log.error({err: err}, 
 						"Database.patchSchema() failed.");
 
-					cbResult(err, null);
+					me.getInfo(function(errInfo, schemaInfo) {
+						if (errInfo) throw new Error('Error trying to obtain getInfo');
+						cbResult(err, schemaInfo);
+					});							
+
 					return;
 				}
 

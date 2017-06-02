@@ -59,11 +59,21 @@ SchemaChange._create = function(patch, schema) {
 		if (table && table.props.row_count == 0) {
 			isEmpty = true;	
 		}
+		log.debug({table: match[1], isempty: isEmpty}, 'SchemaChange._create()');
 	}
 
 	var result;
 	//ordering is important, test more specific paths first
-	if (SCFieldProps.test(patch)) {
+
+	if 	(  /^\/join_trees\//.test(patch)
+		|| /^\/tables\/(\w+)\/row_count/.test(patch)	
+		) 
+	{
+		//ignore
+		log.debug({patch: patch, SchemaChange: null}, 'SchemaChange._create()');
+		return null;
+
+	} else if (SCFieldProps.test(patch)) {
 		result = new SCFieldProps(patch, schema);
 		
 	} else if (SCDisableField.test(patch)) {
@@ -93,17 +103,19 @@ SchemaChange._create = function(patch, schema) {
 	} else if (isEmpty && SCDelTable.test(patch)) {
 		result = new SCDelTable(patch, schema);
 	}
+
 	if (result) {
-		log.debug({SchemaChange: result.constructor.name, patch: patch, empty: isEmpty}, 'SchemaChange._create()');
+		log.debug({patch: patch, SchemaChange: result.constructor.name, op: result.op, path: result.path}, 'SchemaChange._create()');
 		return result;
 	}	
+
 	log.warn({patch: patch, empty: isEmpty}, 'No patch found. Schema._create()');
 	throw new Error('Patch sequence contains unsupported patch ');
 } 
 
 
 SchemaChange.create = function(patches, schema) {
-	log.debug({patches: patches}, 'SchemaChange.create()...');
+	log.trace({patches: patches}, 'SchemaChange.create()...');
 
 	var patchSequences = {}; //sequence of changes of same type
 
@@ -126,9 +138,9 @@ SchemaChange.create = function(patches, schema) {
 	var changes = [];
 	_.each(patchSequences, function(seq) {			
 		var change = seq[0].change;
-		if (change.obj) {
+		if (change.patchObj) {
 			var patches = _.pluck(seq, 'patch');
-			jsonpatch.apply(change.obj, patches);
+			jsonpatch.apply(change.patchObj, patches);
 		}
 		changes.push(change);
 	});
@@ -157,12 +169,13 @@ var SCAddField = function(patch, schema) {
 	this.table = this.schema.table(pathArray.shift());
 	pathArray.shift(); // 'field' keyword
 	this.path = '/' + this.table.name + '/' + pathArray.shift();
-	this.obj = null; //no json patches
-	this.fieldDef = patch.value;
+	this.patchObj = null; //no json patches
+	this.changeObj = patch.value;
 }
 
 
 SCAddField.prototype = new SchemaChange;	
+SCAddField.prototype.constructor = SCAddField;
 
 SCAddField.test = function(patch) {
 	return (patch.op == 'add' 
@@ -170,12 +183,12 @@ SCAddField.test = function(patch) {
 }
 
 SCAddField.prototype.apply = function() {
-	var field = new Field(this.fieldDef);
+	var field = new Field(this.changeObj);
 	this.table.addField(field);	
 }
 
 SCAddField.prototype.toSQL = function(sqlBuilder) {
-	var field = this.table.field(this.fieldDef.name);
+	var field = this.table.field(this.changeObj.name);
 
 	var sqlBatches = [];
 
@@ -212,18 +225,19 @@ var SCFieldProps = function(patch, schema) {
 	pathArray.shift(); // 'props' keyword
 	this.patch_path = '/' + pathArray.join('/');
 	this.path = '/' + this.table.name + '/' + this.field.name + '/props';
-	this.obj = JSON.parse(JSON.stringify(this.field.props)); //hold a copy
+	this.patchObj = JSON.parse(JSON.stringify(this.field.props)); //hold a copy
 }
 
 
 SCFieldProps.prototype = new SchemaChange;	
+SCFieldProps.prototype.constructor = SCFieldProps;
 
 SCFieldProps.test = function(patch) {
 	return /^\/tables\/(\w+)\/fields\/(\w+)\/props\//.test(patch.path);	
 }
 
 SCFieldProps.prototype.apply = function() {
-	_.each(this.obj, function(v, k) {
+	_.each(this.patchObj, function(v, k) {
 		this.field.setProp(k, v); 
 	}, this);
 }
@@ -250,18 +264,19 @@ var SCDisableField = function(patch, schema) {
 	this.field = this.table.field(pathArray.shift());
 	this.patch_path = '/' + pathArray.join('/');
 	this.path = '/' + this.table.name + '/' + this.field.name + '/disabled';
-	this.obj = JSON.parse(JSON.stringify(this.field)); 
+	this.patchObj = JSON.parse(JSON.stringify(this.field)); 
 }
 
 
 SCDisableField.prototype = new SchemaChange;	
+SCDisableField.prototype.constructor = SCDisableField;
 
 SCDisableField.test = function(patch) {
 	return /^\/tables\/(\w+)\/fields\/(\w+)\/disabled/.test(patch.path);	
 }
 
 SCDisableField.prototype.apply = function() {
-	this.field.setDisabled(this.obj.disabled);
+	this.field.setDisabled(this.patchObj.disabled);
 }
 
 SCDisableField.prototype.toSQL = function(sqlBuilder) {
@@ -284,8 +299,8 @@ var SCAddTable = function(patch, schema) {
 	pathArray.shift(); // leading slash,
 	pathArray.shift(); // 'tables' keyword
 	this.path = '/' + pathArray.shift();
-	this.obj = null; //no json patches
-	this.tableDef = patch.value;
+	this.patchObj = null; //no json patches
+	this.changeObj = patch.value;
 }
 
 SCAddTable.prototype = new SchemaChange;	
@@ -296,13 +311,13 @@ SCAddTable.test = function(patch) {
 }
 
 SCAddTable.prototype.apply = function() {
-	var table = new Table(this.tableDef);
+	var table = new Table(this.changeObj);
 	this.schema.addTable(table);	
 }
 
 SCAddTable.prototype.toSQL = function(sqlBuilder) {	
 
-	var table = this.schema.table(this.tableDef.name);
+	var table = this.schema.table(this.changeObj.name);
 
 	var sqlBatches = [];
 
@@ -334,7 +349,7 @@ var SCSetTable = function(patch, schema) {
 	var table = this.schema.table(pathArray.shift());
 	this.patch_path = '/' + pathArray.join('/');
 	this.path = '/' + table.name;
-	this.obj = table.toJSON(); 
+	this.patchObj = table.toJSON(); 
 }
 
 SCSetTable.prototype = new SchemaChange;	
@@ -345,12 +360,12 @@ SCSetTable.test = function(patch) {
 }
 
 SCSetTable.prototype.apply = function() {
-	log.trace({table: this.obj}, 'SCSetTable.apply()');
-	this.schema.setTable(new Table(this.obj));
+	log.trace({table: this.patchObj}, 'SCSetTable.apply()');
+	this.schema.setTable(new Table(this.patchObj));
 }
 
 SCSetTable.prototype.toSQL = function(sqlBuilder) {
-	var table = this.schema.table(this.obj.name);
+	var table = this.schema.table(this.patchObj.name);
 
 	var sql;
 	var sqlBatches = [];
@@ -402,6 +417,7 @@ var SCDelTable = function(patch, schema) {
 }
 
 SCDelTable.prototype = new SchemaChange;	
+SCDelTable.prototype.constructor = SCDelTable;
 
 SCDelTable.test = function(patch) {
 	log.trace({patch: patch});
@@ -448,17 +464,18 @@ var SCTableAccess = function(patch, schema) {
 	pathArray.shift(); // 'access_control' keyword
 	this.patch_path = '/' + pathArray.join('/');
 	this.path = '/' + this.table.name + '/access_control';
-	this.obj = JSON.parse(JSON.stringify(this.table.access_control)); //hold a copy
+	this.patchObj = JSON.parse(JSON.stringify(this.table.access_control)); //hold a copy
 }
 
 SCTableAccess.prototype = new SchemaChange;	
+SCTableAccess.prototype.constructor = SCTableAccess;
 
 SCTableAccess.test = function(patch) {
 	return /^\/tables\/(\w+)\/access_control/.test(patch.path);	
 }
 
 SCTableAccess.prototype.apply = function() {
-	this.table.access_control = this.obj;
+	this.table.access_control = this.patchObj;
 }
 
 SCTableAccess.prototype.toSQL = function(sqlBuilder) {
@@ -481,17 +498,18 @@ var SCTableRowAlias = function(patch, schema) {
 	pathArray.shift(); // 'row_alias' keyword
 	this.patch_path = '/' + pathArray.join('/');
 	this.path = '/' + this.table.name + '/row_alias';
-	this.obj = JSON.parse(JSON.stringify(this.table.row_alias)); //hold a copy
+	this.patchObj = JSON.parse(JSON.stringify(this.table.row_alias)); //hold a copy
 }
 
 SCTableRowAlias.prototype = new SchemaChange;	
+SCTableRowAlias.prototype.constructor = SCTableRowAlias;
 
 SCTableRowAlias.test = function(patch) {
 	return /^\/tables\/(\w+)\/row_alias/.test(patch.path);	
 }
 
 SCTableRowAlias.prototype.apply = function() {
-	this.table.row_alias = this.obj;
+	this.table.row_alias = this.patchObj;
 }
 
 SCTableRowAlias.prototype.toSQL = function(sqlBuilder) {
@@ -526,17 +544,18 @@ var SCTableProps = function(patch, schema) {
 	pathArray.shift(); // 'props' keyword
 	this.patch_path = '/' + pathArray.join('/');
 	this.path = '/' + this.table.name + '/props';
-	this.obj = JSON.parse(JSON.stringify(this.table.props)); //hold a copy
+	this.patchObj = JSON.parse(JSON.stringify(this.table.props)); //hold a copy
 }
 
 SCTableProps.prototype = new SchemaChange;	
+SCTableProps.prototype.constructor = SCTableProps;
 
 SCTableProps.test = function(patch) {
 	return /^\/tables\/(\w+)\/props\//.test(patch.path);	
 }
 
 SCTableProps.prototype.apply = function() {
-	_.each(this.obj, function(v, k) {
+	_.each(this.patchObj, function(v, k) {
 		this.table.setProp(k, v); 
 	}, this);
 }
@@ -559,10 +578,11 @@ var SCUsers = function(patch, schema) {
 	pathArray.shift(); // 'users' keyword
 	this.patch_path = '/' + pathArray.join('/');
 	this.path = '/users';
-	this.obj = JSON.parse(JSON.stringify(this.schema.users));
+	this.patchObj = JSON.parse(JSON.stringify(this.schema.users));
 }
 
 SCUsers.prototype = new SchemaChange;	
+SCUsers.prototype.constructor = SCUsers;
 
 SCUsers.test = function(patch) {
 	return /^\/users/.test(patch.path);	
@@ -570,7 +590,7 @@ SCUsers.test = function(patch) {
 
 SCUsers.prototype.apply = function() {
 	this.schema.users = [];
-	_.each(this.obj, function(user) {
+	_.each(this.patchObj, function(user) {
 		this.schema.setUser(user.name, user.role); 
 	}, this);
 }

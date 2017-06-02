@@ -33,10 +33,8 @@ describe('SchemaChange', function() {
 			schema.table('customers').props.order = 99;
 			schema.table('customers').props.foo = 'bar';
 			var patches = jsonpatch.compare(orgJSON, schema.get());		
-			log.debug({patches: patches});
-
 			var changes = SchemaChange.create(patches, schema);
-			log.info({changes: changes});
+			log.trace({changes: changes});
 
 			assert(changes.length == 1 
 				&& changes[0].op == SchemaChange.OPS.SET_PROP_TABLE
@@ -52,8 +50,6 @@ describe('SchemaChange', function() {
 	
 			schema.table('customers').field('name').props.width = 99;
 			var patches = jsonpatch.compare(orgJSON, schema.get());		
-			log.debug({patches: patches});
-
 			var changes = SchemaChange.create(patches, schema);
 			//log.info({op: change.op, path: change.path});
 

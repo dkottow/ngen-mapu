@@ -14,7 +14,8 @@ var useAuth = false;
 var authToken = null;
 
 global.config = global.config || {};
-global.config.data_dir = path.join(process.cwd(), 'data');
+global.config.sql_engine = 'sqlite';
+global.config.sqlite_data_dir = path.join(process.cwd(), 'data');
 
 var app = require('../app/app.js').app;
 

@@ -65,7 +65,7 @@ var Field = function(fieldDef) {
 		//property values
 		me.props = fieldDef.props || {};
 
-		me.props.order = me.props.order || 0;
+		me.props.order = me.props.order || 100;
 		me.props.width = me.props.width || me.defaultWidth();
 	}
 }

@@ -91,12 +91,12 @@ var Table = function(tableDef) {
 }
 
 Table.MANDATORY_FIELDS = [
-	{ name: 'id', type: 'integer', props: { order: 0} }
-	, { name : 'own_by', type: 'text(256)', props: {order: 90} }
-	, { name : 'mod_by', type: 'text(256)', props: {order: 91} }
-	, { name : 'mod_on', type: 'timestamp', props: {order: 92} }
-	, { name : 'add_by', type: 'text(256)', props: {order: 93} }
-	, { name : 'add_on', type: 'timestamp', props: {order: 94} }
+	{ name: 'id', type: 'integer', props: { order: 10} }
+	, { name : 'own_by', type: 'text(256)', props: {order: 110} }
+	, { name : 'mod_by', type: 'text(256)', props: {order: 120} }
+	, { name : 'mod_on', type: 'timestamp', props: {order: 130} }
+	, { name : 'add_by', type: 'text(256)', props: {order: 140} }
+	, { name : 'add_on', type: 'timestamp', props: {order: 150} }
 ];
 
 Table.ROW_SCOPES = {

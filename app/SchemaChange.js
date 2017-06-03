@@ -110,7 +110,8 @@ SchemaChange._create = function(patch, schema) {
 	}	
 
 	log.warn({patch: patch, empty: isEmpty}, 'No patch found. Schema._create()');
-	throw new Error('Patch sequence contains unsupported patch ');
+	if (isEmpty) throw new Error('Unsupported patch');
+	else throw new Error("Unsupported patch for non-empty table");
 } 
 
 

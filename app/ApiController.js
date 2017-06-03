@@ -85,8 +85,7 @@ Controller.prototype.initRoutes = function(options) {
 	} else {
 		this.router.use(function(req, res, next) {
 			req.user = {
-				account : "demo",
-				name : "demo@donkeylift.com"
+				name : req.query.user || 'unk'
 			};
 			next();
 		});

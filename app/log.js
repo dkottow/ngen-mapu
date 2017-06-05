@@ -32,9 +32,9 @@ function init() {
 			if (logger.file && ! path.isAbsolute(logger.file.filename)) {
 				logger.file.filename = path.join(process.cwd(), logger.file.filename);
 			}
-			if (logger.Azure) {
+			if (logger.azure) {
 				log.debug({logger: logger}, 'azure log.init()');	
-                logger.Azure.partition = require('os').hostname();				
+                logger.azure.partition = require('os').hostname();				
 			}
 			winston.loggers.add('dl', logger);
 		});

@@ -33,7 +33,7 @@ function init() {
 				logger.file.filename = path.join(process.cwd(), logger.file.filename);
 			}
 			if (logger.Azure) {
-				logger.debug({logger: logger}, 'azure log.init()');	
+				log.debug({logger: logger}, 'azure log.init()');	
                 logger.Azure.partition = require('os').hostname();				
 			}
 			winston.loggers.add('dl', logger);

@@ -1,4 +1,7 @@
 {
+	"ip"    : "IP",
+	"port"  : "PORT", 
+
     "sql": {
         "connection": {
             "password": "DL_MSSQL_PASSWORD"

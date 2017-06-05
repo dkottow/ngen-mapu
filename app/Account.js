@@ -41,6 +41,23 @@ Account.prototype.doRemoveDatabase = function(name, cbResult) {
 
 */
 
+Account.prototype.doWriteDatabase = function(schemaData, cbResult) {
+	var me = this;
+	var name = schemaData.name;
+	var newDb = this.doCreateDatabase(name);
+
+	newDb.setSchema(schemaData);
+	newDb.writeSchema(function(err) {
+		if (err) {
+			cbResult(err, null);
+			return;
+		} 
+		log.info("Created database " + name);
+		me.databases[name] = newDb;
+		cbResult(null, newDb);
+	});
+}
+
 Account.prototype.createDatabase = function(schemaData, options, cbResult) {
 	var me = this;
 	var name = schemaData.name;
@@ -48,30 +65,13 @@ Account.prototype.createDatabase = function(schemaData, options, cbResult) {
 	cbResult = cbResult || arguments[arguments.length - 1];	
 	options = typeof options == 'object' ? options : {};		
 
-	var createDatabaseFn = function() {
-
-		var newDb = me.doCreateDatabase(name);
-
-		newDb.setSchema(schemaData);
-		newDb.writeSchema(function(err) {
-			if (err) {
-				cbResult(err, null);
-				return;
-			} 
-			log.info("Created database " + name);
-			me.databases[name] = newDb;
-			cbResult(null, newDb);
-		});
-
-	}
-
 	var db = me.databases[name];
 	if (db) {
 			
 		db.isEmpty(function(err, isEmpty) {
 
 			if (isEmpty) {
-				createDatabaseFn();
+				me.doWriteDatabase(schemaData, cbResult);
 
 			} else {
 				var err = new Error(util.format(
@@ -83,7 +83,7 @@ Account.prototype.createDatabase = function(schemaData, options, cbResult) {
 		});
 
 	} else {
-		createDatabaseFn();
+		me.doWriteDatabase(schemaData, cbResult);
 	}
 }
 

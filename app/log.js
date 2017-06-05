@@ -18,18 +18,22 @@ var path = require('path');
 var _ = require('underscore');
 var config = require('config');
 var winston = require('winston');
-//add winston-azure
+require('winston-azure'); //add winston-azure
 
 function init() {
 
 	if ( ! global.init_log) {
 
 		_.each(config.logs.transports, function(logger) {
+			//set some dynamic attrs
+			if (logger.console) {
+				logger.console.prettyPrint = prettyPrint;
+			}
 			if (logger.file && ! path.isAbsolute(logger.file.filename)) {
 				logger.file.filename = path.join(process.cwd(), logger.file.filename);
 			}
-			if (logger.console) {
-				logger.console.prettyPrint = prettyPrint;
+			if (logger.Azure) {
+                logger.Azure.partition = require('os').hostname();				
 			}
 			winston.loggers.add('dl', logger);
 		});

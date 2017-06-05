@@ -28,15 +28,16 @@ function init() {
 			//set some dynamic attrs
 			if (logger.console) {
 				logger.console.prettyPrint = prettyPrint;
-			}
-			if (logger.file && ! path.isAbsolute(logger.file.filename)) {
+				winston.loggers.add('dl', logger);
+
+			} else if (logger.file && ! path.isAbsolute(logger.file.filename)) {
 				logger.file.filename = path.join(process.cwd(), logger.file.filename);
-			}
-			if (logger.azure) {
-				log.debug({logger: logger}, 'azure log.init()');	
+				winston.loggers.add('dl', logger);
+
+			} else if (logger.azure) {
                 logger.azure.partition = require('os').hostname();				
+				winston.loggers.add(winston.transports.Azure, logger.azure);
 			}
-			winston.loggers.add('dl', logger);
 		});
 
 		winston.loggers.get('dl').rewriters.push(rewriteRequest);

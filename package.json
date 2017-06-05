@@ -11,6 +11,7 @@
     , "express-jwt": "*"
     , "winston": "*"
     , "dotenv": "*"
+    , "config": "*"
     , "sqlite3": "*"
     , "mssql": "4.x"
     , "graphlib": "*"

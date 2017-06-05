@@ -16,38 +16,22 @@
 
 var path = require('path');
 var _ = require('underscore');
+var config = require('config');
 var winston = require('winston');
 //add winston-azure
 
 function init() {
-	var log_file = 'donkey-error-log.json';
-	var log_level = 'debug';
-	var log_colorize = false;
-
-	if (global.config && global.config.log_level) {
-		log_file = path.join(global.config.log_dir || '.', log_file);
-		log_level = global.config.log_level;
-		log_level = log_level == 'trace' ? 'silly' : log_level;
-	}
 
 	if ( ! global.init_log) {
 
-		winston.loggers.add('dl', {
-			console: {
-				level: log_level
-				, colorize: log_colorize
-				, prettyPrint: prettyPrint
-    		}
-		    , file: {
-				filename: log_file
-				, level: 'warn'
-				, timestamp: true
-				, tailable: true
-				, maxFiles: 10
-				, maxsize: 1000000
-    		}
-			//, rewriters: [rewriteError, rewriteRequest]
-						
+		_.each(config.logs.transports, function(logger) {
+			if (logger.file && ! path.isAbsolute(logger.file.filename)) {
+				logger.file.filename = path.join(process.cwd(), logger.file.filename);
+			}
+			if (logger.console) {
+				logger.console.prettyPrint = prettyPrint;
+			}
+			winston.loggers.add('dl', logger);
 		});
 
 		winston.loggers.get('dl').rewriters.push(rewriteRequest);
@@ -103,9 +87,17 @@ var rewriteError = function(level, msg, obj) {
 
 var rewriteConfig = function(level, msg, obj) {
 	if (obj && obj.config) {
-		var mssql_connection = _.omit(obj.config.mssql_connection, 'password');
-		obj.config = _.clone(obj.config);
-		obj.config.mssql_connection = mssql_connection; 
+		if (obj.config.password) {
+			var config = _.omit(obj.config, 'password');
+		}
+
+		if (obj.config.sql && obj.config.sql.connection) {
+			var config = _.omit(obj.config, 'sql');
+			config.sql = _.clone(obj.config.sql);
+			config.sql.connection = _.omit(obj.config.sql.connection, 'password');
+		}
+
+		return _.extend(obj, { config: config });
 	}
 	return obj;
 }

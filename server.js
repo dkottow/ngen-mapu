@@ -14,6 +14,34 @@
    limitations under the License.
 */
 
+
+var url = require('url');
+var path = require('path');
+
+require('dotenv').config(process.env.DL_DOTENV_PATH); 
+var config = require('config');
+
+var log = require('./app/log.js').log;
+
+log.info("*********** DONKEYLIFT RESET DONKEYLIFT ***********.");
+log.info({config: config});
+
+var app = require('./app/app.js').app;
+
+app.init({ auth: config.auth }, function(err) {
+
+	if (err) throw err;
+
+	app.listen(config.port, config.ip, function() {
+		log.info({ip: config.ip, port: config.port}, "app listen() - listening.");
+		//console.log("Started server on " + config.ip + ":" + config.port);
+	});
+});
+
+
+/*
+
+
 var url = require('url');
 var path = require('path');
 
@@ -36,15 +64,6 @@ var config = {
 	'rows_page': 1000,
 
 	'sql_engine': 'mssql',
-
-/*
-	'mssql_connection': { 
-		'server': 'localhost\\HOLEBASE_SI',
-		'user': 'dkottow',
-		'password': '',
-		'domain': 'GOLDER', //AD user domain
-	}
-*/
 
 	'mssql_connection': { 
 		'server': 'azwu-test.database.windows.net',
@@ -127,3 +146,4 @@ app.init(options, function(err) {
 
 });
 
+*/

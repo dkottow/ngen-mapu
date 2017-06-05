@@ -6,4 +6,4 @@
 *.swp
 *~
 donkey-error-log.json
-.*
+.env

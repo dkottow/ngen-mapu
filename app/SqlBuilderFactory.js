@@ -16,6 +16,8 @@
 
 var _ = require('underscore');
 var util = require('util');
+var config = require('config');
+
 var log = require('./log.js').log;
 
 var path = require('path');
@@ -25,8 +27,7 @@ var path = require('path');
 
 var SqlBuilderFactory = {};
 
-global.config = global.config || {};
-var sql_engine = global.config.sql_engine || 'sqlite';
+var sql_engine = config.sql.engine;
 
 SqlBuilderFactory.create = function(tableGraph) {
 

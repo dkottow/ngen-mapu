@@ -19,14 +19,15 @@ var _ = require('underscore');
 var fs = require('fs');
 var path = require('path');
 var util = require('util');
+var config = require('config');
 
 var Account = require('./AccountSqlite.js').AccountSqlite;
 var AccountManager = require('../AccountManager.js').AccountManager;
 
 var log = require('../log.js').log;
 
-global.config = global.config || {};
-var tmp_dir = global.config.tmp_dir || '.';
+var tempDir = config.tempDir;
+if (! path.isAbsolute(tempDir)) tempDir = path.join(process.cwd(), tempDir);
 
 function AccountManagerSqlite(path) {
 	this.path = path;
@@ -40,11 +41,11 @@ AccountManagerSqlite.prototype.init = function(cbAfter) {
 	var me = this;
 
 	//make sure tmp dir exists
-	try { fs.mkdirSync(tmp_dir); } 
+	try { fs.mkdirSync(tempDir); } 
 	catch(err) { 
 		//ignore EEXIST
 		if (err.code != 'EEXIST') {
-			log.error({err: err, tmp_dir: tmp_dir}, 
+			log.error({err: err, tmp_dir: tempDir}, 
 				'app.init() failed. mkdirSync()');
 			cbAfter(err);
 			return;

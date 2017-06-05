@@ -21,12 +21,7 @@ var path = require('path');
 var _ = require('underscore');
 
 var express = require('express');
-
-/** globals **/
-global.config = global.config || {};
-global.config.sql_engine = global.config.sql_engine || 'sqlite'; //supported are: sqlite, mssql
-
-/*** end globals ***/
+var config = require('config');
 
 var AccountManager = require('./AccountManagerFactory.js').AccountManagerFactory;
 
@@ -40,15 +35,16 @@ var accounts;
 var controller;
 
 var accountConfig;
-if (global.config.sql_engine == 'sqlite') {
-	accountConfig = global.config.sqlite_data_dir;
 
-} else if (global.config.sql_engine == 'mssql') {
-	accountConfig = global.config.mssql_connection;
+if (config.sql.engine == 'sqlite') {
+	accountConfig = config.sql.dataDir;
+
+} else if (config.sql.engine == 'mssql') {
+	accountConfig = config.sql.connection;
 }
 
 app.init = function(options, cbAfter) {
-	log.info('app.init()...');
+	log.info({config: accountConfig}, 'app.init()...');
 
 	accounts = AccountManager.create(accountConfig);
 
@@ -86,16 +82,17 @@ function initRoutes(options) {
 	//uncaught exception handling 
 	app.use(function(err, req, res, next) {
 
-		log.error({req: req, err: err.message}, 'app.use...');
-		log.debug({err: err}, 'app.use');
+		log.debug({err: err}, 'app.use()...');
 
 		if (res.headersSent) {
 		    return next(err);
 		}
 
 		if (err.name === 'UnauthorizedError') {
+			log.warn({req: req, message: err.message}, 'app.use().');
 		    res.status(401).send({error: err.message});
 		} else {
+			log.error({req: req, err: err}, 'app.use().');
 			res.status(500).send({error: err.message});
 		}
 

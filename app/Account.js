@@ -75,9 +75,9 @@ Account.prototype.createDatabase = function(schemaData, options, cbResult) {
 
 			} else {
 				var err = new Error(util.format(
-					"Database %s exists and is not empty.", name
+					"Database '%s' exists and is not empty.", name
 				));
-				log.warn({err: err}, "Account.createDatabase()");
+				log.warn({message: err.message}, "Account.createDatabase()");
 				cbResult(err, null);
 			}	
 		});
@@ -118,9 +118,9 @@ Account.prototype.delDatabase = function(name, options, cbResult) {
 
 				} else {
 					var err = new Error(util.format(
-						"Database %s is not empty.", name
+						"Database '%s' is not empty.", name
 					));
-					log.warn({err: err}, "Account.delDatabase()");
+					log.warn({message: err.message}, "Account.delDatabase()");
 					cbResult(err, false);
 				}	
 			});
@@ -131,7 +131,7 @@ Account.prototype.delDatabase = function(name, options, cbResult) {
 		var err = new Error(util.format(
 			"Database %s not found.", name
 		));
-		log.warn({err: err}, "Account.delDatabase()");
+		log.warn({message: err.message}, "Account.delDatabase()");
 		cbResult(err, false);
 	}
 }

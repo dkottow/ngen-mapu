@@ -16,14 +16,7 @@
 
 var _ = require('underscore');
 var util = require('util');
-
-/*
-var FieldFactory = require('./FieldFactory.js').FieldFactory;
-var TableFactory = require('./TableFactory.js').TableFactory;
-
-var Field = FieldFactory.class();
-var Table = TableFactory.class();
-*/
+var config = require('config');
 
 var SqlHelper = require('./SqlHelperFactory.js').SqlHelperFactory.create();
 var Schema = require('./Schema.js').Schema;
@@ -32,8 +25,7 @@ var Field = require('./Field.js').Field;
 
 var log = require('./log.js').log;
 
-global.config = global.config || {};
-var rows_page = global.config.rows_page || 1000;
+var rows_page = config.sql.pageRows || 1000;
 
 var SqlBuilder = function(tableGraph) {
 	this.graph = tableGraph;

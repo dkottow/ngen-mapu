@@ -16,14 +16,14 @@
 
 var _ = require('underscore');
 var util = require('util');
-var log = require('./log.js').log;
-
 var path = require('path');
+var config = require('config');
+
+var log = require('./log.js').log;
 
 /**** sqlite *****/
 
-global.config = global.config || {};
-var sql_engine = global.config.sql_engine || 'sqlite';
+var sql_engine = config.sql.engine;
 
 var SqlHelperFactory = {
     Base: {

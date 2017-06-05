@@ -24,11 +24,6 @@ var _ = require('underscore');
 
 var program = require('commander');
 
-/** globals **/
-global.config = {
-	rows_page: 10000
-};
-
 /*** end globals ***/
 
 var logger = require('../log.js');

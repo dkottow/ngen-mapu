@@ -18,14 +18,15 @@ var _ = require('underscore');
 var fs = require('fs');
 var path = require('path');
 var crypto = require('crypto');
+var config = require('config');
 
 var Schema = require('./Schema.js').Schema;
 var Table = require('./Table.js').Table;
 
 var log = require('./log.js').log;
 
-global.config = global.config || {};
-var tmp_dir = global.config.tmp_dir || '.';
+var tempDir = config.get('tempDir');
+if ( ! path.isAbsolute(tempDir)) tempDir = path.join(process.cwd(), tempDir);
 
 function AccessControl(options) {
 	options = options || {};
@@ -33,7 +34,7 @@ function AccessControl(options) {
 }
 
 AccessControl.prototype.getNoncePath = function(nonce) {
-	var nonceDir = tmp_dir;
+	var nonceDir = tempDir;
 	return path.join(nonceDir, nonce + ".nonce");
 }
 

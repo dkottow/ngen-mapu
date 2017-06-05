@@ -28,6 +28,7 @@ var SqlHelper = require('./SqlHelperMssql.js').SqlHelperMssql;
 var log = require('../log.js').log;
 
 function AccountManagerMssql(config) {
+    log.debug({config: config}, 'AccountManagerMssql()...');
 	this.config = _.clone(config);
 	AccountManager.call(this);
 }

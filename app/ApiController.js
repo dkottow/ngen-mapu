@@ -16,12 +16,11 @@
 
 var _ = require('underscore');
 var util = require('util');
-
 var url = require('url');
-
 var express = require('express');
 var bodyParser = require('body-parser');
 var jwt = require('express-jwt');
+var config = require('config');
 
 var parser = require('./QueryParser.js');
 var AccessControl = require('./AccessControl.js').AccessControl;
@@ -31,8 +30,14 @@ var Table = require('./Table.js').Table;
 var log = require('./log.js').log;
 
 function sendError(req, res, err, code) {
-	log.error({req: req, code: code, err: err}, 'Controller.sendError()');
 	code = code || 500;
+	if (code >= 500) {
+		log.error({code: code, err: err, req: req}, 'Controller.sendError()');
+	} else {
+		log.warn({code: code, message: err.message, req: req}, 'Controller.sendError()');
+		log.debug({err: err}, 'Controller.sendError()');
+	}
+
 	res.status(code).send({error: err.message});
 }
 
@@ -60,8 +65,8 @@ Controller.prototype.initRoutes = function(options) {
 	if (this.auth) {
 
 		var auth_token = jwt({
-			  secret: new Buffer(process.env.AUTH0_CLIENT_SECRET, 'base64'),
-			  audience: process.env.AUTH0_CLIENT_ID,
+			  secret: new Buffer(config.auth0.clientSecret, 'base64'),
+			  audience: config.auth0.clientId,
 		}).unless({path: nonceRoutes});
 
 		this.router.use(auth_token);
@@ -478,17 +483,22 @@ Controller.prototype.requestNonce = function(req, res) {
 
 
 Controller.prototype.parseQueryParameters = function(req) {
-	var params = {};
-	_.each(req.query, function(v, k) {
-		if (k[0] == '$') {
-			var param = parser.parse(k + "=" + v);	
-			params[param.name] = param.value;
-		} else {
-			params[k] = v;
-		}
-	});
-	log.trace({params: params});
-	return params;
+	try {
+		var params = {};
+		_.each(req.query, function(v, k) {
+			if (k[0] == '$') {
+				var param = parser.parse(k + "=" + v);	
+				params[param.name] = param.value;
+			} else {
+				params[k] = v;
+			}
+		});
+		log.trace({params: params});
+		return { values: params };
+	} catch(err) {
+		err.message = err.message.replace(/\"/g, "'"); //pegjs errors enclose literals in double quotes
+		return { error: err };
+	}
 }
 
 Controller.prototype.nextUrl = function(req, offset) {
@@ -521,8 +531,12 @@ Controller.prototype.getRows = function(req, res, opts) {
 		}
 	
 		var params = me.parseQueryParameters(req);
+		if (params.error) {
+			sendError(req, res, params.error, 400);
+			return;			
+		}
 
-		var q = { filter: params['$filter'], fields: params['$select'] };
+		var q = { filter: params.values['$filter'], fields: params.values['$select'] };
 		var auth2 = me.access.filterQuery(path, q, req.user);
 		if (auth2.error) {
 			sendError(req, res, auth2.error, 401);
@@ -531,11 +545,11 @@ Controller.prototype.getRows = function(req, res, opts) {
 
 		path.db.all(path.table.name, {
 				filter: auth2.filter 
-				, fields: params['$select'] 
-				, order: params['$orderby'] 
-				, limit: params['$top'] 
-				, offset: params['$skip'] 
-				, debug: params['debug']	
+				, fields: params.values['$select'] 
+				, order: params.values['$orderby'] 
+				, limit: params.values['$top'] 
+				, offset: params.values['$skip'] 
+				, debug: params.values['debug']	
 			},
 	
 			function(err, result) { 
@@ -578,8 +592,12 @@ Controller.prototype.getObjs = function(req, res, opts) {
 		}
 
 		var params = me.parseQueryParameters(req);
+		if (params.error) {
+			sendError(req, res, params.error, 400);
+			return;			
+		}
 
-		var q = { filter: params['$filter'], fields: params['$select'] };
+		var q = { filter: params.values['$filter'], fields: params.values['$select'] };
 		var auth2 = me.access.filterQuery(path, q, req.user);
 		if (auth2.error) {
 			sendError(req, res, auth2.error, 401);
@@ -591,16 +609,16 @@ Controller.prototype.getObjs = function(req, res, opts) {
 		var orderObj = { field: 'id', order: 'asc' };
 		var orderBy = [ orderObj ];
 		
-		if (params['$orderby']) orderBy.concat(params['$orderby']);
+		if (params.values['$orderby']) orderBy.concat(params.values['$orderby']);
 
 		path.db.all(path.table.name, {
 				filter: auth2.filter 
-				, fields: params['$select'] 
+				, fields: params.values['$select'] 
 				, order: orderBy 
-				, limit: params['$top'] 
-				, offset: params['$skip'] 
-				, distinct: params['$distinct'] 
-				, debug: params['debug']	
+				, limit: params.values['$top'] 
+				, offset: params.values['$skip'] 
+				, distinct: params.values['$distinct'] 
+				, debug: params.values['debug']	
 			},
 	
 			function(err, result) { 
@@ -613,7 +631,7 @@ Controller.prototype.getObjs = function(req, res, opts) {
 				if (result.nextOffset) {
 					var i = result.rows.length - 1;
 					var lastId = result.rows[i].id;
-					var lastOffset = params['$skip'] ? params['$skip'] : 0;
+					var lastOffset = params.values['$skip'] ? params.values['$skip'] : 0;
 					while(--i >= 0) {
 						if (result.rows[i].id != lastId) {
 							result.rows.splice(i + 1);
@@ -666,12 +684,16 @@ Controller.prototype.getStats = function(req, res) {
 		}
 	
 		var params = me.parseQueryParameters(req);
+		if (params.error) {
+			sendError(req, res, params.error, 400);
+			return;			
+		}
 
 		//TODO add access control filter
 	
 		path.db.getStats(path.table.name, { 
-				filter: params['$filter'], 
-				fields: params['$select'] 
+				filter: params.values['$filter'], 
+				fields: params.values['$select'] 
 			}, 
 			function(err, result) {
 				if (err) {

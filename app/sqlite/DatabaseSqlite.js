@@ -18,13 +18,11 @@
 //var sqlite3 = require('sqlite3');
 var sqlite3 = require('sqlite3').verbose();
 var _ = require('underscore');
-
 var fs = require('fs');
 var path = require('path');
 var util = require('util');
-
 var tmp = require('tmp'); //tmp filenames
-
+var config = require('config'); //tmp filenames
 
 var Schema = require('../Schema.js').Schema;
 var SchemaChange = require('../SchemaChange.js').SchemaChange;
@@ -37,8 +35,8 @@ var SqlHelper = require('./SqlHelperSqlite.js').SqlHelperSqlite;
 
 var log = require('../log.js').log;
 
-global.config = global.config || {};
-var tmp_dir = global.config.tmp_dir || '.';
+var tempDir = config.tempDir;
+if (! path.isAbsolute(tempDir)) tempDir = path.join(process.cwd(), tempDir);
 
 var DatabaseSqlite = function(dbFile) 
 {
@@ -602,7 +600,7 @@ DatabaseSqlite.prototype.writeSchema = function(cbAfter) {
 
 		var createSQL = this.sqlBuilder.createSQL(this.schema);
 
-		var tmpFile = path.join(tmp_dir,
+		var tmpFile = path.join(tempDir,
 						tmp.tmpNameSync({template: 'dl-XXXXXX.sqlite'}));
 
 		var db = new sqlite3.Database(tmpFile 

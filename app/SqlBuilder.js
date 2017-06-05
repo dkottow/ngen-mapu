@@ -51,13 +51,13 @@ SqlBuilder.prototype.selectSQL
 		, limit: limit, offfset: offset
 	}, "SqlBuilder.selectSQL");
 	
-	offset = (offset | 0);
-	limit = limit || rows_page;
 	var s = {};
 
 	s.fields = this.sanitizeFieldClauses(table, fieldExpr);
 	s.filters = this.sanitizeFieldClauses(table, filterClauses);
 	s.orders = this.sanitizeFieldClauses(table, orderClauses);
+	s.offset = (offset | 0);
+	s.limit = limit || rows_page;
 	
 	var query = this.querySQL(table, s.fields, s.filters);
 
@@ -70,7 +70,7 @@ SqlBuilder.prototype.selectSQL
 
 	var selectSQL = 'SELECT * FROM (' + query.sql + ') AS T '
 					+ orderSQL
-					+ SqlHelper.OffsetLimitSQL(offset, limit);
+					+ SqlHelper.OffsetLimitSQL(s.offset, s.limit);
 
 	var countSQL = 'SELECT COUNT(*) as count FROM (' + query.sql + ') AS C';
 

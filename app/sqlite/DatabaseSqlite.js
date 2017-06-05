@@ -207,10 +207,9 @@ DatabaseSqlite.prototype.all = function(tableName, options, cbResult) {
 								query: query
 							};
 
-							var expectedCount = countRows[0].count - offset;
-
+							var expectedCount = result.count - sql.sanitized.offset;
 							if (rows.length < expectedCount) {
-								result.nextOffset = offset + limit;
+								result.nextOffset = sql.sanitized.offset + sql.sanitized.limit;
 							}
 
 							if (debug) {

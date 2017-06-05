@@ -26,7 +26,7 @@ var program = require('commander');
 
 /** globals **/
 global.config = {
-	rows_page: 1000
+	rows_page: 10000
 };
 
 /*** end globals ***/
@@ -37,7 +37,7 @@ var log = logger.log;
 
 var parser = require('../QueryParser.js');
 var Table = require('../Table.js').Table;
-var Database = require('../Database.js').Database;
+var Database = require('../sqlite/DatabaseSqlite.js').DatabaseSqlite;
 
 program
 	.arguments('<db-file> <table>')
@@ -73,7 +73,7 @@ program
 
 		var db = new Database(dbFile);
 
-		db.init(function(err) {
+		db.readSchema(function(err) {
 			if (err) {
 				console.error(err);
 				return;

@@ -164,12 +164,11 @@ DatabaseMssql.prototype.all = function(tableName, options, cbResult) {
 			resultAll.count = result.recordset[0].count;
 			resultAll.totalCount = result.recordset[1].count;
 
-			var expectedCount = result.recordset[0].count - offset;
-
+			var expectedCount = resultAll.count - sql.sanitized.offset;
 			if (resultAll.rows.length < expectedCount) {
-				resultAll.nextOffset = offset + limit;
-			}
-
+				resultAll.nextOffset = sql.sanitized.offset + sql.sanitized.limit;
+			}			
+			
 			if (debug) {
 				resultAll.sql = sql.query;
 				resultAll.sqlParams = sql.params;

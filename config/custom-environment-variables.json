@@ -1,0 +1,12 @@
+{
+    "sql": {
+        "connection": {
+            "password": "DL_MSSQL_PASSWORD"
+        }
+    },
+    "auth0": {
+        "clientSecret": "DL_AUTH0_CLIENT_SECRET",
+        "apiToken": "DL_AUTH0_API_TOKEN",
+        "refreshToken": "DL_AUTH0_REFRESH_TOKEN"
+    }
+}

@@ -1,0 +1,15 @@
+{
+    "auth": false,
+     "sql": {
+        "engine": "mssql",
+        "connection": {
+            "server": "azwu-test.database.windows.net",
+            "user": "Xidvv3jyCxQcSjbQYpf9zbiYv5MqE8Vp",
+            "password": "tI27k7i06mEUVh4TAxoavL$ErZwH@c49", //supply me through env var NODE_CONFIG
+            "domain": null, //AD user domain
+            "options": {
+                "encrypt": true // Use this if you're on Windows Azure
+            }            
+        }
+    }
+}

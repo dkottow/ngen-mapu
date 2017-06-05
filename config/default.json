@@ -1,0 +1,47 @@
+{
+    "auth"  : true,
+
+	"ip"    : "localhost",
+	"port"  : 3000, 
+
+    "tempDir"  : "tmp",
+
+    "sql"   : {
+        "engine"    : "sqlite",
+        "dataDir"   : "data",
+        "pageRows"  : 1000,
+        "connection": {
+            "server": "localhost\\HOLEBASE_SI",
+            "user": "dkottow",
+            "domain": "GOLDER", //AD user domain
+            "password": null
+        }
+    },
+
+    "logs"  : {
+        "transports": [
+            {
+                "console": {
+                    "level": "debug",
+                    "colorize": true
+                },
+
+                "file": {
+                    "filename": "logs/donkey-error-log-json",
+                    "level": "warn",
+                    "timestamp": true,
+                    "tailable": true,
+                    "maxFiles": 10,
+                    "maxsize": 1000000
+                }
+            }
+        ]
+    },
+
+    "auth0": {
+        "domain": "dkottow.auth0.com",
+        "connection": "DonkeyliftConnection",
+        "clientId": "rPQ7TEsyBPy5z0z3bOY6NAjLBwsp8y5d"
+    }
+    
+}

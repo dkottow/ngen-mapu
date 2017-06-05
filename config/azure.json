@@ -1,11 +1,24 @@
 {
     "auth": false,
+
+    "logs"  : {
+        "transports": [
+            {
+                "console": {
+                    "level": "debug",
+                    "colorize": false
+                }
+            }
+        ]
+    },
+    
      "sql": {
-        "engine": "mssql",
+        "engine"    : "mssql",
+        "pageRows"  : 5000,
         "connection": {
             "server": "azwu-test.database.windows.net",
-            "user": "Xidvv3jyCxQcSjbQYpf9zbiYv5MqE8Vp",
-            "password": "tI27k7i06mEUVh4TAxoavL$ErZwH@c49", //supply me through env var NODE_CONFIG
+            "user"  : "Xidvv3jyCxQcSjbQYpf9zbiYv5MqE8Vp",
+            "password": null, //supply me through env var DL_MSSQL_PASSWORD
             "domain": null, //AD user domain
             "options": {
                 "encrypt": true // Use this if you're on Windows Azure

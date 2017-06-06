@@ -20,29 +20,32 @@ var config = require('config');
 var winston = require('winston');
 require('winston-azure'); //add winston-azure
 
+var winstonLogger;
 function init() {
 
 	if ( ! global.init_log) {
+
+		winstonLogger = new (winston.Logger)({ transports: [] });
 
 		_.each(config.logs.transports, function(logger) {
 			//set some dynamic attrs
 			if (logger.console) {
 				logger.console.prettyPrint = prettyPrint;
-				winston.loggers.add('dl', logger);
+				winstonLogger.add(winston.transports.Console, logger.console);
 
 			} else if (logger.file && ! path.isAbsolute(logger.file.filename)) {
 				logger.file.filename = path.join(process.cwd(), logger.file.filename);
-				winston.loggers.add('dl', logger);
+				winstonLogger.add(winston.transports.File, logger.file);
 
 			} else if (logger.azure) {
                 logger.azure.partition = require('os').hostname();				
-				winston.loggers.add(winston.transports.Azure, logger.azure);
+				winstonLogger.add(winston.transports.Azure, logger.azure);
 			}
 		});
 
-		winston.loggers.get('dl').rewriters.push(rewriteRequest);
-		winston.loggers.get('dl').rewriters.push(rewriteError);
-		winston.loggers.get('dl').rewriters.push(rewriteConfig);
+		winstonLogger.rewriters.push(rewriteRequest);
+		winstonLogger.rewriters.push(rewriteError);
+		winstonLogger.rewriters.push(rewriteConfig);
 
 		global.init_log = true;
 	}
@@ -52,9 +55,9 @@ var log = {
 
 	log: function(level, arg1, arg2) {
 		if (arg2) {
-			winston.loggers.get('dl').log(level, arg2, arg1);
+			winstonLogger.log(level, arg2, arg1);
 		} else {
-			winston.loggers.get('dl').log(level, arg1);
+			winstonLogger.log(level, arg1);
 		}
 	},
 

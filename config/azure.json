@@ -32,6 +32,8 @@
             "options": {
                 "encrypt": true // Use this if you're on Windows Azure
             }            
-        }
+        },
+
+        "elasticPool": "azwu-test-d365" //leave empty if no pool
     }
 }

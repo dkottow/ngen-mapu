@@ -1,5 +1,6 @@
 
 var _ = require('underscore');
+var config = require('config');
 
 var DatabaseFactory = require('../app/DatabaseFactory').DatabaseFactory;
 var Database = DatabaseFactory.getClass();
@@ -47,7 +48,7 @@ function createDatabase(name, options, cbAfter) {
 
 	var config;
 
-	if (global.config.sql_engine == 'sqlite') {
+	if (config.sql.engine == 'sqlite') {
 		var testDataDir = "test/data/sqlite/";
 		config = testDataDir + name + ".sqlite";
 		log.debug({config: config}, 'creating sqlite db');
@@ -58,7 +59,7 @@ function createDatabase(name, options, cbAfter) {
 			return;
 		});
 
-	} else if (global.config.sql_engine == 'mssql') {
+	} else if (config.sql.engine == 'mssql') {
 		config = _.clone(global.config.mssql_connection);
 		config.database = 'test#' + name;
 

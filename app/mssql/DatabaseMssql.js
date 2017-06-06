@@ -22,6 +22,7 @@ var _ = require('underscore');
 
 var util = require('util');
 var tmp = require('tmp'); //tmp database names
+var config = require('config'); 
 
 var Schema = require('../Schema.js').Schema;
 var SchemaChange = require('../SchemaChange.js').SchemaChange;
@@ -935,17 +936,20 @@ DatabaseMssql.prototype.writeSchema = function(cbAfter) {
 		log.debug('DatabaseMssql.writeSchema..');
 		var dbTemp = tmp.tmpNameSync({ template: SqlHelper.Schema.fullName('tmp', 'XXXXXX') });
 
-		var config = _.clone(this.config);
-		config.database = 'master'; //connect to master
-		config.requestTimeout = 100*1000; //100s - create db can take some time..
+		var dbConfig = _.clone(this.config);
+		dbConfig.database = 'master'; //connect to master
+		dbConfig.requestTimeout = 100*1000; //100s - create db can take some time..
 
 		var transaction;	
 		var doRollback;
-		var conn = new mssql.ConnectionPool(config);
+		var conn = new mssql.ConnectionPool(dbConfig);
 
 		conn.connect().then(err => {
 			log.debug('create database ' + dbTemp);
 			var sql = util.format('CREATE DATABASE [%s]', dbTemp);
+			if (config.sql.elasticPool && config.sql.elasticPool.length > 0) {
+				sql += util.format(' (SERVICE_OBJECTIVE = ELASTIC_POOL(name = [%s]))', config.sql.elasticPool);
+			}
 			//TODO? add pricing tier 
 			//sql = sql + ' (SERVICE_OBJECTIVE = ELASTIC_POOL(name = [S3M100]))'; 
 			return conn.request().batch(sql);
@@ -956,8 +960,8 @@ DatabaseMssql.prototype.writeSchema = function(cbAfter) {
 
 		}).then(err => {
 			log.debug('then connect to ' + dbTemp);
-			config.database = dbTemp;
-			conn = new mssql.ConnectionPool(config);
+			dbConfig.database = dbTemp;
+			conn = new mssql.ConnectionPool(dbConfig);
 			return conn.connect();
 
 		}).then(err => {
@@ -1003,7 +1007,7 @@ DatabaseMssql.prototype.writeSchema = function(cbAfter) {
 
 		}).then(err => {
 			log.debug('then connect to master');
-			config.database = 'master';
+			dbConfig.database = 'master';
 			return conn.connect();
 
 		}).then(result => {	
@@ -1030,7 +1034,7 @@ DatabaseMssql.prototype.writeSchema = function(cbAfter) {
 					return conn.close();
 
 				}).then(() => {
-					DatabaseMssql.remove(config, dbTemp, function() { cbAfter(err); });	
+					DatabaseMssql.remove(dbConfig, dbTemp, function() { cbAfter(err); });	
 
 				}).catch(err => {
 					log.error({err: err}, "Database.writeSchema() rollback exception.");

@@ -6,21 +6,6 @@ var assert = require('assert')
 	, path = require('path')
 	, util = require('util');
 
-global.config = global.config || {},
-global.config.sql_engine = 'sqlite';
-//global.config.sql_engine = 'mssql';
-
-global.config.data_dir = path.join(process.cwd(), 'data');
-
-global.config.mssql_connection = {
-	user: 'dkottow', 
-	password: 'G0lderPass.72', 
-	domain: 'GOLDER',
-	server: 'localhost\\HOLEBASE_SI', 
-};
-
-//global.config = { loglevel : 'info' };
-
 var DatabaseFactory = require('../app/DatabaseFactory').DatabaseFactory;
 var Database = DatabaseFactory.getClass();
 

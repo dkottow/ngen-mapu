@@ -32,9 +32,9 @@ var log = require('./log.js').log;
 function sendError(req, res, err, code) {
 	code = code || 500;
 	if (code >= 500) {
-		log.error({code: code, err: err, req: req}, 'Controller.sendError()');
+		log.error({code: code, err: err, req: req}, err.message);
 	} else {
-		log.warn({code: code, err: err, req: req}, 'Controller.sendError()');
+		log.warn({code: code, err: err, req: req}, err.message);
 	}
 
 	res.status(code).send({error: err.message});

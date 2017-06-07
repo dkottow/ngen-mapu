@@ -89,10 +89,10 @@ function initRoutes(options) {
 		}
 
 		if (err.name === 'UnauthorizedError') {
-			log.warn({req: req, err: err}, 'app.use().');
+			log.warn({req: req, err: err}, err.message);
 		    res.status(401).send({error: err.message});
 		} else {
-			log.error({req: req, err: err}, 'app.use().');
+			log.error({req: req, err: err}, err.message);
 			res.status(500).send({error: err.message});
 		}
 

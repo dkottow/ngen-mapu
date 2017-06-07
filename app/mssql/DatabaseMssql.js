@@ -326,13 +326,6 @@ DatabaseMssql.prototype.readSchema = function(cbAfter) {
 		}).then(result => {
 			//console.dir(result.recordset);
 
-			//handle empty schema
-			if (result.recordset.length == 0) {
-				me.setSchema(schemaProps);
-				cbAfter();
-				return;
-			}
-
 			var tables = _.map(result.recordset, function(r) {
 				var table = { 
 					name: r.name,

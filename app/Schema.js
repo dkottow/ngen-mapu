@@ -60,7 +60,7 @@ Schema.prototype.init = function(schemaData) {
 		
 		schemaData = schemaData || Schema.EMPTY;
 		
-		var tables = _.map(schemaData.tables, function(tableDef) {
+		var tables = _.map(schemaData.tables || [], function(tableDef) {
 			return new Table(tableDef);
 		});
 

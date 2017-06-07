@@ -482,22 +482,23 @@ Controller.prototype.requestNonce = function(req, res) {
 
 
 Controller.prototype.parseQueryParameters = function(req) {
-	try {
 		var params = {};
 		_.each(req.query, function(v, k) {
-			if (k[0] == '$') {
-				var param = parser.parse(k + "=" + v);	
-				params[param.name] = param.value;
-			} else {
-				params[k] = v;
+			try {
+				if (k[0] == '$') {
+					var param = parser.parse(k + "=" + v);	
+					params[param.name] = param.value;
+				} else {
+					params[k] = v;
+				}
+			} catch(err) {
+				var peg = err.message.replace(/\"/g, "'"); //pegjs errors enclose literals in double quotes
+				err.message = util.format('Error parsing %s = %s. %s', k, v, peg);  
+				return { error: err };
 			}
 		});
 		log.trace({params: params});
 		return { values: params };
-	} catch(err) {
-		err.message = err.message.replace(/\"/g, "'"); //pegjs errors enclose literals in double quotes
-		return { error: err };
-	}
 }
 
 Controller.prototype.nextUrl = function(req, offset) {

@@ -23,8 +23,7 @@ var config = require('config');
 
 var log = require('./app/log.js').log;
 
-log.info("*********** DONKEYLIFT RESET DONKEYLIFT ***********.");
-log.info({config: config});
+log.warn({config: config}, '***** reset *****');
 
 var app = require('./app/app.js').app;
 

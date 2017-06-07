@@ -34,8 +34,7 @@ function sendError(req, res, err, code) {
 	if (code >= 500) {
 		log.error({code: code, err: err, req: req}, 'Controller.sendError()');
 	} else {
-		log.warn({code: code, message: err.message, req: req}, 'Controller.sendError()');
-		log.debug({err: err}, 'Controller.sendError()');
+		log.warn({code: code, err: err, req: req}, 'Controller.sendError()');
 	}
 
 	res.status(code).send({error: err.message});

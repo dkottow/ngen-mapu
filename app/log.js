@@ -83,12 +83,14 @@ var log = {
 }
 
 var rewriteError = function(level, msg, obj) {
+	if (level == 'error') return obj;
+
 	if (obj && obj.err) {
 		obj.err = {
 			name: obj.err.name
 			, message: obj.err.message
 			, status: obj.err.status
-			, stack: obj.err.stack
+			, stack: (obj.err.stack || '').substr(0,400)
 		}
 	}
 	return obj;
@@ -112,6 +114,7 @@ var rewriteConfig = function(level, msg, obj) {
 }
 
 var rewriteRequest = function(level, msg, obj) {
+	if (level == 'error') return obj;
 
 	if (obj && obj.req) {
 		var user;

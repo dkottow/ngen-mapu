@@ -524,7 +524,6 @@ DatabaseMssql.prototype.insert = function(tableName, rows, options, cbResult) {
 
 			var doInsert = function(row, prevResult) {
 				if (prevResult) {
-					log.trace(JSON.stringify(prevResult) + ' res insert');
 					rowIds.push(prevResult.output.__id__);
 				}
 

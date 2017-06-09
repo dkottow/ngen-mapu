@@ -114,8 +114,6 @@ var rewriteConfig = function(level, msg, obj) {
 }
 
 var rewriteRequest = function(level, msg, obj) {
-	if (level == 'error') return obj;
-
 	if (obj && obj.req) {
 		var user;
 		if (obj.req.user) {
@@ -144,7 +142,7 @@ init();
 
 module.exports = { 
 	log: log,
-	winston: winston
+	logger: winstonLogger
 };
 
 

@@ -1,0 +1,30 @@
+{
+    "auth": false,
+
+    "logs"  : {
+        "transports": [
+            {
+                "console": {
+                    "level": "debug",
+                    "colorize": true
+                }
+            }
+        ]
+    },
+    
+     "sql": {
+        "engine"    : "mssql",
+        "pageRows"  : 1000,
+        "connection": {
+            "server": "localhost\\HOLEBASE_SI",
+            "user"  : "dkottow",
+            "password": null, //supply me through env var DL_MSSQL_PASSWORD
+            "domain": "GOLDER", //AD user domain
+            "options": {
+                "encrypt": false // Use this if you're on Windows Azure
+            }            
+        },
+
+        "elasticPool": "" //leave empty if no pool
+    }
+}

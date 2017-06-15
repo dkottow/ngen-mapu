@@ -308,7 +308,6 @@ Table.prototype.rowAliasView = function(idx) {
 	return Table.rowAliasView(this.name, idx); 
 }
 
-Table.prototype.viewName = function() { return 'v_' + this.name; }
 Table.prototype.ftsName = function() { return 'fts_' + this.name; }
 
 

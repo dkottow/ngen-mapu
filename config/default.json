@@ -1,5 +1,5 @@
 {
-    "auth"  : true,
+    "auth"  : false,
 
 	"ip"    : "localhost",
 	"port"  : 3000, 

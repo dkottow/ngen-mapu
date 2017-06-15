@@ -90,7 +90,7 @@ TableGraph.prototype.minimumSpanningTree = function() {
 		tree = graphutil.DirectTreeEdgesAsGraph(tree, this.graph);
 		result.push(tree);
 
-	} else {
+	} else if (components.length > 1) {
 		log.debug("Graph is not connected. " + components.length);
 
 		//build trees out of components

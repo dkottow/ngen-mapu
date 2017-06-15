@@ -166,11 +166,13 @@ SqlBuilder.prototype.sanitizeFieldClauses = function(table, fieldClauses) {
 	return result;		
 }
 
-SqlBuilder.prototype.querySQL = function(table, fields, filterClauses) {
+SqlBuilder.prototype.querySQL = function(table, fields, filters) {
 
-	var joinSQL = this.joinSQL(table, fields, filterClauses);
-	var filterSQL = this.filterSQL(table, filterClauses);
-	var fieldSQL = this.fieldSQL(table, fields);
+	var fkGroups = this.groupForeignKeys(fields, filters);
+
+	var joinSQL = this.joinSQL(table, fields, filters, fkGroups);
+	var filterSQL = this.filterSQL(table, filters, fkGroups);
+	var fieldSQL = this.fieldSQL(table, fields, fkGroups);
 
 	var tables = [table.name].concat(joinSQL.tables);
 	var clauses = ['1=1'].concat(joinSQL.clauses.concat(filterSQL.clauses));
@@ -276,14 +278,14 @@ SqlBuilder.prototype.createRowAliasViewSQL = function(table) {
 	return sql;
 }
 
-SqlBuilder.prototype.joinSQL = function(fromTable, fields, filterClauses) {
+SqlBuilder.prototype.joinSQL = function(fromTable, fields, filterClauses, fkGroups) {
 
 	var result = {
 		tables: [],
 		clauses: []
 	};
 
-	var rowAliasSQL = this.joinRowAliasSQL(fields, filterClauses);
+	var rowAliasSQL = this.joinRowAliasSQL(fields, filterClauses, fkGroups);
 	result.tables = result.tables.concat(rowAliasSQL.tables);
 	result.clauses = result.clauses.concat(rowAliasSQL.clauses);
 
@@ -303,15 +305,16 @@ SqlBuilder.prototype.joinSQL = function(fromTable, fields, filterClauses) {
 	return result;
 }
 
-SqlBuilder.prototype.joinRowAliasSQL = function(fieldClauses, filterClauses) {
+SqlBuilder.prototype.joinRowAliasSQL = function(fieldClauses, filterClauses, fkGroups) {
 	log.trace({ fieldClauses: fieldClauses, filterClauses: filterClauses }
 			, 'SqlBuilder.joinRowAliasSQL()...');
 
 	var result = { tables: [], clauses: [] };
+	var tables = {};
 
-	var fkGroups = this.groupForeignKeys(fieldClauses);
+	var clauses = fieldClauses.concat(filterClauses);
 
-	_.each(fieldClauses, function(fc) {
+	_.each(clauses, function(fc) {
 		var table = this.graph.table(fc.table);
 		var fk = _.find(table.foreignKeys(), function(fk) {
 			return fk.refName() == fc.field;
@@ -319,19 +322,23 @@ SqlBuilder.prototype.joinRowAliasSQL = function(fieldClauses, filterClauses) {
 
 		if (fc.field == Field.ROW_ALIAS) {
 			var rowAliasSQL = table.rowAliasSQL();
-			result.tables.push(rowAliasSQL.table); 		
-			result.clauses.push(rowAliasSQL.clause); 		
+			if ( ! tables[rowAliasSQL.table] ) {
+				result.tables.push(rowAliasSQL.table); 		
+				result.clauses.push(rowAliasSQL.clause); 		
+				tables[rowAliasSQL.table] = rowAliasSQL.table;
+			}
 
 		} else if (fk) {
-			var idx = fkGroups[fk.fk_table].indexOf(fc) + 1;
+			var idx = fkGroups[fk.fk_table].indexOf(fc.field) + 1;
 			var ref = table.fkAliasSQL(fk, idx);
 			var refTable = util.format('%s AS %s', ref.table, ref.alias); 
-			result.tables.push(refTable); 		
-			result.clauses.push(ref.clause); 		
+			if ( ! tables[refTable] ) {
+				result.tables.push(refTable); 		
+				result.clauses.push(ref.clause); 		
+				tables[refTable] = refTable;
+			}
 		}
 	}, this);
-
-	//TODO filterClauses
 
 	log.trace({ result: result }, '...SqlBuilder.joinRowAliasSQL()');
 	return result;
@@ -389,22 +396,37 @@ SqlBuilder.prototype.filterToParams = function(filter)
 	});
 }
 
-SqlBuilder.prototype.filterSQL = function(fromTable, filterClauses) {
+SqlBuilder.prototype.filterSQL = function(fromTable, filterClauses, fkGroups) {
 
 	var me = this;
 	var sqlClauses = [];
 	var sqlParams = [];
 
-	_.each(filterClauses, function(filter) {
-		var table = me.graph.table(filter.table);
 
-		var field;
+
+	_.each(filterClauses, function(filter) {
+
 		var fromFieldQN;
-		if (_.contains(table.refFields(), filter.field)) {
-			//TODO this fails for ref fields from tables different than fromTable
-			fromFieldQN = SqlHelper.EncloseSQL(filter.field);
+
+		var table = me.graph.table(filter.table);
+		var fk = _.find(table.foreignKeys(), function(fk) {
+			return fk.refName() == filter.field;
+		});
+
+		if (filter.field == Field.ROW_ALIAS) {
+			//var idx = fkGroups[fc.table].indexOf(fc.field) + 1;
+			fromFieldQN = util.format('%s.%s',
+					table.rowAliasView(), SqlHelper.EncloseSQL(filter.field));
+
+		} else if (fk) {
+			var idx = fkGroups[fk.fk_table].indexOf(filter.field) + 1;
+			fromFieldQN =util.format('%s.%s',
+					Table.rowAliasView(fk.fk_table, idx), 
+					SqlHelper.EncloseSQL(Field.ROW_ALIAS));
+
 		} else {
-			fromFieldQN = util.format('%s.%s', table.name, SqlHelper.EncloseSQL(filter.field));
+			fromFieldQN =util.format('%s.%s',
+					filter.table, SqlHelper.EncloseSQL(filter.field));
 		}
 
 		var comparatorOperators = {
@@ -549,7 +571,7 @@ SqlBuilder.prototype.joinSearchSQL = function(filterClauses) {
 	}
 }
 
-SqlBuilder.prototype.groupForeignKeys = function(fieldClauses) {
+SqlBuilder.prototype.groupForeignKeys = function(fieldClauses, filterClauses) {
 
 	var refGroups = {};
 
@@ -562,11 +584,30 @@ SqlBuilder.prototype.groupForeignKeys = function(fieldClauses) {
 
 		if (fc.field == Field.ROW_ALIAS) {
 			refGroups[fc.table] = refGroups[fc.table] || [];
-			refGroups[fc.table].push(fc);
+			refGroups[fc.table].push(fc.field);
 
 		} else if (fk) {
 			refGroups[fk.fk_table] = refGroups[fk.fk_table] || [];
-			refGroups[fk.fk_table].push(fc);
+			refGroups[fk.fk_table].push(fc.field);
+		}
+	}, this);
+
+	_.each(filterClauses, function(fc) {
+
+		var table = this.graph.table(fc.table);	
+		var fk = _.find(table.foreignKeys(), function(fk) {
+			return fk.refName() == fc.field;
+		});
+
+		if (fc.field == Field.ROW_ALIAS) {
+			refGroups[fc.table] = refGroups[fc.table] || [];
+			if (refGroups[fc.table].indexOf(fc.field) < 0)
+				refGroups[fc.table].push(fc.field);
+
+		} else if (fk) {
+			refGroups[fk.fk_table] = refGroups[fk.fk_table] || [];
+			if (refGroups[fk.fk_table].indexOf(fc.field) < 0)
+				refGroups[fk.fk_table].push(fc.field);
 		}
 	}, this);
 
@@ -577,9 +618,7 @@ SqlBuilder.prototype.groupForeignKeys = function(fieldClauses) {
 	return refGroups;
 }
 
-SqlBuilder.prototype.fieldSQL = function(table, fieldClauses) {
-
-	var fkGroups = this.groupForeignKeys(fieldClauses);
+SqlBuilder.prototype.fieldSQL = function(table, fieldClauses, fkGroups) {
 
 	var result = _.map(fieldClauses, function(fc) {
 		
@@ -589,12 +628,12 @@ SqlBuilder.prototype.fieldSQL = function(table, fieldClauses) {
 		});
 
 		if (fc.field == Field.ROW_ALIAS) {
-			var idx = fkGroups[fc.table].indexOf(fc) + 1;
+			//var idx = fkGroups[fc.table].indexOf(fc.field) + 1;
 			return util.format('%s.%s AS %s',
 					table.rowAliasView(), SqlHelper.EncloseSQL(fc.field), SqlHelper.EncloseSQL(fc.alias));
 
 		} else if (fk) {
-			var idx = fkGroups[fk.fk_table].indexOf(fc) + 1;
+			var idx = fkGroups[fk.fk_table].indexOf(fc.field) + 1;
 			return util.format('%s.%s AS %s',
 					Table.rowAliasView(fk.fk_table, idx), 
 					SqlHelper.EncloseSQL(Field.ROW_ALIAS), 

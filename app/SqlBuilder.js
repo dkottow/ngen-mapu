@@ -60,7 +60,7 @@ SqlBuilder.prototype.selectSQL
 	}
 	var orderSQL = this.orderSQL(table, s.orders);
 
-	var selectSQL = 'SELECT * FROM (' + query.sql + ') AS S '
+	var selectSQL = 'SELECT * FROM (' + query.sql + ') AS T '
 					+ orderSQL
 					+ SqlHelper.OffsetLimitSQL(s.offset, s.limit);
 
@@ -173,15 +173,11 @@ SqlBuilder.prototype.querySQL = function(table, fields, filterClauses) {
 	var fieldSQL = this.fieldSQL(table, fields);
 
 	var tables = [table.name].concat(joinSQL.tables);
+	var clauses = ['1=1'].concat(joinSQL.clauses.concat(filterSQL.clauses));
 
-	var clauses = ['1=1'].concat(joinSQL.clauses);
-	var innerSelectSQL = 'SELECT DISTINCT ' + fieldSQL 
+	var selectSQL = 'SELECT DISTINCT ' + fieldSQL 
 					+ ' FROM ' + tables.join(', ')
 					+ ' WHERE ' + clauses.join(' AND ');
-
-	clauses = ['1=1'].concat(filterSQL.clauses);
-	var selectSQL = 'SELECT * FROM (' + innerSelectSQL + ') AS Q'
-				+ ' WHERE ' + clauses.join(' AND ');
 
 	return {
 		'sql': selectSQL, 
@@ -403,7 +399,13 @@ SqlBuilder.prototype.filterSQL = function(fromTable, filterClauses) {
 		var table = me.graph.table(filter.table);
 
 		var field;
-		var fromFieldQN = SqlHelper.EncloseSQL(filter.alias);
+		var fromFieldQN;
+		if (_.contains(table.refFields(), filter.field)) {
+			//TODO this fails for ref fields from tables different than fromTable
+			fromFieldQN = SqlHelper.EncloseSQL(filter.field);
+		} else {
+			fromFieldQN = util.format('%s.%s', table.name, SqlHelper.EncloseSQL(filter.field));
+		}
 
 		var comparatorOperators = {
 			'eq' : '=', 

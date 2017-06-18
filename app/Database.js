@@ -17,7 +17,9 @@
 var _ = require('underscore');
 
 var util = require('util');
+var Papa = require('papaparse');
 
+var Table = require('./Table.js').Table;
 var Schema = require('./Schema.js').Schema;
 var SchemaChange = require('./SchemaChange.js').SchemaChange;
 
@@ -252,5 +254,76 @@ Database.prototype.patchSchema = function(patches, cbResult) {
 	}
 }
 
+Database.prototype.allSanitizeOptions = function(options) {
+	options = typeof options == 'object' ? options : {};		
+
+	options.filter = options.filter || [];
+	options.fields = options.fields || Table.ALL_FIELDS; 
+	options.order = options.order || [];
+	options.limit = options.limit;
+	options.format = options.format || 'json';
+
+	return options;
+}
+
+Database.prototype.allSQL = function(tableName, options) {
+
+	options = this.allSanitizeOptions(options);
+	var table = this.table(tableName);
+
+	log.trace(options.fields + " from " + table.name 
+			+ " filtered by " + util.inspect(options.filter));
+
+	var sql = this.sqlBuilder.selectSQL(
+				table, options.fields, options.filters, 
+				options.order, options.limit, options.offset);
+
+	log.debug({sql: sql.query}, "Database.allSQL()");
+	log.trace({sql: sql}, "Database.allSQL()");
+
+	return sql;	
+}
+
+Database.prototype.allResult = function(tableName, rows, countRows, sql, options) {
+
+	options = this.allSanitizeOptions(options);		
+
+	var query = {
+		table : tableName
+		, select: options.fields
+		, filter : options.filters
+		, orderby: options.order
+		, top: options.limit
+		, skip: options.offset
+		, format: options.format 
+	};
+
+
+	if (options.format == 'csv') {
+		return Papa.unparse(rows);
+	}	
+
+	//json
+
+	var result = { 
+		rows: rows, 
+		count: countRows[0].count,
+		totalCount: countRows[1].count,
+		query: query
+	};
+
+	var expectedCount = result.count - sql.sanitized.offset;
+	if (rows.length < expectedCount) {
+		result.nextOffset = sql.sanitized.offset + sql.sanitized.limit;
+	}
+
+	if (options.debug) {
+		result.sql = sql.query;
+		result.sqlParams = sql.params;
+	}		
+
+	log.debug({result: result}, "...Database.allResult()");
+	return result;
+}
 
 exports.Database = Database;

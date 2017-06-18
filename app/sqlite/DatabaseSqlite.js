@@ -137,41 +137,12 @@ DatabaseSqlite.prototype.getStats = function(tableName, options, cbResult) {
 }	
 
 DatabaseSqlite.prototype.all = function(tableName, options, cbResult) {
-
+	var me = this;
 	log.trace("Database.all()...");
 	try {
 
-		var table = this.table(tableName);
-
 		cbResult = arguments[arguments.length - 1];	
-		options = typeof options == 'object' ? options : {};		
-
-		var filterClauses = options.filter || [];
-		var fields = options.fields || Table.ALL_FIELDS; 
-		var order = options.order || [];
-		var limit = options.limit;
-		var offset = options.offset;
-
-		var query = {
-			table : tableName
-			, select: fields
-			, filter : filterClauses
-			, orderby: order
-			, top: limit
-			, skip: offset 
-		};
-
-		var debug = options.debug || false;
-
-		log.trace(fields + " from " + table.name 
-				+ " filtered by " + util.inspect(filterClauses));
-
-		var sql = this.sqlBuilder.selectSQL(
-					table, fields, filterClauses, 
-					order, limit, offset);
-
-		log.debug({sql: sql.query}, "Database.all()");
-		log.trace({sql: sql}, "Database.all()");
+		var sql = this.allSQL(tableName, options);
 
 		var params = _.pluck(sql.params, 'value');
 
@@ -188,7 +159,7 @@ DatabaseSqlite.prototype.all = function(tableName, options, cbResult) {
 				log.trace({rows : rows});
 				
 				var countSql = sql.countSql 
-					+ ' UNION ALL SELECT COUNT(*) as count FROM ' + table.name; 
+					+ ' UNION ALL SELECT COUNT(*) as count FROM ' + tableName; 
 				
 				db.all(countSql, params, function(err, countRows) {
 					db.close(function() {
@@ -197,24 +168,7 @@ DatabaseSqlite.prototype.all = function(tableName, options, cbResult) {
 								"Database.all() failed. ");	
 							cbResult(err, null);
 						} else {
-
-							var result = { 
-								rows: rows, 
-								count: countRows[0].count,
-								totalCount: countRows[1].count,
-								query: query
-							};
-
-							var expectedCount = result.count - sql.sanitized.offset;
-							if (rows.length < expectedCount) {
-								result.nextOffset = sql.sanitized.offset + sql.sanitized.limit;
-							}
-
-							if (debug) {
-								result.sql = sql.query;
-								result.sqlParams = sql.params;
-							}		
-							log.trace("...Database.all()");
+							result = me.allResult(tableName, rows, countRows, sql, options); 	
 							cbResult(null, result);
 						}
 					});

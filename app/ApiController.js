@@ -551,6 +551,7 @@ Controller.prototype.getRows = function(req, res, opts) {
 				, limit: params.values['$top'] 
 				, offset: params.values['$skip'] 
 				, debug: params.values['debug']	
+				, format: params.values['format']	
 			},
 	
 			function(err, result) { 

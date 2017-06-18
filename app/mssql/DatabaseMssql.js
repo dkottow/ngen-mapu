@@ -104,44 +104,14 @@ DatabaseMssql.prototype.get = function(tableName, options, cbResult) {
 }
 
 DatabaseMssql.prototype.all = function(tableName, options, cbResult) {
-
+	var me = this;
 	try {
 		log.debug("Database.all()...");
 
-		var table = this.table(tableName);
-
 		cbResult = arguments[arguments.length - 1];	
-		options = typeof options == 'object' ? options : {};		
+		var sql = this.allSQL(tableName, options);
 
-		var filterClauses = options.filter || [];
-		var fields = options.fields || Table.ALL_FIELDS; 
-		var order = options.order || [];
-		var limit = options.limit;
-		var offset = options.offset;
-
-		var query = {
-			table : tableName
-			, select: fields
-			, filter : filterClauses
-			, orderby: order
-			, top: limit
-			, skip: offset 
-		};
-
-		var debug = options.debug || false;
-
-		log.trace(fields + " from " + table.name 
-				+ " filtered by " + util.inspect(filterClauses));
-
-		var sql = this.sqlBuilder.selectSQL(
-					table, fields, filterClauses, 
-					order, limit, offset);
-		//console.dir(sql);
-		log.debug({sql: sql.query}, "Database.all()");
-
-		var resultAll = { 
-			query: query
-		}
+		var rows, countRows;
 		var req;
 
 		this.connect().then(() => {
@@ -153,30 +123,21 @@ DatabaseMssql.prototype.all = function(tableName, options, cbResult) {
 
 		}).then(result => {
 			log.trace({rows : result.recordset});
-			resultAll.rows = result.recordset;
+			rows = result.recordset;
 			
 			var countSql = sql.countSql 
-				+ ' UNION ALL SELECT COUNT(*) as count FROM ' + table.name; 
+				+ ' UNION ALL SELECT COUNT(*) as count FROM ' + tableName; 
 
 			return req.query(countSql);
 		
 		}).then(result => {
 			//console.dir(result.recordset);
-			resultAll.count = result.recordset[0].count;
-			resultAll.totalCount = result.recordset[1].count;
+			countRows = [ result.recordset[0].count, result.recordset[1].count ];
 
-			var expectedCount = resultAll.count - sql.sanitized.offset;
-			if (resultAll.rows.length < expectedCount) {
-				resultAll.nextOffset = sql.sanitized.offset + sql.sanitized.limit;
-			}			
-			
-			if (debug) {
-				resultAll.sql = sql.query;
-				resultAll.sqlParams = sql.params;
-			}		
+			var result = this.allResult(tableName, rows, countRows, sql, options);
+			cbResult(null, result);
 
-			cbResult(null, resultAll);
-			log.trace({ result: resultAll }, "...Database.all()");
+			log.trace({ result: result }, "...Database.all()");
 
 		}).catch(err => {
 			log.error({err: err}, "Database.all() query exception.");

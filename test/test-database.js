@@ -4,6 +4,7 @@
 var assert = require('assert')
 	, _ = require('underscore')
 	, path = require('path')
+	, fs = require('fs')
 	, util = require('util');
 
 var DatabaseFactory = require('../app/DatabaseFactory').DatabaseFactory;
@@ -175,6 +176,24 @@ describe('Database', function() {
 				assert(result.count == 4, 'got 4 ' + table);
 				done();
 			});
+		});
+
+		it('all orders in csv', function(done) {
+
+			var table = 'orders';
+
+			var options = {
+				format: 'csv'
+			};
+			
+			database.all(table, options, function(err, result) {
+				assert(err == null, err);
+				log.info({rows: result.rows}, 'got ' + result.count + " " + table);
+				fs.writeFile('test-rows.csv', result.rows, function(err) { console.log(err); });
+				assert(result.count > 0, 'got some ' + table);
+				done();
+			});
+
 		});
 
 	});

@@ -256,5 +256,15 @@ SqlHelperSqlite.Field.autoIncrementSQL = function()
 	return '';
 }
 
+SqlHelperSqlite.dateToStringSQL = function(tn, fn)
+{
+	return util.format('%s.%s', tn, SqlHelper.EncloseSQL(fn));
+}
+
+SqlHelperSqlite.timestampToStringSQL = function(tn, fn)
+{
+	return util.format('%s.%s', tn, SqlHelper.EncloseSQL(fn));
+}
+
 exports.SqlHelperSqlite = SqlHelperSqlite;
 

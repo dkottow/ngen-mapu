@@ -623,6 +623,8 @@ SqlBuilder.prototype.fieldSQL = function(table, fieldClauses, fkGroups) {
 	var result = _.map(fieldClauses, function(fc) {
 		
 		var table = this.graph.table(fc.table);	
+		var field = table.field(fc.field);	
+
 		var fk = _.find(table.foreignKeys(), function(fk) {
 			return fk.refName() == fc.field;
 		});
@@ -638,6 +640,14 @@ SqlBuilder.prototype.fieldSQL = function(table, fieldClauses, fkGroups) {
 					Table.rowAliasView(fk.fk_table, idx), 
 					SqlHelper.EncloseSQL(Field.ROW_ALIAS), 
 					SqlHelper.EncloseSQL(fc.alias));
+
+		} else if (field.type == 'date') {
+			return util.format('%s AS %s',
+					SqlHelper.dateToStringSQL(fc.table, fc.field), SqlHelper.EncloseSQL(fc.alias));
+
+		} else if (field.type == 'timestamp') {
+			return util.format('%s AS %s',
+					SqlHelper.timestampToStringSQL(fc.table, fc.field), SqlHelper.EncloseSQL(fc.alias));
 
 		} else {
 			return util.format('%s.%s AS %s',

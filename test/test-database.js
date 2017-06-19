@@ -381,7 +381,7 @@ describe('Database', function() {
 
 		before(function(done) {			
 
-			funcs.createDatabase('temp-create', function(err, db) {
+			funcs.createDatabase('temp-create', salesDefs, function(err, db) {
 				if ( ! db) return;
 				newDb = db;
 				done();

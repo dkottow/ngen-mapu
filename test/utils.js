@@ -46,26 +46,24 @@ function createDatabase(name, options, cbAfter) {
         }		
 	};
 
-	var config;
-
 	if (config.sql.engine == 'sqlite') {
 		var testDataDir = "test/data/sqlite/";
-		config = testDataDir + name + ".sqlite";
-		log.debug({config: config}, 'creating sqlite db');
-		Database.remove(config, function(err) {
-			let db = new Database(config);
+		var dbConfig = testDataDir + name + ".sqlite";
+		log.debug({db: dbConfig}, 'creating sqlite db');
+		Database.remove(dbConfig, function(err) {
+			let db = new Database(dbConfig);
 			doOptions(db, cbAfter);
 			//cbAfter(null, db);
 			return;
 		});
 
 	} else if (config.sql.engine == 'mssql') {
-		config = _.clone(global.config.mssql_connection);
-		config.database = 'test#' + name;
+		var dbConfig = _.clone(config.sql.mssql_connection);
+		dbConfig.database = 'test#' + name;
 
-		log.debug({config: config.database}, 'creating mssql db');
-		Database.remove(config, config.database, function(err) {
-			let db = new Database(config);
+		log.debug({db: dbConfig.database}, 'creating mssql db');
+		Database.remove(dbConfig, config.database, function(err) {
+			let db = new Database(dbConfig);
 			doOptions(db, cbAfter);
 			return;	
 		});

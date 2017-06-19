@@ -255,7 +255,6 @@ Database.prototype.patchSchema = function(patches, cbResult) {
 }
 
 Database.prototype.allSanitizeOptions = function(options) {
-log.info({ options: options }, 'allSanitizeOptions...');
 	var result = typeof options == 'object' ? options : {};		
 
 	result.filter = options.filter || [];
@@ -264,7 +263,7 @@ log.info({ options: options }, 'allSanitizeOptions...');
 	result.limit = options.limit;
 	result.format = options.format || 'json';
 
-log.info({ options: result }, '...allSanitizeOptions');
+	log.trace({ options: result }, '...Database.allSanitizeOptions()');
 	return result;
 }
 
@@ -324,7 +323,7 @@ Database.prototype.allResult = function(tableName, rows, countRows, sql, options
 		result.sqlParams = sql.params;
 	}		
 
-	log.debug({result: result}, "...Database.allResult()");
+	log.trace({result: result}, "...Database.allResult()");
 	return result;
 }
 

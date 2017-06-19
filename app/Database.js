@@ -255,28 +255,30 @@ Database.prototype.patchSchema = function(patches, cbResult) {
 }
 
 Database.prototype.allSanitizeOptions = function(options) {
-	options = typeof options == 'object' ? options : {};		
+log.info({ options: options }, 'allSanitizeOptions...');
+	var result = typeof options == 'object' ? options : {};		
 
-	options.filter = options.filter || [];
-	options.fields = options.fields || Table.ALL_FIELDS; 
-	options.order = options.order || [];
-	options.limit = options.limit;
-	options.format = options.format || 'json';
+	result.filter = options.filter || [];
+	result.fields = options.fields || Table.ALL_FIELDS; 
+	result.order = options.order || [];
+	result.limit = options.limit;
+	result.format = options.format || 'json';
 
-	return options;
+log.info({ options: result }, '...allSanitizeOptions');
+	return result;
 }
 
 Database.prototype.allSQL = function(tableName, options) {
 
-	options = this.allSanitizeOptions(options);
+	var opts = this.allSanitizeOptions(options);
 	var table = this.table(tableName);
 
-	log.trace(options.fields + " from " + table.name 
-			+ " filtered by " + util.inspect(options.filter));
+	log.trace(opts.fields + " from " + table.name 
+			+ " filtered by " + util.inspect(opts.filter));
 
 	var sql = this.sqlBuilder.selectSQL(
-				table, options.fields, options.filters, 
-				options.order, options.limit, options.offset);
+				table, opts.fields, opts.filter, 
+				opts.order, opts.limit, opts.offset);
 
 	log.debug({sql: sql.query}, "Database.allSQL()");
 	log.trace({sql: sql}, "Database.allSQL()");
@@ -286,20 +288,20 @@ Database.prototype.allSQL = function(tableName, options) {
 
 Database.prototype.allResult = function(tableName, rows, countRows, sql, options) {
 
-	options = this.allSanitizeOptions(options);		
+	var opts = this.allSanitizeOptions(options);		
 
 	var query = {
 		table : tableName
-		, select: options.fields
-		, filter : options.filters
-		, orderby: options.order
-		, top: options.limit
-		, skip: options.offset
-		, format: options.format 
+		, select: opts.fields
+		, filter : opts.filter
+		, orderby: opts.order
+		, top: opts.limit
+		, skip: opts.offset
+		, format: opts.format 
 	};
 
 
-	if (options.format == 'csv') {
+	if (opts.format == 'csv') {
 		return Papa.unparse(rows);
 	}	
 
@@ -317,7 +319,7 @@ Database.prototype.allResult = function(tableName, rows, countRows, sql, options
 		result.nextOffset = sql.sanitized.offset + sql.sanitized.limit;
 	}
 
-	if (options.debug) {
+	if (opts.debug) {
 		result.sql = sql.query;
 		result.sqlParams = sql.params;
 	}		

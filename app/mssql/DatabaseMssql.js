@@ -111,7 +111,7 @@ DatabaseMssql.prototype.all = function(tableName, options, cbResult) {
 		cbResult = arguments[arguments.length - 1];	
 		var sql = this.allSQL(tableName, options);
 
-		var rows, countRows;
+		var rows;
 		var req;
 
 		this.connect().then(() => {
@@ -132,9 +132,7 @@ DatabaseMssql.prototype.all = function(tableName, options, cbResult) {
 		
 		}).then(result => {
 			//console.dir(result.recordset);
-			countRows = [ result.recordset[0].count, result.recordset[1].count ];
-
-			var result = this.allResult(tableName, rows, countRows, sql, options);
+			var result = this.allResult(tableName, rows, result.recordset, sql, options);
 			cbResult(null, result);
 
 			log.trace({ result: result }, "...Database.all()");

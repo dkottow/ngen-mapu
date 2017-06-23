@@ -231,15 +231,15 @@ SqlHelperMssql.Field.autoIncrementSQL = function()
 	return 'IDENTITY(1,1)';
 }
 
-SqlHelperMssql.dateToStringSQL = function(tn, fn)
+SqlHelperMssql.dateToStringSQL = function(fieldName)
 {
-	return util.format('CONVERT(CHAR(10), %s.%s, 126)', tn, SqlHelperMssql.EncloseSQL(fn));
+	return util.format('CONVERT(CHAR(10), %s, 126)', fieldName);
 }
 
-SqlHelperMssql.timestampToStringSQL = function(tn, fn)
+SqlHelperMssql.timestampToStringSQL = function(fieldName)
 {
 	// 	yyyy-mm-ddThh:mi:ss.mmm
-	return util.format('CONVERT(VARCHAR(30), %s.%s, 126)', tn, SqlHelperMssql.EncloseSQL(fn));
+	return util.format('CONVERT(VARCHAR(30), %s, 126)', fieldName);
 }
 
 exports.SqlHelperMssql = SqlHelperMssql;

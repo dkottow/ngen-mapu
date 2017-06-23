@@ -58,7 +58,7 @@ function createDatabase(name, options, cbAfter) {
 		});
 
 	} else if (config.sql.engine == 'mssql') {
-		var dbConfig = _.clone(config.sql.mssql_connection);
+		var dbConfig = _.clone(config.sql.connection);
 		dbConfig.database = 'test#' + name;
 
 		log.debug({db: dbConfig.database}, 'creating mssql db');

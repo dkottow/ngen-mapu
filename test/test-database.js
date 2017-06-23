@@ -7,6 +7,10 @@ var assert = require('assert')
 	, fs = require('fs')
 	, util = require('util');
 
+require('dotenv').config(process.env.DL_DOTENV_PATH); 
+var config = require('config');
+
+
 var DatabaseFactory = require('../app/DatabaseFactory').DatabaseFactory;
 var Database = DatabaseFactory.getClass();
 
@@ -188,9 +192,9 @@ describe('Database', function() {
 			
 			database.all(table, options, function(err, result) {
 				assert(err == null, err);
-				log.info({rows: result.rows}, 'got ' + result.count + " " + table);
-				fs.writeFile('test-rows.csv', result.rows, function(err) { console.log(err); });
-				assert(result.count > 0, 'got some ' + table);
+				var rows = result.split('\r\n');
+				assert(rows.length > 1);
+				//fs.writeFile('test-rows.csv', result, function(err) { console.log(err); });
 				done();
 			});
 

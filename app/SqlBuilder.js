@@ -396,6 +396,14 @@ SqlBuilder.prototype.filterToParams = function(filter)
 	});
 }
 
+SqlBuilder.ConvertToStringSQL = function(typeName, fieldName) {
+    if (typeName == 'date') return SqlHelper.dateToStringSQL(fieldName);
+    else if (typeName == 'timestamp') return SqlHelper.timestampToStringSQL(fieldName);
+	else return util.format('CONVERT(VARCHAR, %s)', fieldName);
+}
+
+
+
 SqlBuilder.prototype.filterSQL = function(fromTable, filterClauses, fkGroups) {
 
 	var me = this;
@@ -506,6 +514,7 @@ SqlBuilder.prototype.filterSQL = function(fromTable, filterClauses, fkGroups) {
 				//(prefix last + phrase query) - see sqlite fts
 				var searchValue = '"' + filter.value + '*"';  
 				filter.value = searchValue;
+				filter.valueType = 'text';
 				
 				var params = me.filterToParams(filter);
 
@@ -517,18 +526,22 @@ SqlBuilder.prototype.filterSQL = function(fromTable, filterClauses, fkGroups) {
 
 			} else {
 				//use LIKE on filter.field
-
+				var fieldType = filter.valueType;	
 				var searchValue = filter.value + '%';
 				if (filter.value[0] == '*') {
 					searchValue = '%' + filter.value.substr(1) + '%';
 				}
 				
-				filter.value = searchValue;
+				filter.value = searchValue;				
+				filter.valueType = 'text';
 
 				var params = me.filterToParams(filter);
 
-				var fmt = '(' + SqlHelper.ConcatSQL(['%s', "''"]) + ' LIKE %s)';
-				var clause = util.format(fmt, fromFieldQN, params[0].sql);
+				//var fmt = '(' + SqlHelper.ConcatSQL(['%s', "''"]) + ' LIKE %s)';
+				//var clause = util.format(fmt, fromFieldQN, params[0].sql);
+
+				var clause = util.format('(%s LIKE %s)', 
+					SqlBuilder.ConvertToStringSQL(fieldType, fromFieldQN), params[0].sql);
 				
 				sqlClauses.push(clause);
 				sqlParams.push(params[0]); 
@@ -642,16 +655,20 @@ SqlBuilder.prototype.fieldSQL = function(table, fieldClauses, fkGroups) {
 					SqlHelper.EncloseSQL(fc.alias));
 
 		} else if (field.type == 'date') {
+			var fieldNameQN = util.format('%s.%s', fc.table, SqlHelper.EncloseSQL(fc.field));
 			return util.format('%s AS %s',
-					SqlHelper.dateToStringSQL(fc.table, fc.field), SqlHelper.EncloseSQL(fc.alias));
+					SqlHelper.dateToStringSQL(fieldNameQN), 
+					SqlHelper.EncloseSQL(fc.alias));
 
 		} else if (field.type == 'timestamp') {
+			var fieldNameQN = util.format('%s.%s', fc.table, SqlHelper.EncloseSQL(fc.field));
 			return util.format('%s AS %s',
-					SqlHelper.timestampToStringSQL(fc.table, fc.field), SqlHelper.EncloseSQL(fc.alias));
+					SqlHelper.timestampToStringSQL(fieldNameQN), 
+					SqlHelper.EncloseSQL(fc.alias));
 
 		} else {
-			return util.format('%s.%s AS %s',
-					fc.table, SqlHelper.EncloseSQL(fc.field), SqlHelper.EncloseSQL(fc.alias));
+			var fieldNameQN = util.format('%s.%s', fc.table, SqlHelper.EncloseSQL(fc.field));
+			return util.format('%s AS %s', fieldNameQN, SqlHelper.EncloseSQL(fc.alias));
 		}
 
 	}, this);

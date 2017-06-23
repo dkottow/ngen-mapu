@@ -16,7 +16,7 @@
                 "--timeout",
                 "999999",
                 "--colors",
-                "${workspaceRoot}/test/test-account.js"
+                "${workspaceRoot}/test/test-database.js"
             ],
             "internalConsoleOptions": "openOnSessionStart"
         },

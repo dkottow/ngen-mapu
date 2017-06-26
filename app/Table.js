@@ -393,11 +393,11 @@ Table.prototype.toJSON = function() {
 }
 
 Table.prototype.createSQL = function() {
-	var sql = "CREATE TABLE " + this.name + "(";
+	var sql = 'CREATE TABLE ' + this.name + '(';
 	_.each(this.fields(), function(field) {
-		sql += "\n" + field.toSQL(this) + ",";
+		sql += '\n' + field.toSQL(this) + ',';
 	}, this);
-	sql += "\n PRIMARY KEY (id)";
+	sql += '\n' + SqlHelper.Table.createPrimaryKeySQL(this.name);
 	sql += "\n);";
 
 	log.trace(sql);

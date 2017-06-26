@@ -65,6 +65,10 @@ SqlHelperSqlite.Schema.createPropsTableSQL = function(name) {
 
 /******** Table stuff ********/
 
+SqlHelperSqlite.Table.createPrimaryKeySQL = function(name) {
+	return "PRIMARY KEY (id)";
+}
+
 SqlHelperSqlite.Table.createPropsTableSQL = function(name) {
 	return "CREATE TABLE " + name + " ("
 		+ " name VARCHAR NOT NULL, "

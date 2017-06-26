@@ -75,7 +75,7 @@ SqlHelperMssql.ACCOUNT_DATABASE_SEPARATOR = '$';
 
 /********** Schema stuff *********/
 
-SqlHelperMssql.Schema.PragmaSQL = '';
+SqlHelperMssql.Schema.PragmaSQL = 'CREATE FULLTEXT CATALOG ftCatalog AS DEFAULT;\n\n';
 
 SqlHelperMssql.Schema.fullName = function(account, db) {
 	return account + SqlHelperMssql.ACCOUNT_DATABASE_SEPARATOR + db;
@@ -122,8 +122,26 @@ SqlHelperMssql.Table.hasTriggers = function() { return false; }
 https://docs.microsoft.com/en-us/sql/t-sql/statements/create-fulltext-index-transact-sql
 ****/
 
+SqlHelperMssql.Table.createPrimaryKeySQL = function(name) {
+	return "CONSTRAINT " + SqlHelperMssql.EncloseSQL(SqlHelperMssql.Table.pkIndexName(name)) + " PRIMARY KEY CLUSTERED (id)";
+}
+
+SqlHelperMssql.Table.pkIndexName = function(name) {
+	return 'PK__' + name + '__' + 'D365';
+}
+
 SqlHelperMssql.Table.createSearchSQL = function(table) {
-	return '';
+	var textFields = _.filter(table.fields, function(f) {
+		return f.typeName() == 'text';
+	});
+	var sql = util.format('CREATE FULLTEXT INDEX ON %s', table.name);
+	sql += ' (';
+	sql += _.map(textFields, function(f) {
+		return SqlHelper.EncloseSQL(f.name);
+	}).join(', ');
+	sql += ') KEY INDEX ' + SqlHelperMssql.Table.pkIndexName(table.name);
+	sql += ' WITH STOPLIST OFF';
+	return sql;
 }
 
 SqlHelperMssql.Table.dropSearchSQL = function(table) {
@@ -131,7 +149,7 @@ SqlHelperMssql.Table.dropSearchSQL = function(table) {
 }
 
 SqlHelperMssql.Table.constraintName = function(table, fk) {
-	return 'FKDL__' + crypto.createHash('md5').update(table.name + '.' + fk.name).digest('hex');
+	return 'FK__' + crypto.createHash('md5').update(table.name + '.' + fk.name).digest('hex').substr(0, 16) + '__D365';
 }
 
 SqlHelperMssql.Table.addForeignKeysSQL = function(table, fk_table) {

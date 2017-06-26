@@ -552,7 +552,9 @@ DatabaseSqlite.prototype.writeSchema = function(cbAfter) {
 	var me = this;
 	try {
 
-		var createSQL = this.sqlBuilder.createSQL(this.schema);
+		var opts = { viewSQL: true, searchSQL: true };
+		var createSQL = SqlHelper.Schema.PragmaSQL 
+					+ this.sqlBuilder.createSQL(this.schema, opts);
 
 		var tmpFile = path.join(tempDir,
 						tmp.tmpNameSync({template: 'dl-XXXXXX.sqlite'}));

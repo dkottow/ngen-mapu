@@ -169,10 +169,9 @@ SqlBuilder.prototype.querySQL = function(table, fields, filters) {
 
 SqlBuilder.prototype.createSQL = function(schema, options) {
 
-	var exclude = (options && options.exclude) || {}; 
+	options = options || {}; 
 
-	var createSysTablesSQL = SqlHelper.Schema.PragmaSQL
-			+ SqlHelper.Schema.createPropsTableSQL(Schema.TABLE)
+	var createSysTablesSQL = SqlHelper.Schema.createPropsTableSQL(Schema.TABLE)
 			+ SqlHelper.Table.createPropsTableSQL(Table.TABLE)
 			+ SqlHelper.Field.createPropsTableSQL(Field.TABLE);
 
@@ -198,8 +197,8 @@ SqlBuilder.prototype.createSQL = function(schema, options) {
 			+ sysTablesInsertSQL + '\n\n'
 			+ createTableSQL + '\n\n';
 			
-	if ( ! exclude.viewSQL) sql = sql + createRowAliasViewSQL + '\n\n';
-	if ( ! exclude.SearchSQL) sql = sql + createSearchSQL + '\n\n';
+	if (options.viewSQL) sql = sql + createRowAliasViewSQL + '\n\n';
+	if (options.searchSQL) sql = sql + createSearchSQL + '\n\n';
 			
 	log.trace({sql: sql}, 'SqlBuilder.createSQL');
 	return sql;

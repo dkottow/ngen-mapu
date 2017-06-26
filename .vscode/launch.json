@@ -16,6 +16,8 @@
                 "--timeout",
                 "999999",
                 "--colors",
+                "--grep",
+                "readSchema",
                 "${workspaceRoot}/test/test-database.js"
             ],
             "internalConsoleOptions": "openOnSessionStart"

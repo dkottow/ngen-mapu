@@ -48,10 +48,14 @@ var log = require('../log.js').log;
 
 var DatabaseMssql = function(config) 
 {
-	log.trace('new Database ' + config.database);
-	Database.call(this);
-	this.config = _.clone(config);
-	this.pool = new mssql.ConnectionPool(this.config);
+	try {
+		log.trace('new Database() ' + config.database);
+		Database.call(this);
+		this.config = _.clone(config);
+		this.pool = new mssql.ConnectionPool(this.config);
+	} catch(err) {
+		log.error({err: err}, 'new Database()');
+	}
 }
 
 DatabaseMssql.prototype = Object.create(Database.prototype);	
@@ -248,7 +252,7 @@ DatabaseMssql.prototype.readSchema = function(cbAfter) {
 	var me = this;
 
 	try {
-		log.debug({db: this.config.database}, "Schema.read()");
+		log.debug({db: this.config}, "Schema.readSchema()");
 
 		var schemaProps = {
 			name: SqlHelper.Schema.name(this.config.database)
@@ -910,38 +914,38 @@ DatabaseMssql.prototype.writeSchema = function(cbAfter) {
 			return conn.close();	
 
 		}).then(err => {
-			log.debug('then connect to ' + dbTemp);
+			log.debug('connect to ' + dbTemp);
 			dbConfig.database = dbTemp;
 			conn = new mssql.ConnectionPool(dbConfig);
 			return conn.connect();
 
 		}).then(err => {
 
-			log.debug('then transaction begin');
+			log.debug('transaction begin');
 			transaction = new mssql.Transaction(conn);
 			return transaction.begin();
 
 		}).then(result => {
-			log.debug('then create objs');
+			log.debug('create tables');
 			doRollback = true;
 			transaction.on('rollback', aborted => {
 				// emitted with aborted === true
 				doRollback = false;
 			});
 			
-			var opts = { exclude: { viewSQL: true, searchSQL: true }};
+			var opts = { viewSQL: false, searchSQL: false };
 			var createSQL = this.sqlBuilder.createSQL(this.schema, opts);
 			return new Request(transaction).batch(createSQL);
 
 		}).then(result => {
-			log.debug('then all views');
+			log.debug('create views');
 			var viewSQLs = _.map(this.schema.tables(), function(table) {
 				return this.sqlBuilder.createRowAliasViewSQL(table); 	
 			}, this);
 
 			var chainPromises = _.reduce(viewSQLs, function(chainPromises, sql) {
 				return chainPromises.then(result => {
-					log.debug('create view');
+					log.trace('create view');
 					return new Request(transaction).batch(sql);	
 				});	
 			}, Promise.resolve());
@@ -949,8 +953,34 @@ DatabaseMssql.prototype.writeSchema = function(cbAfter) {
 			return chainPromises;
 
 		}).then(result => {
-			log.debug('then commit');
+			log.debug('commit');
 			return transaction.commit();
+
+		}).then(result => {
+			if (config.sql.fullTextSearch) {
+				log.debug('create full text catalog');
+				return new Request(conn).batch(SqlHelper.Schema.createFullTextCatalogSQL(this.schema.name));
+			} else {
+				return Promise.resolve();
+			}
+
+		}).then(result => {
+			if (config.sql.fullTextSearch) {
+				log.debug('create full text indices');
+				var searchSQLs = _.map(this.schema.tables(), function(table) {
+					return SqlHelper.Table.createSearchSQL(table); 	
+				}, this);
+
+				var chainPromises = _.reduce(searchSQLs, function(chainPromises, sql) {
+					return chainPromises.then(result => {
+						return new Request(conn).batch(sql);	
+					});	
+				}, Promise.resolve());
+
+				return chainPromises;
+			} else {
+				return Promise.resolve();
+			}	
 
 		}).then(err => {
 			log.debug('close conn');
@@ -967,7 +997,7 @@ DatabaseMssql.prototype.writeSchema = function(cbAfter) {
 			return conn.request().batch(dropSQL);
 
 		}).then(result => {
-			log.debug('then rename');
+			log.debug('then rename to ' + this.config.database);
 			var sql = util.format('ALTER DATABASE [%s] Modify Name = [%s];'
 						, dbTemp, this.config.database);	
 			return conn.request().batch(sql);
@@ -984,8 +1014,10 @@ DatabaseMssql.prototype.writeSchema = function(cbAfter) {
 				transaction.rollback().then(() => {
 					return conn.close();
 
+/*
 				}).then(() => {
 					DatabaseMssql.remove(dbConfig, dbTemp, function() { cbAfter(err); });	
+*/
 
 				}).catch(err => {
 					log.error({err: err}, "Database.writeSchema() rollback exception.");

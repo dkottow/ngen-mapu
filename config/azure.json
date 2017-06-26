@@ -24,6 +24,7 @@
      "sql": {
         "engine"    : "mssql",
         "pageRows"  : 5000,
+        "fullTextSearch": true,
         "connection": {
             "server": "azwu-test.database.windows.net",
             "user"  : "Xidvv3jyCxQcSjbQYpf9zbiYv5MqE8Vp",

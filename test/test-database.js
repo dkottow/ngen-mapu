@@ -36,8 +36,11 @@ describe('Database', function() {
 
 	describe('readSchema()', function() {
 		it('guards file not found', function(done) {
-			var m = DatabaseFactory.create("file-not-found.sqlite");
+			if (config.sql.engine == 'sqlite') dbConfig = "file-not-found.sqlite";
+			else if (config.sql.engine == 'mssql') dbConfig = { database: "FooDatabase" };
+			var m = DatabaseFactory.create(dbConfig);
 			m.readSchema(function(err) {
+				log.debug(err);
 				assert(err instanceof Error);
 				done();	
 			});
@@ -325,7 +328,7 @@ describe('Database', function() {
 			};
 
 			database.update(table, [row], {}, function(err, result) { 
-				log.info(err);
+				log.debug(err);
 				assert(err instanceof Error, 'update did not fail');
 				done(); 
 			});
@@ -344,7 +347,7 @@ describe('Database', function() {
 			};
 
 			database.update(table, [row], {}, function(err, result) { 
-				log.info(err);
+				log.debug(err);
 				assert(err instanceof Error, 'update did not fail');
 				done(); 
 			});

@@ -75,17 +75,19 @@ SqlHelperMssql.ACCOUNT_DATABASE_SEPARATOR = '$';
 
 /********** Schema stuff *********/
 
-SqlHelperMssql.Schema.PragmaSQL = 'CREATE FULLTEXT CATALOG ftCatalog AS DEFAULT;\n\n';
+SqlHelperMssql.Schema.createFullTextCatalogSQL = function(name) {
+	return 'CREATE FULLTEXT CATALOG ftCatalog AS DEFAULT;\n\n';
+}
 
 SqlHelperMssql.Schema.fullName = function(account, db) {
 	return account + SqlHelperMssql.ACCOUNT_DATABASE_SEPARATOR + db;
 }
 
 SqlHelperMssql.Schema.name = function(fullName) {
-	if (fullName.indexOf(SqlHelperMssql.ACCOUNT_DATABASE_SEPARATOR) > 0) {
+	if (_.isString(fullName) && fullName.indexOf(SqlHelperMssql.ACCOUNT_DATABASE_SEPARATOR) > 0) {
 		return fullName.substr(fullName.indexOf(SqlHelperMssql.ACCOUNT_DATABASE_SEPARATOR) + 1);
 	}
-	else return null; // error
+	throw new Error(util.format("Invalid database name '%s'", fullName));
 }
 
 SqlHelperMssql.Schema.createPropsTableSQL = function(name) {
@@ -131,13 +133,13 @@ SqlHelperMssql.Table.pkIndexName = function(name) {
 }
 
 SqlHelperMssql.Table.createSearchSQL = function(table) {
-	var textFields = _.filter(table.fields, function(f) {
+	var textFields = _.filter(table.fields(), function(f) {
 		return f.typeName() == 'text';
 	});
 	var sql = util.format('CREATE FULLTEXT INDEX ON %s', table.name);
 	sql += ' (';
 	sql += _.map(textFields, function(f) {
-		return SqlHelper.EncloseSQL(f.name);
+		return SqlHelperMssql.EncloseSQL(f.name);
 	}).join(', ');
 	sql += ') KEY INDEX ' + SqlHelperMssql.Table.pkIndexName(table.name);
 	sql += ' WITH STOPLIST OFF';
@@ -235,7 +237,6 @@ SqlHelperMssql.Field.fromSQLType = function(sqlTypeInfo)
 
 SqlHelperMssql.Field.foreignKeySQL = function(table, fk)
 {
-if (fk.fk) console.log('fk ' + table.name + '.' + fk.name);
 	return fk.fk 
 		? util.format(' CONSTRAINT %s REFERENCES %s(%s)',
 				SqlHelperMssql.Table.constraintName(table, fk),

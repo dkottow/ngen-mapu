@@ -369,7 +369,7 @@ TableGraph.prototype.joinTree = function(fromTable, joinTables) {
 
 TableGraph.prototype.tableJoins = function(fromTable, joinTables) {
 
-	log.debug({fromTable: fromTable, joinTables: joinTables},
+	log.trace({fromTable: fromTable, joinTables: joinTables},
 		"TableGraph.tableJoins()...");
 
 	var joinTree = this.joinTree(fromTable, joinTables);

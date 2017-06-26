@@ -32,9 +32,20 @@ var SqlBuilderSqlite = function(tableGraph) {
 
 SqlBuilderSqlite.prototype = Object.create(SqlBuilder.prototype);	
 
+SqlBuilderSqlite.prototype.joinTableSQL = function(fromTable, fields, filterClauses, fkGroups) {
 
-SqlBuilderSqlite.prototype.joinSearchSQL = function(filterClauses) {
-	//there can be only one search filter
+	//collect filter and field tables
+	var joinTables = _.pluck(filterClauses, 'table')
+		.concat(_.pluck(fields, 'table'));
+
+	var graphSQL = this.joinGraphSQL(fromTable.name, joinTables);
+
+	var result = {
+		tables : graphSQL.tables,
+		clauses : graphSQL.clauses
+	};
+
+	//check for full-text search... there can be only one such filter
 	var searchFilter = _.find(filterClauses, function(filter) {
 		return filter.op == 'search' && filter.field == Table.ALL_FIELDS;
 	});
@@ -45,16 +56,28 @@ SqlBuilderSqlite.prototype.joinSearchSQL = function(filterClauses) {
 			table.ftsName(),
 			table.name);
 
-		var result = {
-			tables: [table.ftsName()],
-			clauses: [clause]
-		};
-		
-		return result;
-
-	} else {
-		return { tables: [], clauses: [] };
+		result.tables.push(table.ftsName());
+		result.clauses.push(clause);
 	}
+
+	return result;	
+}
+
+SqlBuilderSqlite.prototype.filterSearchSQL = function(filter) {
+	var table = this.graph.table(filter.table);
+
+	//(prefix last + phrase query) - see sqlite fts
+	var searchValue = '"' + filter.value + '*"';  
+	var param = SqlHelper.param({
+			name: filter.table + Table.TABLE_FIELD_SEPARATOR + '$earch', 
+			value: searchValue,
+			type: 'text'
+		});
+
+	var clause = util.format('(%s.%s MATCH %s)', 
+					table.ftsName(), table.ftsName(), param.sql); 	
+
+	return { clause: clause, params: [ param ] };
 }
 
 SqlBuilderSqlite.prototype.dropDependenciesSQL = function(table) {

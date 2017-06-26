@@ -33,28 +33,71 @@ var SqlBuilderMssql = function(tableGraph) {
 SqlBuilderMssql.prototype = Object.create(SqlBuilder.prototype);	
 
 
-SqlBuilderMssql.prototype.joinSearchSQL = function(filterClauses) {
-	//there can be only one search filter
+SqlBuilderMssql.prototype.joinTableSQL = function(fromTable, fields, filterClauses, fkGroups) {
+
+	//collect filter and field tables
+	var joinTables = _.pluck(filterClauses, 'table')
+		.concat(_.pluck(fields, 'table'));
+
+	//check for full-text search... there can be only one such filter
 	var searchFilter = _.find(filterClauses, function(filter) {
 		return filter.op == 'search' && filter.field == Table.ALL_FIELDS;
 	});
 
 	if (searchFilter) {
-		var table = this.graph.table(searchFilter.table);
-		var clause = util.format('(%s.docid = %s.id)',
-			table.ftsName(),
-			table.name);
+		_.each(fromTable.foreignKeys(), function(fk) {
+			var fk_table = this.graph.table(fk.fk_table);
 
-		var result = {
-			tables: [],
-			clauses: []
-		};
-		
-		return result;
-
-	} else {
-		return { tables: [], clauses: [] };
+			var rowAliasFields = this.rowAliasFields(fk_table);
+			var searchTables = _.map(_.filter(rowAliasFields, function(f) {
+				return f.typeName() == 'text';
+			}), function(f) {
+				return f.table.name;
+			});	
+			joinTables = joinTables.concat(searchTables);
+		}, this);
 	}
+
+	var graphSQL = this.joinGraphSQL(fromTable.name, joinTables);
+
+	return graphSQL;
+}
+
+SqlBuilderMssql.prototype.filterSearchSQL = function(filter) {
+
+	var searchValue = '"' + filter.value + '*"';  
+
+	var param = SqlHelper.param({
+			name: filter.table + Table.TABLE_FIELD_SEPARATOR + '$earch', 
+			value: searchValue,
+			type: 'text'
+		});
+	
+	var clauses = [];
+
+	var table = this.graph.table(filter.table);
+	_.each(table.foreignKeys(), function(fk) {
+		var fk_table = this.graph.table(fk.fk_table);
+
+		var rowAliasFields = this.rowAliasFields(fk_table);
+		var fkClauses = _.map(_.filter(rowAliasFields, function(f) {
+			return f.typeName() == 'text';
+		}), function(f) {
+			return util.format('CONTAINS(%s.%s, %s)', 
+						f.table.name, SqlHelper.EncloseSQL(f.name), param.sql);
+		});
+
+		clauses = clauses.concat(fkClauses);
+
+		log.trace({fk_table: fk_table.name, clauses: clauses });
+	}, this);
+
+	var tableClause = util.format('CONTAINS(%s.*, %s)', 
+					filter.table, param.sql);
+	clauses.push(tableClause);
+	var clause = '(' + clauses.join(' OR ') + ')';
+
+	return { clause: clause, params: [ param ] };
 }
 
 SqlBuilderMssql.prototype.dropDependenciesSQL = function(table) {

@@ -25,8 +25,6 @@ var Field = require('./Field.js').Field;
 
 var log = require('./log.js').log;
 
-var rows_page = config.sql.pageRows || 1000;
-
 var SqlBuilder = function(tableGraph) {
 	this.graph = tableGraph;
 }
@@ -48,8 +46,8 @@ SqlBuilder.prototype.selectSQL
 	s.fields = this.sanitizeFieldClauses(table, fieldExpr);
 	s.filters = this.sanitizeFieldClauses(table, filterClauses);
 	s.orders = this.sanitizeFieldClauses(table, orderClauses);
-	s.offset = (offset | 0);
-	s.limit = limit || rows_page;
+	s.offset = offset || 0;
+	s.limit = limit || config.sql.pageRows || 1000;
 	
 	var query = this.querySQL(table, s.fields, s.filters);
 
@@ -102,24 +100,6 @@ SqlBuilder.prototype.statsSQL = function(table, fieldExpr, filterClauses)
 	log.debug({result: result}, "SqlBuilder.statsSQL");
 	return result;
 }
-
-/*
-SqlBuilder.prototype.updatePropSQL = function(patches) {
-	//only table props or deeper supported
-
-	var me = this;
-	var tables = _.groupBy(patches, function(patch) {
-		return patch.table.name;				
-	});
-	var sql = _.reduce(tables, function(memo, patches) {
-		return memo + patches[0].table.updatePropSQL();
-	}, '');
-	log.trace({sql: sql}, "SqlBuilder.updatePropSQL");
-
-	return sql;
-}
-*/
-
 
 // private methods...
 
@@ -225,29 +205,37 @@ SqlBuilder.prototype.createSQL = function(schema, options) {
 	return sql;
 }
 
+SqlBuilder.prototype.rowAliasFields = function(table) {
+	var fields = _.map(table.row_alias, function(fn) {
+		var field;
+		if (fn.indexOf('.') < 0) {
+			field = table.field(fn);
+			field.table = table;	
+		} else {
+			var refTable = this.graph.table(fn.split('.')[0]);
+			field = refTable.field(fn.split('.')[1]);
+			field.table = refTable;
+		}
+		return field;
+	}, this);
+	return fields;
+}
+
 SqlBuilder.prototype.createRowAliasViewSQL = function(table) {
 
-	var ref_tables = _.map(_.filter(table.row_alias, function(ref) {
-			return ref.indexOf('.') >= 0;		
-		}), function(ref) {
-		return ref.split('.')[0];	
+	var fields = this.rowAliasFields(table);
+
+	var ref_tables = _.map(_.filter(fields, function(f) {
+		return f.table.name != table.name;
+	}), function(f) { 
+		return f.table.name; 
 	});
 
 	var ref_join = this.joinGraphSQL(table.name, ref_tables);
-	var ref_field = _.reduce(table.row_alias, function(memo, f) {
-		var term;
-		var field;
-		if (f.indexOf('.') < 0) {
-			field = table.field(f);
-			term = util.format('%s.%s', table.name, SqlHelper.EncloseSQL(f));
-		} else {
-			field = this.graph.table(f.split('.')[0]).field(f.split('.')[1]);
-			term = util.format('%s.%s', 
-					this.graph.table(f.split('.')[0]).name,
-					SqlHelper.EncloseSQL(f.split('.')[1])
-				);
-		}
-		if (field.type != 'text') {
+
+	var ref_field = _.reduce(fields, function(memo, field) {
+		var term = util.format('%s.%s', field.table.name, SqlHelper.EncloseSQL(field.name));
+		if (field.typeName() != 'text') {
 			term = util.format('CAST(%s AS VARCHAR(256))', term);
 		}
 		if ( ! _.isEmpty(memo)) {
@@ -278,6 +266,7 @@ SqlBuilder.prototype.createRowAliasViewSQL = function(table) {
 	return sql;
 }
 
+
 SqlBuilder.prototype.joinSQL = function(fromTable, fields, filterClauses, fkGroups) {
 
 	var result = {
@@ -289,17 +278,9 @@ SqlBuilder.prototype.joinSQL = function(fromTable, fields, filterClauses, fkGrou
 	result.tables = result.tables.concat(rowAliasSQL.tables);
 	result.clauses = result.clauses.concat(rowAliasSQL.clauses);
 
-	//collect filter and field tables
-	var joinTables = _.pluck(filterClauses, 'table')
-		.concat(_.pluck(fields, 'table'));
-
-	var graphSQL = this.joinGraphSQL(fromTable.name, joinTables);
-	result.tables = result.tables.concat(graphSQL.tables);
-	result.clauses = result.clauses.concat(graphSQL.clauses);
-
-	var searchSQL = this.joinSearchSQL(filterClauses);
-	result.tables = result.tables.concat(searchSQL.tables);
-	result.clauses = result.clauses.concat(searchSQL.clauses);
+	var tableSQL = this.joinTableSQL(fromTable, fields, filterClauses, fkGroups);
+	result.tables = result.tables.concat(tableSQL.tables);
+	result.clauses = result.clauses.concat(tableSQL.clauses);
 
 	log.trace({ result: result }, '...SqlBuilder.joinSQL()');
 	return result;
@@ -346,7 +327,7 @@ SqlBuilder.prototype.joinRowAliasSQL = function(fieldClauses, filterClauses, fkG
 
 SqlBuilder.prototype.joinGraphSQL = function(fromTable, tables) {
 
-	log.trace('SqlBuilder.joinSQL()...');
+	log.trace('SqlBuilder.joinGraphSQL()...');
 	log.trace({from: fromTable, join: tables});
 
 	var joinTables = _.without(_.uniq(tables), fromTable).sort();
@@ -355,7 +336,10 @@ SqlBuilder.prototype.joinGraphSQL = function(fromTable, tables) {
 	}
 
 	var joinPath = this.graph.tableJoins(fromTable, joinTables);
-	
+	if ( ! joinPath) {
+		return { tables: joinTables, clauses: [] }; //no join clause
+	}
+
 	var me = this;
 
 	var sqlTables = _.map(joinPath, function(join) {
@@ -509,20 +493,10 @@ SqlBuilder.prototype.filterSQL = function(fromTable, filterClauses, fkGroups) {
 		} else if (filter.op == 'search') {
 
 			if (filter.field == Table.ALL_FIELDS) {
-				//use full text search (fts)
 
-				//(prefix last + phrase query) - see sqlite fts
-				var searchValue = '"' + filter.value + '*"';  
-				filter.value = searchValue;
-				filter.valueType = 'text';
-				
-				var params = me.filterToParams(filter);
-
-				var clause = util.format('(%s.%s MATCH %s)', 
-								table.ftsName(), table.ftsName(), params[0].sql); 	
-
-				sqlClauses.push(clause);
-				sqlParams.push(params[0]); 
+				var s = me.filterSearchSQL(filter);
+				sqlClauses.push(s.clause);
+				sqlParams = sqlParams.concat(s.params); 
 
 			} else {
 				//use LIKE on filter.field
@@ -558,30 +532,6 @@ SqlBuilder.prototype.filterSQL = function(fromTable, filterClauses, fkGroups) {
 		clauses: sqlClauses,
 		params: sqlParams
 	};
-}
-
-SqlBuilder.prototype.joinSearchSQL = function(filterClauses) {
-	//there can be only one search filter
-	var searchFilter = _.find(filterClauses, function(filter) {
-		return filter.op == 'search' && filter.field == Table.ALL_FIELDS;
-	});
-
-	if (searchFilter) {
-		var table = this.graph.table(searchFilter.table);
-		var clause = util.format('(%s.docid = %s.id)',
-			table.ftsName(),
-			table.name);
-
-		var result = {
-			tables: [table.ftsName()],
-			clauses: [clause]
-		};
-		
-		return result;
-
-	} else {
-		return { tables: [], clauses: [] };
-	}
 }
 
 SqlBuilder.prototype.groupForeignKeys = function(fieldClauses, filterClauses) {

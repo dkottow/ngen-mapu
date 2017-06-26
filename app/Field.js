@@ -161,6 +161,9 @@ Field.dateToString = function(date) {
 	return date.toISOString().replace('T', ' ').substr(0, 19); //up to secs
 }
 
+Field.prototype.typeName = function() {
+	return SqlHelper.typeName(this.type);
+}
 
 Field.prototype.insertPropSQL = function(table) {
 

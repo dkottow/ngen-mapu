@@ -369,10 +369,11 @@ TableGraph.prototype.joinTree = function(fromTable, joinTables) {
 
 TableGraph.prototype.tableJoins = function(fromTable, joinTables) {
 
-	log.trace({fromTable: fromTable, joinTables: joinTables},
+	log.debug({fromTable: fromTable, joinTables: joinTables},
 		"TableGraph.tableJoins()...");
 
 	var joinTree = this.joinTree(fromTable, joinTables);
+	if ( ! joinTree) return null;
 
 	var paths = graphlib.alg.dijkstra(joinTree, fromTable, 
 			function(e) { return 1; },

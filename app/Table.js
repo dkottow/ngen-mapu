@@ -310,7 +310,6 @@ Table.prototype.rowAliasView = function(idx) {
 
 Table.prototype.ftsName = function() { return 'fts_' + this.name; }
 
-
 Table.prototype.refFields = function() {
 	var fkRefs = _.map(this.foreignKeys(), function(f) { 
 		return f.refName();

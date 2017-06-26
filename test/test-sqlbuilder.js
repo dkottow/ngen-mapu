@@ -5,17 +5,8 @@ var assert = require('assert')
 	, path = require('path')
 	, fs = require('fs');
 
-global.config = global.config || {},
-global.config.sql_engine = 'sqlite';
-//global.config.sql_engine = 'mssql';
-
-global.config.data_dir = path.join(process.cwd(), 'data');
-global.config.mssql_connection = {
-	user: 'dkottow', 
-	password: 'G0lderPass.72', 
-	domain: 'GOLDER',
-	server: 'localhost\\HOLEBASE_SI', 
-};
+require('dotenv').config(process.env.DL_DOTENV_PATH); 
+var config = require('config');
 	
 var Table = require('../app/Table.js').Table
 	, Schema = require('../app/Schema.js').Schema //to read json
@@ -101,6 +92,20 @@ describe('Sandwiches DB', function() {
 		];
 		
 		var result = sqlBuilder.filterSQL('customers', filterClauses);
+		log.info({result: result});
+	});
+
+	it('SqlBuilder.search ', function() {
+		var filterClauses = [
+			{
+				field: '*',
+				table: 'products_in_orders',
+				op: 'search',
+				value: 'ca'
+			},
+		];
+		
+		var result = sqlBuilder.selectSQL(sqlBuilder.graph.table('products_in_orders'), Table.ALL_FIELDS, filterClauses);
 		log.info(result);
 	});
 
@@ -138,7 +143,7 @@ describe('Sandwiches DB', function() {
 					orderClauses, limit, offset);
 
 		//log.info(result.query);
-		log.info(sqlReplaceParams(result));
+		log.info({result: result});
 	});
 
 	it('SqlBuilder.selectSQL childless', function() {
@@ -161,7 +166,7 @@ describe('Sandwiches DB', function() {
 					orderClauses, limit, offset);
 
 		//log.info(result.query);
-		log.info(sqlReplaceParams(result));
+		log.info({result: result});
 	});
 
 
@@ -235,7 +240,7 @@ describe('Soccer DB', function() {
 					orderClauses, limit, offset);
 
 		//log.info(result.query);
-		log.info(sqlReplaceParams(result));
+		log.info({result: result});
 	});
 
 	it('SqlBuilder.createViewSQL', function() {

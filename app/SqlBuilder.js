@@ -494,7 +494,7 @@ SqlBuilder.prototype.filterSQL = function(fromTable, filterClauses, fkGroups) {
 			if (filter.field == Table.ALL_FIELDS) {
 
 				var s = me.filterSearchSQL(filter);
-				sqlClauses.push(s.clause);
+				if (s.clause) sqlClauses.push(s.clause);
 				sqlParams = sqlParams.concat(s.params); 
 
 			} else {

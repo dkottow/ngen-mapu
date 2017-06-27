@@ -24,6 +24,7 @@ var Schema = require('../Schema.js').Schema;
 var SqlHelper = require('./SqlHelperMssql.js').SqlHelperMssql;
 var SqlBuilder = require('../SqlBuilder.js').SqlBuilder;
 
+var config = require('config');
 var log = require('../log.js').log;
 
 var SqlBuilderMssql = function(tableGraph) {
@@ -44,7 +45,7 @@ SqlBuilderMssql.prototype.joinTableSQL = function(fromTable, fields, filterClaus
 		return filter.op == 'search' && filter.field == Table.ALL_FIELDS;
 	});
 
-	if (searchFilter) {
+	if (searchFilter && config.sql.fullTextSearch) {
 		_.each(fromTable.foreignKeys(), function(fk) {
 			var fk_table = this.graph.table(fk.fk_table);
 
@@ -57,13 +58,14 @@ SqlBuilderMssql.prototype.joinTableSQL = function(fromTable, fields, filterClaus
 			joinTables = joinTables.concat(searchTables);
 		}, this);
 	}
-
 	var graphSQL = this.joinGraphSQL(fromTable.name, joinTables);
 
 	return graphSQL;
 }
 
 SqlBuilderMssql.prototype.filterSearchSQL = function(filter) {
+
+	if ( ! config.sql.fullTextSearch) return { clause: null, params: [] };
 
 	var searchValue = '"' + filter.value + '*"';  
 

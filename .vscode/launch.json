@@ -25,6 +25,13 @@
         {
             "type": "node",
             "request": "launch",
+            "name": "Run localhost",
+            "program": "${workspaceRoot}\\server.js",
+            "env":  {"NODE_ENV": "localhost", "DL_MSSQL_PASSWORD": "G0lderPass.72"} 
+        },
+        {
+            "type": "node",
+            "request": "launch",
             "name": "Run Azure SQL",
             "program": "${workspaceRoot}\\server.js",
             "env":  {"NODE_ENV": "azure", "DL_MSSQL_PASSWORD": "tI27k7i06mEUVh4TAxoavL$ErZwH@c49"} 

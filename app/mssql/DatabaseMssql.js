@@ -1085,7 +1085,7 @@ DatabaseMssql.prototype.writeSchemaChanges = function(changes, cbAfter) {
 			var chainPromises = _.reduce(afterSQL, function(promises, sql) {
 				return promises.then(result => {
 					//console.log('change batch SQL ' + sql);
-					return new Request(conn).batch(sql);
+					return new Request(me.conn()).batch(sql);
 				});	
 			}, Promise.resolve());	
 

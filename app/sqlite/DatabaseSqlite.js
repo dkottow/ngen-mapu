@@ -769,11 +769,15 @@ DatabaseSqlite.prototype.writeSchemaChanges = function(changes, cbAfter) {
 	var me = this;
 	try {
 
-		var changesSQL = _.reduce(changes, function(sql, change) {			
-			var changeSQL = change.toSQL(me.sqlBuilder).join('\n');
-			return sql + changeSQL + '; \n';
+		var changesSQL = _.reduce(changes, function(accSQL, change) {			
+			var sql = change.toSQL(me.sqlBuilder).join('\n');
+			return accSQL + sql + '; \n';
 		}, '');
 
+		changesSQL += _.reduce(changes, function(accSQL, change) {			
+			var sql = change.afterSQL(me.sqlBuilder).join('\n');
+			return accSQL + sql + '; \n';
+		}, '');
 
 		log.debug({changesSQL: changesSQL}, "DatabaseSqlite.writeSchemaChanges()");
 		if (changesSQL.length == 0) {

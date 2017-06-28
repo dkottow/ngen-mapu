@@ -147,7 +147,8 @@ SqlHelperMssql.Table.createSearchSQL = function(table) {
 }
 
 SqlHelperMssql.Table.dropSearchSQL = function(table) {
-	return '';
+	return ''; //no need to drop this explicitly
+	//return 'DROP FULLTEXT INDEX ON ' + table.name;
 }
 
 SqlHelperMssql.Table.constraintName = function(table, fk) {

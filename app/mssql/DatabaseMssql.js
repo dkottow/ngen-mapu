@@ -1056,13 +1056,13 @@ DatabaseMssql.prototype.writeSchemaChanges = function(changes, cbAfter) {
 			});
 
 			var changesSQL = _.reduce(changes, function(acc, change) {
-				var changeSQL = change.toSQL(me.sqlBuilder);
-				return acc.concat(changeSQL);
+				var sql = change.toSQL(me.sqlBuilder);
+				return acc.concat(sql);
 			}, []);
-			log.debug({changes: changesSQL}, 'DatabaseMssql.writeSchemaChanges()');
+			log.debug({changeSQL: changesSQL}, 'DatabaseMssql.writeSchemaChanges()');
 
-			var chainPromises = _.reduce(changesSQL, function(chainPromises, sql) {
-				return chainPromises.then(result => {
+			var chainPromises = _.reduce(changesSQL, function(promises, sql) {
+				return promises.then(result => {
 					//console.log('change batch SQL ' + sql);
 					return new Request(transaction).batch(sql);	
 				});	
@@ -1073,6 +1073,23 @@ DatabaseMssql.prototype.writeSchemaChanges = function(changes, cbAfter) {
 		}).then(result => {
 			log.trace('then commit');
 			return transaction.commit();
+
+		}).then(() => {
+
+			var afterSQL = _.reduce(changes, function(acc, change) {
+				var sql = change.afterSQL(me.sqlBuilder);
+				return acc.concat(sql);
+			}, []);
+			log.debug({afterSQL: afterSQL}, 'DatabaseMssql.writeSchemaChanges()');
+
+			var chainPromises = _.reduce(afterSQL, function(promises, sql) {
+				return promises.then(result => {
+					//console.log('change batch SQL ' + sql);
+					return new Request(conn).batch(sql);
+				});	
+			}, Promise.resolve());	
+
+			return chainPromises;
 
 		}).then(() => {
 			cbAfter(); 

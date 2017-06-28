@@ -157,6 +157,10 @@ SchemaChange.prototype.patchPath = function() {
 	return this.patch_path;	
 }
 
+SchemaChange.prototype.afterSQL = function(sqlBuilder) {
+	return []; //nothing
+}
+
 /**** SchemaChange ops *****/ 
 
 var SCAddField = function(patch, schema) {
@@ -318,17 +322,21 @@ SCAddTable.prototype.apply = function() {
 
 SCAddTable.prototype.toSQL = function(sqlBuilder) {	
 
-	var table = this.schema.table(this.changeObj.name);
-
 	var sqlBatches = [];
+	var table = this.schema.table(this.changeObj.name);
 
 	sqlBatches.push(table.createSQL());
 	sqlBatches.push(sqlBuilder.createRowAliasViewSQL(table));
-	var searchSQL = SqlHelper.Table.createSearchSQL(table);
-	if (searchSQL.length > 0) sqlBatches.push(searchSQL);
-
 	sqlBatches.push(table.insertPropSQL({deep: true}));
 
+	return sqlBatches;
+}
+
+SCAddTable.prototype.afterSQL = function(sqlBuilder) {	
+	var sqlBatches = [];
+	var table = this.schema.table(this.changeObj.name);
+	var sql = SqlHelper.Table.createSearchSQL(table);
+	if (sql.length > 0) sqlBatches.push(sql);
 	return sqlBatches;
 }
 
@@ -388,11 +396,16 @@ SCSetTable.prototype.toSQL = function(sqlBuilder) {
 	sql = sqlBuilder.addDependenciesSQL(table);
 	if (sql.length > 0) sqlBatches.push(sql);
 
-	sql = SqlHelper.Table.createSearchSQL(table);
-	if (sql.length > 0) sqlBatches.push(sql);
-
 	sqlBatches.push(table.insertPropSQL({deep: true}));
 
+	return sqlBatches;
+}
+
+SCSetTable.prototype.afterSQL = function(sqlBuilder) {	
+	var sqlBatches = [];
+	var table = this.schema.table(this.patchObj.name);
+	var sql = SqlHelper.Table.createSearchSQL(table);
+	if (sql.length > 0) sqlBatches.push(sql);
 	return sqlBatches;
 }
 

@@ -94,14 +94,14 @@ SchemaChange._create = function(patch, schema) {
 	} else if (SCAddTable.test(patch)) {
 		result = new SCAddTable(patch, schema);
 
+	} else if (SCAddField.test(patch)) {
+		result = new SCAddField(patch, schema);
+
 	} else if (isEmpty && SCSetTable.test(patch)) {
 		result = new SCSetTable(patch, schema);
 
 	} else if (isEmpty && SCDelTable.test(patch)) {
 		result = new SCDelTable(patch, schema);
-		
-	} else if (! isEmpty && SCAddField.test(patch)) {
-		result = new SCAddField(patch, schema);
 	}
 
 	if (result) {

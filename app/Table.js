@@ -278,7 +278,7 @@ Table.prototype.deletePropSQL = function(opts) {
 
 
 Table.prototype.fields = function() {
-	return this._fields;
+	return this._fields; //returns object with key == field.name
 }
 
 Table.prototype.field = function(name) {

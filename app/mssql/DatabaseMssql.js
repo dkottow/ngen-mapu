@@ -411,7 +411,6 @@ DatabaseMssql.prototype.insert = function(tableName, rows, options, cbResult) {
 
 		var returnModifiedRows = options.retmod || false;
 
-		var table = this.table(tableName);
 		if ( ! _.isArray(rows)) throw new Error("rows type mismatch");
 
 		if (rows.length == 0) {
@@ -419,18 +418,11 @@ DatabaseMssql.prototype.insert = function(tableName, rows, options, cbResult) {
 			return;
 		}
 
-		var autoId = ! _.isNumber(rows[0].id);
-		var metaFields = _.without(_.pluck(Table.MANDATORY_FIELDS, 'name'), 'id');
+		var table = this.table(tableName);
 
-		var fieldNames = _.filter(_.keys(rows[0]), function(fn) { 
-			//filter out any non-field key
-			if ( ! _.has(table.fields(), fn)) return false;
-			//filter out id field if autoId
-			if (fn == 'id' && autoId) return false;
-			//filter out meta fields (add_by, mod_by etc.)
-			if (_.contains(metaFields, fn)) return false;
-			return true;	
-		});
+		var fields = this.getInsertFields(rows, table);
+		var fieldNames = _.keys(fields);
+		var autoId = ! _.has(fields, 'id');
 
 		var add_by = options.user ? options.user.name : 'unk';
 
@@ -445,10 +437,9 @@ DatabaseMssql.prototype.insert = function(tableName, rows, options, cbResult) {
 			transaction = new mssql.Transaction(this.conn());
 			stmt = new mssql.PreparedStatement(transaction);
 
-			_.each(fieldNames, function(fn) {
-				var field = table.field(fn);
-				var sqlType = SqlHelper.mssqlType(SqlHelper.typeName(field.type));
-				stmt.input(fn, sqlType);
+			_.each(fields, function(field) {
+				var sqlType = SqlHelper.mssqlType(field.typeName());
+				stmt.input(field.name, sqlType);
 			});
 
 			stmt.output('__id__', mssql.Int);
@@ -498,7 +489,7 @@ DatabaseMssql.prototype.insert = function(tableName, rows, options, cbResult) {
 					row.add_by = row.mod_by = add_by;
 					row.own_by = row.own_by || add_by;
 
-					var values = me.getFieldValues(row, table, fieldNames);
+					var values = me.getFieldValues(row, fields);
 					log.trace({values: values}, 'insert row');
 					if (values.err) return Promise.reject(new Error(values.err));
 					var valObj = _.object(fieldNames, values.values);	
@@ -572,24 +563,21 @@ DatabaseMssql.prototype.update = function(tableName, rows, options, cbResult) {
 		log.debug('Database.update()...');
 		log.trace({table: tableName, rows: rows, options: options});
 
+		cbResult = cbResult || arguments[arguments.length - 1];	
+		options = typeof options == 'object' ? options : {};		
+
+		var returnModifiedRows = options.retmod || false;
+
+		if ( ! _.isArray(rows)) throw new Error("rows type mismatch");
+
 		if (rows.length == 0) {
 			cbResult(null, []);
 			return;
 		}
 
 		var table = this.table(tableName);
-		if ( ! _.isArray(rows)) throw new Error("rows type mismatch");
-
-		cbResult = cbResult || arguments[arguments.length - 1];	
-		options = typeof options == 'object' ? options : {};		
-
-		var returnModifiedRows = options.retmod || false;
-
-		var fieldNames = _.intersection(_.keys(rows[0]), 
-							_.keys(table.fields()));
-
-		fieldNames = _.without(fieldNames, 'id', 'add_by', 'add_on');
-		fieldNames = _.union(fieldNames, ['mod_on', 'mod_by']);
+		var fields = this.getUpdateFields(rows, table);
+		var fieldNames = _.keys(fields);
 
 		var mod_by = options.user ? options.user.name : 'unk';
 		var modCount = 0;	
@@ -602,10 +590,9 @@ DatabaseMssql.prototype.update = function(tableName, rows, options, cbResult) {
 			transaction = new mssql.Transaction(this.conn());
 			stmt = new mssql.PreparedStatement(transaction);
 
-			_.each(fieldNames, function(fn) {
-				var field = table.field(fn);
-				var sqlType = SqlHelper.mssqlType(field.type);
-				stmt.input(fn, sqlType);
+			_.each(fields, function(field) {
+				var sqlType = SqlHelper.mssqlType(field.typeName());
+				stmt.input(field.name, sqlType);
 			});
 
 			stmt.input('id', SqlHelper.mssqlType('integer'));
@@ -642,7 +629,7 @@ DatabaseMssql.prototype.update = function(tableName, rows, options, cbResult) {
 					row.mod_on = Field.dateToString(new Date());
 					row.mod_by = mod_by;
 
-					var values = me.getFieldValues(row, table, fieldNames);
+					var values = me.getFieldValues(row, fields);
 					if (values.err) return Promise.reject(new Error(values.err));
 					var valObj = _.object(fieldNames, values.values);	
 					valObj['id'] = row.id;

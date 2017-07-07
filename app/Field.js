@@ -82,51 +82,31 @@ Field.PROPERTIES = ['order', 'width', 'scale', 'visible', 'label'];
 Field.TYPES = ['text', 'integer', 'decimal', 'date', 'timestamp', 'float' ];
 
 Field.create = function(fieldDef) {
-	if (_.contains(Field.TYPES, SqlHelper.typeName(fieldDef.type))) {
-		return new Field(fieldDef);
-	}
+	var fieldType = SqlHelper.typeName(fieldDef.type);
+
+	if (fieldType == 'text') return new FieldText(fieldDef);
+	if (fieldType == 'integer') return new FieldInteger(fieldDef);
+	if (fieldType == 'decimal') return new FieldDecimal(fieldDef);
+	if (fieldType == 'date') return new FieldDate(fieldDef);
+	if (fieldType == 'timestamp') return new FieldTimestamp(fieldDef);
+	if (fieldType == 'float') return new FieldFloat(fieldDef);
+
 	throw new Error(util.format("Field.create(%s) failed. Unknown type.", util.inspect(fieldDef)));
 }
 
-Field.prototype.setProp = function(name, value) {
-	if (_.contains(Field.PROPERTIES, name)) {
-		this.props[name] = value;
-	} else {
-		throw new Error(util.format('prop %s not found.', name));
-	}
+Field.ROW_ALIAS = 'ref';
+
+Field.parseDateUTC = function(str) {
+	if (str.match(/z$/)) return new Date(str);
+	else return new Date(str + 'Z');
 }
 
-Field.prototype.setDisabled = function(disabled) {
-	this.disabled = disabled == true;
-}
-
-
-Field.prototype.persistentProps = function() {
-	return _.pick(this.props, Field.PROPERTIES);
-}
-
-Field.prototype.updatePropSQL = function(table) {
-	var props = this.persistentProps();
-
-	var sql = 'UPDATE ' + Field.TABLE
-			+ " SET props = '" + JSON.stringify(props) + "'"
-			+ " , disabled = " + (this.disabled ? 1 : 0)
-			+ util.format(" WHERE name = '%s' AND table_name = '%s'; ",
-				this.name, table.name);
-
-	return sql;
+Field.dateToString = function(date) {
+	return date.toISOString().replace('T', ' ').substr(0, 19); //up to secs
 }
 
 Field.prototype.defaultWidth = function() {
-	var typeName = SqlHelper.typeName(this.type);
-
-	if (typeName == 'integer') return 4;
-	if (typeName == 'numeric') return 8;
-	if (typeName == 'text') return 20;
-	if (typeName == 'date') return 8;
-	if (typeName == 'datetime') return 16;
-
-	return 16;
+	return 16; //override me according to type
 }
 
 Field.prototype.toJSON = function() {
@@ -150,19 +130,46 @@ Field.prototype.toJSON = function() {
 	return result;
 }
 
-Field.ROW_ALIAS = 'ref';
-
 Field.prototype.refName = function() {
 	if (this.name.match(/id$/)) return this.name.replace(/id$/, "ref");
 	else return this.name + "_ref";
 }
 
-Field.dateToString = function(date) {
-	return date.toISOString().replace('T', ' ').substr(0, 19); //up to secs
+Field.prototype.typeName = function() {
+	return this.type; //override me if type has modifiers such as text(256) or decimal(6,2)
 }
 
-Field.prototype.typeName = function() {
-	return SqlHelper.typeName(this.type);
+
+Field.prototype.parse = function() {
+	throw new Error('Field base class does not define parse().');
+}
+
+Field.prototype.setProp = function(name, value) {
+	if (_.contains(Field.PROPERTIES, name)) {
+		this.props[name] = value;
+	} else {
+		throw new Error(util.format('prop %s not found.', name));
+	}
+}
+
+Field.prototype.setDisabled = function(disabled) {
+	this.disabled = disabled == true;
+}
+
+Field.prototype.persistentProps = function() {
+	return _.pick(this.props, Field.PROPERTIES);
+}
+
+Field.prototype.updatePropSQL = function(table) {
+	var props = this.persistentProps();
+
+	var sql = 'UPDATE ' + Field.TABLE
+			+ " SET props = '" + JSON.stringify(props) + "'"
+			+ " , disabled = " + (this.disabled ? 1 : 0)
+			+ util.format(" WHERE name = '%s' AND table_name = '%s'; ",
+				this.name, table.name);
+
+	return sql;
 }
 
 Field.prototype.insertPropSQL = function(table) {
@@ -198,6 +205,77 @@ Field.prototype.toSQL = function(table) {
 	sql += ' ' +  SqlHelper.Field.foreignKeySQL(table, this);
 	return sql;
 }
+
+//Field.TYPES = ['text', 'integer', 'decimal', 'date', 'timestamp', 'float' ];
+var FieldText = function(attrs) {
+	log.trace({attrs: attrs}, "new FieldText()");
+	Field.call(this, attrs);
+}
+FieldText.prototype = new Field;	
+FieldText.prototype.constructor = FieldText;
+FieldText.prototype.typeName = function() { return 'text'; }
+FieldText.prototype.defaultWidth = function() { return 20; }
+FieldText.prototype.parse = function(val) { return val == null ? null : String(val); }
+
+
+var FieldInteger = function(attrs) {
+	log.trace({attrs: attrs}, "new FieldInteger()");
+	Field.call(this, attrs);
+}
+FieldInteger.prototype = new Field;	
+FieldInteger.prototype.constructor = FieldInteger;
+FieldInteger.prototype.defaultWidth = function() { return 4; }
+FieldInteger.prototype.parse = function(val) { return val == null ? null : parseInt(val); }
+
+
+var FieldDecimal = function(attrs) {
+	log.trace({attrs: attrs}, "new FieldDecimal()");
+	Field.call(this, attrs);
+}
+FieldDecimal.prototype = new Field;	
+FieldDecimal.prototype.constructor = FieldDecimal;
+FieldDecimal.prototype.typeName = function() { return 'decimal'; }
+FieldDecimal.prototype.defaultWidth = function() { return 8; }
+FieldDecimal.prototype.parse = function(val) { return val == null ? null : parseFloat(val); }
+
+
+var FieldDate = function(attrs) {
+	log.trace({attrs: attrs}, "new FieldDate()");
+	Field.call(this, attrs);
+}
+FieldDate.prototype = new Field;	
+FieldDate.prototype.constructor = FieldDate;
+FieldDate.prototype.defaultWidth = function() { return 8; }
+FieldDate.prototype.parse = function(val) { 
+	if (val == null) return null;
+	var d = Field.parseDateUTC(val);
+	return d.toISOString().substring(0, 10);
+}
+
+
+var FieldTimestamp = function(attrs) {
+	log.trace({attrs: attrs}, "new FieldTimestamp()");
+	Field.call(this, attrs);
+}
+FieldTimestamp.prototype = new Field;	
+FieldTimestamp.prototype.constructor = FieldTimestamp;
+FieldTimestamp.prototype.defaultWidth = function() { return 16; }
+FieldTimestamp.prototype.parse = function(val) { return val == null ? null : new Date(val).toISOString(); }
+FieldDate.prototype.parse = function(val) { 
+	if (val == null) return null;
+	var d = Field.parseDateUTC(val);
+	return Field.dateToString(d);
+}
+
+
+var FieldFloat = function(attrs) {
+	log.trace({attrs: attrs}, "new FieldFloat()");
+	Field.call(this, attrs);
+}
+FieldFloat.prototype = new Field;	
+FieldFloat.prototype.constructor = FieldFloat;
+FieldFloat.prototype.defaultWidth = function() { return 8; }
+FieldFloat.prototype.parse = function(val) { return val == null ? null : parseFloat(val); }
 
 exports.Field = Field;
 

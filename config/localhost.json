@@ -13,7 +13,7 @@
     },
     
      "sql": {
-        "engine"    : "mssql",
+        "engine"    : "sqlite",
         "pageRows"  : 1000,
         "connection": {
             "server": "localhost\\HOLEBASE_SI",

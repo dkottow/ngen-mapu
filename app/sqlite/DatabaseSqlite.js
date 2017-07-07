@@ -237,13 +237,8 @@ DatabaseSqlite.prototype.insert = function(tableName, rows, options, cbResult) {
 			return;
 		}
 
-		var fieldNames = _.filter(_.keys(rows[0]), function(fn) { 
-			//filter out any non-field key
-			return _.has(table.fields(), fn); // && fn != 'id'; 
-		});
-
-		fieldNames = _.union(fieldNames, 
-					_.pluck(Table.MANDATORY_FIELDS, 'name'));
+		var fields = this.getInsertFields(rows, table);
+		var fieldNames = _.keys(fields);
 	
 		var add_by = options.user ? options.user.name : 'unk';
 		var mod_by = add_by;
@@ -279,7 +274,7 @@ DatabaseSqlite.prototype.insert = function(tableName, rows, options, cbResult) {
 				//console.log(r);				
 				if (err == null) {					
 
-					var result = me.getFieldValues(r, table, fieldNames);
+					var result = me.getFieldValues(r, fields);
 					err = err || result.err;
 
 					//console.log(result);
@@ -336,11 +331,8 @@ DatabaseSqlite.prototype.update = function(tableName, rows, options, cbResult) {
 
 		var returnModifiedRows = options.retmod || false;
 
-		var fieldNames = _.intersection(_.keys(rows[0]), 
-							_.keys(table.fields()));
-
-		fieldNames = _.without(fieldNames, 'id', 'add_by', 'add_on');
-		fieldNames = _.union(fieldNames, ['mod_on', 'mod_by']);
+		var fields = this.getUpdateFields(rows, table);
+		var fieldNames = _.keys(fields);
 
 		var mod_by = options.user ? options.user.name : 'unk';
 
@@ -370,7 +362,7 @@ DatabaseSqlite.prototype.update = function(tableName, rows, options, cbResult) {
 
 				if (err == null) {					
 
-					var result = me.getFieldValues(r, table, fieldNames);
+					var result = me.getFieldValues(r, fields);
 					err = err || result.err;
 
 					var params = result.values;

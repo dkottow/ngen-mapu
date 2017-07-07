@@ -152,39 +152,87 @@ Database.prototype.rowsOwned = function(tableName, rowIds, user, cbResult) {
 	});
 }
 
-var parseFn = function(typeName) {
-	if (typeName == 'text') {
-		return function(val) { return String(val); }
-	} else if (typeName == 'decimal') {
-		return function(val) { return parseFloat(val); }
-	} else if (typeName == 'integer') {
-		return function(val) { return parseInt(val); }
-	} else if (typeName == 'date' || typeName == 'timestamp') {
-		return function(val) { 
-			return Number.isFinite(Date.parse(val))
-				? String(val) : NaN; //return NaN on error 
+Database.prototype.getInsertFields = function(rows, table) {
+
+	var row = rows[0]; //all based on first row
+
+	var rejectFields = _.pluck(_.filter(Table.MANDATORY_FIELDS, function(mf) { 
+		if (mf.name == 'id' && ! _.isNumber(row.id)) return true;
+		return false; 
+	}), 'name');
+
+	var forceFields = _.pluck(_.filter(Table.MANDATORY_FIELDS, function(mf) { 
+		return _.contains(['add_by', 'add_on', 'mod_by', 'mod_on'], mf.name); 
+	}), 'name');
+
+	var fields = _.filter(table.fields(), function(field) {
+		if (_.contains(rejectFields, field.name)) {
+			//never insert these fields, even if present in row
+			return false; 
 		}
-	}
-	throw new Error('unkown type ' + typeName);
-}
+		if (_.contains(forceFields, field.name)) {
+			//always insert these fields, regardless of present in row
+			return true;
+		}
+		if (row[field.name]) {
+			//insert if present row
+			return true;
+		}
 		
-Database.prototype.getFieldValues = function(row, table, fieldNames) {
-	var err = null;
-	var values = _.map(fieldNames, function(fn) { 
-		var typeName = SqlHelper.typeName(table.field(fn).type);
-		var val = ( _.isNull(row[fn]) || _.isUndefined(row[fn]))
-			? null : parseFn(typeName)(row[fn]);
-		if (typeName != 'text' && Number.isNaN(val)) {
-			//parseFn returns NaN on parse error (fwded from parseInt, parseFloat)
-			err = new Error("Conversion failed for '" 
-				+ row[fn] + '" [' + fn + ']');
-		}
-		//console.log(val + ' ' + row[fn] + ' ' + fn + ' ' + t);
-		return val; 
+		return false;
 	});
-	return { values: values, err: err };
+
+	return _.object(_.pluck(fields, 'name'), fields);
 }
 
+Database.prototype.getUpdateFields = function(rows, table) {
+
+	var rejectFields = _.pluck(_.filter(Table.MANDATORY_FIELDS, function(mf) { 
+		return _.contains(['id', 'add_by', 'add_on'], mf.name); 
+	}), 'name');
+
+	var forceFields = _.pluck(_.filter(Table.MANDATORY_FIELDS, function(mf) { 
+		return _.contains(['mod_by', 'mod_on'], mf.name); 
+	}), 'name');
+
+	var row = rows[0]; //all based on first row
+
+	var fields = _.filter(table.fields(), function(field) {
+		if (_.contains(rejectFields, field.name)) {
+			//never update these fields, even if present in row
+			return false; 
+		}
+		if (_.contains(forceFields, field.name)) {
+			//always update these fields, regardless of present in row
+			return true;
+		}
+		if (row[field.name]) {
+			//update if present row
+			return true;
+		}
+		
+		return false;
+	});
+	
+	return _.object(_.pluck(fields, 'name'), fields);
+}
+
+Database.prototype.getFieldValues = function(row, fields) {
+	try {
+		var values = _.map(fields, function(field) {
+			var val = field.parse(row[field.name]);
+			if (val !== val) { 
+				//v is NaN
+				throw new Error("field.parse() failed for '" + row[field.name] + "' [" + field.name + "]");
+			}
+			return val;
+		});
+		return { values: values };
+
+	} catch(err) {
+		return { err: err };
+	}
+}
 
 Database.prototype.patchSchema = function(patches, cbResult) {
 	try {

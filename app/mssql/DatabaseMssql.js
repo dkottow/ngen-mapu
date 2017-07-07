@@ -419,18 +419,20 @@ DatabaseMssql.prototype.insert = function(tableName, rows, options, cbResult) {
 			return;
 		}
 
+		var autoId = ! _.isNumber(rows[0].id);
+		var metaFields = _.without(_.pluck(Table.MANDATORY_FIELDS, 'name'), 'id');
+
 		var fieldNames = _.filter(_.keys(rows[0]), function(fn) { 
 			//filter out any non-field key
-			return _.has(table.fields(), fn); // && fn != 'id'; 
+			if ( ! _.has(table.fields(), fn)) return false;
+			//filter out id field if autoId
+			if (fn == 'id' && autoId) return false;
+			//filter out meta fields (add_by, mod_by etc.)
+			if (_.contains(metaFields, fn)) return false;
+			return true;	
 		});
 
-		fieldNames = _.union(fieldNames, 
-					_.without(_.pluck(Table.MANDATORY_FIELDS, 'name'), 'id'));
-
-		var autoId = ! _.isNumber(rows[0].id);
-
 		var add_by = options.user ? options.user.name : 'unk';
-		var mod_by = add_by;
 
 		var rowIds = [];
 		var sql;
@@ -493,8 +495,8 @@ DatabaseMssql.prototype.insert = function(tableName, rows, options, cbResult) {
 				if (row) {	
 
 					row.add_on = row.mod_on = Field.dateToString(new Date());
-					row.add_by = row.mod_by = mod_by;
-					row.own_by = row.own_by || mod_by;
+					row.add_by = row.mod_by = add_by;
+					row.own_by = row.own_by || add_by;
 
 					var values = me.getFieldValues(row, table, fieldNames);
 					log.trace({values: values}, 'insert row');

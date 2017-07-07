@@ -427,7 +427,7 @@ DatabaseMssql.prototype.insert = function(tableName, rows, options, cbResult) {
 		fieldNames = _.union(fieldNames, 
 					_.without(_.pluck(Table.MANDATORY_FIELDS, 'name'), 'id'));
 
-		var autoId = ! _.contains(fieldNames, 'id');
+		var autoId = ! _.isNumber(rows[0].id);
 
 		var add_by = options.user ? options.user.name : 'unk';
 		var mod_by = add_by;

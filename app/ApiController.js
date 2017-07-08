@@ -215,7 +215,7 @@ Controller.prototype.putAccount = function(req, res) {
 Controller.prototype.getAccount = function(req, res) {
 	log.info({req: req}, 'Controller.getAccount()...');
 	var me = this;
-	var path = this.getPathObjects(req, {account: true});
+	var path = this.getDataObjects(req, {account: true});
 	if (path.error) {
 		sendError(req, res, path.error, 404);
 		return;
@@ -256,7 +256,7 @@ Controller.prototype.getAccount = function(req, res) {
 Controller.prototype.getDatabase = function(req, res) {
 	log.info({req: req}, 'Controller.getDatabase()...');
 	var me = this;
-	var path = this.getPathObjects(req, {account: true, db: true});
+	var path = this.getDataObjects(req, {account: true, db: true});
 	if (path.error) {
 		sendError(req, res, path.error, 404);
 		return;
@@ -297,7 +297,7 @@ Controller.prototype.getDatabase = function(req, res) {
 Controller.prototype.putDatabase = function(req, res) {
 	log.info({req: req}, 'Controller.putDatabase()...');
 
-	var path = this.getPathObjects(req, {account: true});
+	var path = this.getDataObjects(req, {account: true});
 	if (path.error) {
 		sendError(req, res, path.error, 404);
 		return;
@@ -335,7 +335,7 @@ Controller.prototype.putDatabase = function(req, res) {
 Controller.prototype.delDatabase = function(req, res) {
 	log.info({req: req}, 'Controller.delDatabase()...');
 
-	var path = this.getPathObjects(req, {account: true, db: true});
+	var path = this.getDataObjects(req, {account: true, db: true});
 	if (path.error) {
 		sendError(req, res, path.error, 404);
 		return;
@@ -369,7 +369,7 @@ Controller.prototype.patchDatabase = function(req, res) {
 	log.info({req: req}, 'Controller.patchDatabase()...');
 	log.debug({'req.body': req.body});
 
-	var path = this.getPathObjects(req, {account: true, db: true});
+	var path = this.getDataObjects(req, {account: true, db: true});
 	if (path.error) {
 		sendError(req, res, path.error, 404);
 		return;
@@ -405,7 +405,7 @@ Controller.prototype.patchDatabase = function(req, res) {
 Controller.prototype.getDatabaseFile = function(req, res) {
 	log.info({req: req}, 'Controller.getDatabaseFile()...');
 
-	var path = this.getPathObjects(req, {account: true, db: true});
+	var path = this.getDataObjects(req, {account: true, db: true});
 	if (path.error) {
 		sendError(req, res, path.error, 404);
 		return;
@@ -436,7 +436,7 @@ Controller.prototype.requestNonce = function(req, res) {
 	log.info({req: req}, 'Controller.requestNonce()...');
 
 	var me = this;
-	var path = this.getPathObjects(req, {account: true, db: true});
+	var path = this.getDataObjects(req, {account: true, db: true});
 	if (path.error) {
 		sendError(req, res, path.error, 404);
 		return;
@@ -515,7 +515,7 @@ Controller.prototype.getRows = function(req, res, opts) {
 	var me = this;
 	opts = opts || { obj: false };	
 
-	var path = this.getPathObjects(req, {account: true, db: true, table: true});
+	var path = this.getDataObjects(req, {account: true, db: true, table: true});
 	if (path.error) {
 		sendError(req, res, path.error, 404);
 		return;
@@ -577,7 +577,7 @@ Controller.prototype.getObjs = function(req, res, opts) {
 	log.info({req: req}, 'Controller.getObjs()...');
 	var me = this;
 
-	var path = this.getPathObjects(req, {account: true, db: true, table: true});
+	var path = this.getDataObjects(req, {account: true, db: true, table: true});
 	if (path.error) {
 		sendError(req, res, path.error, 404);
 		return;
@@ -600,22 +600,25 @@ Controller.prototype.getObjs = function(req, res, opts) {
 		}
 
 		var q = { filter: params.values['$filter'], fields: params.values['$select'] };
+
 		var auth2 = me.access.filterQuery(path, q, req.user);
 		if (auth2.error) {
 			sendError(req, res, auth2.error, 401);
 			return;
 		}
 
-		//TODO make sure fields include path table id
-
-		var orderObj = { field: 'id', order: 'asc' };
-		var orderBy = [ orderObj ];
+		var fields = (params.values['$select'] || []);
+		if ( ! _.find(fields, function(f) {
+			return f.field == 'id' && (! f.table || f.table == path.table.name);
+		})) {
+			fields.push({ field: 'id' });
+		}
 		
-		if (params.values['$orderby']) orderBy.concat(params.values['$orderby']);
-
+		var orderBy = (params.values['$orderby'] || []).push({ field: 'id', order: 'asc' });
+		
 		path.db.all(path.table.name, {
 				filter: auth2.filter 
-				, fields: params.values['$select'] 
+				, fields: fields 
 				, order: orderBy 
 				, limit: params.values['$top'] 
 				, offset: params.values['$skip'] 
@@ -668,7 +671,7 @@ Controller.prototype.getStats = function(req, res) {
 	log.info({req: req}, 'Controller.getStats()...');
 	var me = this;
 
-	var path = this.getPathObjects(req, {account: true, db: true, table: true});
+	var path = this.getDataObjects(req, {account: true, db: true, table: true});
 	if (path.error) {
 		sendError(req, res, path.error, 404);
 		return;
@@ -723,7 +726,7 @@ Controller.prototype.postRows = function(req, res) {
 	log.info({req: req}, 'Controller.postRows()...');
 	log.debug({'req.body': req.body});
 
-	var path = this.getPathObjects(req, {account: true, db: true, table: true});
+	var path = this.getDataObjects(req, {account: true, db: true, table: true});
 	if (path.error) {
 		sendError(req, res, path.error, 404);
 		return;
@@ -775,7 +778,7 @@ Controller.prototype.putRows = function(req, res) {
 	log.info({req: req}, 'Controller.putRows()...');
 	log.debug({'req.body': req.body});
 
-	var path = this.getPathObjects(req, {account: true, db: true, table: true});
+	var path = this.getDataObjects(req, {account: true, db: true, table: true});
 	if (path.error) {
 		sendError(req, res, path.error, 404);
 		return;
@@ -822,7 +825,7 @@ Controller.prototype.delRows = function(req, res) {
 	log.info({req: req}, 'Controller.delRows()...');
 	log.debug({'req.body': req.body});
 
-	var path = this.getPathObjects(req, {account: true, db: true, table: true});
+	var path = this.getDataObjects(req, {account: true, db: true, table: true});
 	if (path.error) {
 		sendError(req, res, path.error, 404);
 		return;
@@ -856,7 +859,7 @@ Controller.prototype.chownRows = function(req, res) {
 	log.info({req: req}, 'Controller.chownRows()...');
 	log.debug({'req.body': req.body});
 
-	var path = this.getPathObjects(req, {account: true, db: true, table: true});
+	var path = this.getDataObjects(req, {account: true, db: true, table: true});
 	if (path.error) {
 		sendError(req, res, path.error, 404);
 		return;
@@ -893,9 +896,9 @@ Controller.prototype.account = function(name) {
 	return this.accountManager.get(name);
 }
 
-Controller.prototype.getPathObjects = function(req, objs) {
+Controller.prototype.getDataObjects = function(req, objs) {
 
-	log.trace({params: req.params}, 'Controller.getPathObjects...');
+	log.trace({params: req.params}, 'Controller.getDataObjects...');
 
 	var result = {};
 	if (req.params[0] && objs.account) {
@@ -932,7 +935,7 @@ Controller.prototype.getPathObjects = function(req, objs) {
 		}
 	}
 
-	log.trace({result: result}, '...Controller.getPathObjects');
+	log.trace({result: result}, '...Controller.getDataObjects');
 	return result;
 }
 

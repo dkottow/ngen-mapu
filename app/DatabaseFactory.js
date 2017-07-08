@@ -36,7 +36,7 @@ DatabaseFactory.create = function(config) {
 		return new DatabaseMssql(config);
 	}
 
-	throw new Error(util.format("unsupported sql engine '%s'", gsql_engine));	
+	throw new Error(util.format("unsupported sql engine '%s'", sql_engine));	
 }
 
 DatabaseFactory.getClass = function() {
@@ -47,7 +47,7 @@ DatabaseFactory.getClass = function() {
             return require('./mssql/DatabaseMssql.js').DatabaseMssql;
 	}
 
-	throw new Error(util.format("unsupported sql engine '%s'", gsql_engine));	
+	throw new Error(util.format("unsupported sql engine '%s'", sql_engine));	
 }
 
 exports.DatabaseFactory = DatabaseFactory;

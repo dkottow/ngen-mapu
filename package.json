@@ -24,13 +24,13 @@
     , "validator": "*"
     , "commander": "*"
     , "request": "*"
+    , "gulp": "*"
   }
   , "devDependencies": {
     "mocha": "*"
     , "fs-extra": "*"
     , "probdist": "*"
     , "random-js": "*"
-    , "gulp": "*"
   }
   , "main": "server.js"
   , "bin": { "donk": "./donk/donk.js" }

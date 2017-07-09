@@ -36,5 +36,10 @@
         },
 
         "elasticPool": "azwu-test-d365" //leave empty if no pool
+    },
+    
+    "url": {
+        "host": "azwu-data365-test01.azurewebsites.net",
+        "protocol": "https"
     }
 }

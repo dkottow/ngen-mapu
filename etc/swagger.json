@@ -5,9 +5,9 @@
         "description": "A web API to manage SQL databases (sqlite).",
         "version": "1.0.0-alpha"
     },
-    "host": "azwu-data365-test01.azurewebsites.net",
+    "host": "localhost:3000",
     "schemes": [
-        "https"
+        "http"
     ],
     "basePath": "/",
     "produces": [

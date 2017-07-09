@@ -17,6 +17,11 @@
             "password": null
         }
     },
+    
+    "url"   : {
+        "host"  : "localhost:3000",
+        "protocol"  : "http",
+    },
 
     "logs"  : {
         "transports": [

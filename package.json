@@ -30,11 +30,12 @@
     , "fs-extra": "*"
     , "probdist": "*"
     , "random-js": "*"
+    , "gulp": "*"
   }
   , "main": "server.js"
   , "bin": { "donk": "./donk/donk.js" }
   , "scripts": {
-    "install" : "node etc/post-install.js"
+    "install" : "gulp"
     , "start": "node server.js"
     , "test": "mocha"
   }

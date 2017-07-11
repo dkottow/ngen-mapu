@@ -3,15 +3,10 @@ var validator = require('validator');
 var express = require('express');
 var bodyParser = require("body-parser");
 var jwt = require('jsonwebtoken');
+var url = require('url');
 
-var envPath = './.env'; 
-if (process.env.OPENSHIFT_DATA_DIR) { 
-    envPath = process.env.OPENSHIFT_DATA_DIR + '/.env'; 
-} 
-
-var log = require('./log.js').log;
- 
-require('dotenv').config({path: envPath}); 
+require('dotenv').config(); 
+var config = require('config');
 
 var AUTH0_SCOPE = 'openid email app_metadata';
 
@@ -183,7 +178,7 @@ Controller.prototype.doSignup = function(email, pass, account, createAccount, cb
 			
 			//create account
 			var apiRequest = {
-				url: process.env.DONKEYLIFT_API + '/' + account
+				url: url.format({ protocol: config.url.protocol, host: config.url.host, pathname: 'account' })
 				, auth: { 
 					bearer: apiToken
 				}
@@ -271,7 +266,7 @@ Controller.prototype.validateSignup = function(email, account, newAccount, cbAft
 
 			//check if account exists
 			var apiRequest = {
-				url: process.env.DONKEYLIFT_API + '/' + account
+				url: url.format({ protocol: config.url.protocol, host: config.url.host, pathname: 'account' })
 				, auth: { 
 					bearer: apiToken
 				}

@@ -213,6 +213,7 @@ SqlHelperMssql.Field.typeSQL = function(fieldType)
 	else if (typeName == 'decimal') return fieldType == 'decimal' ? 'DECIMAL(12,2)' : fieldType.replace(/^decimal/, 'DECIMAL');
 	else if (typeName == 'timestamp') return 'DATETIME';
 	else if (typeName == 'date') return 'DATE'; 
+	else if (typeName == 'float') return 'FLOAT'; 
 	else throw new Error("SqlHelperMssql unknown type '" + fieldType + "'");
 }
 
@@ -232,6 +233,8 @@ SqlHelperMssql.Field.fromSQLType = function(sqlTypeInfo)
 		return 'timestamp';
 	} else if (sqlTypeInfo.data_type == 'date') {
 		return 'date';
+	} else if (sqlTypeInfo.data_type == 'float') {
+		return 'float';
 	} 
 	throw new Error("SqlHelperMssql.Field.fromSQLType '" + sqlTypeInfo.data_type + "'");
 }

@@ -234,6 +234,7 @@ SqlHelperSqlite.Field.typeSQL = function(fieldType)
 	else if (typeName == 'decimal') return fieldType.replace(/^decimal/, 'DECIMAL');
 	else if (typeName == 'timestamp') return 'DATETIME';
 	else if (typeName == 'date') return 'DATE'; 
+	else if (typeName == 'float') return 'FLOAT'; 
 	else throw new Error("SqlHelperSqlite unknown type '" + fieldType + "'");
 }
 
@@ -245,6 +246,7 @@ SqlHelperSqlite.Field.fromSQLType = function(sqlType)
 	else if (sqlType.startsWith('NUMERIC')) return sqlType.replace(/^NUMERIC/, 'decimal'); //backward compat.
 	else if (sqlType == 'DATETIME') return 'timestamp';
 	else if (sqlType == 'DATE') return 'date'; 
+	else if (sqlType == 'FLOAT') return 'float'; 
 	else throw new Error("SqlHelperSqlite unknown type '" + sqlType + "'");	
 }
 

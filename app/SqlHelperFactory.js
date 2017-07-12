@@ -37,6 +37,14 @@ SqlHelperFactory.Base.typeName = function(fieldType)
     return null;
 }
 
+SqlHelperFactory.Base.typeModifier = function(fieldType) 
+{
+    var m = fieldType.match(/\(([0-9]+)(?:,([0-9]+))?\)$/);
+    if (m && m[1] && ! m[2]) return { length : m[1] };
+    if (m && m[1] && m[2]) return { precision : m[1], scale : m[2] };
+    return null;
+}
+
 SqlHelperFactory.create = function() {
 
 	if (sql_engine == 'sqlite') {

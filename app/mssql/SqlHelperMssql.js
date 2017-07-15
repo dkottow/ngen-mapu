@@ -73,11 +73,13 @@ SqlHelperMssql.mssqlType = function(fieldType)
 }
 
 SqlHelperMssql.ACCOUNT_DATABASE_SEPARATOR = '$';
+SqlHelperMssql.FULLTEXT_CATALOG = 'D365_Catalog';
 
 /********** Schema stuff *********/
 
 SqlHelperMssql.Schema.createFullTextCatalogSQL = function(name) {
-	return 'CREATE FULLTEXT CATALOG ftCatalog AS DEFAULT;\n\n';
+	return 'CREATE FULLTEXT CATALOG ' + SqlHelperMssql.FULLTEXT_CATALOG 
+		+ ' AS DEFAULT;\n\n';
 }
 
 SqlHelperMssql.Schema.fullName = function(account, db) {
@@ -100,7 +102,7 @@ SqlHelperMssql.Schema.createPropsTableSQL = function(name) {
 }
 
 SqlHelperMssql.Schema.dropSQL = function(dbName) {
-	return util.format("IF EXISTS(select * from sys.databases where name='%s')\n"
+	return util.format("IF EXISTS (SELECT * FROM sys.databases WHERE name='%s')\n"
 			+ 'BEGIN\n'
 			+ '  ALTER DATABASE [%s] SET SINGLE_USER WITH ROLLBACK IMMEDIATE\n'
 			+ '  DROP DATABASE [%s]\n'
@@ -121,10 +123,6 @@ SqlHelperMssql.Table.createPropsTableSQL = function(name) {
 
 SqlHelperMssql.Table.hasTriggers = function() { return false; }
 
-/*** TODO see here
-https://docs.microsoft.com/en-us/sql/t-sql/statements/create-fulltext-index-transact-sql
-****/
-
 SqlHelperMssql.Table.createPrimaryKeySQL = function(name) {
 	return "CONSTRAINT " + SqlHelperMssql.EncloseSQL(SqlHelperMssql.Table.pkIndexName(name)) + " PRIMARY KEY CLUSTERED (id)";
 }
@@ -137,13 +135,22 @@ SqlHelperMssql.Table.createSearchSQL = function(table) {
 	var textFields = _.filter(table.fields(), function(f) {
 		return f.typeName() == 'text';
 	});
-	var sql = util.format('CREATE FULLTEXT INDEX ON %s', table.name);
-	sql += ' (';
+
+	var sql = util.format("IF EXISTS (SELECT * FROM sys.fulltext_catalogs WHERE NAME = '%s')", 
+		SqlHelperMssql.FULLTEXT_CATALOG);
+
+	sql += ' BEGIN'
+		+ util.format(' CREATE FULLTEXT INDEX ON %s', table.name)
+		+ ' (';
+	
 	sql += _.map(textFields, function(f) {
 		return SqlHelperMssql.EncloseSQL(f.name);
 	}).join(', ');
-	sql += ') KEY INDEX ' + SqlHelperMssql.Table.pkIndexName(table.name);
-	sql += ' WITH STOPLIST OFF';
+
+	sql += ') KEY INDEX ' + SqlHelperMssql.Table.pkIndexName(table.name)
+		+ ' WITH STOPLIST OFF; '
+		+ ' END';
+
 	return sql;
 }
 

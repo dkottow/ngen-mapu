@@ -241,7 +241,7 @@ Database.prototype.patchSchema = function(patches, cbResult) {
 
 		function cbPatchError(err) {
 			me.getInfo(function(errInfo, schemaInfo) {
-				log.debug({schemaInfo: schemaInfo}, 'Database.patchSchema()');
+				log.trace({schemaInfo: schemaInfo}, 'Database.patchSchema()');
 				if (errInfo) throw new Error('Error trying to obtain getInfo');
 				cbResult(err, schemaInfo);
 			});									
@@ -281,6 +281,7 @@ Database.prototype.patchSchema = function(patches, cbResult) {
 
 				if (err) {
 					log.error({err: err}, "Database.patchSchema() failed.");
+					//TODO read from disk?
 					cbPatchError(err);
 					return;
 				}

@@ -946,6 +946,7 @@ DatabaseMssql.prototype.writeSchema = function(cbAfter) {
 			return transaction.commit();
 
 		}).then(result => {
+			doRollback = false;
 			if (config.sql.fullTextSearch) {
 				log.debug('create full text catalog');
 				return new Request(conn).batch(SqlHelper.Schema.createFullTextCatalogSQL(this.schema.name));
@@ -1065,6 +1066,7 @@ DatabaseMssql.prototype.writeSchemaChanges = function(changes, cbAfter) {
 
 		}).then(() => {
 
+			doRollback = false;
 			var afterSQL = _.reduce(changes, function(acc, change) {
 				var sql = change.afterSQL(me.sqlBuilder);
 				return acc.concat(sql);
@@ -1094,6 +1096,9 @@ DatabaseMssql.prototype.writeSchemaChanges = function(changes, cbAfter) {
 					cbAfter(err);
 					return;			
 				});
+			} else {
+				log.error({err: err}, "Database.writeSchemaChanges() error.");
+				cbAfter(err);				
 			}	
 		});
 

@@ -49,13 +49,16 @@ function Controller(accountManager, options) {
 	this.initRoutes(options);
 }
 
+Controller.NonceRoutes = {
+	DATABASE_FILE: /^\/(\w+)\/(\w+)\.sqlite?$/, 	//get database file
+	TABLE_CSV_FILE: /^\/(\w+)\/(\w+)\/(\w+)\.csv?/   	//get table csv file
+};
+
 Controller.prototype.initRoutes = function(options) {
 	log.trace("Controller.initRoutes()...");		
 	var me = this;
 
-	var nonceRoutes = [ 
-		/^\/(\w+)\/(\w+)\.sqlite?$/ //get database file
-	]; 		
+	var nonceRoutes = _.values(Controller.NonceRoutes);
 
 	//json parsing 
 	var reqSizeLimit = options.bodyParser ? options.bodyParser.limit : '1mb';
@@ -122,14 +125,22 @@ Controller.prototype.initRoutes = function(options) {
 			me.delDatabase(req, res);
 		});
 
-	this.router.get(/^\/(\w+)\/(\w+)\.sqlite$/, function(req, res) {
+	this.router.get(Controller.NonceRoutes.DATABASE_FILE, function(req, res) {
 		me.getDatabaseFile(req, res);
 	});
 
+	this.router.get(Controller.NonceRoutes.TABLE_CSV_FILE, function(req, res) {
+		me.getCSVFile(req, res);
+	});
+	
 	this.router.post(/^\/(\w+)\/(\w+)\.nonce$/, function(req, res) {
-		me.requestNonce(req, res);
+		me.doNonceRequest(req, res);
 	});
 
+	this.router.post(/^\/(\w+)\/(\w+)\/(\w+)\.nonce$/, function(req, res) {
+		me.doNonceRequest(req, res);
+	});
+	
 	this.router.route(/^\/(\w+)\/(\w+)\/(\w+)(?:\.rows)?$/)
 		.get(function(req, res) {
 			me.getRows(req, res);
@@ -432,17 +443,64 @@ Controller.prototype.getDatabaseFile = function(req, res) {
 	});	
 }
 
-Controller.prototype.requestNonce = function(req, res) {
-	log.info({req: req}, 'Controller.requestNonce()...');
-
+Controller.prototype.getCSVFile = function(req, res) {
 	var me = this;
-	var path = this.getDataObjects(req, {account: true, db: true});
+	log.info({req: req}, 'Controller.getCSVFile()...');
+
+	var path = this.getDataObjects(req, {account: true, db: true, table: true});
 	if (path.error) {
 		sendError(req, res, path.error, 404);
 		return;
 	}
 
-	this.access.authRequest('requestNonce', req, path, function(err, auth) {
+	this.access.authRequest('getCSVFile', req, path, function(err, auth) {
+		if (err) {
+			sendError(req, res, err, 400);
+			return;
+		}
+		if (auth.error) {
+			sendError(req, res, auth.error, 401);
+			return;
+		}
+	
+		res.sendFile(me.access.getCSVFilename(req.query.nonce), function(err) {
+			if (err) {
+				sendError(req, res, err);
+				return;
+			}
+			log.info({req: req}, '...Controller.getCSVFile().');
+		});
+
+	});
+}
+
+Controller.prototype.doNonceRequest = function(req, res) {
+	log.info({req: req}, 'Controller.doNonceRequest()...');
+
+	var me = this;
+	var path;
+	var op;
+
+	if (req.body.path.match(Controller.NonceRoutes.DATABASE_FILE)) {
+		op = 'generateDatabaseFile';
+		path = this.getDataObjects(req, {account: true, db: true});
+
+	} else if (req.body.path.match(Controller.NonceRoutes.TABLE_CSV_FILE)) {
+		op = 'generateCSVFile';
+		path = this.getDataObjects(req, {account: true, db: true, table: true });
+	}
+
+	if (! path) {
+		sendError(req, res, new Error('Invalid or missing path argument.'), 400);
+		return;
+	}
+	
+	if (path.error) {
+		sendError(req, res, path.error, 404);
+		return;
+	}
+
+	this.access.authRequest(op, req, path, function(err, auth) {
 
 		if (err) {
 			sendError(req, res, err, 400);
@@ -453,18 +511,6 @@ Controller.prototype.requestNonce = function(req, res) {
 			return;
 		}
 
-		var op = undefined;
-		if (req.body.path) {
-			if (req.body.path.match(/^\/(\w+)\/(\w+)\.sqlite$/)) {
-				op = 'getDatabaseFile';
-			}
-		}
-
-		if (! op) {
-			sendError(req, res, new Error('Invalid or missing path argument.'), 400);
-			return;
-		}
-
 		me.access.createNonce(op, function(err, nonce) {
 			
 			if (err) {
@@ -472,14 +518,36 @@ Controller.prototype.requestNonce = function(req, res) {
 				return;
 			}
 
-			res.send({ nonce: nonce }); 
-			log.info({req: req}, '...Controller.requestNonce().');
+			path.nonce = nonce;	
+			me[op](req, path, function(err) {
+
+				if (err) {
+					sendError(req, res, err);
+					return;
+				}
+
+				res.send({ nonce: nonce }); 
+				log.info({req: req}, '...Controller.requestNonce().');
+			});
 
 		});
 
 	});	
 }
 
+Controller.prototype.generateDatabaseFile = function(req, path, cbAfter) {
+	//do nothing
+	cbAfter();
+}
+
+var fs = require('fs');
+
+Controller.prototype.generateCSVFile = function(req, path, cbAfter) {
+	var content = 'Soon...' + req.body.toString();
+	fs.writeFile(this.access.getCSVFilename(path.nonce), content, function(err) {
+		cbAfter(err);
+	});
+}
 
 Controller.prototype.parseQueryParameters = function(req) {
 	var error;

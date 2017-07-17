@@ -40,7 +40,12 @@ AccessControl.prototype.getNoncePath = function(nonce) {
 
 AccessControl.prototype.supportsNonce = function(op)
 {
-	var nonceMethods = [ 'getDatabaseFile' ];
+	var nonceMethods = [ 
+		'generateDatabaseFile', 
+		'getDatabaseFile',
+		'generateCSVFile', 
+		'getCSVFile' 
+	];
 	return _.contains(nonceMethods, op);
 }
 
@@ -179,6 +184,7 @@ AccessControl.prototype.authRequest = function(op, req, path, cbResult) {
 		case 'getRows':			
 		case 'getObjs':			
 		case 'getStats':
+		case 'generateCSVFile':			
 			var table_access = path.table.access(req.user);
 			var result = { 
 				granted: table_access.read != Table.ROW_SCOPES.NONE
@@ -226,8 +232,7 @@ AccessControl.prototype.authRequest = function(op, req, path, cbResult) {
 		case 'putDatabase':			
 		case 'patchDatabase':			
 		case 'delDatabase':			
-		case 'getDatabaseFile':			
-		case 'requestNonce':			
+		case 'generateDatabaseFile':			
 		case 'chownRows':			
 			resultFn({ granted: false, message: 'requires db owner'});
 			return;
@@ -319,6 +324,11 @@ AccessControl.prototype.filterTables = function(path, tables, user) {
 	log.trace('...AccessControl.filterTables()'); 
 	return result;
 }
+
+AccessControl.prototype.getCSVFilename = function(nonce) {
+	return path.join(tempDir, nonce + ".csv");
+}
+
 
 exports.AccessControl = AccessControl;
 

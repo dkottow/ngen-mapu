@@ -602,7 +602,7 @@ SqlBuilder.prototype.fieldSQL = function(table, fieldClauses, fkGroups) {
 					Table.rowAliasView(fk.fk_table, idx), 
 					SqlHelper.EncloseSQL(Field.ROW_ALIAS), 
 					SqlHelper.EncloseSQL(fc.alias));
-
+/*
 		} else if (field.type == 'date') {
 			var fieldNameQN = util.format('%s.%s', fc.table, SqlHelper.EncloseSQL(fc.field));
 			return util.format('%s AS %s',
@@ -614,7 +614,7 @@ SqlBuilder.prototype.fieldSQL = function(table, fieldClauses, fkGroups) {
 			return util.format('%s AS %s',
 					SqlHelper.timestampToStringSQL(fieldNameQN), 
 					SqlHelper.EncloseSQL(fc.alias));
-
+*/
 		} else {
 			var fieldNameQN = util.format('%s.%s', fc.table, SqlHelper.EncloseSQL(fc.field));
 			return util.format('%s AS %s', fieldNameQN, SqlHelper.EncloseSQL(fc.alias));

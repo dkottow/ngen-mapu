@@ -96,7 +96,10 @@ SchemaChange._create = function(patch, schema) {
 
 	} else if (SCAddField.test(patch)) {
 		result = new SCAddField(patch, schema);
-
+/*
+	} else if (isEmpty && SCDelField.test(patch)) {
+		result = new SCDelField(patch, schema);
+*/
 	} else if (isEmpty && SCSetTable.test(patch)) {
 		result = new SCSetTable(patch, schema);
 
@@ -211,6 +214,51 @@ SCAddField.prototype.toSQL = function(sqlBuilder) {
 	return sqlBatches;
 }
 
+
+/*
+var SCDelField = function(patch, schema) {
+	log.trace({patch: patch}, "SchemaChange.SCDelField()");
+	SchemaChange.call(this, patch, schema);
+	this.op = SchemaChange.OPS.DEL_FIELD;
+	
+	var pathArray = patch.path.split('/');
+	pathArray.shift(); // leading slash,
+	pathArray.shift(); // 'tables' keyword
+	this.table = this.schema.table(pathArray.shift());
+	pathArray.shift(); // 'field' keyword
+	this.field = this.table.field(pathArray.shift());
+	this.path = '/' + this.table.name + '/' + this.field.name;
+}
+
+SCDelField.prototype = new SchemaChange;	
+SCDelField.prototype.constructor = SCDelField;
+
+SCDelField.test = function(patch) {
+	return (patch.op == 'remove' 
+		&& /^\/tables\/(\w+)\/fields\/(\w+)$/.test(patch.path)); 
+}
+
+SCDelField.prototype.apply = function() {
+	this.table.removeField(this.field.name);	
+}
+
+SCDelField.prototype.toSQL = function(sqlBuilder) {
+	var sqlBatches = [];
+
+	sqlBatches.push(this.table.removeFieldSQL(this.field.name));
+	sqlBatches.push(this.table.dropViewSQL());
+	sqlBatches.push(sqlBuilder.createRowAliasViewSQL(this.table));
+
+	if (SqlHelper.Table.hasTriggers()) {
+		sqlBatches.push(SqlHelper.Table.dropTriggerSQL(this.table));		
+		sqlBatches.push(SqlHelper.Table.createTriggerSQL(this.table));		
+	}
+
+	sqlBatches.push(field.insertPropSQL(this.table));
+	
+	return sqlBatches;
+}
+*/
 
 /*
  * field properties. path e.g. /tables/customers/fields/name/props/order

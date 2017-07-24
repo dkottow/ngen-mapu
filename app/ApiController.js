@@ -71,6 +71,20 @@ Controller.prototype.initRoutes = function(options) {
 			  audience: config.auth0.clientId,
 		}).unless({path: nonceRoutes});
 
+/** TODO
+ * 
+ * AAD does not use a secret but a public key to sign JWT
+ * we need to 
+ * 1) obtain kid value from the header of the JWT token 
+ * 2) get data for all AAD keys from https://login.microsoftonline.com/common/discovery/v2.0/keys
+ * 3) get correct key by mathcing the kid attributes to our kid value.
+ * 4) get key.x5c[0] and put into public key format:
+ *  	var pem = '-----BEGIN CERTIFICATE-----\n' + key.x5c[0].match(/.{1,64}/g).join('\n')
+				+ '\n-----END CERTIFICATE-----\n' 	 
+ * 5) now verify / decode our JWT calling jwt.verify(token, pem) 
+ * TODO NOT SURE how to do all of this using the express middleware... 				
+ */
+
 		this.router.use(auth_token);
 		
 		this.router.use(function(req, res, next) {
@@ -475,7 +489,7 @@ Controller.prototype.getCSVFile = function(req, res) {
 }
 
 Controller.prototype.doNonceRequest = function(req, res) {
-	log.info({req: req}, 'Controller.doNonceRequest()...');
+	log.info({req: req, path: req.body.path}, 'Controller.doNonceRequest()...');
 
 	var me = this;
 	var path;
@@ -543,7 +557,7 @@ Controller.prototype.generateDatabaseFile = function(req, path, cbAfter) {
 var fs = require('fs');
 
 Controller.prototype.generateCSVFile = function(req, path, cbAfter) {
-	var content = 'Soon...' + req.body.toString();
+	var content = 'Soon...' + JSON.stringify(req.body);
 	fs.writeFile(this.access.getCSVFilename(path.nonce), content, function(err) {
 		cbAfter(err);
 	});

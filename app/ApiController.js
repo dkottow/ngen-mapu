@@ -636,6 +636,7 @@ Controller.prototype.getRows = function(req, res, opts) {
 				, offset: params.values['$skip'] 
 				, debug: params.values['debug']	
 				, format: params.values['format']	
+				, nocounts: params.values['nocounts']	
 			},
 	
 			function(err, result) { 

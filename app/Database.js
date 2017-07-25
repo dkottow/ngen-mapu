@@ -304,15 +304,18 @@ Database.prototype.patchSchema = function(patches, cbResult) {
 }
 
 Database.prototype.allSanitizeOptions = function(options) {
-	var result = typeof options == 'object' ? options : {};		
+	log.trace({ options: options }, 'Database.allSanitizeOptions()...');
+	var result = {};		
 
 	result.filter = options.filter || [];
 	result.fields = options.fields || Table.ALL_FIELDS; 
 	result.order = options.order || [];
 	result.limit = options.limit;
+	result.offset = options.offset;
+	result.debug = options.debug || false;
 	result.format = options.format || 'json';
-
-	log.trace({ options: result }, '...Database.allSanitizeOptions()');
+	result.nocounts = options.nocounts || false;
+	log.trace({ result: result }, '...Database.allSanitizeOptions()');
 	return result;
 }
 
@@ -327,6 +330,8 @@ Database.prototype.allSQL = function(tableName, options) {
 	var sql = this.sqlBuilder.selectSQL(
 				table, opts.fields, opts.filter, 
 				opts.order, opts.limit, opts.offset);
+
+	sql.nocounts = opts.nocounts;
 
 	log.debug({sql: sql.query}, "Database.allSQL()");
 	log.trace({sql: sql}, "Database.allSQL()");
@@ -357,14 +362,17 @@ Database.prototype.allResult = function(tableName, rows, countRows, sql, options
 
 	var result = { 
 		rows: rows, 
-		count: countRows[0].count,
-		totalCount: countRows[1].count,
 		query: query
 	};
 
-	var expectedCount = result.count - sql.sanitized.offset;
-	if (rows.length < expectedCount) {
-		result.nextOffset = sql.sanitized.offset + sql.sanitized.limit;
+	if (countRows && countRows.length) {
+		result.count = countRows[0].count;
+		result.totalCount = countRows[1].count;
+		
+		var expectedCount = result.count - sql.sanitized.offset;
+		if (rows.length < expectedCount) {
+			result.nextOffset = sql.sanitized.offset + sql.sanitized.limit;
+		}
 	}
 
 	if (opts.debug) {

@@ -123,7 +123,7 @@ DatabaseMssql.prototype.all = function(tableName, options, cbResult) {
 		cbResult = arguments[arguments.length - 1];	
 		var sql = this.allSQL(tableName, options);
 
-		var rows;
+		var rows, countRows;
 		var req;
 
 		this.connect().then(() => {
@@ -138,6 +138,10 @@ DatabaseMssql.prototype.all = function(tableName, options, cbResult) {
 			log.trace({rows : result.recordset});
 			rows = result.recordset;
 			
+			if (sql.nocounts) {
+				return Promise.resolve();
+			}
+
 			var countSql = sql.countSql 
 				+ ' UNION ALL SELECT COUNT(*) as count FROM ' + tableName; 
 
@@ -145,7 +149,8 @@ DatabaseMssql.prototype.all = function(tableName, options, cbResult) {
 		
 		}).then(result => {
 			//console.dir(result.recordset);
-			var result = this.allResult(tableName, rows, result.recordset, sql, options);
+			if (result) countRows = result.recordset;	
+			var result = this.allResult(tableName, rows, countRows, sql, options);
 			cbResult(null, result);
 			funcs.stopHRTime(times.all);			
 			log.debug({time: { all: times.all.secs, query: times.query.secs }}, "perf Database.all()");

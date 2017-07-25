@@ -28,6 +28,7 @@ var Schema = require('./Schema.js').Schema;
 var Table = require('./Table.js').Table;
 
 var log = require('./log.js').log;
+var funcs = require('./funcs.js');
 
 function sendError(req, res, err, code) {
 	code = code || 500;
@@ -593,6 +594,7 @@ Controller.prototype.nextUrl = function(req, offset) {
 
 Controller.prototype.getRows = function(req, res, opts) {
 	log.info({req: req}, 'Controller.getRows()...');
+	var reqTime = funcs.startHRTime();
 	//console.dir(req);
 	var me = this;
 	opts = opts || { obj: false };	
@@ -649,7 +651,8 @@ Controller.prototype.getRows = function(req, res, opts) {
 	
 				log.trace(result);
 				res.send(result); 
-				log.info({req: req}, '...Controller.getRows().');
+				funcs.stopHRTime(reqTime);
+				log.info({req: req, time: reqTime.secs}, '...Controller.getRows().');
 			}
 		);
 	});

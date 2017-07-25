@@ -34,6 +34,7 @@ var SqlBuilder = require('./SqlBuilderMssql.js').SqlBuilderMssql;
 var SqlHelper = require('./SqlHelperMssql.js').SqlHelperMssql;
 
 var log = require('../log.js').log;
+var funcs = require('../funcs.js');
 
 /*
  * config 
@@ -107,10 +108,17 @@ DatabaseMssql.prototype.get = function(tableName, options, cbResult) {
 	}
 }
 
+
 DatabaseMssql.prototype.all = function(tableName, options, cbResult) {
 	var me = this;
 	try {
 		log.debug("Database.all()...");
+		var times = { 
+			all: {},
+			query: {}
+		};
+
+		funcs.startHRTime(times.all);
 
 		cbResult = arguments[arguments.length - 1];	
 		var sql = this.allSQL(tableName, options);
@@ -122,10 +130,11 @@ DatabaseMssql.prototype.all = function(tableName, options, cbResult) {
 
 			req = this.conn().request();
 			SqlHelper.addInputParams(req, sql.params);
-
+			funcs.startHRTime(times.query);
 			return req.query(sql.query);
 
 		}).then(result => {
+			funcs.stopHRTime(times.query);			
 			log.trace({rows : result.recordset});
 			rows = result.recordset;
 			
@@ -138,7 +147,8 @@ DatabaseMssql.prototype.all = function(tableName, options, cbResult) {
 			//console.dir(result.recordset);
 			var result = this.allResult(tableName, rows, result.recordset, sql, options);
 			cbResult(null, result);
-
+			funcs.stopHRTime(times.all);			
+			log.debug({time: { all: times.all.secs, query: times.query.secs }}, "perf Database.all()");
 			log.trace({ result: result }, "...Database.all()");
 
 		}).catch(err => {

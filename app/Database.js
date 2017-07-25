@@ -378,6 +378,7 @@ Database.prototype.allResult = function(tableName, rows, countRows, sql, options
 	if (opts.debug) {
 		result.sql = sql.query;
 		result.sqlParams = sql.params;
+		result.sqlTime = sql.secs;
 	}		
 
 	log.trace({result: result}, "...Database.allResult()");

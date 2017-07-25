@@ -150,9 +150,10 @@ DatabaseMssql.prototype.all = function(tableName, options, cbResult) {
 		}).then(result => {
 			//console.dir(result.recordset);
 			if (result) countRows = result.recordset;	
+			funcs.stopHRTime(times.all);			
+			sql.secs = times.all.secs;
 			var result = this.allResult(tableName, rows, countRows, sql, options);
 			cbResult(null, result);
-			funcs.stopHRTime(times.all);			
 			log.debug({time: { all: times.all.secs, query: times.query.secs }}, "perf Database.all()");
 			log.trace({ result: result }, "...Database.all()");
 

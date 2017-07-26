@@ -230,7 +230,7 @@ SqlBuilder.prototype.queryViewSQL = function(viewName, fields, filters) {
 	var clauses = ['1=1'].concat(filterSQL.clauses);
 
 	var fieldSQL = _.map(fields, function(f) {
-		return SqlHelper.EncloseSQL(f.field);
+		return (f.field == '*') ? f.field : SqlHelper.EncloseSQL(f.field);
 	}).join(',');
 
 	var selectSQL = 'SELECT DISTINCT ' + fieldSQL 

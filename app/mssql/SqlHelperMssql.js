@@ -55,7 +55,11 @@ SqlHelperMssql.addInputParams = function(req, params)
 {
 	_.each(params, function(param) {
 //console.log(param.name, SqlHelperMssql.mssqlType(param.type), param.value);
-		req.input(param.name, SqlHelperMssql.mssqlType(param.type), param.value);
+		if (param.type) {
+			req.input(param.name, SqlHelperMssql.mssqlType(param.type), param.value);
+		} else {
+			req.input(param.name, param.value);			
+		}
 	});	
 }
 

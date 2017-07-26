@@ -82,13 +82,7 @@ describe('Sandwiches DB', function() {
 				table: 'products',
 				op: 'search',
 				value: 'car'
-			},
-			{
-				field: 'customer_id',
-				table: 'orders',
-				op: 'childless',
-				value: null
-			},
+			}
 		];
 		
 		var result = sqlBuilder.filterSQL('customers', filterClauses);
@@ -146,6 +140,7 @@ describe('Sandwiches DB', function() {
 		log.info({result: result});
 	});
 
+/*	
 	it('SqlBuilder.selectSQL childless', function() {
 		var filterClauses = [
 			{
@@ -168,7 +163,7 @@ describe('Sandwiches DB', function() {
 		//log.info(result.query);
 		log.info({result: result});
 	});
-
+*/
 
 	it('SqlBuilder.createViewSQL', function() {
 		//var table = sqlBuilder.graph.table('products_in_orders');

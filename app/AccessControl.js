@@ -178,6 +178,7 @@ AccessControl.prototype.authRequest = function(op, req, path, cbResult) {
 
 		case 'getAccount':			
 		case 'getDatabase':			
+		case 'getViewRows':			
 			resultFn({ granted: true });
 			return;
 

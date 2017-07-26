@@ -56,12 +56,12 @@ describe('Schema', function() {
 					 , "fields": {
 							  "id": {
 								  "name": "id"
-								, "type": "INTEGER"
+								, "type": "integer"
 								, "order": 0
 							}
 							, "foo": {
 								  "name": "foo"
-								, "type": "VARCHAR(256)"
+								, "type": "text(256)"
 								, "order": 1
 							}
 						}		

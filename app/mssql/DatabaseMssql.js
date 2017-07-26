@@ -168,6 +168,42 @@ DatabaseMssql.prototype.all = function(tableName, options, cbResult) {
 	}
 }
 
+DatabaseMssql.prototype.allView = function(viewName, options, cbResult) {
+
+	try {
+		log.debug("Database.allView()...");
+
+		cbResult = cbResult || arguments[arguments.length - 1];	
+		options = typeof options == 'object' ? options : {};		
+		var opts = this.allSanitizeOptions(options);
+
+		var sql = this.sqlBuilder.selectViewSQL(viewName, opts.fields, opts.filter, 
+												opts.order, opts.limit, opts.offset);
+
+		this.connect().then(() => {
+
+			var req = this.conn().request();
+			SqlHelper.addInputParams(req, sql.params);
+
+			return req.query(sql.query);
+
+		}).then(result => {
+			//console.dir(result.recordset);
+			var rows = result.recordset;
+			var result = this.allResult(viewName, rows, null, sql, options);
+			cbResult(null, result);
+
+		}).catch(err => {
+			log.error({err: err}, "Database.allView() query exception.");
+			cbResult(err, null);
+		});
+
+	} catch(err) {
+		log.error({err: err}, "Database.allView() exception.");	
+		cbResult(err, []);
+	}
+}
+
 DatabaseMssql.prototype.getCounts = function(cbResult) {
 	log.trace("Database.getCounts()...");
 	try {

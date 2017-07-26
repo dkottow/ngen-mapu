@@ -178,6 +178,10 @@ Controller.prototype.initRoutes = function(options) {
 		me.getObjs(req, res);
 	});
 
+	this.router.get(/^\/(\w+)\/(\w+)\/(\w+).view$/, function(req, res) {
+		me.getViewRows(req, res);
+	});
+	
 	this.router.put(/^\/(\w+)\/(\w+)\/(\w+).chown$/, function(req, res) {
 		me.chownRows(req, res);
 	});
@@ -592,12 +596,11 @@ Controller.prototype.nextUrl = function(req, offset) {
 	return url.format(urlObj)
 }
 
-Controller.prototype.getRows = function(req, res, opts) {
+Controller.prototype.getRows = function(req, res) {
 	log.info({req: req}, 'Controller.getRows()...');
 	var reqTime = funcs.startHRTime();
 	//console.dir(req);
 	var me = this;
-	opts = opts || { obj: false };	
 
 	var path = this.getDataObjects(req, {account: true, db: true, table: true});
 	if (path.error) {
@@ -659,7 +662,7 @@ Controller.prototype.getRows = function(req, res, opts) {
 	});
 }
 
-Controller.prototype.getObjs = function(req, res, opts) {
+Controller.prototype.getObjs = function(req, res) {
 	log.info({req: req}, 'Controller.getObjs()...');
 	var me = this;
 
@@ -708,7 +711,6 @@ Controller.prototype.getObjs = function(req, res, opts) {
 				, order: orderBy 
 				, limit: params.values['$top'] 
 				, offset: params.values['$skip'] 
-				, distinct: params.values['$distinct'] 
 				, debug: params.values['debug']	
 			},
 	
@@ -794,6 +796,65 @@ Controller.prototype.getStats = function(req, res) {
 				log.trace(result);
 				res.send(result); 
 				log.info({req: req}, '...Controller.getStats().');
+			}
+		);
+	});
+}
+
+Controller.prototype.getViewRows = function(req, res) {
+	log.info({req: req}, 'Controller.getViewRows()...');
+	var reqTime = funcs.startHRTime();
+	//console.dir(req);
+	var me = this;
+
+	var path = this.getDataObjects(req, {account: true, db: true});
+	if (path.error) {
+		sendError(req, res, path.error, 404);
+		return;
+	}
+
+	if ( ! req.params[2]) {
+		sendError(req, res, new Error('Missing view parameter'), 404);
+		return;
+	}	
+	var viewName = req.params[2];
+
+	this.access.authRequest('getViewRows', req, path, function(err, auth) {
+		if (err) {
+			sendError(req, res, err, 400);
+			return;
+		}
+		if (auth.error) {
+			sendError(req, res, auth.error, 401);
+			return;
+		}
+	
+		var params = me.parseQueryParameters(req);
+		if (params.error) {
+			sendError(req, res, params.error, 400);
+			return;			
+		}
+
+		path.db.allView(viewName, {
+				filter: params.values['$filter'] 
+				, fields: params.values['$select'] 
+				, order: params.values['$orderby'] 
+				, limit: params.values['$top'] 
+				, offset: params.values['$skip'] 
+				, debug: params.values['debug']	
+				, format: params.values['format']	
+			},
+	
+			function(err, result) { 
+				if (err) {
+					sendError(req, res, err, 400);
+					return;
+				}
+	
+				log.trace(result);
+				res.send(result); 
+				funcs.stopHRTime(reqTime);
+				log.info({req: req, time: reqTime.secs}, '...Controller.getViewRows().');
 			}
 		);
 	});

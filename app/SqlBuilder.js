@@ -30,12 +30,12 @@ var SqlBuilder = function(tableGraph) {
 }
 
 SqlBuilder.prototype.selectSQL 
-	= function(table, fieldExpr, filterClauses, orderClauses, limit, offset) 
+	= function(table, fieldClauses, filterClauses, orderClauses, limit, offset) 
 {
 	log.trace('SqlBuilder.selectSQL...');
 	log.trace({
 		table: table
-		, fieldExpr: fieldExpr
+		, fieldClauses: fieldClauses
 		, filterClauses: filterClauses
 		, orderClauses: orderClauses
 		, limit: limit, offfset: offset
@@ -43,7 +43,7 @@ SqlBuilder.prototype.selectSQL
 	
 	var s = {};
 
-	s.fields = this.sanitizeFieldClauses(table, fieldExpr);
+	s.fields = this.sanitizeFieldClauses(table, fieldClauses);
 	s.filters = this.sanitizeFieldClauses(table, filterClauses);
 	s.orders = this.sanitizeFieldClauses(table, orderClauses);
 	s.offset = offset || 0;
@@ -74,11 +74,11 @@ SqlBuilder.prototype.selectSQL
 	return result;
 }
 
-SqlBuilder.prototype.statsSQL = function(table, fieldExpr, filterClauses) 
+SqlBuilder.prototype.statsSQL = function(table, fieldClauses, filterClauses) 
 {
 
 	var s = {};
-	s.fields = this.sanitizeFieldClauses(table, fieldExpr);
+	s.fields = this.sanitizeFieldClauses(table, fieldClauses);
 	s.filters = this.sanitizeFieldClauses(table, filterClauses);
 
 	var query = this.querySQL(table, s.fields, s.filters);
@@ -101,7 +101,77 @@ SqlBuilder.prototype.statsSQL = function(table, fieldExpr, filterClauses)
 	return result;
 }
 
+SqlBuilder.prototype.selectViewSQL 
+	= function(viewName, fieldClauses, filterClauses, orderClauses, limit, offset) 
+{
+	log.trace('SqlBuilder.selectViewSQL...');
+	log.trace({
+		view: viewName
+		, fieldClauses: fieldClauses
+		, filterClauses: filterClauses
+		, orderClauses: orderClauses
+		, limit: limit, offfset: offset
+	}, "SqlBuilder.selectViewSQL");
+	
+	var s = {};
+
+	s.fields = this.buildFieldClauses(viewName, fieldClauses);
+	s.filters = this.buildFieldClauses(viewName, filterClauses);
+	s.orders = this.buildFieldClauses(viewName, orderClauses);
+	s.offset = offset || 0;
+	s.limit = limit || config.sql.pageRows || 1000;
+	
+	var query = this.queryViewSQL(viewName, s.fields, s.filters);
+	//var query = { sql: 'SELECT * FROM ' + viewName, params: [] };
+
+	var selectSQL;
+
+	if (s.orders.length > 0) {
+		var orderSQL = this.orderSQL(null, s.orders);
+		selectSQL = 'SELECT * FROM (' + query.sql + ') AS T '
+					+ orderSQL
+					+ SqlHelper.OffsetLimitSQL(s.offset, s.limit);
+	} else {
+		selectSQL = 'SELECT TOP ' + s.limit + ' * FROM (' + query.sql + ') AS T';
+	}
+
+	var result = {
+		'query': selectSQL, 
+		'params': query.params,
+		'sanitized': s
+	}
+	log.debug({result: result}, "SqlBuilder.selectViewSQL");
+	return result;
+}
+
 // private methods...
+
+
+SqlBuilder.prototype.buildFieldClause = function(tableName, fc) {
+	var item = {};
+	if (_.isString(fc)) {
+		item = { table: tableName, field: fc, alias: fc };
+	} else if (_.isObject(fc) && fc.field) {
+		item = _.clone(fc);
+		item.table = item.table || tableName;
+		item.alias = item.table == tableName
+					? item.field
+					: item.table 
+						+ Table.TABLE_FIELD_SEPARATOR 
+						+ item.field;
+	} else {
+		throw new Error("malformed clause '" + util.inspect(fc) + "'");
+	}
+	return item;
+}
+
+SqlBuilder.prototype.buildFieldClauses = function(viewName, fieldClauses) {
+	var result = _.map(fieldClauses, function(fc) {
+		return this.buildFieldClause(viewName, fc);
+	}, this);
+
+	return result;	
+}
 
 SqlBuilder.prototype.sanitizeFieldClauses = function(table, fieldClauses) {
 
@@ -109,20 +179,7 @@ SqlBuilder.prototype.sanitizeFieldClauses = function(table, fieldClauses) {
 				? table.allFieldClauses() : fieldClauses;
 
 	var result = _.map(fieldClauses, function(fc) {
-		var item = {};
-		if (_.isString(fc)) {
-			item = { table: table.name, field: fc, alias: fc };
-		} else if (_.isObject(fc) && fc.field) {
-			item = _.clone(fc);
-			item.table = item.table || table.name;
-			item.alias = item.table == table.name
-						? item.field
-						: item.table 
-							+ Table.TABLE_FIELD_SEPARATOR 
-							+ item.field;
-		} else {
-			throw new Error("malformed clause '" + util.inspect(fc) + "'");
-		}
+		var item = this.buildFieldClause(table.name, fc);
 
 		//validate
 		var fieldTable;
@@ -159,6 +216,25 @@ SqlBuilder.prototype.querySQL = function(table, fields, filters) {
 
 	var selectSQL = 'SELECT DISTINCT ' + fieldSQL 
 					+ ' FROM ' + tables.join(', ')
+					+ ' WHERE ' + clauses.join(' AND ');
+
+	return {
+		'sql': selectSQL, 
+		'params': filterSQL.params, 
+	};
+}
+
+SqlBuilder.prototype.queryViewSQL = function(viewName, fields, filters) {
+
+	var filterSQL = this.filterViewSQL(viewName, filters);
+	var clauses = ['1=1'].concat(filterSQL.clauses);
+
+	var fieldSQL = _.map(fields, function(f) {
+		return SqlHelper.EncloseSQL(f.field);
+	}).join(',');
+
+	var selectSQL = 'SELECT DISTINCT ' + fieldSQL 
+					+ ' FROM ' + viewName
 					+ ' WHERE ' + clauses.join(' AND ');
 
 	return {
@@ -367,6 +443,69 @@ SqlBuilder.prototype.joinGraphSQL = function(fromTable, tables) {
 
 }
 
+SqlBuilder.prototype.filterViewSQL = function(fromView, filterClauses) {
+	var sqlClauses = [];
+	var sqlParams = [];
+
+	_.each(filterClauses, function(filter) {
+
+		filter.fqn =util.format('%s.%s',
+				filter.table, SqlHelper.EncloseSQL(filter.field));
+
+		var sql = this.filterToSQLClause(filter);
+
+		if (sql.clause) sqlClauses.push(sql.clause);
+		sqlParams = sqlParams.concat(sql.params); 
+		
+	}, this);
+
+	return { 
+		clauses: sqlClauses,
+		params: sqlParams
+	};
+}
+
+SqlBuilder.prototype.filterSQL = function(fromTable, filterClauses, fkGroups) {
+
+	var sqlClauses = [];
+	var sqlParams = [];
+
+	_.each(filterClauses, function(filter) {
+
+		var table = this.graph.table(filter.table);
+		var fk = _.find(table.foreignKeys(), function(fk) {
+			return fk.refName() == filter.field;
+		});
+
+		if (filter.field == Field.ROW_ALIAS) {
+			//var idx = fkGroups[fc.table].indexOf(fc.field) + 1;
+			filter.fqn = util.format('%s.%s',
+					table.rowAliasView(), SqlHelper.EncloseSQL(filter.field));
+
+		} else if (fk) {
+			var idx = fkGroups[fk.fk_table].indexOf(filter.field) + 1;
+			filter.fqn =util.format('%s.%s',
+					Table.rowAliasView(fk.fk_table, idx), 
+					SqlHelper.EncloseSQL(Field.ROW_ALIAS));
+
+		} else {
+			filter.fqn =util.format('%s.%s',
+					filter.table, SqlHelper.EncloseSQL(filter.field));
+		}
+
+		var sql = this.filterToSQLClause(filter);
+
+		if (sql.clause) sqlClauses.push(sql.clause);
+		sqlParams = sqlParams.concat(sql.params); 
+		
+	}, this);
+
+	return { 
+		clauses: sqlClauses,
+		params: sqlParams
+	};
+}
+
 SqlBuilder.prototype.filterToParams = function(filter)
 {
 	var values = _.isArray(filter.value) ? filter.value : [ filter.value ]; 
@@ -385,152 +524,100 @@ SqlBuilder.ConvertToStringSQL = function(typeName, fieldName) {
 	else return util.format('CONVERT(VARCHAR, %s)', fieldName);
 }
 
+SqlBuilder.prototype.filterToSQLClause = function(filter) {
 
+	var clause;
+	var params = [];
 
-SqlBuilder.prototype.filterSQL = function(fromTable, filterClauses, fkGroups) {
-
-	var me = this;
-	var sqlClauses = [];
-	var sqlParams = [];
-
-
-
-	_.each(filterClauses, function(filter) {
-
-		var fromFieldQN;
-
-		var table = me.graph.table(filter.table);
-		var fk = _.find(table.foreignKeys(), function(fk) {
-			return fk.refName() == filter.field;
-		});
-
-		if (filter.field == Field.ROW_ALIAS) {
-			//var idx = fkGroups[fc.table].indexOf(fc.field) + 1;
-			fromFieldQN = util.format('%s.%s',
-					table.rowAliasView(), SqlHelper.EncloseSQL(filter.field));
-
-		} else if (fk) {
-			var idx = fkGroups[fk.fk_table].indexOf(filter.field) + 1;
-			fromFieldQN =util.format('%s.%s',
-					Table.rowAliasView(fk.fk_table, idx), 
-					SqlHelper.EncloseSQL(Field.ROW_ALIAS));
-
-		} else {
-			fromFieldQN =util.format('%s.%s',
-					filter.table, SqlHelper.EncloseSQL(filter.field));
-		}
-
-		var comparatorOperators = {
-			'eq' : '=', 
-			'ne' : '!=',	
-			'ge': '>=', 
-			'gt': '>', 
-			'le': '<=', 
-			'lt': '<'
-		};
-		if (comparatorOperators[filter.op] && filter.value !== null) {
-
-			var params = me.filterToParams(filter);
-			var clause = util.format('(%s %s %s)', 
-							fromFieldQN, comparatorOperators[filter.op], params[0].sql);
-
-			sqlClauses.push(clause);
-			sqlParams.push(params[0]);
-
-		} else if (filter.op == 'eq' && filter.value === null) {
-			var clause = util.format('(%s is null)', fromFieldQN);
-			sqlClauses.push(clause);
-
-		} else if (filter.op == 'ne' && filter.value === null) {
-			var clause = util.format('(%s is not null)', fromFieldQN);
-			sqlClauses.push(clause);
-
-		} else if (filter.op == 'btwn') {
-
-			if ( ! filter.value.length == 2) {
-				throw new Error(
-					util.format("filter.value %s mismatch", filter.value));
-			}
-
-			var params = me.filterToParams(filter);
-				
-			var clause = util.format('(%s BETWEEN %s AND %s)', fromFieldQN, params[0].sql, params[1].sql);
-				
-			sqlClauses.push(clause);
-			sqlParams.push(params[0]);
-			sqlParams.push(params[1]);
-
-		} else if (filter.op == 'in') {
-
-			if ( ! filter.value.length > 0) {
-				throw new Error(
-					util.format("filter.value %s mismatch", filter.value));
-			}
-
-			var params = me.filterToParams(filter);
-
-			var clause = util.format('(%s IN (%s))',
-							fromFieldQN, _.pluck(params, 'sql').join(','));
-
-			sqlClauses.push(clause);
-			sqlParams = sqlParams.concat(params); 
-
-		} else if (filter.op == 'childless') {
-			//filter out all rows in filter.table 
-			//leaving only rows in parent table without a join to this
-//TODO adjust joinSQL to join with parent table instead of filter.table
-			var field = table.field(filter.field);
-			if (field.fk == 1) {
-				var clause = util.format('(%s.id NOT IN (SELECT DISTINCT %s FROM %s))'
-							, field.fk_table, SqlHelper.EncloseSQL(filter.field), filter.table);
-				sqlClauses.push(clause);
-
-			} else {
-				throw new Error("childless filter works only on foreign keys");
-			}
-
-		} else if (filter.op == 'search') {
-
-			if (filter.field == Table.ALL_FIELDS) {
-
-				var s = me.filterSearchSQL(filter);
-				if (s.clause) sqlClauses.push(s.clause);
-				sqlParams = sqlParams.concat(s.params); 
-
-			} else {
-				//use LIKE on filter.field
-				var fieldType = filter.valueType;	
-				var searchValue = filter.value + '%';
-				if (filter.value[0] == '*') {
-					searchValue = '%' + filter.value.substr(1) + '%';
-				}
-				
-				filter.value = searchValue;				
-				filter.valueType = 'text';
-
-				var params = me.filterToParams(filter);
-
-				//var fmt = '(' + SqlHelper.ConcatSQL(['%s', "''"]) + ' LIKE %s)';
-				//var clause = util.format(fmt, fromFieldQN, params[0].sql);
-
-				var clause = util.format('(%s LIKE %s)', 
-					SqlBuilder.ConvertToStringSQL(fieldType, fromFieldQN), params[0].sql);
-				
-				sqlClauses.push(clause);
-				sqlParams.push(params[0]); 
-			}
-
-		} else {
-			//unknown op
-			throw new Error("unknown filter op '" + filter.op + "'");
-		}
-
-	});
-
-	return { 
-		clauses: sqlClauses,
-		params: sqlParams
+	var comparatorOperators = {
+		'eq' : '=', 
+		'ne' : '!=',	
+		'ge': '>=', 
+		'gt': '>', 
+		'le': '<=', 
+		'lt': '<'
 	};
+	if (comparatorOperators[filter.op] && filter.value !== null) {
+
+		params = this.filterToParams(filter);
+		clause = util.format('(%s %s %s)', 
+					filter.fqn, comparatorOperators[filter.op], params[0].sql);
+
+
+	} else if (filter.op == 'eq' && filter.value === null) {
+		clause = util.format('(%s is null)', filter.fqn);
+
+	} else if (filter.op == 'ne' && filter.value === null) {
+		clause = util.format('(%s is not null)', filter.fqn);
+
+	} else if (filter.op == 'btwn') {
+
+		if ( ! filter.value.length == 2) {
+			throw new Error(
+				util.format("filter.value %s mismatch", filter.value));
+		}
+
+		params = this.filterToParams(filter);	
+		clause = util.format('(%s BETWEEN %s AND %s)', filter.fqn, params[0].sql, params[1].sql);
+
+	} else if (filter.op == 'in') {
+
+		if ( ! filter.value.length > 0) {
+			throw new Error(
+				util.format("filter.value %s mismatch", filter.value));
+		}
+
+		params = this.filterToParams(filter);
+		clause = util.format('(%s IN (%s))',
+					filter.fqn, _.pluck(params, 'sql').join(','));
+
+/*					
+	} else if (filter.op == 'childless') {
+		//filter out all rows in filter.table 
+		//leaving only rows in parent table without a join to this
+//TODO adjust joinSQL to join with parent table instead of filter.table
+		var field = table.field(filter.field);
+		if (field.fk == 1) {
+			clause = util.format('(%s.id NOT IN (SELECT DISTINCT %s FROM %s))'
+						, field.fk_table, SqlHelper.EncloseSQL(filter.field), filter.table);
+
+		} else {
+			throw new Error("childless filter works only on foreign keys");
+		}
+*/
+
+	} else if (filter.op == 'search') {
+
+		if (filter.field == Table.ALL_FIELDS) {
+
+			var s = this.filterSearchSQL(filter);
+			clause = s.clause;
+			params = s.params;
+
+		} else {
+			//use LIKE on filter.field
+			var fieldType = filter.valueType;	
+			var searchValue = filter.value + '%';
+			if (filter.value[0] == '*') {
+				searchValue = '%' + filter.value.substr(1) + '%';
+			}
+			
+			filter.value = searchValue;				
+			filter.valueType = 'text';
+
+			params = this.filterToParams(filter);
+
+			clause = util.format('(%s LIKE %s)', 
+				SqlBuilder.ConvertToStringSQL(fieldType, filter.fqn), params[0].sql);
+			
+		}
+
+	} else {
+		//unknown op
+		throw new Error("unknown filter op '" + filter.op + "'");
+	}
+
+	return { clause: clause, params: params };
 }
 
 SqlBuilder.prototype.groupForeignKeys = function(fieldClauses, filterClauses) {

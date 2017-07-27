@@ -568,6 +568,10 @@ Controller.prototype.generateCSVFile = function(req, path, cbAfter) {
 	});
 }
 
+Controller.QUERY_PARAMS = {
+	'integer': ['debug', 'nocounts']
+};
+
 Controller.prototype.parseQueryParameters = function(req) {
 	var error;
 	var params = {};
@@ -576,6 +580,8 @@ Controller.prototype.parseQueryParameters = function(req) {
 			if (k[0] == '$') {
 				var param = parser.parse(k + "=" + v);	
 				params[param.name] = param.value;
+			} else if (_.contains(Controller.QUERY_PARAMS.integer, k)) {
+				params[k] = parseInt(v);
 			} else {
 				params[k] = v;
 			}

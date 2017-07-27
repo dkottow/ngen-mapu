@@ -35,7 +35,7 @@
   , "main": "server.js"
   , "bin": { "donk": "./donk/donk.js" }
   , "scripts": {
-    "install" : "gulp"
+    "postinstall" : "gulp"
     , "start": "node server.js"
     , "test": "mocha"
   }

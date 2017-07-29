@@ -65,6 +65,17 @@ DatabaseMssql.prototype.connect = function() {
 	return this.pool.connected ? Promise.resolve() : this.pool.connect();
 }
 
+DatabaseMssql.prototype.connInfo = function() {
+	return {
+		min: this.pool.pool.min,
+		max: this.pool.pool.max,
+		size: this.pool.pool.size,
+		available: this.pool.pool.available,
+		pending: this.pool.pool.pending,
+		borrowed: this.pool.pool.borrowed,
+	}
+}
+
 DatabaseMssql.prototype.conn = function() {
 	return this.pool;
 } 
@@ -118,6 +129,7 @@ DatabaseMssql.prototype.all = function(tableName, options, cbResult) {
 			query: {}
 		};
 
+		log.info({ pool: this.connInfo() }, 'Database.all');
 		funcs.startHRTime(times.all);
 
 		cbResult = arguments[arguments.length - 1];	

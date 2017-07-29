@@ -662,10 +662,11 @@ Controller.prototype.getRows = function(req, res) {
 				log.trace(result);
 				res.send(result); 
 				funcs.stopHRTime(reqTime);
-				log.info({req: req, time: reqTime.secs}, '...Controller.getRows().');
+				log.info({req: req, time: reqTime.secs}, 'res Controller.getRows().');
 			}
 		);
 	});
+	log.info('...Controller.getRows().');
 }
 
 Controller.prototype.getObjs = function(req, res) {

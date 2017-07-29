@@ -12,3 +12,8 @@ exports.stopHRTime = function(hrtime) {
     return hrtime;
 };
 
+// sleep time expects milliseconds
+exports.sleep = function(time) {
+  return new Promise((resolve) => setTimeout(resolve, time));
+};
+

@@ -885,6 +885,7 @@ Controller.prototype.getDataObjects = function(req, objs) {
 			result.account = me.account(req.params[0]);
 			if ( ! result.account) {
 				var err = new Error("Account '" + req.params[0] + "' not found");
+				err.code = 404;
 				return reject(err);
 			}
 		} else {
@@ -895,6 +896,7 @@ Controller.prototype.getDataObjects = function(req, objs) {
 			result.db = result.account.database(req.params[1]);
 			if ( ! result.db) {
 				var err = new Error("Database '" + req.params[1] + "' not found");
+				err.code = 404;
 				return reject(err);
 			}
 			
@@ -903,6 +905,7 @@ Controller.prototype.getDataObjects = function(req, objs) {
 					result.table = result.db.table(req.params[2]);
 					if ( ! result.table) {
 						var err = new Error("Table '" + req.params[2] + " not found");
+						err.code = 404;
 						return reject(err);
 					}
 				}

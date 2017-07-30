@@ -41,8 +41,6 @@ AccessControl.prototype.getNoncePath = function(nonce) {
 AccessControl.prototype.supportsNonce = function(op)
 {
 	var nonceMethods = [ 
-		'generateDatabaseFile', 
-		'getDatabaseFile',
 		'generateCSVFile', 
 		'getCSVFile' 
 	];
@@ -61,33 +59,53 @@ AccessControl.prototype.checkNonce = function(nonce, cbResult) {
 }
 
 AccessControl.prototype.createNonce = function(op, cbResult) {
-	if (this.supportsNonce(op)) {
-		var nonce = crypto.randomBytes(48).toString('hex');
+	var me = this;
+	return new Promise(function(resolve, reject) {
 
-		var path = this.getNoncePath(nonce);
-		fs.open(path, "w", function (err, fd) {
-		    if (err) {
-		    	cbResult(err, null);
-		    } else {
-			    fs.close(fd, function (err) {
-			        cbResult(err, nonce);
-			    });
-		    }
-		});
+		if (me.supportsNonce(op)) {
+			var nonce = crypto.randomBytes(48).toString('hex');
+			var path = me.getNoncePath(nonce);
+			fs.open(path, "w", function (err, fd) {
+				if (err) {
+					reject(err);
+				} else {
+					fs.close(fd, function (err) {
+						if (err) reject(err);
+						else resolve(nonce);
+					});
+				}
+			});
+		} else {
+			reject(new Error('Method does not support nonce'));
+		}
+	});	
 
-	} else {
-		cbResult(new Error('Method does not support nonce'), null);
-	}
+
 }
 
+AccessControl.prototype.authRequest = function(op, req, path) {
+	var me = this;
+	return new Promise(function(resolve, reject) {
+		me._authRequest(op, req, path, function(err, result) {
+			if (err) {
+				reject(err);
+			} else if (result.error) {
+				reject(result.error);
+			} else {
+				resolve(result);
+			}
+		});
+	});
+}
 
-AccessControl.prototype.authRequest = function(op, req, path, cbResult) {
+AccessControl.prototype._authRequest = function(op, req, path, cbResult) {
 	log.debug({ op: op}, 'AccessControl.authRequest()...'); 
 	log.trace({ 'req.user': req.user, path: path }, 'AccessControl.authRequest()'); 
 
 	var resultFn = function(result) {
 		if ( ! result.granted) {
 			result.error = new Error(result.message);
+			result.error.code = 401;
 		}
 		log.debug({ result: result }, '...AccessControl.authRequest()');
 		cbResult(null, result);
@@ -233,7 +251,6 @@ AccessControl.prototype.authRequest = function(op, req, path, cbResult) {
 		case 'putDatabase':			
 		case 'patchDatabase':			
 		case 'delDatabase':			
-		case 'generateDatabaseFile':			
 		case 'chownRows':			
 			resultFn({ granted: false, message: 'requires db owner'});
 			return;
@@ -273,8 +290,10 @@ AccessControl.prototype.filterQuery = function(path, query, user) {
 		} else { //access.read == Table.ROW_SCOPES.NONE
 			var msg = 'Table read access is none';
 			log.info({ table: table.name, access: access }, msg + ' AccessControl.filterQuery()'); 
+			var err = new Error(msg);
+			err.code = 401;
 			return {
-				error: new Error(msg),
+				error: err,
 				filter: []
 			};			
 		}

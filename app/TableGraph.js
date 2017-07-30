@@ -124,13 +124,15 @@ TableGraph.prototype.table = function(name) {
 }
 
 TableGraph.prototype.parentTables = function(table) {
+	if (_.isString(table)) table = this.table(table);
 	return _.map(table.foreignKeys(), function(fk) {
 		return this.table(fk.fk_table);
 	}, this);
 }
 
 TableGraph.prototype.childTables = function(table) {
-	var childNodes = this.graph.predecessors(table.name);
+	if (_.isObject(table)) table = table.name;
+	var childNodes = this.graph.predecessors(table);
 	return _.map(childNodes, function(n) {
 		return this.table(n);
 	}, this);

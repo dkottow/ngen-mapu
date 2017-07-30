@@ -41,9 +41,29 @@ Database.prototype.init = function(cbAfter) {
 
 */
 
+Database.prototype.init = function() {
+	var me = this;
+	return new Promise(function(resolve, reject) {
+		me._init(function(err) {
+			if (err) reject(err);
+			else resolve(); 
+		});
+	});
+}
+
+Database.prototype._init = function(cbAfter) {
+	if (this.schema.isEmpty()) {
+		this.readSchema(cbAfter);
+	} else {
+		cbAfter();
+	}
+}
+
+/* 
 Database.prototype.name = function() { 
 	return this.schema.name;
 }
+*/
 
 Database.prototype.table = function(name) { 
 	return this.schema.table(name);
@@ -60,6 +80,14 @@ Database.prototype.tables = function() {
 Database.prototype.users = function() { 
 	var users = this.schema.users;
 	return _.object(_.pluck(users, 'name'), users); 
+}
+
+Database.prototype.childTables = function(tableName) {
+	return this.schema.graph.childTables(tableName);
+}
+
+Database.prototype.rowsToObj = function(rows, tableName) {
+	return this.schema.graph.rowsToObj(rows, tableName);
 }
 
 Database.prototype.setSchema = function(newSchema) {
@@ -232,6 +260,10 @@ Database.prototype.getFieldValues = function(row, fields) {
 	} catch(err) {
 		return { err: err };
 	}
+}
+
+Database.prototype.createSQL = function(opts) {
+	return this.sqlBuilder.createSQL(this.schema, opts);
 }
 
 Database.prototype.patchSchema = function(patches, cbResult) {

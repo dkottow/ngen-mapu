@@ -63,8 +63,6 @@ describe('Account', function() {
 				assert(_.size(accountData.databases) > 0);
 				assert(accountData.databases.sales
 					, 'sales db not found');
-				assert(accountData.databases.sales.tables.customers
-					, 'sales table customers not found.');
 				done();
 			});
 		});

@@ -90,13 +90,6 @@ SqlHelperMssql.Schema.fullName = function(account, db) {
 	return account + SqlHelperMssql.ACCOUNT_DATABASE_SEPARATOR + db;
 }
 
-SqlHelperMssql.Schema.name = function(fullName) {
-	if (_.isString(fullName) && fullName.indexOf(SqlHelperMssql.ACCOUNT_DATABASE_SEPARATOR) > 0) {
-		return fullName.substr(fullName.indexOf(SqlHelperMssql.ACCOUNT_DATABASE_SEPARATOR) + 1);
-	}
-	throw new Error(util.format("Invalid database name '%s'", fullName));
-}
-
 SqlHelperMssql.Schema.createPropsTableSQL = function(name) {
 	return "CREATE TABLE " + name + " ("
 		+ " name VARCHAR(256) NOT NULL, "

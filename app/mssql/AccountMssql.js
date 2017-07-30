@@ -66,7 +66,10 @@ AccountMssql.prototype.init = function(cbAfter) {
     				var dbConfig = _.clone(config);
 					dbConfig.database = row.name;
 					var db = new Database(dbConfig);
-					db.readSchema(function(err) {
+					me.databases[db.name()] = db;
+                    doAfter();    
+/*
+                    db.readSchema(function(err) {
 						log.debug({ db: db.name() }, "Account.init()");
 						me.databases[db.name()] = db;
 						if (err) {
@@ -75,7 +78,8 @@ AccountMssql.prototype.init = function(cbAfter) {
 							return;
 						} 
 						doAfter();
-					});
+                    });
+*/                    
 				});
 
             }).catch(err => {

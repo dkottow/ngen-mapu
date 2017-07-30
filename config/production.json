@@ -36,9 +36,10 @@
                 "encrypt": true // Use this if you're on Windows Azure
             },            
             "pool": {
-                "max": 100,
-                "min": 0            
-            }
+                "max": 15,
+                "min": 5            
+            },
+            "requestTimeout": 60000 // millisecs 
         },
         "elasticPool": "azwu-test-d365" //leave empty if no pool
     },

@@ -53,7 +53,6 @@ var DatabaseMssql = function(config)
 		log.trace('new Database() ' + config.database);
 		Database.call(this);
 		this.config = _.clone(config);
-		this.pool = new mssql.ConnectionPool(this.config);
 	} catch(err) {
 		log.error({err: err}, 'new Database()');
 	}
@@ -61,7 +60,15 @@ var DatabaseMssql = function(config)
 
 DatabaseMssql.prototype = Object.create(Database.prototype);	
 
+DatabaseMssql.prototype.name = function() {
+	var fullName = this.config.database;
+	return fullName.substr(fullName.indexOf(SqlHelper.ACCOUNT_DATABASE_SEPARATOR) + 1);
+}
+
 DatabaseMssql.prototype.connect = function() {
+	if ( ! this.pool) {
+		this.pool = new mssql.ConnectionPool(this.config);
+	}
 	return this.pool.connected ? Promise.resolve() : this.pool.connect();
 }
 
@@ -86,14 +93,13 @@ DatabaseMssql.prototype.get = function(tableName, options, cbResult) {
 	try {
 		log.debug("Database.get()...");
 
-		var table = this.table(tableName);
-
 		cbResult = cbResult || arguments[arguments.length - 1];	
 		options = typeof options == 'object' ? options : {};		
 
 		var filterClauses = options.filter || [];
 		var fields = options.fields || Table.ALL_FIELDS; 
 
+		var table = this.table(tableName);
 		var sql = this.sqlBuilder.selectSQL(table, fields, filterClauses, [], 1, 0, false);
 
 		this.connect().then(() => {
@@ -124,22 +130,24 @@ DatabaseMssql.prototype.all = function(tableName, options, cbResult) {
 	var me = this;
 	try {
 		log.debug("Database.all()...");
+		var rows, countRows;
+		var sql;
+		var req;
+
+		cbResult = arguments[arguments.length - 1];	
+	
 		var times = { 
 			all: {},
 			query: {}
 		};
 
-		log.info({ pool: this.connInfo() }, 'Database.all');
 		funcs.startHRTime(times.all);
 
-		cbResult = arguments[arguments.length - 1];	
-		var sql = this.allSQL(tableName, options);
+		//log.debug({ pool: this.connInfo() }, 'Database.all');
 
-		var rows, countRows;
-		var req;
+		this.init().then(() => {
 
-		this.connect().then(() => {
-
+			sql = this.allSQL(tableName, options);
 			req = this.conn().request();
 			SqlHelper.addInputParams(req, sql.params);
 			funcs.startHRTime(times.query);
@@ -316,10 +324,10 @@ DatabaseMssql.prototype.readSchema = function(cbAfter) {
 	var me = this;
 
 	try {
-		log.debug({db: this.config}, "Schema.readSchema()");
+		log.debug({db: this.config}, "Database.readSchema()");
 
 		var schemaProps = {
-			name: SqlHelper.Schema.name(this.config.database)
+			name: this.name()
 		};
 		
 		var fields = _.map(Schema.TABLE_FIELDS, function(f) {
@@ -901,7 +909,7 @@ DatabaseMssql.prototype.chown = function(tableName, rowIds, owner, cbResult) {
 			var chownTables = [ table ];
 			while(chownTables.length > 0) {
 				let t = chownTables.shift(); //only let (not var) will work here!
-				var childTables = me.schema.graph.childTables(t);
+				var childTables = me.childTables(t.name);
 				chownTables = chownTables.concat(childTables);
 				
 				chainPromises = chainPromises.then(result => {
@@ -987,12 +995,12 @@ DatabaseMssql.prototype.writeSchema = function(cbAfter) {
 			});
 			
 			var opts = { viewSQL: false, searchSQL: false };
-			var createSQL = this.sqlBuilder.createSQL(this.schema, opts);
+			var createSQL = this.createSQL(opts);
 			return new Request(transaction).batch(createSQL);
 
 		}).then(result => {
 			log.debug('create views');
-			var viewSQLs = _.map(this.schema.tables(), function(table) {
+			var viewSQLs = _.map(this.tables(), function(table) {
 				return this.sqlBuilder.createRowAliasViewSQL(table); 	
 			}, this);
 
@@ -1013,7 +1021,7 @@ DatabaseMssql.prototype.writeSchema = function(cbAfter) {
 			doRollback = false;
 			if (config.sql.fullTextSearch) {
 				log.debug('create full text catalog');
-				return new Request(conn).batch(SqlHelper.Schema.createFullTextCatalogSQL(this.schema.name));
+				return new Request(conn).batch(SqlHelper.Schema.createFullTextCatalogSQL(this.name()));
 			} else {
 				return Promise.resolve();
 			}
@@ -1021,7 +1029,7 @@ DatabaseMssql.prototype.writeSchema = function(cbAfter) {
 		}).then(result => {
 			if (config.sql.fullTextSearch) {
 				log.debug('create full text indices');
-				var searchSQLs = _.map(this.schema.tables(), function(table) {
+				var searchSQLs = _.map(this.tables(), function(table) {
 					return SqlHelper.Table.createSearchSQL(table); 	
 				}, this);
 

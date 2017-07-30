@@ -27,6 +27,7 @@ var AccountManager = require('./AccountManagerFactory.js').AccountManagerFactory
 
 var ApiController = require('./ApiController.js').ApiController;
 var SignupController = require('./SignupController.js').SignupController;
+var funcs = require('./funcs.js');
 
 var app = express();
 var log = require('./log.js').log;

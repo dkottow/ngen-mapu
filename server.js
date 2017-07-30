@@ -22,8 +22,10 @@ require('dotenv').config();
 var config = require('config');
 
 var log = require('./app/log.js').log;
+var funcs = require('./app/funcs.js');
 
 log.warn({config: config}, '***** reset *****');
+log.info({ mem: funcs.memInfo() }, 'memory reset');
 
 var app = require('./app/app.js').app;
 
@@ -33,6 +35,7 @@ app.init({ auth: config.auth }, function(err) {
 
 	app.listen(config.port, config.ip, function() {
 		log.info({ip: config.ip, port: config.port}, "app listen() - listening.");
+        log.info({ mem: funcs.memInfo() }, 'memory listening');
 		//console.log("Started server on " + config.ip + ":" + config.port);
 	});
 });

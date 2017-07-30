@@ -30,17 +30,6 @@ var Table = require('./Table.js').Table;
 var log = require('./log.js').log;
 var funcs = require('./funcs.js');
 
-function sendError(req, res, err, code) {
-	code = code || 500;
-	if (code >= 500) {
-		log.error({code: code, err: err, req: req}, err.message);
-	} else {
-		log.warn({code: code, err: err, req: req}, err.message);
-	}
-
-	res.status(code).send({error: err.message});
-}
-
 function Controller(accountManager, options) {
 	options = options || {};
 	this.auth = options.auth || false;
@@ -49,11 +38,6 @@ function Controller(accountManager, options) {
 	this.access = new AccessControl({ auth: this.auth });
 	this.initRoutes(options);
 }
-
-Controller.NonceRoutes = {
-	DATABASE_FILE: /^\/(\w+)\/(\w+)\.sqlite?$/, 	//get database file
-	TABLE_CSV_FILE: /^\/(\w+)\/(\w+)\/(\w+)\.csv?/   	//get table csv file
-};
 
 Controller.prototype.initRoutes = function(options) {
 	log.trace("Controller.initRoutes()...");		
@@ -140,10 +124,6 @@ Controller.prototype.initRoutes = function(options) {
 			me.delDatabase(req, res);
 		});
 
-	this.router.get(Controller.NonceRoutes.DATABASE_FILE, function(req, res) {
-		me.getDatabaseFile(req, res);
-	});
-
 	this.router.get(Controller.NonceRoutes.TABLE_CSV_FILE, function(req, res) {
 		me.getCSVFile(req, res);
 	});
@@ -189,21 +169,14 @@ Controller.prototype.initRoutes = function(options) {
 	log.trace("...Controller.initRoutes()");		
 }
 
+//start request handler methods.
+
 Controller.prototype.listAccounts = function(req, res) {
 	log.info({req: req}, 'Controller.listAccounts()...');
 
 	var me = this;
-	this.access.authRequest('listAccounts', req, null, function(err, auth) {
-		if (err) {
-			sendError(req, res, err, 400);
-			return;
-		}
-		
-		if (auth.error) {
-			sendError(req, res, auth.error, 401);
-			return;
-		}
-		
+	this.access.authRequest('listAccounts', req, null).then((auth) => { 
+
 		var result = me.accountManager.list();
 	
 		_.each(result.accounts, function(account) {
@@ -212,24 +185,18 @@ Controller.prototype.listAccounts = function(req, res) {
 	
 		res.send(result);
 		log.info({req: req}, '...Controller.listAccounts()');
-	});
 
+	}).catch(err => {
+		sendError(req, res, err, err.code || 500);
+		return;
+	});
 }
 
 Controller.prototype.putAccount = function(req, res) {
 	log.info({req: req}, 'Controller.putAccount()...');
 	var me = this;
-	this.access.authRequest('putAccount', req, null, function(err, auth) {
-		if (err) {
-			sendError(req, res, err, 400);
-			return;
-		}
+	this.access.authRequest('putAccount', req, null).then((auth) => { 
 
-		if (auth.error) {
-			sendError(req, res, auth.error, 401);
-			return;
-		}
-	
 		me.accountManager.create(req.params[0], function(err, result) {
 			if (err) {
 				sendError(req, res, err, 400);
@@ -239,29 +206,24 @@ Controller.prototype.putAccount = function(req, res) {
 			res.send(result); 
 			log.info({req: req}, '...Controller.putAccount().');
 		});
+	}).catch(err => {
+		sendError(req, res, err, err.code || 500);
+		return;
 	});
 }
 
 Controller.prototype.getAccount = function(req, res) {
 	log.info({req: req}, 'Controller.getAccount()...');
 	var me = this;
-	var path = this.getDataObjects(req, {account: true});
-	if (path.error) {
-		sendError(req, res, path.error, 404);
-		return;
-	}
 
-	this.access.authRequest('getAccount', req, path, function(err, auth) {
-		if (err) {
-			sendError(req, res, err, 400);
-			return;
-		}
+	var path;
 
-		if (auth.error) {
-			sendError(req, res, auth.error, 401);
-			return;
-		}
+	this.getDataObjects(req, {account: true}).then((result) => {
+		path = result;
+		return me.access.authRequest('getAccount', req, path);
 	
+	}).then((auth) => { 
+
 		path.account.getInfo(function(err, result) {
 			if (err) {
 				sendError(req, res, err, 400);
@@ -280,29 +242,24 @@ Controller.prototype.getAccount = function(req, res) {
 			log.info({req: req}, '...Controller.getAccount().');
 		});
 
+	}).catch(err => {
+		sendError(req, res, err, err.code || 500);
+		return;
 	});		
 }
 	
 Controller.prototype.getDatabase = function(req, res) {
 	log.info({req: req}, 'Controller.getDatabase()...');
+
 	var me = this;
-	var path = this.getDataObjects(req, {account: true, db: true});
-	if (path.error) {
-		sendError(req, res, path.error, 404);
-		return;
-	}
+	var path;
 
-	this.access.authRequest('getDatabase', req, path, function(err, auth) {
-		if (err) {
-			sendError(req, res, err, 400);
-			return;
-		}
-
-		if (auth.error) {
-			sendError(req, res, auth.error, 401);
-			return;
-		}
+	this.getDataObjects(req, {account: true, db: true}).then((result) => {
+		path = result;
+		return me.access.authRequest('getDatabase', req, path);
 	
+	}).then((auth) => { 
+
 		path.db.getInfo(function(err, result) {
 			if (err) {
 				sendError(req, res, err);
@@ -321,29 +278,25 @@ Controller.prototype.getDatabase = function(req, res) {
 			res.send(result); 
 			log.info({req: req}, '...Controller.getDatabase().');
 		});
+
+	}).catch(err => {
+		sendError(req, res, err, err.code || 500);
+		return;
 	});
 }
 
 Controller.prototype.putDatabase = function(req, res) {
 	log.info({req: req}, 'Controller.putDatabase()...');
 
-	var path = this.getDataObjects(req, {account: true});
-	if (path.error) {
-		sendError(req, res, path.error, 404);
-		return;
-	}
+	var me = this;
+	var path;
 
-	this.access.authRequest('putDatabase', req, path, function(err, auth) {
-		if (err) {
-			sendError(req, res, err, 400);
-			return;
-		}
-
-		if (auth.error) {
-			sendError(req, res, auth.error, 401);
-			return;
-		}
+	this.getDataObjects(req, {account: true}).then((result) => {
+		path = result;
+		return me.access.authRequest('putDatabase', req, path);
 	
+	}).then((auth) => { 
+
 		var schema = req.body;
 		schema.name = req.params[1];
 		Schema.setAdmin(schema, req.user.name);
@@ -359,31 +312,25 @@ Controller.prototype.putDatabase = function(req, res) {
 			});
 			log.info({req: req}, '...Controller.putDatabase().');
 		});
+
+	}).catch(err => {
+		sendError(req, res, err, err.code || 500);
+		return;
 	});
 }
 
 Controller.prototype.delDatabase = function(req, res) {
 	log.info({req: req}, 'Controller.delDatabase()...');
 
-	var path = this.getDataObjects(req, {account: true, db: true});
-	if (path.error) {
-		sendError(req, res, path.error, 404);
-		return;
-	}
-
-	this.access.authRequest('delDatabase', req, path, function(err, auth) {
-		if (err) {
-			sendError(req, res, err, 400);
-			return;
-		}
-		
-		if (auth.error) {
-			sendError(req, res, auth.error, 401);
-			return;
-		}
+	var path;
+	this.getDataObjects(req, {account: true, db: true}).then((result) => {
+		path = result;
+		return me.access.authRequest('delDatabase', req, path);
 	
+	}).then((auth) => { 
+
 		var opts = req.query;
-		path.account.delDatabase(path.db.name(), opts, function(err, sucess) {
+		path.account.delDatabase(path.db.name(), opts, function(err, success) {
 			if (err) {
 				sendError(req, res, err, 400);
 				return;
@@ -392,6 +339,9 @@ Controller.prototype.delDatabase = function(req, res) {
 			res.send({});
 			log.info('...Controller.delDatabase().');
 		});
+	}).catch(err => {
+		sendError(req, res, err, err.code || 500);
+		return;
 	});
 }
 
@@ -399,23 +349,13 @@ Controller.prototype.patchDatabase = function(req, res) {
 	log.info({req: req}, 'Controller.patchDatabase()...');
 	log.debug({'req.body': req.body});
 
-	var path = this.getDataObjects(req, {account: true, db: true});
-	if (path.error) {
-		sendError(req, res, path.error, 404);
-		return;
-	}
-
-	this.access.authRequest('patchDatabase', req, path, function(err, auth) {
-		if (err) {
-			sendError(req, res, err, 400);
-			return;
-		}
-
-		if (auth.error) {
-			sendError(req, res, auth.error, 401);
-			return;
-		}
+	var path;
+	this.getDataObjects(req, {account: true, db: true}).then((result) => {
+		path = result;
+		return me.access.authRequest('patchDatabase', req, path);
 	
+	}).then((auth) => { 
+
 		var patches = req.body;
 		path.db.patchSchema(patches, function(err, result) {
 			if (err) {
@@ -428,60 +368,24 @@ Controller.prototype.patchDatabase = function(req, res) {
 			res.send(result); 
 			log.info({req: req}, '...Controller.patchDatabase().');
 		});
-	});
-}
 
-
-Controller.prototype.getDatabaseFile = function(req, res) {
-	log.info({req: req}, 'Controller.getDatabaseFile()...');
-
-	var path = this.getDataObjects(req, {account: true, db: true});
-	if (path.error) {
-		sendError(req, res, path.error, 404);
+	}).catch(err => {
+		sendError(req, res, err, err.code || 500);
 		return;
-	}
-
-	this.access.authRequest('getDatabaseFile', req, path, function(err, auth) {
-		if (err) {
-			sendError(req, res, err, 400);
-			return;
-		}
-		if (auth.error) {
-			sendError(req, res, auth.error, 401);
-			return;
-		}
-	
-		res.sendFile(path.db.dbFile, function(err) {
-			if (err) {
-				sendError(req, res, err);
-				return;
-			}
-			log.info({req: req}, '...Controller.getDatabaseFile().');
-		});
-
-	});	
+	});
 }
 
 Controller.prototype.getCSVFile = function(req, res) {
 	var me = this;
 	log.info({req: req}, 'Controller.getCSVFile()...');
 
-	var path = this.getDataObjects(req, {account: true, db: true, table: true});
-	if (path.error) {
-		sendError(req, res, path.error, 404);
-		return;
-	}
-
-	this.access.authRequest('getCSVFile', req, path, function(err, auth) {
-		if (err) {
-			sendError(req, res, err, 400);
-			return;
-		}
-		if (auth.error) {
-			sendError(req, res, auth.error, 401);
-			return;
-		}
+	var path;
+	this.getDataObjects(req, {account: true, db: true, table: true}).then((result) => {
+		path = result;
+		return me.access.authRequest('getCSVFile', req, path);
 	
+	}).then((auth) => { 
+
 		res.sendFile(me.access.getCSVFilename(req.query.nonce), function(err) {
 			if (err) {
 				sendError(req, res, err);
@@ -490,6 +394,9 @@ Controller.prototype.getCSVFile = function(req, res) {
 			log.info({req: req}, '...Controller.getCSVFile().');
 		});
 
+	}).catch(err => {
+		sendError(req, res, err, err.code || 500);
+		return;
 	});
 }
 
@@ -497,109 +404,40 @@ Controller.prototype.doNonceRequest = function(req, res) {
 	log.info({req: req, path: req.body.path}, 'Controller.doNonceRequest()...');
 
 	var me = this;
-	var path;
-	var op;
+	var op, opts;
 
-	if (req.body.path.match(Controller.NonceRoutes.DATABASE_FILE)) {
-		op = 'generateDatabaseFile';
-		path = this.getDataObjects(req, {account: true, db: true});
-
-	} else if (req.body.path.match(Controller.NonceRoutes.TABLE_CSV_FILE)) {
+	if (req.body.path.match(Controller.NonceRoutes.TABLE_CSV_FILE)) {
 		op = 'generateCSVFile';
-		path = this.getDataObjects(req, {account: true, db: true, table: true });
+		opts = {account: true, db: true, table: true };
 	}
 
-	if (! path) {
-		sendError(req, res, new Error('Invalid or missing path argument.'), 400);
-		return;
-	}
+	var path;
+	this.getDataObjects(req, opts).then((result) => {
+		path = result;
+		return me.access.authRequest(op, req, path);
 	
-	if (path.error) {
-		sendError(req, res, path.error, 404);
-		return;
-	}
+	}).then((auth) => { 
 
-	this.access.authRequest(op, req, path, function(err, auth) {
+		return me.access.createNonce(op);
 
-		if (err) {
-			sendError(req, res, err, 400);
-			return;
-		}
-		if (auth.error) {
-			sendError(req, res, auth.error, 401);
-			return;
-		}
+	}).then((nonce) => { 
+		
+		path.nonce = nonce;	
+		me[op](req, path, function(err) {
 
-		me.access.createNonce(op, function(err, nonce) {
-			
 			if (err) {
 				sendError(req, res, err);
 				return;
 			}
 
-			path.nonce = nonce;	
-			me[op](req, path, function(err) {
-
-				if (err) {
-					sendError(req, res, err);
-					return;
-				}
-
-				res.send({ nonce: nonce }); 
-				log.info({req: req}, '...Controller.requestNonce().');
-			});
-
+			res.send({ nonce: nonce }); 
+			log.info({req: req}, '...Controller.requestNonce().');
 		});
 
+	}).catch(err => {
+		sendError(req, res, err, err.code || 500);
+		return;
 	});	
-}
-
-Controller.prototype.generateDatabaseFile = function(req, path, cbAfter) {
-	//do nothing
-	cbAfter();
-}
-
-var fs = require('fs');
-
-Controller.prototype.generateCSVFile = function(req, path, cbAfter) {
-	var content = 'Soon...' + JSON.stringify(req.body);
-	fs.writeFile(this.access.getCSVFilename(path.nonce), content, function(err) {
-		cbAfter(err);
-	});
-}
-
-Controller.QUERY_PARAMS = {
-	'integer': ['debug', 'nocounts']
-};
-
-Controller.prototype.parseQueryParameters = function(req) {
-	var error;
-	var params = {};
-	_.each(req.query, function(v, k) {
-		try {
-			if (k[0] == '$') {
-				var param = parser.parse(k + "=" + v);	
-				params[param.name] = param.value;
-			} else if (_.contains(Controller.QUERY_PARAMS.integer, k)) {
-				params[k] = parseInt(v);
-			} else {
-				params[k] = v;
-			}
-		} catch(err) {
-			var pegErr = err.message.replace(/\"/g, "'"); //pegjs errors enclose literals in double quotes
-			err.message = util.format("Error parsing param[%s] = '%s'. %s", k, v, pegErr);  
-			error = err;
-		}
-	});
-	log.trace({params: params});	
-	return { error: error, values: params };
-}
-
-Controller.prototype.nextUrl = function(req, offset) {
-	var urlObj = url.parse(req.url, true);
-	urlObj.search = undefined;
-	urlObj.query['$skip'] = offset;
-	return url.format(urlObj)
 }
 
 Controller.prototype.getRows = function(req, res) {
@@ -607,36 +445,21 @@ Controller.prototype.getRows = function(req, res) {
 	var reqTime = funcs.startHRTime();
 	//console.dir(req);
 	var me = this;
+	var path;
 
-	var path = this.getDataObjects(req, {account: true, db: true, table: true});
-	if (path.error) {
-		sendError(req, res, path.error, 404);
-		return;
-	}
+	this.getDataObjects(req, {account: true, db: true, table: true}).then((result) => {
+		path = result;
+		return me.access.authRequest('getRows', req, path);
 
-	this.access.authRequest('getRows', req, path, function(err, auth) {
-		if (err) {
-			sendError(req, res, err, 400);
-			return;
-		}
-		if (auth.error) {
-			sendError(req, res, auth.error, 401);
-			return;
-		}
-	
+	}).then((auth) => {
+
 		var params = me.parseQueryParameters(req);
-		if (params.error) {
-			sendError(req, res, params.error, 400);
-			return;			
-		}
+		if (params.error) throw params.error;
 
 		var q = { filter: params.values['$filter'], fields: params.values['$select'] };
 		var auth2 = me.access.filterQuery(path, q, req.user);
-		if (auth2.error) {
-			sendError(req, res, auth2.error, 401);
-			return;
-		}
-
+		if (auth2.error) throw auth2.error;
+		
 		path.db.all(path.table.name, {
 				filter: auth2.filter 
 				, fields: params.values['$select'] 
@@ -662,46 +485,37 @@ Controller.prototype.getRows = function(req, res) {
 				log.trace(result);
 				res.send(result); 
 				funcs.stopHRTime(reqTime);
-				log.info({req: req, time: reqTime.secs}, 'res Controller.getRows().');
+				log.info({req: req, time: reqTime.secs}, '...Controller.getRows().');
 			}
 		);
+
+	}).catch(err => {
+		sendError(req, res, err, err.code || 500);
+		return;
 	});
-	log.info('...Controller.getRows().');
+
+
+	log.debug('...Controller.getRows().');
 }
 
 Controller.prototype.getObjs = function(req, res) {
 	log.info({req: req}, 'Controller.getObjs()...');
 	var me = this;
+	var path;
 
-	var path = this.getDataObjects(req, {account: true, db: true, table: true});
-	if (path.error) {
-		sendError(req, res, path.error, 404);
-		return;
-	}
+	this.getDataObjects(req, {account: true, db: true, table: true}).then((result) => {
+		path = result;
+		return me.access.authRequest('getObjs', req, path);
 
-	this.access.authRequest('getObjs', req, path, function(err, auth) {
-		if (err) {
-			sendError(req, res, err, 400);
-			return;
-		}
-		if (auth.error) {
-			sendError(req, res, auth.error, 401);
-			return;
-		}
+	}).then((auth) => {
 
 		var params = me.parseQueryParameters(req);
-		if (params.error) {
-			sendError(req, res, params.error, 400);
-			return;			
-		}
+		if (params.error) throw params.error;
 
 		var q = { filter: params.values['$filter'], fields: params.values['$select'] };
 
 		var auth2 = me.access.filterQuery(path, q, req.user);
-		if (auth2.error) {
-			sendError(req, res, auth2.error, 401);
-			return;
-		}
+		if (auth2.error) throw auth2.error;
 
 		var fields = (params.values['$select'] || []);
 		if ( ! _.find(fields, function(f) {
@@ -749,8 +563,7 @@ Controller.prototype.getObjs = function(req, res) {
 				}
 	
 				//build objects
-				var objs = path.db.schema.graph
-							.rowsToObj(result.rows, path.table.name);
+				var objs = path.db.rowsToObj(result.rows, path.table.name);
 				result.objs = objs;
 				delete(result.rows);
 	
@@ -759,35 +572,25 @@ Controller.prototype.getObjs = function(req, res) {
 				log.info({req: req}, '...Controller.getObjs().');
 			}
 		);
+	}).catch(err => {
+		sendError(req, res, err, err.code || 500);
+		return;
 	});
 }
 
 Controller.prototype.getStats = function(req, res) {
 	log.info({req: req}, 'Controller.getStats()...');
 	var me = this;
+	var path;
 
-	var path = this.getDataObjects(req, {account: true, db: true, table: true});
-	if (path.error) {
-		sendError(req, res, path.error, 404);
-		return;
-	}
+	this.getDataObjects(req, {account: true, db: true, table: true}).then((result) => {
+		path = result;
+		return me.access.authRequest('getStats', req, path);
 
-	this.access.authRequest('getStats', req, path, function(err, auth) {
-		if (err) {
-			sendError(req, res, err, 400);
-			return;
-		}
+	}).then((auth) => {
 
-		if (auth.error) {
-			sendError(req, res, auth.error, 401);
-			return;
-		}
-	
 		var params = me.parseQueryParameters(req);
-		if (params.error) {
-			sendError(req, res, params.error, 400);
-			return;			
-		}
+		if (params.error) throw params.error;
 
 		//TODO add access control filter
 	
@@ -805,42 +608,33 @@ Controller.prototype.getStats = function(req, res) {
 				log.info({req: req}, '...Controller.getStats().');
 			}
 		);
+	}).catch(err => {
+		sendError(req, res, err, err.code || 500);
+		return;
 	});
 }
 
 Controller.prototype.getViewRows = function(req, res) {
 	log.info({req: req}, 'Controller.getViewRows()...');
 	var reqTime = funcs.startHRTime();
-	//console.dir(req);
+
 	var me = this;
+	var path;
 
-	var path = this.getDataObjects(req, {account: true, db: true});
-	if (path.error) {
-		sendError(req, res, path.error, 404);
-		return;
-	}
-
-	if ( ! req.params[2]) {
+	var viewName = req.params[2];
+	if ( ! viewName) {
 		sendError(req, res, new Error('Missing view parameter'), 404);
 		return;
 	}	
-	var viewName = req.params[2];
-
-	this.access.authRequest('getViewRows', req, path, function(err, auth) {
-		if (err) {
-			sendError(req, res, err, 400);
-			return;
-		}
-		if (auth.error) {
-			sendError(req, res, auth.error, 401);
-			return;
-		}
 	
+	this.getDataObjects(req, {account: true, db: true}).then((result) => {
+		path = result;
+		return me.access.authRequest('getViewRows', req, path);
+
+	}).then((auth) => {
+
 		var params = me.parseQueryParameters(req);
-		if (params.error) {
-			sendError(req, res, params.error, 400);
-			return;			
-		}
+		if (params.error) throw params.error;
 
 		path.db.allView(viewName, {
 				filter: params.values['$filter'] 
@@ -864,13 +658,9 @@ Controller.prototype.getViewRows = function(req, res) {
 				log.info({req: req, time: reqTime.secs}, '...Controller.getViewRows().');
 			}
 		);
-	});
-}
-
-
-Controller.prototype.stripOwnerField = function(rows) {
-	return _.map(rows, function(row) {
-		return _.omit(row, 'own_by');
+	}).catch(err => {
+		sendError(req, res, err, err.code || 500);
+		return;
 	});
 }
 
@@ -880,35 +670,18 @@ Controller.prototype.postRows = function(req, res) {
 	log.info({req: req}, 'Controller.postRows()...');
 	log.debug({'req.body': req.body});
 
-	var path = this.getDataObjects(req, {account: true, db: true, table: true});
-	if (path.error) {
-		sendError(req, res, path.error, 404);
-		return;
-	}
+	var path;
 
-	this.access.authRequest('postRows', req, path, function(err, auth) {
-	    
-		if (err) {
-			sendError(req, res, err, 400);
-			return;
-		}
+	this.getDataObjects(req, {account: true, db: true, table: true}).then((result) => {
+		path = result;
+		return me.access.authRequest('postRows', req, path);
 
-		if (auth.error) {
-			sendError(req, res, auth.error, 401);
-			return;
-		}
-	
+	}).then((auth) => {
+
 		var rows = req.body;
 		var opts = req.query;
 		opts.user = req.user;
 	
-
-/*
-		if (opts.user.role == Schema.USER_ROLES.READER
-		 || opts.user.role == Schema.USER_ROLES.WRITER) {
-			me.stripOwnerField(rows);
-		}
-*/
 		var table_access = path.table.access(opts.user);
 		if (table_access.write != Table.ROW_SCOPES.ALL) {
 			me.stripOwnerField(rows);
@@ -923,6 +696,10 @@ Controller.prototype.postRows = function(req, res) {
 			res.send(result); 
 			log.info({req: req}, '...Controller.postRows().');
 		});
+
+	}).catch(err => {
+		sendError(req, res, err, err.code || 500);
+		return;
 	});
 }
 
@@ -932,24 +709,12 @@ Controller.prototype.putRows = function(req, res) {
 	log.info({req: req}, 'Controller.putRows()...');
 	log.debug({'req.body': req.body});
 
-	var path = this.getDataObjects(req, {account: true, db: true, table: true});
-	if (path.error) {
-		sendError(req, res, path.error, 404);
-		return;
-	}
+	this.getDataObjects(req, {account: true, db: true, table: true}).then((result) => {
+		path = result;
+		return me.access.authRequest('putRows', req, path);
 
-	this.access.authRequest('putRows', req, path, function(err, auth) {
-	    
-		if (err) {
-			sendError(req, res, err, 400);
-			return;
-		}
-		
-		if (auth.error) {
-			sendError(req, res, auth.error, 401);
-			return;
-		}
-	
+	}).then((auth) => {
+
 		var rows = req.body;
 		var opts = req.query;
 		opts.user = req.user;
@@ -970,7 +735,9 @@ Controller.prototype.putRows = function(req, res) {
 			log.info({req: req}, '...Controller.putRows().');
 		});
 
-
+	}).catch(err => {
+		sendError(req, res, err, err.code || 500);
+		return;
 	});
 }
 
@@ -979,23 +746,12 @@ Controller.prototype.delRows = function(req, res) {
 	log.info({req: req}, 'Controller.delRows()...');
 	log.debug({'req.body': req.body});
 
-	var path = this.getDataObjects(req, {account: true, db: true, table: true});
-	if (path.error) {
-		sendError(req, res, path.error, 404);
-		return;
-	}
+	this.getDataObjects(req, {account: true, db: true, table: true}).then((result) => {
+		path = result;
+		return me.access.authRequest('delRows', req, path);
 
-	this.access.authRequest('delRows', req, path, function(err, auth) {
-		if (err) {
-			sendError(req, res, err, 400);
-			return;
-		}
-	
-		if (auth.error) {
-			sendError(req, res, auth.error, 401);
-			return;
-		}
-	
+	}).then((auth) => {
+
 		var rowIds = req.body;
 		path.db.delete(path.table.name, rowIds, function(err, result) {
 			if (err) {
@@ -1005,6 +761,10 @@ Controller.prototype.delRows = function(req, res) {
 			res.send(result); 
 			log.info({req: req}, '...Controller.delRows().');
 		});
+
+	}).catch(err => {
+		sendError(req, res, err, err.code || 500);
+		return;
 	});
 }
 
@@ -1013,28 +773,15 @@ Controller.prototype.chownRows = function(req, res) {
 	log.info({req: req}, 'Controller.chownRows()...');
 	log.debug({'req.body': req.body});
 
-	var path = this.getDataObjects(req, {account: true, db: true, table: true});
-	if (path.error) {
-		sendError(req, res, path.error, 404);
-		return;
-	}
+	this.getDataObjects(req, {account: true, db: true, table: true}).then((result) => {
+		path = result;
+		return me.access.authRequest('chownRows', req, path);
 
-	this.access.authRequest('chownRows', req, path, function(err, auth) {
+	}).then((auth) => {
+
 		var owner = req.query.owner;
-		if ( ! owner) {
-			err = err || new Error('missing owner query parameter');
-		}
+		if ( ! owner) throw new Error('missing owner query parameter');
 
-		if (err) {
-			sendError(req, res, err, 400);
-			return;
-		}
-	
-		if (auth.error) {
-			sendError(req, res, auth.error, 401);
-			return;
-		}
-	
 		var rowIds = req.body;
 		path.db.chown(path.table.name, rowIds, owner, function(err, result) {
 			if (err) {
@@ -1044,54 +791,131 @@ Controller.prototype.chownRows = function(req, res) {
 			res.send(result); 
 			log.info({req: req}, '...Controller.chownRows().');
 		});
+
+	}).catch(err => {
+		sendError(req, res, err, err.code || 500);
+		return;
 	});
 }
+
+//end request handler methods.
+
+//private methods
+
+var fs = require('fs');
+
+Controller.prototype.generateCSVFile = function(req, path, cbAfter) {
+	var content = 'Soon...' + JSON.stringify(req.body);
+	fs.writeFile(this.access.getCSVFilename(path.nonce), content, function(err) {
+		cbAfter(err);
+	});
+}
+
+Controller.QUERY_PARAMS = {
+	'integer': ['debug', 'nocounts']
+};
+
+Controller.prototype.parseQueryParameters = function(req) {
+	var error;
+	var params = {};
+	_.each(req.query, function(v, k) {
+		try {
+			if (k[0] == '$') {
+				var param = parser.parse(k + "=" + v);	
+				params[param.name] = param.value;
+			} else if (_.contains(Controller.QUERY_PARAMS.integer, k)) {
+				params[k] = parseInt(v);
+			} else {
+				params[k] = v;
+			}
+		} catch(err) {
+			var pegErr = err.message.replace(/\"/g, "'"); //pegjs errors enclose literals in double quotes
+			err.message = util.format("Error parsing param[%s] = '%s'. %s", k, v, pegErr);  
+			err.code = 400;
+			error = err;
+		}
+	});
+	log.trace({params: params});	
+	return { error: error, values: params };
+}
+
+Controller.prototype.nextUrl = function(req, offset) {
+	var urlObj = url.parse(req.url, true);
+	urlObj.search = undefined;
+	urlObj.query['$skip'] = offset;
+	return url.format(urlObj)
+}
+
+Controller.prototype.stripOwnerField = function(rows) {
+	return _.map(rows, function(row) {
+		return _.omit(row, 'own_by');
+	});
+}
+
+function sendError(req, res, err, code) {
+	code = code || 500;
+	if (code >= 500) {
+		log.error({code: code, err: err, req: req}, err.message);
+	} else {
+		log.warn({code: code, err: err, req: req}, err.message);
+	}
+
+	res.status(code).send({error: err.message});
+}
+
+
 Controller.prototype.account = function(name) {
 	return this.accountManager.get(name);
 }
 
 Controller.prototype.getDataObjects = function(req, objs) {
-
+	var me = this;
 	log.trace({params: req.params}, 'Controller.getDataObjects...');
 
-	var result = {};
-	if (req.params[0] && objs.account) {
-
-		var account = this.account(req.params[0]);
-		if ( ! account) {
-			result.error = new Error('Account ' 
-				+ req.params[0] + ' not found');
-			return result;
+	return new Promise(function(resolve, reject) {
+		var result = {};
+		if (objs.account) {
+			result.account = me.account(req.params[0]);
+			if ( ! result.account) {
+				var err = new Error("Account '" + req.params[0] + "' not found");
+				return reject(err);
+			}
 		} else {
-			result.account = account;
+			resolve(result);
 		}
-	}
 
-	if (req.params[1] && objs.db) {
-		var db = result.account.database(req.params[1]);
-		if ( ! db) {
-			result.error = new Error('Database ' 
-				+ req.params[1] + ' not found');
-			return result;
+		if (objs.db) {
+			result.db = result.account.database(req.params[1]);
+			if ( ! result.db) {
+				var err = new Error("Database '" + req.params[1] + "' not found");
+				return reject(err);
+			}
+			
+			result.db.init().then(() => {
+				if (req.params[2] && objs.table) {
+					result.table = result.db.table(req.params[2]);
+					if ( ! result.table) {
+						var err = new Error("Table '" + req.params[2] + " not found");
+						return reject(err);
+					}
+				}
+				resolve(result);
+
+			}).catch(err => {
+				log.error({err: err}, "Database.init() exception.");
+				reject(err);
+			});
+
 		} else {
-			result.db = db;
+			resolve(result);
 		}
-	}
-
-	if (req.params[2] && objs.table) {
-		var table = result.db.table(req.params[2]);
-		if ( ! table) {
-			result.error = new Error('Table ' 
-				+ req.params[2] + ' not found');
-			return result;
-		} else {
-			result.table = table;
-		}
-	}
-
-	log.trace({result: result}, '...Controller.getDataObjects');
-	return result;
+		
+	});
 }
+
+Controller.NonceRoutes = {
+	TABLE_CSV_FILE: /^\/(\w+)\/(\w+)\/(\w+)\.csv?/   	//get table csv file
+};
 
 exports.ApiController = Controller;
 

@@ -17,3 +17,7 @@ exports.sleep = function(time) {
   return new Promise((resolve) => setTimeout(resolve, time));
 };
 
+exports.memInfo = function() {
+ return process.memoryUsage();    
+}
+

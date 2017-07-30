@@ -515,7 +515,7 @@ DatabaseSqlite.prototype.chown = function(tableName, rowIds, owner, cbResult) {
 					chownCount += this.changes;
 				});
 			
-				var childTables = me.schema.graph.childTables(t);
+				var childTables = me.childTables(t);
 				chownTables = chownTables.concat(childTables);
 			}
 
@@ -546,7 +546,7 @@ DatabaseSqlite.prototype.writeSchema = function(cbAfter) {
 
 		var opts = { viewSQL: true, searchSQL: true };
 		var createSQL = SqlHelper.Schema.PragmaSQL 
-					+ this.sqlBuilder.createSQL(this.schema, opts);
+					+ this.createSQL(opts);
 
 		var tmpFile = path.join(tempDir,
 						tmp.tmpNameSync({template: 'dl-XXXXXX.sqlite'}));
@@ -589,8 +589,8 @@ DatabaseSqlite.remove = function(dbFile, cbAfter) {
 	});
 }
 
-DatabaseSqlite.getName = function(dbFile) {
-	var fn = path.basename(dbFile);
+DatabaseSqlite.prototype.name = function() { 
+	var fn = path.basename(this.dbFile);
 	return fn.substr(0, fn.lastIndexOf('.')) || fn;
 }
 
@@ -629,7 +629,7 @@ DatabaseSqlite.prototype.readSchema = function(cbAfter) {
 				dbErrorHandlerFn(err);
 
 				var schemaProps = {
-					name: DatabaseSqlite.getName(me.dbFile)
+					name: me.name()
 				};
 				
 				_.each(rows, function(r) {

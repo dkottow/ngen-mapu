@@ -33,7 +33,7 @@ var Table = require('./Table.js').Table;
 var log = require('./log.js').log;
 
 var Schema = function() {
-	this.graph = null;
+	this.init();
 }
 
 Schema.EMPTY = {
@@ -92,6 +92,9 @@ Schema.prototype.get = function() {
 }
 
 /******* table ops *******/
+Schema.prototype.isEmpty = function() {
+	return this.name.length == 0;
+}
 
 Schema.prototype.tables = function() {
 	var tables = this.graph.tables();

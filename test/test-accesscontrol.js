@@ -55,7 +55,7 @@ describe('AccessControl', function() {
 		});	
 
 		it('user is admin', function(done) {
-			access.authRequest('putDatabase', { user: users.admin }, path, function(err, result) {
+			access._authRequest('putDatabase', { user: users.admin }, path, function(err, result) {
 				assert(err == null, 'Error');
 				assert(result.granted, 'User is admin. ' + util.inspect(result.error));
 				done();
@@ -64,7 +64,7 @@ describe('AccessControl', function() {
 
 		it('user account mismatch', function(done) {
 			var wrongPath = { account: { name: 'foo' }};
-			access.authRequest('putDatabase', { user: users.admin }, wrongPath, function(err, result) {
+			access._authRequest('putDatabase', { user: users.admin }, wrongPath, function(err, result) {
 				assert(err == null, 'Error');
 				assert( ! result.granted, 'User is admin. ' + util.inspect(result));
 				done();
@@ -72,7 +72,7 @@ describe('AccessControl', function() {
 		});
 
 		it('user is not admin', function(done) {
-			access.authRequest('putDatabase', { user: users.reader }, path, function(err, result) {
+			access._authRequest('putDatabase', { user: users.reader }, path, function(err, result) {
 				assert(err == null, 'Error');
 				assert( ! result.granted, 'User is admin. ' + util.inspect(result.error));
 				done();

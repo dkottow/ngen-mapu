@@ -141,36 +141,17 @@ Account.prototype.database = function(name) {
 }
 
 Account.prototype.getInfo = function(cbResult) {
-	var me = this;
-
+	var databases = _.map(this.databases, function(db) { 
+		return { name: db.name() };
+	});
+	databases = _.object(_.pluck(databases, 'name'), databases);
+	
 	var result = {
-		name: me.name,
-		databases: {}
+		name: this.name,
+		databases: databases
 	};
 
-	var doAfter = _.after(_.size(me.databases), function() {
-		cbResult(null, result);
-	});
-
-	_.each(this.databases, function(db) {
-		db.getInfo({skipCounts: true}, function(err, schemaData) {
-			if (err) {
-				cbResult(err, null);
-				return;
-			}
-			
-			_.each(schemaData.tables, function(t) { 
-				delete t.fields; 
-			});
-			result.databases[schemaData.name] = schemaData;
-			doAfter();
-		});
-	});
-
-	//handle empty account
-	if (_.size(me.databases) == 0) {
-		cbResult(null, result);
-	};
+	cbResult(null, result);
 }
 
 exports.Account = Account;

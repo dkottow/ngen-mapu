@@ -15,7 +15,8 @@
             "user": "dkottow",
             "domain": "GOLDER", //AD user domain
             "password": null
-        }
+        },
+        "initRetryInterval": 5000
     },
     
     "url"   : {

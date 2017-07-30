@@ -26,6 +26,7 @@ var SchemaChange = require('./SchemaChange.js').SchemaChange;
 var SqlHelper = require('./SqlHelperFactory.js').SqlHelperFactory.create();
 var SqlBuilderFactory = require('./SqlBuilderFactory.js').SqlBuilderFactory;
 
+var config = require('config'); 
 var log = require('./log.js').log;
 
 var Database = function() 
@@ -57,14 +58,14 @@ Database.prototype._init = function(cbAfter) {
 		if ( ! me._readingSchema) {
 			me.readSchema(cbAfter);
 		} else {
-			log.debug('timeout Database.init()');
+			console.log('timeout Database.init()');
 			setTimeout(function() {
 				if (me.schema.isEmpty()) {
-					cbAfter(new Error('init failed.'));
+					cbAfter(new Error('init failed.'), null);
 				} else {
 					return cbAfter();
 				}
-			}, 500);
+			}, config.sql.initRetryInterval);
 		}
 		
 	} else {

@@ -74,6 +74,7 @@ function initRoutes(options) {
 	//signup
 	var signupController = new SignupController();
 	app.use('/public', signupController.router);
+
 	app.use('/public', express.static('./public', { fallthrough: false }));
 
 	//all api routes
@@ -89,6 +90,10 @@ function initRoutes(options) {
 		    return next(err);
 		}
 
+		log.error({req: req, err: err}, err.message);
+		res.status(500).send({error: err.message});
+
+/*	
 		if (err.name === 'UnauthorizedError') {
 			log.warn({req: req, err: err}, err.message);
 		    res.status(401).send({error: err.message});
@@ -96,6 +101,7 @@ function initRoutes(options) {
 			log.error({req: req, err: err}, err.message);
 			res.status(500).send({error: err.message});
 		}
+*/
 
 		log.debug('...app.use');
 	});

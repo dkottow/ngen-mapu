@@ -59,6 +59,11 @@ Database.prototype._init = function(cbAfter) {
 	}
 }
 
+Database.prototype.reset = function() {
+	this.schema = new Schema(); //empty schema
+	return this.init();
+}
+
 /* 
 Database.prototype.name = function() { 
 	return this.schema.name;

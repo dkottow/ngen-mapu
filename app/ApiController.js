@@ -260,6 +260,13 @@ Controller.prototype.getDatabase = function(req, res) {
 	
 	}).then((auth) => { 
 
+		if (req.query.reload && parseInt(req.query.reload) > 0) {
+			return path.db.reset();		
+		} else {
+			return Promise.resolve();
+		}
+		
+	}).then(() => { 
 		path.db.getInfo(function(err, result) {
 			if (err) {
 				sendError(req, res, err);

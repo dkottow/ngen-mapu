@@ -145,7 +145,7 @@ DatabaseMssql.prototype.all = function(tableName, options, cbResult) {
 
 		//log.debug({ pool: this.connInfo() }, 'Database.all');
 
-		this.init().then(() => {
+		this.connect().then(() => {
 
 			sql = this.allSQL(tableName, options);
 			req = this.conn().request();
@@ -325,7 +325,7 @@ DatabaseMssql.prototype.readSchema = function(cbAfter) {
 
 	try {
 		log.debug({db: this.config}, "Database.readSchema()");
-
+		me._readingSchema = true;
 		var schemaProps = {
 			name: this.name()
 		};
@@ -448,14 +448,17 @@ DatabaseMssql.prototype.readSchema = function(cbAfter) {
 			log.trace({ schema: JSON.stringify(schemaProps) }, '...Database.readSchema()');
 
 			me.setSchema(schemaProps);
+			me._readingSchema = false;
 			cbAfter();
 
 		}).catch(err => {
+			me._readingSchema = false;
 			log.error({err: err}, "Database.readSchema() query exception.");
 			cbAfter(err);
 		});
 
 	} catch(err) {
+		me._readingSchema = false;
 		log.error({err: err}, "Database.readSchema() exception.");
 		cbAfter(err);
 	}

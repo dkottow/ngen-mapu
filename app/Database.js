@@ -52,8 +52,21 @@ Database.prototype.init = function() {
 }
 
 Database.prototype._init = function(cbAfter) {
-	if (this.schema.isEmpty()) {
-		this.readSchema(cbAfter);
+	var me = this;
+	if (me.schema.isEmpty()) {
+		if ( ! me._readingSchema) {
+			me.readSchema(cbAfter);
+		} else {
+			log.debug('timeout Database.init()');
+			setTimeout(function() {
+				if (me.schema.isEmpty()) {
+					cbAfter(new Error('init failed.'));
+				} else {
+					return cbAfter();
+				}
+			}, 500);
+		}
+		
 	} else {
 		cbAfter();
 	}

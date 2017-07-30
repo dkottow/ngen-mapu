@@ -39,7 +39,7 @@
                 "max": 15,
                 "min": 5            
             },
-            "requestTimeout": 60000 // millisecs 
+            "requestTimeout": 20000 // millisecs 
         },
         "elasticPool": "azwu-test-d365" //leave empty if no pool
     },

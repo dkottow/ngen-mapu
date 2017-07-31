@@ -216,25 +216,25 @@ Controller.prototype.getAccount = function(req, res) {
 	log.info({req: req}, 'Controller.getAccount()...');
 	var me = this;
 
-	var path;
+	var data;
 
 	this.getDataObjects(req, {account: true}).then((result) => {
-		path = result;
-		return me.access.authRequest('getAccount', req, path);
+		data = result;
+		return me.access.authRequest('getAccount', req, data);
 	
 	}).then((auth) => { 
 
-		path.account.getInfo(function(err, result) {
+		data.account.getInfo(function(err, result) {
 			if (err) {
 				sendError(req, res, err, 400);
 				return;
 			}
 	
-			result.url = '/' + path.account.name; 
+			result.url = '/' + data.account.name; 
 
-			result.databases = me.access.filterDatabases(path, result.databases, req.user);
+			result.databases = me.access.filterDatabases(data, result.databases, req.user);
 			_.each(result.databases, function(db) {
-				db.url = '/' + path.account.name + '/' + db.name;
+				db.url = '/' + data.account.name + '/' + db.name;
 			});
 
 			log.trace(result);
@@ -252,33 +252,33 @@ Controller.prototype.getDatabase = function(req, res) {
 	log.info({req: req}, 'Controller.getDatabase()...');
 
 	var me = this;
-	var path;
+	var data;
 
 	this.getDataObjects(req, {account: true, db: true}).then((result) => {
-		path = result;
-		return me.access.authRequest('getDatabase', req, path);
+		data = result;
+		return me.access.authRequest('getDatabase', req, data);
 	
 	}).then((auth) => { 
 
 		if (req.query.reload && parseInt(req.query.reload) > 0) {
-			return path.db.reset();		
+			return data.db.reset();		
 		} else {
 			return Promise.resolve();
 		}
 		
 	}).then(() => { 
-		path.db.getInfo(function(err, result) {
+		data.db.getInfo(function(err, result) {
 			if (err) {
 				sendError(req, res, err);
 				return;
 			}
 	
-			result.url = '/' + path.account.name + '/' + path.db.name();
+			result.url = '/' + data.account.name + '/' + data.db.name();
 	
-			result.tables = me.access.filterTables(path, result.tables, req.user);
+			result.tables = me.access.filterTables(data, result.tables, req.user);
 			_.each(result.tables, function(t) {
-				t.url = '/' + path.account.name 
-						+ '/' + path.db.name() + '/' + t.name;
+				t.url = '/' + data.account.name 
+						+ '/' + data.db.name() + '/' + t.name;
 			});
 
 			log.trace(result);
@@ -296,11 +296,11 @@ Controller.prototype.putDatabase = function(req, res) {
 	log.info({req: req}, 'Controller.putDatabase()...');
 
 	var me = this;
-	var path;
+	var data;
 
 	this.getDataObjects(req, {account: true}).then((result) => {
-		path = result;
-		return me.access.authRequest('putDatabase', req, path);
+		data = result;
+		return me.access.authRequest('putDatabase', req, data);
 	
 	}).then((auth) => { 
 
@@ -308,7 +308,7 @@ Controller.prototype.putDatabase = function(req, res) {
 		schema.name = req.params[1];
 		Schema.setAdmin(schema, req.user.name);
 	
-		path.account.createDatabase(schema, function(err, db) {
+		data.account.createDatabase(schema, function(err, db) {
 			if (err) {
 				sendError(req, res, err, 400);
 				return;
@@ -329,15 +329,15 @@ Controller.prototype.putDatabase = function(req, res) {
 Controller.prototype.delDatabase = function(req, res) {
 	log.info({req: req}, 'Controller.delDatabase()...');
 
-	var path;
+	var data;
 	this.getDataObjects(req, {account: true, db: true}).then((result) => {
-		path = result;
-		return me.access.authRequest('delDatabase', req, path);
+		data = result;
+		return me.access.authRequest('delDatabase', req, data);
 	
 	}).then((auth) => { 
 
 		var opts = req.query;
-		path.account.delDatabase(path.db.name(), opts, function(err, success) {
+		data.account.delDatabase(data.db.name(), opts, function(err, success) {
 			if (err) {
 				sendError(req, res, err, 400);
 				return;
@@ -356,15 +356,15 @@ Controller.prototype.patchDatabase = function(req, res) {
 	log.info({req: req}, 'Controller.patchDatabase()...');
 	log.debug({'req.body': req.body});
 
-	var path;
+	var data;
 	this.getDataObjects(req, {account: true, db: true}).then((result) => {
-		path = result;
-		return me.access.authRequest('patchDatabase', req, path);
+		data = result;
+		return me.access.authRequest('patchDatabase', req, data);
 	
 	}).then((auth) => { 
 
 		var patches = req.body;
-		path.db.patchSchema(patches, function(err, result) {
+		data.db.patchSchema(patches, function(err, result) {
 			if (err) {
 				//dont simply sendError but send old schema	as well
 				log.error({req: req, code: 400, err: err}, 'Controller.sendError()');
@@ -386,10 +386,10 @@ Controller.prototype.getCSVFile = function(req, res) {
 	var me = this;
 	log.info({req: req}, 'Controller.getCSVFile()...');
 
-	var path;
+	var data;
 	this.getDataObjects(req, {account: true, db: true, table: true}).then((result) => {
-		path = result;
-		return me.access.authRequest('getCSVFile', req, path);
+		data = result;
+		return me.access.authRequest('getCSVFile', req, data);
 	
 	}).then((auth) => { 
 
@@ -418,10 +418,10 @@ Controller.prototype.doNonceRequest = function(req, res) {
 		opts = {account: true, db: true, table: true };
 	}
 
-	var path;
+	var data;
 	this.getDataObjects(req, opts).then((result) => {
-		path = result;
-		return me.access.authRequest(op, req, path);
+		data = result;
+		return me.access.authRequest(op, req, data);
 	
 	}).then((auth) => { 
 
@@ -429,8 +429,8 @@ Controller.prototype.doNonceRequest = function(req, res) {
 
 	}).then((nonce) => { 
 		
-		path.nonce = nonce;	
-		me[op](req, path, function(err) {
+		data.nonce = nonce;	
+		me[op](req, data, function(err) {
 
 			if (err) {
 				sendError(req, res, err);
@@ -452,11 +452,11 @@ Controller.prototype.getRows = function(req, res) {
 	var reqTime = funcs.startHRTime();
 	//console.dir(req);
 	var me = this;
-	var path;
+	var data;
 
 	this.getDataObjects(req, {account: true, db: true, table: true}).then((result) => {
-		path = result;
-		return me.access.authRequest('getRows', req, path);
+		data = result;
+		return me.access.authRequest('getRows', req, data);
 
 	}).then((auth) => {
 
@@ -464,10 +464,10 @@ Controller.prototype.getRows = function(req, res) {
 		if (params.error) throw params.error;
 
 		var q = { filter: params.values['$filter'], fields: params.values['$select'] };
-		var auth2 = me.access.filterQuery(path, q, req.user);
+		var auth2 = me.access.filterQuery(data, q, req.user);
 		if (auth2.error) throw auth2.error;
 		
-		path.db.all(path.table.name, {
+		data.db.all(data.table.name, {
 				filter: auth2.filter 
 				, fields: params.values['$select'] 
 				, order: params.values['$orderby'] 
@@ -508,11 +508,11 @@ Controller.prototype.getRows = function(req, res) {
 Controller.prototype.getObjs = function(req, res) {
 	log.info({req: req}, 'Controller.getObjs()...');
 	var me = this;
-	var path;
+	var data;
 
 	this.getDataObjects(req, {account: true, db: true, table: true}).then((result) => {
-		path = result;
-		return me.access.authRequest('getObjs', req, path);
+		data = result;
+		return me.access.authRequest('getObjs', req, data);
 
 	}).then((auth) => {
 
@@ -521,19 +521,19 @@ Controller.prototype.getObjs = function(req, res) {
 
 		var q = { filter: params.values['$filter'], fields: params.values['$select'] };
 
-		var auth2 = me.access.filterQuery(path, q, req.user);
+		var auth2 = me.access.filterQuery(data, q, req.user);
 		if (auth2.error) throw auth2.error;
 
 		var fields = (params.values['$select'] || []);
 		if ( ! _.find(fields, function(f) {
-			return f.field == 'id' && (! f.table || f.table == path.table.name);
+			return f.field == 'id' && (! f.table || f.table == data.table.name);
 		})) {
 			fields.push({ field: 'id' });
 		}
 		
 		var orderBy = (params.values['$orderby'] || []).push({ field: 'id', order: 'asc' });
 		
-		path.db.all(path.table.name, {
+		data.db.all(data.table.name, {
 				filter: auth2.filter 
 				, fields: fields 
 				, order: orderBy 
@@ -570,7 +570,7 @@ Controller.prototype.getObjs = function(req, res) {
 				}
 	
 				//build objects
-				var objs = path.db.rowsToObj(result.rows, path.table.name);
+				var objs = data.db.rowsToObj(result.rows, data.table.name);
 				result.objs = objs;
 				delete(result.rows);
 	
@@ -588,11 +588,11 @@ Controller.prototype.getObjs = function(req, res) {
 Controller.prototype.getStats = function(req, res) {
 	log.info({req: req}, 'Controller.getStats()...');
 	var me = this;
-	var path;
+	var data;
 
 	this.getDataObjects(req, {account: true, db: true, table: true}).then((result) => {
-		path = result;
-		return me.access.authRequest('getStats', req, path);
+		data = result;
+		return me.access.authRequest('getStats', req, data);
 
 	}).then((auth) => {
 
@@ -601,7 +601,7 @@ Controller.prototype.getStats = function(req, res) {
 
 		//TODO add access control filter
 	
-		path.db.getStats(path.table.name, { 
+		data.db.getStats(data.table.name, { 
 				filter: params.values['$filter'], 
 				fields: params.values['$select'] 
 			}, 
@@ -626,7 +626,7 @@ Controller.prototype.getViewRows = function(req, res) {
 	var reqTime = funcs.startHRTime();
 
 	var me = this;
-	var path;
+	var data;
 
 	var viewName = req.params[2];
 	if ( ! viewName) {
@@ -635,15 +635,15 @@ Controller.prototype.getViewRows = function(req, res) {
 	}	
 	
 	this.getDataObjects(req, {account: true, db: true}).then((result) => {
-		path = result;
-		return me.access.authRequest('getViewRows', req, path);
+		data = result;
+		return me.access.authRequest('getViewRows', req, data);
 
 	}).then((auth) => {
 
 		var params = me.parseQueryParameters(req);
 		if (params.error) throw params.error;
 
-		path.db.allView(viewName, {
+		data.db.allView(viewName, {
 				filter: params.values['$filter'] 
 				, fields: params.values['$select'] 
 				, order: params.values['$orderby'] 
@@ -677,11 +677,11 @@ Controller.prototype.postRows = function(req, res) {
 	log.info({req: req}, 'Controller.postRows()...');
 	log.debug({'req.body': req.body});
 
-	var path;
+	var data;
 
 	this.getDataObjects(req, {account: true, db: true, table: true}).then((result) => {
-		path = result;
-		return me.access.authRequest('postRows', req, path);
+		data = result;
+		return me.access.authRequest('postRows', req, data);
 
 	}).then((auth) => {
 
@@ -689,12 +689,12 @@ Controller.prototype.postRows = function(req, res) {
 		var opts = req.query;
 		opts.user = req.user;
 	
-		var table_access = path.table.access(opts.user);
+		var table_access = data.table.access(opts.user);
 		if (table_access.write != Table.ROW_SCOPES.ALL) {
 			me.stripOwnerField(rows);
 		}
 
-		path.db.insert(path.table.name, rows, opts, function(err, result) {
+		data.db.insert(data.table.name, rows, opts, function(err, result) {
 			if (err) {
 				sendError(req, res, err, 400);
 				return;
@@ -717,8 +717,8 @@ Controller.prototype.putRows = function(req, res) {
 	log.debug({'req.body': req.body});
 
 	this.getDataObjects(req, {account: true, db: true, table: true}).then((result) => {
-		path = result;
-		return me.access.authRequest('putRows', req, path);
+		data = result;
+		return me.access.authRequest('putRows', req, data);
 
 	}).then((auth) => {
 
@@ -726,12 +726,12 @@ Controller.prototype.putRows = function(req, res) {
 		var opts = req.query;
 		opts.user = req.user;
 	
-		var table_access = path.table.access(opts.user);
+		var table_access = data.table.access(opts.user);
 		if (table_access.write != Table.ROW_SCOPES.ALL) {
 			me.stripOwnerField(rows);
 		}
 
-		path.db.update(path.table.name, rows, opts, function(err, result) {
+		data.db.update(data.table.name, rows, opts, function(err, result) {
 			if (err) {
 				sendError(req, res, err, 400);
 				return;
@@ -754,13 +754,13 @@ Controller.prototype.delRows = function(req, res) {
 	log.debug({'req.body': req.body});
 
 	this.getDataObjects(req, {account: true, db: true, table: true}).then((result) => {
-		path = result;
-		return me.access.authRequest('delRows', req, path);
+		data = result;
+		return me.access.authRequest('delRows', req, data);
 
 	}).then((auth) => {
 
 		var rowIds = req.body;
-		path.db.delete(path.table.name, rowIds, function(err, result) {
+		data.db.delete(data.table.name, rowIds, function(err, result) {
 			if (err) {
 				sendError(req, res, err, 400);
 				return;
@@ -781,8 +781,8 @@ Controller.prototype.chownRows = function(req, res) {
 	log.debug({'req.body': req.body});
 
 	this.getDataObjects(req, {account: true, db: true, table: true}).then((result) => {
-		path = result;
-		return me.access.authRequest('chownRows', req, path);
+		data = result;
+		return me.access.authRequest('chownRows', req, data);
 
 	}).then((auth) => {
 
@@ -790,7 +790,7 @@ Controller.prototype.chownRows = function(req, res) {
 		if ( ! owner) throw new Error('missing owner query parameter');
 
 		var rowIds = req.body;
-		path.db.chown(path.table.name, rowIds, owner, function(err, result) {
+		data.db.chown(data.table.name, rowIds, owner, function(err, result) {
 			if (err) {
 				sendError(req, res, err, 400);
 				return;
@@ -811,9 +811,9 @@ Controller.prototype.chownRows = function(req, res) {
 
 var fs = require('fs');
 
-Controller.prototype.generateCSVFile = function(req, path, cbAfter) {
+Controller.prototype.generateCSVFile = function(req, data, cbAfter) {
 	var content = 'Soon...' + JSON.stringify(req.body);
-	fs.writeFile(this.access.getCSVFilename(path.nonce), content, function(err) {
+	fs.writeFile(this.access.getCSVFilename(data.nonce), content, function(err) {
 		cbAfter(err);
 	});
 }

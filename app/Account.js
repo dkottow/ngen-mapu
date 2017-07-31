@@ -142,7 +142,10 @@ Account.prototype.database = function(name) {
 
 Account.prototype.getInfo = function(cbResult) {
 	var databases = _.map(this.databases, function(db) { 
-		return { name: db.name() };
+		return { 
+			name: db.name(), 
+			init: db.initInfo() 
+		};
 	});
 	databases = _.object(_.pluck(databases, 'name'), databases);
 	

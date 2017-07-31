@@ -52,11 +52,18 @@ Database.prototype.init = function() {
 	});
 }
 
+Database.prototype.initInfo = function() {
+	return { at: this._initAt };
+}
+
 Database.prototype._init = function(cbAfter) {
 	var me = this;
 	if (me.schema.isEmpty()) {
 		if ( ! me._readingSchema) {
-			me.readSchema(cbAfter);
+			me.readSchema(function(err) {
+				me._initAt = new Date();
+				cbAfter(err);
+			});
 		} else {
 			console.log('timeout Database.init()');
 			setTimeout(function() {

@@ -327,6 +327,7 @@ Controller.prototype.putDatabase = function(req, res) {
 }
 
 Controller.prototype.delDatabase = function(req, res) {
+	var me = this;
 	log.info({req: req}, 'Controller.delDatabase()...');
 
 	var data;
@@ -353,6 +354,7 @@ Controller.prototype.delDatabase = function(req, res) {
 }
 
 Controller.prototype.patchDatabase = function(req, res) {
+	var me = this;
 	log.info({req: req}, 'Controller.patchDatabase()...');
 	log.debug({'req.body': req.body});
 
@@ -752,6 +754,7 @@ Controller.prototype.putRows = function(req, res) {
 Controller.prototype.delRows = function(req, res) {
 	log.info({req: req}, 'Controller.delRows()...');
 	log.debug({'req.body': req.body});
+	var me = this;
 
 	this.getDataObjects(req, {account: true, db: true, table: true}).then((result) => {
 		data = result;
@@ -779,6 +782,7 @@ Controller.prototype.delRows = function(req, res) {
 Controller.prototype.chownRows = function(req, res) {
 	log.info({req: req}, 'Controller.chownRows()...');
 	log.debug({'req.body': req.body});
+	var me = this;
 
 	this.getDataObjects(req, {account: true, db: true, table: true}).then((result) => {
 		data = result;

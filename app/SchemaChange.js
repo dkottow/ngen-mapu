@@ -94,9 +94,14 @@ SchemaChange._create = function(patch, schema) {
 	} else if (SCAddTable.test(patch)) {
 		result = new SCAddTable(patch, schema);
 
+/* 
+//sometimes when tables are empty, setTable will fail to do changes
+//on mssql because of fk's pointing to it.
+//TODO explore option to use add/del field instead.
+
 	} else if (SCAddField.test(patch)) {
 		result = new SCAddField(patch, schema);
-/*
+
 	} else if (isEmpty && SCDelField.test(patch)) {
 		result = new SCDelField(patch, schema);
 */
@@ -105,6 +110,9 @@ SchemaChange._create = function(patch, schema) {
 
 	} else if (isEmpty && SCDelTable.test(patch)) {
 		result = new SCDelTable(patch, schema);
+
+	} else if (! isEmpty && SCAddField.test(patch)) {
+		result = new SCAddField(patch, schema);
 	}
 
 	if (result) {

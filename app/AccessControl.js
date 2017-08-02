@@ -227,7 +227,7 @@ AccessControl.prototype._authRequest = function(op, req, path, cbResult) {
 			if (table_access.write == Table.ROW_SCOPES.OWN) {
 				//check if rows affected are owned by callee 
 				var rowIds = op == 'delRows' ? req.body : _.pluck(req.body, 'id');
-				var owned = path.db.rowsOwned(path.table.name, rowIds, req.user, 
+				var owned = path.db.rowsOwned(path.table.name, rowIds, req.user.name, 
 					function(err, owned) {
 						if (err) {
 							cbResult(err, null);

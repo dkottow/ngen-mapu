@@ -688,14 +688,14 @@ Controller.prototype.postRows = function(req, res) {
 	}).then((auth) => {
 
 		var rows = req.body;
-		var opts = req.query;
-		opts.user = req.user;
 	
-		var table_access = data.table.access(opts.user);
+		var table_access = data.table.access(req.user);
 		if (table_access.write != Table.ROW_SCOPES.ALL) {
 			me.stripOwnerField(rows);
 		}
 
+		var opts = req.query;
+		opts.user = req.user;
 		data.db.insert(data.table.name, rows, opts, function(err, result) {
 			if (err) {
 				sendError(req, res, err, 400);
@@ -725,14 +725,14 @@ Controller.prototype.putRows = function(req, res) {
 	}).then((auth) => {
 
 		var rows = req.body;
-		var opts = req.query;
-		opts.user = req.user;
-	
-		var table_access = data.table.access(opts.user);
+
+		var table_access = data.table.access(req.user);
 		if (table_access.write != Table.ROW_SCOPES.ALL) {
 			me.stripOwnerField(rows);
 		}
 
+		var opts = req.query;
+		opts.user = req.user;
 		data.db.update(data.table.name, rows, opts, function(err, result) {
 			if (err) {
 				sendError(req, res, err, 400);

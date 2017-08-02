@@ -64,8 +64,13 @@ Database.prototype._init = function(cbAfter) {
 				me._initAt = new Date();
 				cbAfter(err);
 			});
+
 		} else {
-			console.log('timeout Database.init()');
+			log.debug({
+				at: new Date(), 
+				wait: config.sql.initRetryInterval
+			}, 'timeout Database.init()');
+
 			setTimeout(function() {
 				if (me.schema.isEmpty()) {
 					cbAfter(new Error('init failed.'), null);
@@ -187,8 +192,8 @@ Database.prototype.allById = function(tableName, rowIds, options, cbResult) {
 	return this.all(tableName, options, cbResult);
 } 
 
-Database.prototype.rowsOwned = function(tableName, rowIds, user, cbResult) {
-	log.trace({table: tableName, user: user}, 'Database.rowsOwned()...');
+Database.prototype.rowsOwned = function(tableName, rowIds, username, cbResult) {
+	log.trace({table: tableName, user: username}, 'Database.rowsOwned()...');
 	log.trace({rowIds: rowIds},  'Database.rowsOwned()');
 	
 	var fields = ['id', 'own_by'];
@@ -198,7 +203,7 @@ Database.prototype.rowsOwned = function(tableName, rowIds, user, cbResult) {
 			return;
 		}
 		var notOwned = _.find(result.rows, function(row) {
-			return row.own_by != user.name;	
+			return row.own_by != username;	
 		});
 
 		log.trace({notOwned: notOwned}, '...Database.rowsOwned()');

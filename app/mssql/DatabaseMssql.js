@@ -499,7 +499,7 @@ DatabaseMssql.prototype.insert = function(tableName, rows, options, cbResult) {
 		var fieldNames = _.keys(fields);
 		var autoId = ! _.has(fields, 'id');
 
-		var add_by = options.user ? options.user.name : 'unk';
+		var add_by = options.username || 'unk';
 
 		var rowIds = [];
 		var sql;
@@ -654,7 +654,7 @@ DatabaseMssql.prototype.update = function(tableName, rows, options, cbResult) {
 		var fields = this.getUpdateFields(rows, table);
 		var fieldNames = _.keys(fields);
 
-		var mod_by = options.user ? options.user.name : 'unk';
+		var mod_by = options.username || 'unk';
 		var modCount = 0;	
 
 		var transaction;

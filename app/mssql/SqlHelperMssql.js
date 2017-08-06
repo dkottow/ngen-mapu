@@ -63,6 +63,14 @@ SqlHelperMssql.addInputParams = function(req, params)
 	});	
 }
 
+SqlHelperMssql.addOutputParams = function(req, params)
+{
+	_.each(params, function(param) {
+//console.log(param.name, SqlHelperMssql.mssqlType(param.type), param.value);
+		req.output(param.name, SqlHelperMssql.mssqlType(param.type), param.value);
+	});	
+}
+
 SqlHelperMssql.mssqlType = function(fieldType)
 {
 	var typeName = SqlHelperMssql.typeName(fieldType);

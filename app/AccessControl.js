@@ -47,17 +47,6 @@ AccessControl.prototype.supportsNonce = function(op)
 	return _.contains(nonceMethods, op);
 }
 
-AccessControl.prototype.checkNonce = function(nonce, cbResult) {
-	fs.unlink(this.getNoncePath(nonce), function(err) {
-		if (err) {
-			log.error({ err: err, nonce: nonce }, 'AccessControl.checkNonce');
-			cbResult(err, false);
-		} else {
-			cbResult(null, true);
-		}
-	});
-}
-
 AccessControl.prototype.createNonce = function(op, cbResult) {
 	var me = this;
 	return new Promise(function(resolve, reject) {
@@ -79,11 +68,79 @@ AccessControl.prototype.createNonce = function(op, cbResult) {
 			reject(new Error('Method does not support nonce'));
 		}
 	});	
+}
 
+AccessControl.prototype.checkNonce = function(nonce) {
+	return new Promise(function(resolve, reject) {
+
+		fs.unlink(this.getNoncePath(nonce), function(err) {
+			if (err) {
+				log.error({ err: err, nonce: nonce }, 'AccessControl.checkNonce');
+				var error = new Error('invalid nonce');
+				error.code = 401;
+				return reject(error);
+			} else {
+				return resolve(true);
+			}
+		});
+
+	});
+}
+
+AccessControl.prototype.tableAccess = function(db, table) {
 
 }
 
 AccessControl.prototype.authRequest = function(op, req, path) {
+	log.debug({ op: op}, 'AccessControl.authRequest()...'); 
+	log.trace({ 'req.user': req.user, path: path }, 'AccessControl.authRequest()'); 
+	try {
+		var resultFn = function(result) {
+			if ( ! result.granted) {
+				var err = new Error(result.message);
+				err.code = 401;
+				return Promise.reject(err);
+			}
+			log.debug({ result: result }, '...AccessControl.authRequest()');
+			return Promise.resolve(result);
+		};
+
+		//auth disabled
+		if ( ! this.auth) {
+			return resultFn({ granted: true, message:  'auth disabled'});
+		}
+
+		//is it a nonce operation?
+		if (req.query && req.query.nonce) {
+			
+			if (this.supportsNonce(op)) {
+				return this.checkNonce(req.query.nonce);
+			} else {
+				return resultFn({ granted: false, message: 'op does not support nonce' });
+			}
+		}
+
+		if ( ! req.user) {
+			resultFn({ granted: false, message: 'op requires authenticated user'});
+			return;
+		}
+
+		req.user.isAdmin(path.account.name, path.database).then((isAdmin) => {
+			if (isAdmin) {
+				return resultFn({ granted: true, message:  'user is admin'});
+				
+			} else {
+				req.user.access(path.database, path.table.name).then();
+			}
+		});	
+
+	} catch (err) {
+		log.error({ err: err }, 'AccessControl.authRequest() exception');
+		return Promise.reject(err);
+	}
+}
+
+AccessControl.prototype.authRequest1 = function(op, req, path) {
 	var me = this;
 	return new Promise(function(resolve, reject) {
 		me._authRequest(op, req, path, function(err, result) {
@@ -117,12 +174,6 @@ AccessControl.prototype._authRequest = function(op, req, path, cbResult) {
 		return;
 	}
 
-	//sys admin - return true
-	if (req.user.root) {
-		resultFn({ granted: true, message:  'system admin'});
-		return;
-	}
-
 	//is it a nonce operation?
 	if (req.query && req.query.nonce) {
 		
@@ -134,6 +185,12 @@ AccessControl.prototype._authRequest = function(op, req, path, cbResult) {
 		} else {
 			resultFn({ granted: false, message: 'op does not support nonce' });
 		}
+		return;
+	}
+
+	//sys admin - return true
+	if (req.user.root) {
+		resultFn({ granted: true, message:  'system admin'});
 		return;
 	}
 
@@ -175,6 +232,8 @@ AccessControl.prototype._authRequest = function(op, req, path, cbResult) {
 			"db.users": path.db.users() 
 		}, 'AccessControl.authRequest()');
 
+
+		
 	var dbUser = path.db.user(req.user.name);
 
 	//user is no db user - false

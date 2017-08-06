@@ -861,6 +861,35 @@ DatabaseMssql.prototype.delete = function(tableName, rowIds, cbResult) {
 	}
 }
 
+DatabaseMssql.prototype.execSP = function(spName, args, cbResult) {
+	try {
+		log.trace('Database.execSP()...');
+		log.trace({storedProcedure: spName, args: args});
+
+		this.connect().then(() => {
+
+			var req = this.conn().request();
+			SqlHelper.addInputParams(req, args.input);
+			SqlHelper.addOutputParams(req, args.output);
+			return req.execute(spName);
+
+		}).then(result => {
+			log.trace({result: result}, 'execSP result');
+			cbResult(null, result);
+
+		}).catch(err => {
+			log.error({err: err}, "Database.execSP() query exception.");
+			cbResult(err, null);
+			return;		
+		});
+
+	} catch(err) {
+		log.error({err: err}, "Database.execSP() exception.");	
+		cbResult(err, null);
+	}
+}
+
+
 DatabaseMssql.prototype.chown = function(tableName, rowIds, owner, cbResult) {
 	var me = this;
 	try {

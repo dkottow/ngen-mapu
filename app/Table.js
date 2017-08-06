@@ -146,6 +146,16 @@ Table.TABLE = '__tableprops__';
 Table.TABLE_FIELDS = ['name', 'props', 'disabled'];
 Table.ALL_FIELDS = '*';
 
+Table.TABLES = {
+	ACCESS : '__d365TableAccess'
+};
+
+Table.FIELDS = {
+	ACCESS_TABLE : 'TableName',
+	ACCESS_READ: 'Read',
+	ACCESS_WRITE: 'Write'
+};
+
 //only these are stored and returned as JSON
 Table.PROPERTIES = ['order', 'label'];
 

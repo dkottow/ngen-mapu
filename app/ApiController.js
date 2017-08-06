@@ -695,7 +695,7 @@ Controller.prototype.postRows = function(req, res) {
 		}
 
 		var opts = req.query;
-		opts.user = req.user;
+		opts.user = req.user.name;
 		data.db.insert(data.table.name, rows, opts, function(err, result) {
 			if (err) {
 				sendError(req, res, err, 400);
@@ -732,7 +732,7 @@ Controller.prototype.putRows = function(req, res) {
 		}
 
 		var opts = req.query;
-		opts.user = req.user;
+		opts.user = req.user.name;
 		data.db.update(data.table.name, rows, opts, function(err, result) {
 			if (err) {
 				sendError(req, res, err, 400);
@@ -884,46 +884,50 @@ Controller.prototype.getDataObjects = function(req, objs) {
 	log.trace({params: req.params}, 'Controller.getDataObjects...');
 
 	return new Promise(function(resolve, reject) {
-		var result = {};
-		if (objs.account) {
-			result.account = me.account(req.params[0]);
-			if ( ! result.account) {
-				var err = new Error("Account '" + req.params[0] + "' not found");
-				err.code = 404;
-				return reject(err);
-			}
-		} else {
-			resolve(result);
-		}
-
-		if (objs.db) {
-			result.db = result.account.database(req.params[1]);
-			if ( ! result.db) {
-				var err = new Error("Database '" + req.params[1] + "' not found");
-				err.code = 404;
-				return reject(err);
-			}
-			
-			result.db.init().then(() => {
-				if (req.params[2] && objs.table) {
-					result.table = result.db.table(req.params[2]);
-					if ( ! result.table) {
-						var err = new Error("Table '" + req.params[2] + " not found");
-						err.code = 404;
-						return reject(err);
-					}
+		try {
+			var result = {};
+			if (objs.account) {
+				result.account = me.account(req.params[0]);
+				if ( ! result.account) {
+					var err = new Error("Account '" + req.params[0] + "' not found");
+					err.code = 404;
+					return reject(err);
 				}
+			} else {
 				resolve(result);
+			}
 
-			}).catch(err => {
-				log.error({err: err}, "Database.init() exception.");
-				reject(err);
-			});
+			if (objs.db) {
+				result.db = result.account.database(req.params[1]);
+				if ( ! result.db) {
+					var err = new Error("Database '" + req.params[1] + "' not found");
+					err.code = 404;
+					return reject(err);
+				}
+				
+				result.db.init().then(() => {
+					if (req.params[2] && objs.table) {
+						result.table = result.db.table(req.params[2]);
+						if ( ! result.table) {
+							var err = new Error("Table '" + req.params[2] + " not found");
+							err.code = 404;
+							return reject(err);
+						}
+					}
+					resolve(result);
 
-		} else {
-			resolve(result);
+				}).catch(err => {
+					log.error({err: err}, "Database.init() sql exception.");
+					reject(err);
+				});
+
+			} else {
+				resolve(result);
+			}
+		} catch(err) {
+			log.error({err: err}, "Database.init() exception.");
+			reject(err);			
 		}
-		
 	});
 }
 

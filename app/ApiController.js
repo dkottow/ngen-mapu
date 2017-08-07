@@ -260,14 +260,17 @@ Controller.prototype.getDatabase = function(req, res) {
 	
 	}).then((auth) => { 
 
-		if (req.query.reload && parseInt(req.query.reload) > 0) {
+		if (parseInt(req.query.reload) > 0) {
 			return data.db.reset();		
 		} else {
 			return Promise.resolve();
 		}
 		
 	}).then(() => { 
-		data.db.getInfo(function(err, result) {
+		var opts = {
+			counts: parseInt(req.query.counts) > 0
+		};		
+		data.db.getInfo(opts, function(err, result) {
 			if (err) {
 				sendError(req, res, err);
 				return;
@@ -426,7 +429,6 @@ Controller.prototype.doNonceRequest = function(req, res) {
 		return me.access.authRequest(op, req, data);
 	
 	}).then((auth) => { 
-
 		return me.access.createNonce(op);
 
 	}).then((nonce) => { 

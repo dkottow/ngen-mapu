@@ -138,21 +138,21 @@ Database.prototype.getInfo = function(options, cbResult) {
 	cbResult = cbResult || arguments[arguments.length - 1];	
 	options = typeof options == 'object' ? options : {};		
 
-	var skipCounts = options.skipCounts || false;
+	var counts = options.counts || false;
 
 	var result = this.schema.get();
 
-	if (skipCounts) {
+	if ( ! counts) {
 		cbResult(null, result);
 		return;
 	}
 	
-	this.getCounts(function(err, counts) {
+	this.getCounts(function(err, rowCount) {
 		if (err) {
 			cbResult(err, null);
 		} else {
 			_.each(result.tables, function(table) {
-				table.row_count = counts[table.name];
+				table.row_count = rowCount[table.name];
 			});
 			cbResult(null, result);
 		}

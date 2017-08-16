@@ -219,7 +219,7 @@ DatabaseMssql.prototype.allView = function(viewName, options, cbResult) {
 		});
 
 	} catch(err) {
-		log.error({err: err}, "Database.allView() exception.");	
+		log.error(err, "Database.allView() exception.");	
 		cbResult(err, []);
 	}
 }

@@ -47,7 +47,7 @@ User.prototype.isAdminCB = function(opts, cbResult) {
 
         var viewOpts = {
             filter: [{
-                field: User.FIELDS.PRINCIPAL_NAME,
+                field: User.FIELDS.PRINCIPAL,
                 op: 'eq',
                 value: this.userPrincipalName
             }]
@@ -81,16 +81,16 @@ User.prototype.isAdminCB = function(opts, cbResult) {
 User.prototype.access = function(db, opts) {
 	var me = this;
 	return new Promise(function(resolve, reject) {
-		me.accessCB(db, opts, function(err, result) {
-			if (err) reject(err);
-			else resolve(result); 
+		me.accessCB(db, opts, function(err, hasAccess) {
+            if (err) reject(err);
+			else resolve(access); 
 		});
 	});
 }
 
 User.prototype.accessCB = function(db, opts, cbResult) {
     try {
-        log.debug({opts: opts}, "User.tableAccess()...");
+        log.debug({opts: opts}, "User.accessCB()...");
 		cbResult = cbResult || arguments[arguments.length - 1];	
 		opts = typeof opts == 'object' ? opts : {};		
 

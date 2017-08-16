@@ -26,6 +26,7 @@ var parser = require('./QueryParser.js');
 var AccessControl = require('./AccessControl.js').AccessControl;
 var Schema = require('./Schema.js').Schema;
 var Table = require('./Table.js').Table;
+var User = require('./User.js').User;
 
 var log = require('./log.js').log;
 var funcs = require('./funcs.js');
@@ -51,10 +52,35 @@ Controller.prototype.initRoutes = function(options) {
 
 	if (this.auth) {
 
+		//testing, simply supply user on query string
+		this.router.use(function(req, res, next) {
+			req.user = new User(req.query.user || 'unk', me.accountManager.masterDatabase());
+			next();
+		});
+
+
+/* Auth0		
 		var auth_token = jwt({
 			  secret: new Buffer(config.auth0.clientSecret, 'base64'),
 			  audience: config.auth0.clientId,
 		}).unless({path: nonceRoutes});
+
+		this.router.use(auth_token);
+
+		this.router.use(function(req, res, next) {
+			if (req.user && req.user.app_metadata) {
+				req.user.account = req.user.app_metadata.account;
+				req.user.root = req.user.app_metadata.root || false;
+				req.user.admin = req.user.app_metadata.admin || false;
+				req.user.name = req.user.email;
+			} else {
+				 // needed to handle anonymous GET on nonceRoutes 
+				req.user = { name: 'unk' }; 
+			}
+			log.debug({'req.user': req.user}, 'router.use');
+			next();
+		});
+*/
 
 /** TODO
  * 
@@ -69,25 +95,8 @@ Controller.prototype.initRoutes = function(options) {
  * 5) now verify / decode our JWT calling jwt.verify(token, pem) 
  * TODO NOT SURE how to do all of this using the express middleware... 				
  */
-
-		this.router.use(auth_token);
-		
-		this.router.use(function(req, res, next) {
-			if (req.user && req.user.app_metadata) {
-				req.user.account = req.user.app_metadata.account;
-				req.user.root = req.user.app_metadata.root || false;
-				req.user.admin = req.user.app_metadata.admin || false;
-				req.user.name = req.user.email;
-			} else {
-				/* handle unauthenticated 
-				 * needed for nonceRoutes that allow anonymous GET
-				*/ 
-				req.user = { name: 'unk' }; 
-			}
-			log.debug({'req.user': req.user}, 'router.use');
-			next();
-		});
-		
+	
+	
 	} else {
 		this.router.use(function(req, res, next) {
 			req.user = {
@@ -187,7 +196,7 @@ Controller.prototype.listAccounts = function(req, res) {
 		log.info({req: req}, '...Controller.listAccounts()');
 
 	}).catch(err => {
-		sendError(req, res, err, err.code || 500);
+		sendError(req, res, err, err.code > 0 ? err.code : 500);
 		return;
 	});
 }
@@ -207,7 +216,7 @@ Controller.prototype.putAccount = function(req, res) {
 			log.info({req: req}, '...Controller.putAccount().');
 		});
 	}).catch(err => {
-		sendError(req, res, err, err.code || 500);
+		sendError(req, res, err, err.code > 0 ? err.code : 500);
 		return;
 	});
 }
@@ -220,6 +229,7 @@ Controller.prototype.getAccount = function(req, res) {
 
 	this.getDataObjects(req, {account: true}).then((result) => {
 		data = result;
+		//return Promise.reject(new Error('testing error'));
 		return me.access.authRequest('getAccount', req, data);
 	
 	}).then((auth) => { 
@@ -243,7 +253,7 @@ Controller.prototype.getAccount = function(req, res) {
 		});
 
 	}).catch(err => {
-		sendError(req, res, err, err.code || 500);
+		sendError(req, res, err, err.code > 0 ? err.code : 500);
 		return;
 	});		
 }
@@ -256,7 +266,7 @@ Controller.prototype.getDatabase = function(req, res) {
 
 	this.getDataObjects(req, {account: true, db: true}).then((result) => {
 		data = result;
-		return me.access.authRequest('getDatabase', req, data);
+		return me.access.authRequest('getDatabase', req, result);
 	
 	}).then((auth) => { 
 
@@ -290,7 +300,7 @@ Controller.prototype.getDatabase = function(req, res) {
 		});
 
 	}).catch(err => {
-		sendError(req, res, err, err.code || 500);
+		sendError(req, res, err, err.code > 0 ? err.code : 500);
 		return;
 	});
 }
@@ -324,7 +334,7 @@ Controller.prototype.putDatabase = function(req, res) {
 		});
 
 	}).catch(err => {
-		sendError(req, res, err, err.code || 500);
+		sendError(req, res, err, err.code > 0 ? err.code : 500);
 		return;
 	});
 }
@@ -351,7 +361,7 @@ Controller.prototype.delDatabase = function(req, res) {
 			log.info('...Controller.delDatabase().');
 		});
 	}).catch(err => {
-		sendError(req, res, err, err.code || 500);
+		sendError(req, res, err, err.code > 0 ? err.code : 500);
 		return;
 	});
 }
@@ -382,7 +392,7 @@ Controller.prototype.patchDatabase = function(req, res) {
 		});
 
 	}).catch(err => {
-		sendError(req, res, err, err.code || 500);
+		sendError(req, res, err, err.code > 0 ? err.code : 500);
 		return;
 	});
 }
@@ -407,7 +417,7 @@ Controller.prototype.getCSVFile = function(req, res) {
 		});
 
 	}).catch(err => {
-		sendError(req, res, err, err.code || 500);
+		sendError(req, res, err, err.code > 0 ? err.code : 500);
 		return;
 	});
 }
@@ -446,7 +456,7 @@ Controller.prototype.doNonceRequest = function(req, res) {
 		});
 
 	}).catch(err => {
-		sendError(req, res, err, err.code || 500);
+		sendError(req, res, err, err.code > 0 ? err.code : 500);
 		return;
 	});	
 }
@@ -501,10 +511,9 @@ Controller.prototype.getRows = function(req, res) {
 		);
 
 	}).catch(err => {
-		sendError(req, res, err, err.code || 500);
+		sendError(req, res, err, err.code > 0 ? err.code : 500);
 		return;
 	});
-
 
 	log.debug('...Controller.getRows().');
 }
@@ -584,7 +593,7 @@ Controller.prototype.getObjs = function(req, res) {
 			}
 		);
 	}).catch(err => {
-		sendError(req, res, err, err.code || 500);
+		sendError(req, res, err, err.code > 0 ? err.code : 500);
 		return;
 	});
 }
@@ -620,7 +629,7 @@ Controller.prototype.getStats = function(req, res) {
 			}
 		);
 	}).catch(err => {
-		sendError(req, res, err, err.code || 500);
+		sendError(req, res, err, err.code > 0 ? err.code : 500);
 		return;
 	});
 }
@@ -670,7 +679,7 @@ Controller.prototype.getViewRows = function(req, res) {
 			}
 		);
 	}).catch(err => {
-		sendError(req, res, err, err.code || 500);
+		sendError(req, res, err, err.code > 0 ? err.code : 500);
 		return;
 	});
 }
@@ -709,7 +718,7 @@ Controller.prototype.postRows = function(req, res) {
 		});
 
 	}).catch(err => {
-		sendError(req, res, err, err.code || 500);
+		sendError(req, res, err, err.code > 0 ? err.code : 500);
 		return;
 	});
 }
@@ -747,7 +756,7 @@ Controller.prototype.putRows = function(req, res) {
 		});
 
 	}).catch(err => {
-		sendError(req, res, err, err.code || 500);
+		sendError(req, res, err, err.code > 0 ? err.code : 500);
 		return;
 	});
 }
@@ -775,7 +784,7 @@ Controller.prototype.delRows = function(req, res) {
 		});
 
 	}).catch(err => {
-		sendError(req, res, err, err.code || 500);
+		sendError(req, res, err, err.code > 0 ? err.code : 500);
 		return;
 	});
 }
@@ -806,7 +815,7 @@ Controller.prototype.chownRows = function(req, res) {
 		});
 
 	}).catch(err => {
-		sendError(req, res, err, err.code || 500);
+		sendError(req, res, err, err.code > 0 ? err.code : 500);
 		return;
 	});
 }
@@ -885,51 +894,42 @@ Controller.prototype.getDataObjects = function(req, objs) {
 	var me = this;
 	log.trace({params: req.params}, 'Controller.getDataObjects...');
 
-	return new Promise(function(resolve, reject) {
-		try {
-			var result = {};
-			if (objs.account) {
-				result.account = me.account(req.params[0]);
-				if ( ! result.account) {
-					var err = new Error("Account '" + req.params[0] + "' not found");
-					err.code = 404;
-					return reject(err);
-				}
-			} else {
-				resolve(result);
-			}
+	var result = {};
+	if (! objs.account) {
+		return Promise.resolve(result);
+	}
 
-			if (objs.db) {
-				result.db = result.account.database(req.params[1]);
-				if ( ! result.db) {
-					var err = new Error("Database '" + req.params[1] + "' not found");
-					err.code = 404;
-					return reject(err);
-				}
-				
-				result.db.init().then(() => {
-					if (req.params[2] && objs.table) {
-						result.table = result.db.table(req.params[2]);
-						if ( ! result.table) {
-							var err = new Error("Table '" + req.params[2] + " not found");
-							err.code = 404;
-							return reject(err);
-						}
-					}
-					resolve(result);
+	result.account = me.account(req.params[0]);
+	if ( ! result.account) {
+		var err = new Error("Account '" + req.params[0] + "' not found");
+		err.code = 404;
+		return Promise.reject(err);
+	}
 
-				}).catch(err => {
-					log.error({err: err}, "Database.init() sql exception.");
-					reject(err);
-				});
+	if (! objs.db) {
+		return Promise.resolve(result);
+	}
 
-			} else {
-				resolve(result);
-			}
-		} catch(err) {
-			log.error({err: err}, "Database.init() exception.");
-			reject(err);			
+	result.db = result.account.database(req.params[1]);
+	if ( ! result.db) {
+		var err = new Error("Database '" + req.params[1] + "' not found");
+		err.code = 404;
+		return Promise.reject(err);
+	}
+
+	return result.db.init().then(() => {
+		if (! objs.table) {
+			return Promise.resolve(result);
 		}
+
+		result.table = result.db.table(req.params[2]);
+		if ( ! result.table) {
+			var err = new Error("Table '" + req.params[2] + " not found");
+			err.code = 404;
+			return Promise.reject(err);
+		}
+
+		return Promise.resolve(result);
 	});
 }
 

@@ -140,6 +140,10 @@ Account.prototype.database = function(name) {
 	return this.databases[name];
 }
 
+Account.prototype.master = function(name) { 
+	return this.databases['master'];
+}
+
 Account.prototype.getInfo = function(cbResult) {
 	var databases = _.map(this.databases, function(db) { 
 		return { 

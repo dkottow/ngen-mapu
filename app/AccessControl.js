@@ -38,8 +38,7 @@ AccessControl.prototype.getNoncePath = function(nonce) {
 	return path.join(nonceDir, nonce + ".nonce");
 }
 
-AccessControl.prototype.supportsNonce = function(op)
-{
+AccessControl.prototype.supportsNonce = function(op) {
 	var nonceMethods = [ 
 		'generateCSVFile', 
 		'getCSVFile' 
@@ -76,9 +75,8 @@ AccessControl.prototype.checkNonce = function(nonce) {
 		fs.unlink(this.getNoncePath(nonce), function(err) {
 			if (err) {
 				log.error({ err: err, nonce: nonce }, 'AccessControl.checkNonce');
-				var error = new Error('invalid nonce');
-				error.code = 401;
-				return reject(error);
+				var err = new Error('invalid nonce');
+				return reject(err);
 			} else {
 				return resolve(true);
 			}
@@ -94,65 +92,67 @@ AccessControl.prototype.tableAccess = function(db, table) {
 AccessControl.prototype.authRequest = function(op, req, path) {
 	log.debug({ op: op}, 'AccessControl.authRequest()...'); 
 	log.trace({ 'req.user': req.user, path: path }, 'AccessControl.authRequest()'); 
-	try {
-		var resultFn = function(result) {
-			if ( ! result.granted) {
-				var err = new Error(result.message);
-				err.code = 401;
-				return Promise.reject(err);
-			}
-			log.debug({ result: result }, '...AccessControl.authRequest()');
-			return Promise.resolve(result);
-		};
 
-		//auth disabled
-		if ( ! this.auth) {
-			return resultFn({ granted: true, message:  'auth disabled'});
-		}
+	var err = new Error();
+	err.code = 401;
 
-		//is it a nonce operation?
-		if (req.query && req.query.nonce) {
-			
-			if (this.supportsNonce(op)) {
-				return this.checkNonce(req.query.nonce);
-			} else {
-				return resultFn({ granted: false, message: 'op does not support nonce' });
-			}
-		}
-
-		if ( ! req.user) {
-			resultFn({ granted: false, message: 'op requires authenticated user'});
-			return;
-		}
-
-		req.user.isAdmin(path.account.name, path.database).then((isAdmin) => {
-			if (isAdmin) {
-				return resultFn({ granted: true, message:  'user is admin'});
-				
-			} else {
-				req.user.access(path.database, path.table.name).then();
-			}
-		});	
-
-	} catch (err) {
-		log.error({ err: err }, 'AccessControl.authRequest() exception');
-		return Promise.reject(err);
+	var resolveFn = function(msg) {
+		log.debug({msg: msg}, 'AccessControl.authRequest');
+		return Promise.resolve(true);
 	}
-}
 
-AccessControl.prototype.authRequest1 = function(op, req, path) {
-	var me = this;
-	return new Promise(function(resolve, reject) {
-		me._authRequest(op, req, path, function(err, result) {
-			if (err) {
-				reject(err);
-			} else if (result.error) {
-				reject(result.error);
-			} else {
-				resolve(result);
-			}
-		});
-	});
+	//auth disabled
+	if ( ! this.auth) {
+		return resolveFn('auth disabled');
+	}
+
+	//is it a nonce operation?
+	if (req.query && req.query.nonce) {
+		
+		if (this.supportsNonce(op)) {
+			return this.checkNonce(req.query.nonce).then(() => { 
+				return resolveFn('valid nonce');
+			});
+		} else {
+			err.message = 'op does not support nonce';
+			return Promise.reject(err);
+		}
+	}
+
+	if ( ! req.user) {
+		err.message = 'op requires authenticated user';
+		return Promise.resolve(err);
+	}
+
+	var scope = {
+		account: path.account ? path.account.name : null,
+		database: path.db ? path.db.name() : null,
+		table: path.table ? path.table.name : null
+	}
+
+	log.debug({scope: scope}, 'AccessControl.authRequest()')
+
+	return req.user.isAdmin(scope).then((isAdmin) => {
+
+//return Promise.reject(new Error('this error does not work'));
+//return new Promise(function(resolve, reject) { reject(new Error('this error does not work')); });
+
+		if (isAdmin) {
+			return resolveFn('user is admin');
+			
+		} else if (! path.db) {
+			err.message = 'requires admin user';
+			return Promise.reject(err);
+
+		} else {
+			return req.user.access(path.db, scope);
+		}
+		
+	}).then((access) => {
+		//TODO implement switch(op) here. 
+		return resolveFn(access); //TODO
+	});	
+
 }
 
 AccessControl.prototype._authRequest = function(op, req, path, cbResult) {
@@ -324,6 +324,8 @@ AccessControl.prototype.filterQuery = function(path, query, user) {
 	log.trace({ query: query, user: user }, 'AccessControl.filterQuery()...'); 
 
 	if ( ! this.auth) return { filter: query.filter };
+//TODO reimplement calling user.access(). returns Promise
+return { filter: query.filter };
 
 	var fields = query.fields || Table.ALL_FIELDS;
 	var queryFields = path.db.sqlBuilder.sanitizeFieldClauses(path.table, fields);
@@ -375,8 +377,11 @@ AccessControl.prototype.filterDatabases = function(path, databases, user) {
 
 	if ( ! this.auth) return databases;
 	if (user.admin) return databases;
+//TODO implement. returns Promise
+return databases;
 	
-	var result =  _.filter(databases, function(db) {
+	var result =  _.filter(databases, function(name) {
+		var db = path.account.database(name);
 		return _.find(db.users, function(dbUser) {
 			return dbUser.name == user.name;
 		});

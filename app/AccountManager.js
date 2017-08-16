@@ -44,5 +44,9 @@ AccountManager.prototype.get = function(name) {
 	return this.accounts[name];
 }
 
+AccountManager.prototype.masterDatabase = function() { 
+    return this.accounts['test'].master(); 
+}
+
 exports.AccountManager = AccountManager;
 

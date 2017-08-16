@@ -83,14 +83,14 @@ var log = {
 }
 
 var rewriteError = function(level, msg, obj) {
-	if (level == 'error') return obj;
+	//if (level == 'error') return obj; //doesnt work
 
 	if (obj && obj.err) {
 		obj.err = {
-			name: obj.err.name
-			, message: obj.err.message
-			, status: obj.err.status
+			message: obj.err.message
 			, stack: (obj.err.stack || '').substr(0,400)
+			, name: obj.err.name
+			, status: obj.err.status
 		}
 	}
 	return obj;

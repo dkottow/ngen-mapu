@@ -28,6 +28,10 @@ User.PROCEDURES = {
     ACCESS_USER: 'd365_Access'
 }
 
+User.prototype.name = function() {
+    return this.userPrincipalName;
+}
+
 User.prototype.isAdmin = function(opts) {
 	var me = this;
     return new Promise(function(resolve, reject) {
@@ -44,6 +48,11 @@ User.prototype.isAdminCB = function(opts, cbResult) {
         log.debug("User.isAdmin()...");
 		cbResult = cbResult || arguments[arguments.length - 1];	
 		opts = typeof opts == 'object' ? opts : {};		
+
+        //TODO temporary let 'unk' user through.
+if (this.userPrincipalName == 'unk') {
+    cbResult(null, true);
+}
 
         var viewOpts = {
             filter: [{
@@ -83,7 +92,7 @@ User.prototype.access = function(db, opts) {
 	return new Promise(function(resolve, reject) {
 		me.accessCB(db, opts, function(err, hasAccess) {
             if (err) reject(err);
-			else resolve(access); 
+			else resolve(hasAccess); 
 		});
 	});
 }

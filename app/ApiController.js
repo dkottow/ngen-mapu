@@ -196,7 +196,7 @@ Controller.prototype.listAccounts = function(req, res) {
 		log.info({req: req}, '...Controller.listAccounts()');
 
 	}).catch(err => {
-		sendError(req, res, err, err.code > 0 ? err.code : 500);
+		sendError(req, res, err);
 		return;
 	});
 }
@@ -216,7 +216,7 @@ Controller.prototype.putAccount = function(req, res) {
 			log.info({req: req}, '...Controller.putAccount().');
 		});
 	}).catch(err => {
-		sendError(req, res, err, err.code > 0 ? err.code : 500);
+		sendError(req, res, err);
 		return;
 	});
 }
@@ -253,7 +253,7 @@ Controller.prototype.getAccount = function(req, res) {
 		});
 
 	}).catch(err => {
-		sendError(req, res, err, err.code > 0 ? err.code : 500);
+		sendError(req, res, err);
 		return;
 	});		
 }
@@ -300,7 +300,7 @@ Controller.prototype.getDatabase = function(req, res) {
 		});
 
 	}).catch(err => {
-		sendError(req, res, err, err.code > 0 ? err.code : 500);
+		sendError(req, res, err);
 		return;
 	});
 }
@@ -334,7 +334,7 @@ Controller.prototype.putDatabase = function(req, res) {
 		});
 
 	}).catch(err => {
-		sendError(req, res, err, err.code > 0 ? err.code : 500);
+		sendError(req, res, err);
 		return;
 	});
 }
@@ -361,7 +361,7 @@ Controller.prototype.delDatabase = function(req, res) {
 			log.info('...Controller.delDatabase().');
 		});
 	}).catch(err => {
-		sendError(req, res, err, err.code > 0 ? err.code : 500);
+		sendError(req, res, err);
 		return;
 	});
 }
@@ -392,7 +392,7 @@ Controller.prototype.patchDatabase = function(req, res) {
 		});
 
 	}).catch(err => {
-		sendError(req, res, err, err.code > 0 ? err.code : 500);
+		sendError(req, res, err);
 		return;
 	});
 }
@@ -417,7 +417,7 @@ Controller.prototype.getCSVFile = function(req, res) {
 		});
 
 	}).catch(err => {
-		sendError(req, res, err, err.code > 0 ? err.code : 500);
+		sendError(req, res, err);
 		return;
 	});
 }
@@ -456,7 +456,7 @@ Controller.prototype.doNonceRequest = function(req, res) {
 		});
 
 	}).catch(err => {
-		sendError(req, res, err, err.code > 0 ? err.code : 500);
+		sendError(req, res, err);
 		return;
 	});	
 }
@@ -511,7 +511,7 @@ Controller.prototype.getRows = function(req, res) {
 		);
 
 	}).catch(err => {
-		sendError(req, res, err, err.code > 0 ? err.code : 500);
+		sendError(req, res, err);
 		return;
 	});
 
@@ -593,7 +593,7 @@ Controller.prototype.getObjs = function(req, res) {
 			}
 		);
 	}).catch(err => {
-		sendError(req, res, err, err.code > 0 ? err.code : 500);
+		sendError(req, res, err);
 		return;
 	});
 }
@@ -629,7 +629,7 @@ Controller.prototype.getStats = function(req, res) {
 			}
 		);
 	}).catch(err => {
-		sendError(req, res, err, err.code > 0 ? err.code : 500);
+		sendError(req, res, err);
 		return;
 	});
 }
@@ -679,7 +679,7 @@ Controller.prototype.getViewRows = function(req, res) {
 			}
 		);
 	}).catch(err => {
-		sendError(req, res, err, err.code > 0 ? err.code : 500);
+		sendError(req, res, err);
 		return;
 	});
 }
@@ -718,7 +718,7 @@ Controller.prototype.postRows = function(req, res) {
 		});
 
 	}).catch(err => {
-		sendError(req, res, err, err.code > 0 ? err.code : 500);
+		sendError(req, res, err);
 		return;
 	});
 }
@@ -756,7 +756,7 @@ Controller.prototype.putRows = function(req, res) {
 		});
 
 	}).catch(err => {
-		sendError(req, res, err, err.code > 0 ? err.code : 500);
+		sendError(req, res, err);
 		return;
 	});
 }
@@ -784,7 +784,7 @@ Controller.prototype.delRows = function(req, res) {
 		});
 
 	}).catch(err => {
-		sendError(req, res, err, err.code > 0 ? err.code : 500);
+		sendError(req, res, err);
 		return;
 	});
 }
@@ -815,7 +815,7 @@ Controller.prototype.chownRows = function(req, res) {
 		});
 
 	}).catch(err => {
-		sendError(req, res, err, err.code > 0 ? err.code : 500);
+		sendError(req, res, err);
 		return;
 	});
 }
@@ -875,7 +875,9 @@ Controller.prototype.stripOwnerField = function(rows) {
 }
 
 function sendError(req, res, err, code) {
-	code = code || 500;
+	if (parseInt(err.code) > 0) code = err.code;
+	else code = code || 500;
+
 	if (code >= 500) {
 		log.error({code: code, err: err, req: req}, err.message);
 	} else {

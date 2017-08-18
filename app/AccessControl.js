@@ -141,7 +141,7 @@ AccessControl.prototype.authRequest = function(op, req, path) {
 			return resolveFn('user is admin');
 			
 		} else if (! path.db) {
-			err.message = 'requires admin user';
+			err.message = 'scope requires admin user';
 			return Promise.reject(err);
 
 		} else {
@@ -149,8 +149,74 @@ AccessControl.prototype.authRequest = function(op, req, path) {
 		}
 		
 	}).then((access) => {
-		//TODO implement switch(op) here. 
-		return resolveFn(access); //TODO
+		if (access === true) return Promise.resolve(true); //admin
+
+		//normal user access depends on op.
+		switch(op) {
+
+			case 'getDatabase':			
+			case 'getViewRows':			
+				return resolveFn('op allowed for any user');
+
+			case 'getRows':			
+			case 'getObjs':			
+			case 'getStats':
+			case 'generateCSVFile':			
+				var granted = access.Read != Table.ROW_SCOPES.NONE;
+				if (granted) {
+					return resolveFn('user has ' + access.Read + ' read access to ' + scope.table);
+				} else {
+					err.message = 'Table read access is none.';
+					return Promise.reject(err);
+				} 
+				
+			case 'postRows':			
+				var granted = access.Write != Table.ROW_SCOPES.NONE;
+				if (granted) {
+					return resolveFn('user has ' + access.Write + ' write access to ' + scope.table);
+				} else {
+					err.message = 'Table write access is none.';
+					return Promise.reject(err);
+				} 
+
+			case 'putRows':			
+			case 'delRows':
+				if (access.Write == Table.ROW_SCOPES.OWN) {
+					//check if rows affected are owned by callee 
+					var rowIds = op == 'delRows' ? req.body : _.pluck(req.body, 'id');
+					var owned = path.db.rowsOwned(path.table.name, rowIds, req.user.name(), 
+						function(err, owned) {
+							if (err) {
+								return Promise.reject(err);
+							} 
+							if ( ! owned) {
+								err.message = 'Table write access is own.';
+								return Promise.reject(err);								
+							}
+							return resolveFn('user has ' + access.Write + ' write access to ' + scope.table);
+						});
+				} else {
+					var granted = access.Write != Table.ROW_SCOPES.NONE;
+					if (granted) {
+						return resolveFn('user has ' + access.Write + ' write access to ' + scope.table);
+					} else {
+						err.message = 'Table write access is none.';
+						return Promise.reject(err);
+					} 
+				}
+				return;						
+							
+			case 'putDatabase':			
+			case 'patchDatabase':			
+			case 'delDatabase':			
+			case 'chownRows':			
+				err.message = 'op requires admin user.';
+				return Promise.reject(err);
+				
+			default:
+				err.message = 'unknown op ' + op;
+				return Promise.reject(err);
+		}		
 	});	
 
 }

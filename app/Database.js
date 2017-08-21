@@ -311,7 +311,7 @@ Database.prototype.patchSchema = function(patches, cbResult) {
 		}
 
 		//obtains table row counts
-		me.getInfo(function(err, schemaInfo) {
+		me.getInfo({counts: true}, function(err, schemaInfo) {
 			if (err) {
 				cbPatchError(err);
 				return;

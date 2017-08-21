@@ -13,10 +13,3 @@ UNION
 SELECT UserPrincipalName, 'Database' AS [scope], Account.[Name] AS [Account], [Databases].[name] AS [Database] FROM DatabaseOwner
 INNER JOIN [Databases] ON DatabaseOwner.Databases_id = [Databases].id
 INNER JOIN Account ON [Databases].Account_id = Account.id 
-
-
-
-
-GO
-
-

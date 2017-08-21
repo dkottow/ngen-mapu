@@ -442,7 +442,6 @@ AccessControl.prototype.filterDatabases = function(path, databases, user) {
 	log.trace({ databases: databases }, 'AccessControl.filterDatabases()');
 
 	if ( ! this.auth) return databases;
-	if (user.admin) return databases;
 //TODO implement. returns Promise
 return databases;
 	

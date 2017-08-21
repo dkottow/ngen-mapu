@@ -14,11 +14,13 @@ BEGIN
 
 	SELECT TOP 1 @ur = [Read], @uw = [Write] FROM 
 	(
+		-- select access from Users 
 		SELECT 1 AS ord, AR.[Name] AS [Read], AW.[Name] AS [Write] FROM __d365Users U 
 		INNER JOIN __d365AccessScope AR ON U.Read_id = AR.id
 		INNER JOIN __d365AccessScope AW ON U.Write_id = AW.id
 		WHERE UserPrincipalName = @UserPrincipalName
 	UNION
+		-- any user gains access if Users lists Everyone
 		SELECT 2 AS ord, AR.[Name] AS [Read], AW.[Name] AS [Write] FROM __d365Users U 
 		INNER JOIN __d365AccessScope AR ON U.Read_id = AR.id
 		INNER JOIN __d365AccessScope AW ON U.Write_id = AW.id
@@ -28,12 +30,14 @@ BEGIN
 	SET @Read = COALESCE(@ur, 'none');
 	SET @Write = COALESCE(@uw, 'none');
 
+	-- if user is listed in Users and query is on table
 	IF @ur IS NOT null AND @TableName IS NOT null 
 	BEGIN
 		SELECT @tr = AR.[Name], @tw = AW.[Name] FROM __d365TableAccess  T 
 		INNER JOIN __d365AccessScope AR ON T.Read_id = AR.id
 		INNER JOIN __d365AccessScope AW ON T.Write_id = AW.id
 		WHERE TableName = @TableName;
+		-- if table specific access, overwrite db-wide user access
 		SET @Read = CASE WHEN @tr is not null THEN @tr ELSE @Read END;
 		SET @Write = CASE WHEN @tw is not null THEN @tw ELSE @Write END;
 	END 

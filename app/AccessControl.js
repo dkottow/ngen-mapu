@@ -221,7 +221,62 @@ AccessControl.prototype.authRequest = function(op, req, path) {
 
 }
 
-AccessControl.prototype._authRequest = function(op, req, path, cbResult) {
+AccessControl.prototype.filterQuery = function(path, query, user) {
+	log.trace('AccessControl.filterQuery()...'); 
+	log.trace({ query: query, user: user }, 'AccessControl.filterQuery()...'); 
+
+	if ( ! this.auth) return Promise.resolve(query.filter);
+
+	var fields = query.fields || Table.ALL_FIELDS;
+	var queryFields = path.db.sqlBuilder.sanitizeFieldClauses(path.table, fields);
+	var queryTables = _.uniq(_.pluck(queryFields, 'table'));
+	
+	var queryFilter = query.filter || [];
+	var acFilters = [];
+	
+	//TODO reimplement calling user.access(). returns Promise
+return Promise.resolve(queryFilter.concat(acFilters));
+
+	for(var i = 0;i < queryTables.length; ++i) {
+
+		var table = path.db.table(queryTables[i]);
+		var access = table.access(user);
+
+		if (access.read == Table.ROW_SCOPES.ALL) {
+			; //pass through
+			
+		} else if (access.read == Table.ROW_SCOPES.OWN) {
+			acFilters.push({
+				table: table.name
+				, field: 'own_by'
+				, op: 'eq'
+				, value: user.name
+			});		
+			
+		} else { //access.read == Table.ROW_SCOPES.NONE
+			var msg = 'Table read access is none';
+			log.info({ table: table.name, access: access }, msg + ' AccessControl.filterQuery()'); 
+			var err = new Error(msg);
+			err.code = 401;
+			return {
+				error: err,
+				filter: []
+			};			
+		}
+	}
+	
+	var result = {
+		filter: queryFilter.concat(acFilters),
+		error: null
+	};
+	
+	log.trace({ result: result }, '...AccessControl.filterQuery()'); 
+	return result;
+	
+}
+
+
+AccessControl.prototype.authRequestOLD = function(op, req, path, cbResult) {
 	log.debug({ op: op}, 'AccessControl.authRequest()...'); 
 	log.trace({ 'req.user': req.user, path: path }, 'AccessControl.authRequest()'); 
 
@@ -385,7 +440,7 @@ AccessControl.prototype._authRequest = function(op, req, path, cbResult) {
 	}
 }
 
-AccessControl.prototype.filterQuery = function(path, query, user) {
+AccessControl.prototype.filterQueryOLD = function(path, query, user) {
 	log.trace('AccessControl.filterQuery()...'); 
 	log.trace({ query: query, user: user }, 'AccessControl.filterQuery()...'); 
 
@@ -437,42 +492,6 @@ return { filter: query.filter };
 	
 }
 
-AccessControl.prototype.filterDatabases = function(path, databases, user) {
-	log.trace({ user: user }, 'AccessControl.filterDatabases()...'); 
-	log.trace({ databases: databases }, 'AccessControl.filterDatabases()');
-
-	if ( ! this.auth) return databases;
-//TODO implement. returns Promise
-return databases;
-	
-	var result =  _.filter(databases, function(name) {
-		var db = path.account.database(name);
-		return _.find(db.users, function(dbUser) {
-			return dbUser.name == user.name;
-		});
-	});
-	result = _.object(_.pluck(result, 'name'), result);
-	log.trace({ result: result }, '...AccessControl.filterDatabases()'); 
-	return result;
-}
-
-AccessControl.prototype.filterTables = function(path, tables, user) {
-	log.trace('AccessControl.filterTables()...'); 
-	log.trace({ user: user, tables: tables }, 'AccessControl.filterTables()');
-
-	if ( ! this.auth) return tables;
-	//if (user.admin || user.role == Schema.USER_ROLES.OWNER) return tables;
-	
-	var result =  _.filter(tables, function(t) {
-		var access = path.db.table(t.name).access(user);
-		return access.read != Table.ROW_SCOPES.NONE;
-	});
-	result = _.object(_.pluck(result, 'name'), result);
-
-	log.trace({ result: result }, '...AccessControl.filterTables()'); 
-	log.trace('...AccessControl.filterTables()'); 
-	return result;
-}
 
 AccessControl.prototype.getCSVFilename = function(nonce) {
 	return path.join(tempDir, nonce + ".csv");

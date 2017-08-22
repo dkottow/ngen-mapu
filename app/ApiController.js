@@ -242,7 +242,7 @@ Controller.prototype.getAccount = function(req, res) {
 	
 			result.url = '/' + data.account.name; 
 
-			result.databases = me.access.filterDatabases(data, result.databases, req.user);
+			//result.databases = me.access.filterDatabases(data, result.databases, req.user);
 			_.each(result.databases, function(db) {
 				db.url = '/' + data.account.name + '/' + db.name;
 			});
@@ -288,7 +288,7 @@ Controller.prototype.getDatabase = function(req, res) {
 	
 			result.url = '/' + data.account.name + '/' + data.db.name();
 	
-			result.tables = me.access.filterTables(data, result.tables, req.user);
+			//result.tables = me.access.filterTables(data, result.tables, req.user);
 			_.each(result.tables, function(t) {
 				t.url = '/' + data.account.name 
 						+ '/' + data.db.name() + '/' + t.name;
@@ -466,6 +466,7 @@ Controller.prototype.getRows = function(req, res) {
 	var reqTime = funcs.startHRTime();
 	//console.dir(req);
 	var me = this;
+	var params;
 	var data;
 
 	this.getDataObjects(req, {account: true, db: true, table: true}).then((result) => {
@@ -474,43 +475,44 @@ Controller.prototype.getRows = function(req, res) {
 
 	}).then((auth) => {
 
-		var params = me.parseQueryParameters(req);
+		params = me.parseQueryParameters(req);
 		if (params.error) throw params.error;
 
 		var q = { filter: params.values['$filter'], fields: params.values['$select'] };
-		var auth2 = me.access.filterQuery(data, q, req.user);
-		if (auth2.error) throw auth2.error;
-		
-		data.db.all(data.table.name, {
-				filter: auth2.filter 
-				, fields: params.values['$select'] 
-				, order: params.values['$orderby'] 
-				, limit: params.values['$top'] 
-				, offset: params.values['$skip'] 
-				, debug: params.values['debug']	
-				, format: params.values['format']	
-				, nocounts: params.values['nocounts']	
-			},
-	
-			function(err, result) { 
-				if (err) {
-					sendError(req, res, err, 400);
-					return;
-				}
-	
-				//add nextUrl if nextOffset
-				if (result.nextOffset) {
-					result.nextUrl = me.nextUrl(req, result.nextOffset);
-				}
-	
-				log.trace(result);
-				res.send(result); 
-				funcs.stopHRTime(reqTime);
-				log.info({req: req, time: reqTime.secs}, '...Controller.getRows().');
-			}
-		);
+		return me.access.filterQuery(data, q, req.user);
 
-	}).catch(err => {
+	}).then((filter) => {
+
+		data.db.all(data.table.name, {
+			filter: filter 
+			, fields: params.values['$select'] 
+			, order: params.values['$orderby'] 
+			, limit: params.values['$top'] 
+			, offset: params.values['$skip'] 
+			, debug: params.values['debug']	
+			, format: params.values['format']	
+			, nocounts: params.values['nocounts']	
+		},
+
+		function(err, result) { 
+			if (err) {
+				sendError(req, res, err, 400);
+				return;
+			}
+
+			//add nextUrl if nextOffset
+			if (result.nextOffset) {
+				result.nextUrl = me.nextUrl(req, result.nextOffset);
+			}
+
+			log.trace(result);
+			res.send(result); 
+			funcs.stopHRTime(reqTime);
+			log.info({req: req, time: reqTime.secs}, '...Controller.getRows().');
+		}
+	);
+
+}).catch(err => {
 		sendError(req, res, err);
 		return;
 	});

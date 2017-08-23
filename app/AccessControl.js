@@ -89,14 +89,19 @@ AccessControl.prototype.authRequest = function(op, req, path) {
 	log.debug({ op: op}, 'AccessControl.authRequest()...'); 
 	log.trace({ 'req.user': req.user, path: path }, 'AccessControl.authRequest()'); 
 
-	var err = new Error();
-	err.code = 401;
 
 	var resolveFn = function(msg) {
-		log.debug({msg: msg}, 'AccessControl.authRequest');
+		log.debug({msg: msg}, '...AccessControl.authRequest');
 		return Promise.resolve(true);
 	}
 
+	var rejectFn = function(msg) {
+		var err = new Error(msg);
+		err.code = 401;
+		log.debug({err: err}, '...AccessControl.authRequest');
+		return Promise.reject(err);
+	}
+	
 	//auth disabled
 	if ( ! this.auth) {
 		return resolveFn('auth disabled');
@@ -116,14 +121,12 @@ if (req.user.name() == 'unk') {
 				return resolveFn('valid nonce');
 			});
 		} else {
-			err.message = 'op does not support nonce';
-			return Promise.reject(err);
+			return rejectFn('op does not support nonce');
 		}
 	}
 
 	if ( ! req.user) {
-		err.message = 'op requires authenticated user';
-		return Promise.resolve(err);
+		return rejectFn('op requires authenticated user');
 	}
 
 	var scope = {
@@ -143,15 +146,14 @@ if (req.user.name() == 'unk') {
 			return resolveFn('user is admin');
 			
 		} else if (! path.db) {
-			err.message = 'scope requires admin user';
-			return Promise.reject(err);
+			return rejectFn('scope requires admin user');
 
 		} else {
 			return req.user.access(path.db, scope);
 		}
 		
 	}).then((access) => {
-		if (access === true) return Promise.resolve(true); //admin
+		if (access === true) return Promise.resolve(true); //user is admin
 
 		//normal user access depends on op.
 		switch(op) {
@@ -168,8 +170,7 @@ if (req.user.name() == 'unk') {
 				if (granted) {
 					return resolveFn('user has ' + access.Read + ' read access to ' + scope.table);
 				} else {
-					err.message = 'Table read access is none.';
-					return Promise.reject(err);
+					return rejectFn('Table read access is none.');
 				} 
 				
 			case 'postRows':			
@@ -177,8 +178,7 @@ if (req.user.name() == 'unk') {
 				if (granted) {
 					return resolveFn('user has ' + access.Write + ' write access to ' + scope.table);
 				} else {
-					err.message = 'Table write access is none.';
-					return Promise.reject(err);
+					return rejectFn('Table write access is none.');
 				} 
 
 			case 'putRows':			
@@ -192,8 +192,7 @@ if (req.user.name() == 'unk') {
 								return Promise.reject(err);
 							} 
 							if ( ! owned) {
-								err.message = 'Table write access is own.';
-								return Promise.reject(err);								
+								return rejectFn('Table write access is own.');
 							}
 							return resolveFn('user has ' + access.Write + ' write access to ' + scope.table);
 						});
@@ -202,8 +201,7 @@ if (req.user.name() == 'unk') {
 					if (granted) {
 						return resolveFn('user has ' + access.Write + ' write access to ' + scope.table);
 					} else {
-						err.message = 'Table write access is none.';
-						return Promise.reject(err);
+						return rejectFn('Table write access is none.');
 					} 
 				}
 				return;						
@@ -212,15 +210,12 @@ if (req.user.name() == 'unk') {
 			case 'patchDatabase':			
 			case 'delDatabase':			
 			case 'chownRows':			
-				err.message = 'op requires admin user.';
-				return Promise.reject(err);
+				return rejectFn('op requires admin user.');
 				
 			default:
-				err.message = 'unknown op ' + op;
-				return Promise.reject(err);
+				return rejectFn('unknown op ' + op);
 		}		
 	});	
-
 }
 
 AccessControl.prototype.filterQuery = function(path, query, user) {
@@ -234,42 +229,52 @@ if (user.name() == 'unk') {
 	log.warn('AccessControl.filterQuery() temporary passthrough'); 
 	return Promise.resolve(query.filter);
 }
-	
-	var err = new Error();
-	err.code = 401;
 
-	var fields = query.fields || Table.ALL_FIELDS;
-	var queryFields = path.db.sqlBuilder.sanitizeFieldClauses(path.table, fields);
-	var queryTables = _.uniq(_.pluck(queryFields, 'table'));
+	var scope = { account: path.account.name, database: path.db.name() };
+	user.isAdmin(scope).then((isAdmin) => {
+
+		if (isAdmin) {
+			log.debug({ isAdmin: isAdmin }, '...AccessControl.filterQuery().'); 	
+			return Promise.resolve(query.filter);
+		}
+
+		var err = new Error();
+		err.code = 401;
 	
-	var promises = _.map(queryTables, function(name) {
-		return user.access(path.db, { table: name });		
+		var fields = query.fields || Table.ALL_FIELDS;
+		var queryFields = path.db.sqlBuilder.sanitizeFieldClauses(path.table, fields);
+		var queryTables = _.uniq(_.pluck(queryFields, 'table'));
+		
+		var promises = _.map(queryTables, function(name) {
+			return user.access(path.db, { table: name });		
+		});
+	
+		return Promise.all(promises).then(accessList => {
+			log.debug({ access: accessList }, 'AccessControl.filterQuery()'); 	
+	
+			var denied = _.find(accessList, function(access) { return access.Read == Table.ROW_SCOPES.NONE; });
+			if (denied) {
+				err.message = 'Table read access is none';			
+				return Promise.reject(err);
+			} 
+			var ownAccessList = _.filter(accessList, function(access) {
+				return access.Read == Table.ROW_SCOPES.OWN;	
+			});
+	
+			var queryFilter = query.filter || [];
+			var acFilter = _.map(ownAccessList, function(access) {
+				return {
+					table: access.table
+					, field: 'own_by'
+					, op: 'eq'
+					, value: user.name()
+				};					
+			});
+	
+			return Promise.resolve(queryFilter.concat(acFilter));
+		});
 	});
 
-	return Promise.all(promises).then(accessList => {
-		log.debug({ access: accessList }, 'AccessControl.filterQuery()'); 	
-
-		var denied = _.find(accessList, function(access) { return access.Read == Table.ROW_SCOPES.NONE; });
-		if (denied) {
-			err.message = 'Table read access is none';			
-			return Promise.reject(err);
-		} 
-		var ownAccessList = _.filter(accessList, function(access) {
-			return access.Read == Table.ROW_SCOPES.OWN;	
-		});
-
-		var queryFilter = query.filter || [];
-		var acFilter = _.map(ownAccessList, function(access) {
-			return {
-				table: access.table
-				, field: 'own_by'
-				, op: 'eq'
-				, value: user.name()
-			};					
-		});
-
-		return Promise.resolve(queryFilter.concat(acFilter));
-	});
 }
 
 

@@ -99,9 +99,7 @@ Controller.prototype.initRoutes = function(options) {
 	
 	} else {
 		this.router.use(function(req, res, next) {
-			req.user = {
-				name : req.query.user || 'unk'
-			};
+			req.user = new User('unk', me.accountManager.masterDatabase());
 			next();
 		});
 	}

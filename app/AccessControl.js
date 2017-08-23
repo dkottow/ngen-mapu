@@ -85,10 +85,6 @@ AccessControl.prototype.checkNonce = function(nonce) {
 	});
 }
 
-AccessControl.prototype.tableAccess = function(db, table) {
-
-}
-
 AccessControl.prototype.authRequest = function(op, req, path) {
 	log.debug({ op: op}, 'AccessControl.authRequest()...'); 
 	log.trace({ 'req.user': req.user, path: path }, 'AccessControl.authRequest()'); 
@@ -105,6 +101,12 @@ AccessControl.prototype.authRequest = function(op, req, path) {
 	if ( ! this.auth) {
 		return resolveFn('auth disabled');
 	}
+
+//TODO remove me after pilot	
+if (req.user.name() == 'unk') {
+	log.warn('AccessControl.authRequest() temporary passthrough'); 
+	return resolveFn('unk enabled temporary');
+}
 
 	//is it a nonce operation?
 	if (req.query && req.query.nonce) {
@@ -227,52 +229,47 @@ AccessControl.prototype.filterQuery = function(path, query, user) {
 
 	if ( ! this.auth) return Promise.resolve(query.filter);
 
+//TODO remove me after pilot	
+if (user.name() == 'unk') {
+	log.warn('AccessControl.filterQuery() temporary passthrough'); 
+	return Promise.resolve(query.filter);
+}
+	
+	var err = new Error();
+	err.code = 401;
+
 	var fields = query.fields || Table.ALL_FIELDS;
 	var queryFields = path.db.sqlBuilder.sanitizeFieldClauses(path.table, fields);
 	var queryTables = _.uniq(_.pluck(queryFields, 'table'));
 	
-	var queryFilter = query.filter || [];
-	var acFilters = [];
-	
-	//TODO reimplement calling user.access(). returns Promise
-return Promise.resolve(queryFilter.concat(acFilters));
+	var promises = _.map(queryTables, function(name) {
+		return user.access(path.db, { table: name });		
+	});
 
-	for(var i = 0;i < queryTables.length; ++i) {
+	return Promise.all(promises).then(accessList => {
+		log.debug({ access: accessList }, 'AccessControl.filterQuery()'); 	
 
-		var table = path.db.table(queryTables[i]);
-		var access = table.access(user);
+		var denied = _.find(accessList, function(access) { return access.Read == Table.ROW_SCOPES.NONE; });
+		if (denied) {
+			err.message = 'Table read access is none';			
+			return Promise.reject(err);
+		} 
+		var ownAccessList = _.filter(accessList, function(access) {
+			return access.Read == Table.ROW_SCOPES.OWN;	
+		});
 
-		if (access.read == Table.ROW_SCOPES.ALL) {
-			; //pass through
-			
-		} else if (access.read == Table.ROW_SCOPES.OWN) {
-			acFilters.push({
-				table: table.name
+		var queryFilter = query.filter || [];
+		var acFilter = _.map(ownAccessList, function(access) {
+			return {
+				table: access.table
 				, field: 'own_by'
 				, op: 'eq'
-				, value: user.name
-			});		
-			
-		} else { //access.read == Table.ROW_SCOPES.NONE
-			var msg = 'Table read access is none';
-			log.info({ table: table.name, access: access }, msg + ' AccessControl.filterQuery()'); 
-			var err = new Error(msg);
-			err.code = 401;
-			return {
-				error: err,
-				filter: []
-			};			
-		}
-	}
-	
-	var result = {
-		filter: queryFilter.concat(acFilters),
-		error: null
-	};
-	
-	log.trace({ result: result }, '...AccessControl.filterQuery()'); 
-	return result;
-	
+				, value: user.name()
+			};					
+		});
+
+		return Promise.resolve(queryFilter.concat(acFilter));
+	});
 }
 
 
@@ -445,8 +442,6 @@ AccessControl.prototype.filterQueryOLD = function(path, query, user) {
 	log.trace({ query: query, user: user }, 'AccessControl.filterQuery()...'); 
 
 	if ( ! this.auth) return { filter: query.filter };
-//TODO reimplement calling user.access(). returns Promise
-return { filter: query.filter };
 
 	var fields = query.fields || Table.ALL_FIELDS;
 	var queryFields = path.db.sqlBuilder.sanitizeFieldClauses(path.table, fields);

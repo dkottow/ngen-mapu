@@ -90,9 +90,9 @@ if (this.userPrincipalName == 'unk') {
 User.prototype.access = function(db, opts) {
 	var me = this;
 	return new Promise(function(resolve, reject) {
-		me.accessCB(db, opts, function(err, hasAccess) {
+		me.accessCB(db, opts, function(err, result) {
             if (err) reject(err);
-			else resolve(hasAccess); 
+			else resolve(result); 
 		});
 	});
 }
@@ -130,6 +130,7 @@ User.prototype.accessCB = function(db, opts, cbResult) {
                     cbResult(err);
                     return;
                 }
+                result.output.table = opts.table;
                 cbResult(null, result.output);
             });
         });

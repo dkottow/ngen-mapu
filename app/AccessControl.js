@@ -86,9 +86,7 @@ AccessControl.prototype.checkNonce = function(nonce) {
 }
 
 AccessControl.prototype.authRequest = function(op, req, path) {
-	log.debug({ op: op}, 'AccessControl.authRequest()...'); 
-	log.trace({ 'req.user': req.user, path: path }, 'AccessControl.authRequest()'); 
-
+	log.debug({ op: op, user: req.user ? req.user.name() : '' }, 'AccessControl.authRequest()...'); 
 
 	var resolveFn = function(msg) {
 		log.debug({msg: msg}, '...AccessControl.authRequest');
@@ -107,12 +105,6 @@ AccessControl.prototype.authRequest = function(op, req, path) {
 		return resolveFn('auth disabled');
 	}
 
-//TODO remove me after pilot	
-if (req.user.name() == 'unk') {
-	log.warn('AccessControl.authRequest() temporary passthrough'); 
-	return resolveFn('unk enabled temporary');
-}
-
 	//is it a nonce operation?
 	if (req.query && req.query.nonce) {
 		
@@ -128,6 +120,12 @@ if (req.user.name() == 'unk') {
 	if ( ! req.user) {
 		return rejectFn('op requires authenticated user');
 	}
+
+//TODO remove me after pilot	
+if (req.user.name() == 'unk') {
+	log.warn('AccessControl.authRequest() temporary passthrough'); 
+	return resolveFn('unk enabled temporary');
+}
 
 	var scope = {
 		account: path.account ? path.account.name : null,
@@ -219,8 +217,7 @@ if (req.user.name() == 'unk') {
 }
 
 AccessControl.prototype.filterQuery = function(path, query, user) {
-	log.trace('AccessControl.filterQuery()...'); 
-	log.trace({ query: query, user: user }, 'AccessControl.filterQuery()...'); 
+	log.debug({ user: user.name() }, 'AccessControl.filterQuery()...'); 
 
 	if ( ! this.auth) return Promise.resolve(query.filter);
 

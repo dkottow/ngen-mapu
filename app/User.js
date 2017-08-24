@@ -51,7 +51,7 @@ User.prototype.isAdminCB = function(opts, cbResult) {
 		opts = typeof opts == 'object' ? opts : {};		
 
         var optsKey = JSON.stringify(_.pick(opts, ['account', 'database']));
-        if (this.cache.admin[optsKey]) {
+        if (this.cache.admin.hasOwnProperty(optsKey)) {
             log.debug("User.isAdmin() cached.");
             cbResult(null, this.cache.admin[optsKey]);
             return;
@@ -110,7 +110,7 @@ User.prototype.accessCB = function(db, opts, cbResult) {
 		opts = typeof opts == 'object' ? opts : {};		
 
         var optsKey = JSON.stringify(_.pick(opts, ['table']));
-        if (this.cache.access[optsKey]) {
+        if (this.cache.access.hasOwnProperty(optsKey)) {
             log.debug("User.access() cached.");
             cbResult(null, this.cache.access[optsKey]);
             return;

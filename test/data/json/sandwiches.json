@@ -6,18 +6,6 @@
             "row_alias": [
                 "name"
             ],
-            "access_control": [
-                {
-                    "role": "reader",
-                    "write": "none",
-                    "read": "all"
-                },
-                {
-                    "role": "writer",
-                    "write": "own",
-                    "read": "all"
-                }
-            ],
             "props": {},
             "fields": {
                 "id": {
@@ -113,18 +101,6 @@
             "name": "sandwiches",
             "row_alias": [
                 "name"
-            ],
-            "access_control": [
-                {
-                    "role": "reader",
-                    "write": "none",
-                    "read": "all"
-                },
-                {
-                    "role": "writer",
-                    "write": "own",
-                    "read": "all"
-                }
             ],
             "props": {},
             "fields": {
@@ -244,18 +220,6 @@
                 "order_date",
                 "customers.name"
             ],
-            "access_control": [
-                {
-                    "role": "reader",
-                    "write": "none",
-                    "read": "all"
-                },
-                {
-                    "role": "writer",
-                    "write": "own",
-                    "read": "all"
-                }
-            ],
             "props": {},
             "fields": {
                 "id": {
@@ -367,18 +331,6 @@
         "order_items": {
             "name": "order_items",
             "row_alias": [],
-            "access_control": [
-                {
-                    "role": "reader",
-                    "write": "none",
-                    "read": "all"
-                },
-                {
-                    "role": "writer",
-                    "write": "own",
-                    "read": "all"
-                }
-            ],
             "props": {},
             "fields": {
                 "id": {
@@ -520,20 +472,6 @@
                     "w": "sandwiches"
                 }
             ]
-        }
-    ],
-    "users": [
-        {
-            "name": "anon@donkeylift.com",
-            "role": "reader"
-        },
-        {
-            "name": "demo@donkeylift.com",
-            "role": "owner"
-        },
-        {
-            "name": "admin@donkeylift.com",
-            "role": "owner"
         }
     ]
 }

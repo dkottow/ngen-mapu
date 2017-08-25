@@ -662,7 +662,6 @@ DatabaseSqlite.prototype.readSchema = function(cbAfter) {
 						};
 						var props =  JSON.parse(r.props);
 						table.row_alias = props.row_alias;
-						table.access_control = props.access_control;
 						table.props = _.pick(props, Table.PROPERTIES);
 						return table;
 					});

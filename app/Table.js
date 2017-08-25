@@ -72,15 +72,6 @@ var Table = function(tableDef) {
 		//row alias
 		me.row_alias = tableDef.row_alias || [];
 
-		if (tableDef.access_control) {
-			me.access_control = tableDef.access_control;
-		} else {
-			me.access_control = _.map(Table.DEFAULT_ACCESS_CONTROL
-								, function(ac) {
-					return _.clone(ac);	
-			});
-		}
-
 		//dont set disable prop if false
 		if (tableDef.disabled) me.disabled = true;
 
@@ -105,43 +96,6 @@ Table.ROW_SCOPES = {
 	ALL: "all" 
 }
 
-//must match Schema.js TODO
-var Schema = Schema || {};
-Schema.ADMIN_ROLE = "owner";
-
-Table.DEFAULT_ACCESS_CONTROL = [
-
-    { "role": "reader"
-	, "write": Table.ROW_SCOPES.NONE
-	, "read": Table.ROW_SCOPES.ALL }
-
-    , { "role": "writer"
-	, "write": Table.ROW_SCOPES.OWN
-	, "read": Table.ROW_SCOPES.ALL }
-];
-
-/*
-    { "role": "read_own"
-	, "write": Table.ROW_SCOPES.NONE
-	, "read": Table.ROW_SCOPES.OWN }
-
-    { "role": "read_all"
-	, "write": Table.ROW_SCOPES.NONE
-	, "read": Table.ROW_SCOPES.ALL }
-
-    , { "role": "write_own_read_all"
-	, "write": Table.ROW_SCOPES.OWN
-	, "read": Table.ROW_SCOPES.ALL }
-
-    , { "role": "write_own_read_own"
-	, "write": Table.ROW_SCOPES.OWN
-	, "read": Table.ROW_SCOPES.OWN }
-
-    , { "role": "write_all"
-	, "write": Table.ROW_SCOPES.ALL
-	, "read": Table.ROW_SCOPES.ALL }
-*/
-
 Table.TABLE = '__tableprops__';
 Table.TABLE_FIELDS = ['name', 'props', 'disabled'];
 Table.ALL_FIELDS = '*';
@@ -163,50 +117,9 @@ Table.prototype.setProp = function(name, value) {
 	this.props[name] = value;
 }
 
-Table.prototype.access = function(user) {
-	if (user.admin || user.role == Schema.ADMIN_ROLE) {
-	    return { 
-	    	read: Table.ROW_SCOPES.ALL 
-	    	, write: Table.ROW_SCOPES.ALL
-	    }
-	} else {
-		var match = _.find(this.access_control, function(ac) {
-			return ac.role == user.role;
-		});
-		if ( ! match) {
-		    return { 
-		    	read: Table.ROW_SCOPES.NONE
-		    	, write: Table.ROW_SCOPES.NONE
-		    }
-		}
-
-		return _.pick(match, ["read", "write"]);
-	}
-	
-}
-
-Table.prototype.setAccess = function(role, access, scope) {
-	var match = _.find(this.access_control, function(ac) {
-		return ac.role == role;
-	});
-	if ( ! match) { 
-		throw new Error(util.format('set access role %s not supported.', role));
-	}
-	if ( ! match[access]) { 
-		throw new Error(util.format('access type %s unknown.', access));
-	}
-	if ( ! _.contains(Table.ROW_SCOPES, scope)) { 
-		throw new Error(util.format('access scope %s unknown.', scope));
-	}
-	
-	match[access] = scope; 
-}
-
-
 Table.prototype.persistentProps = function() {
 	var dbProps = {
 		row_alias: this.row_alias
-		, access_control: this.access_control
 	};
 	_.extend(dbProps, _.pick(this.props, Table.PROPERTIES));
 	return dbProps;
@@ -386,7 +299,6 @@ Table.prototype.toJSON = function() {
 	var result = {
 		name: this.name 
 		, row_alias: this.row_alias
-		, access_control: this.access_control
 		, props: _.pick(this.props, Table.PROPERTIES)
 	};
 

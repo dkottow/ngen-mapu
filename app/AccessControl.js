@@ -158,7 +158,12 @@ if (req.user.name() == 'unk') {
 
 			case 'getDatabase':			
 			case 'getViewRows':			
-				return resolveFn('op allowed for any user');
+				var granted = access.Read != Table.ROW_SCOPES.NONE;
+				if (granted) {
+					return resolveFn('user has ' + access.Read + ' access to ' + scope.database);
+				} else {
+					return rejectFn('Read access is none.');
+				} 
 
 			case 'getRows':			
 			case 'getObjs':			

@@ -755,22 +755,6 @@
                 }
             }
         },
-        "User": {
-            "type": "object",
-            "properties": {
-                "name": {
-                    "type": "string"
-                },
-                "role": {
-                    "type": "string",
-                    "enum": [
-                        "owner",
-                        "writer",
-                        "reader"
-                    ]
-                }
-            }
-        },
         "Schema": {
             "type": "object",
             "properties": {
@@ -784,12 +768,6 @@
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/Table"
-                    }
-                },
-                "users": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/User"
                     }
                 },
                 "join_trees": {

@@ -6,18 +6,6 @@
             "row_alias": [
                 "Name"
             ],
-            "access_control": [
-                {
-                    "role": "reader",
-                    "write": "none",
-                    "read": "all"
-                },
-                {
-                    "role": "writer",
-                    "write": "own",
-                    "read": "all"
-                }
-            ],
             "props": {},
             "fields": {
                 "id": {
@@ -121,18 +109,6 @@
             "name": "Player",
             "row_alias": [
                 "Name"
-            ],
-            "access_control": [
-                {
-                    "role": "reader",
-                    "write": "none",
-                    "read": "all"
-                },
-                {
-                    "role": "writer",
-                    "write": "own",
-                    "read": "all"
-                }
             ],
             "props": {},
             "fields": {
@@ -282,18 +258,6 @@
                 "EventDate",
                 "Venue.Name"
             ],
-            "access_control": [
-                {
-                    "role": "reader",
-                    "write": "none",
-                    "read": "all"
-                },
-                {
-                    "role": "writer",
-                    "write": "own",
-                    "read": "all"
-                }
-            ],
             "props": {},
             "fields": {
                 "id": {
@@ -437,18 +401,6 @@
                 "Player.Name",
                 "Game.EventDate"
             ],
-            "access_control": [
-                {
-                    "role": "reader",
-                    "write": "none",
-                    "read": "all"
-                },
-                {
-                    "role": "writer",
-                    "write": "own",
-                    "read": "all"
-                }
-            ],
             "props": {},
             "fields": {
                 "id": {
@@ -566,18 +518,6 @@
             "row_alias": [
                 "Code"
             ],
-            "access_control": [
-                {
-                    "role": "reader",
-                    "write": "none",
-                    "read": "all"
-                },
-                {
-                    "role": "writer",
-                    "write": "own",
-                    "read": "all"
-                }
-            ],
             "props": {},
             "fields": {
                 "id": {
@@ -677,18 +617,6 @@
             "name": "Venue",
             "row_alias": [
                 "Name"
-            ],
-            "access_control": [
-                {
-                    "role": "reader",
-                    "write": "none",
-                    "read": "all"
-                },
-                {
-                    "role": "writer",
-                    "write": "own",
-                    "read": "all"
-                }
             ],
             "props": {},
             "fields": {
@@ -838,20 +766,6 @@
                     "w": "Venue"
                 }
             ]
-        }
-    ],
-    "users": [
-        {
-            "name": "anon@donkeylift.com",
-            "role": "reader"
-        },
-        {
-            "name": "demo@donkeylift.com",
-            "role": "writer"
-        },
-        {
-            "name": "admin@donkeylift.com",
-            "role": "owner"
         }
     ]
 }

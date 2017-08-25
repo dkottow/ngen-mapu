@@ -52,7 +52,7 @@ Controller.prototype.initRoutes = function(options) {
 
 	if (this.auth) {
 
-		//testing, simply supply user on query string
+		//for testing, we supply user on query string ?user=dkottow@golder.com
 		this.router.use(function(req, res, next) {
 			req.user = new User(req.query.user || 'unk', me.accountManager.masterDatabase());
 			next();
@@ -317,7 +317,7 @@ Controller.prototype.putDatabase = function(req, res) {
 
 		var schema = req.body;
 		schema.name = req.params[1];
-		Schema.setAdmin(schema, req.user.name);
+		//TODO Schema.setAdmin(schema, req.user.name);
 	
 		data.account.createDatabase(schema, function(err, db) {
 			if (err) {
@@ -700,13 +700,16 @@ Controller.prototype.postRows = function(req, res) {
 
 		var rows = req.body;
 	
+		// TODO
+		/*
 		var table_access = data.table.access(req.user);
 		if (table_access.write != Table.ROW_SCOPES.ALL) {
 			me.stripOwnerField(rows);
 		}
+		*/
 
 		var opts = req.query;
-		opts.user = req.user.name;
+		opts.user = req.user.name();
 		data.db.insert(data.table.name, rows, opts, function(err, result) {
 			if (err) {
 				sendError(req, res, err, 400);
@@ -737,13 +740,16 @@ Controller.prototype.putRows = function(req, res) {
 
 		var rows = req.body;
 
+		//TODO
+		/*
 		var table_access = data.table.access(req.user);
 		if (table_access.write != Table.ROW_SCOPES.ALL) {
 			me.stripOwnerField(rows);
 		}
+		*/
 
 		var opts = req.query;
-		opts.user = req.user.name;
+		opts.user = req.user.name();
 		data.db.update(data.table.name, rows, opts, function(err, result) {
 			if (err) {
 				sendError(req, res, err, 400);

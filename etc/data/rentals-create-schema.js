@@ -15,25 +15,8 @@ describe('Schema', function() {
 
 	var rentalsSchema = {
 		"name" : "rentals",
-		"users" : [ 
-			{ "name": "anon@donkeylift.com", "role": "reader" } 
-			, { "name": "demo@donkeylift.com", "role": "owner" }
-			, { "name": "admin@donkeylift.com", "role": "owner" }
-		],
 		"tables" : [
 			 { "name": "quotes"
-			 , "access_control": [
-				{
-					role: "reader",
-					write: "own",
-					read: "all"
-				}			 
-				, {
-					role: "writer",
-					write: "own",
-					read: "all"
-				}			 
-			 ]
 			 , "fields": [
 					{
 						  "name": "id"

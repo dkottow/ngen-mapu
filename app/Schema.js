@@ -40,16 +40,7 @@ Schema.EMPTY = {
 	name: ''
 	, tables: []
 	, join_trees: []
-	, users: []
 }
-
-Schema.ADMIN_ROLE = "owner";
-
-Schema.USER_ROLES = {
-	OWNER: "owner",
-	WRITER: "writer",
-	READER: "reader"
-};
 
 Schema.TABLE = '__schemaprops__';
 
@@ -66,7 +57,6 @@ Schema.prototype.init = function(schemaData) {
 
 		var options = _.pick(schemaData, 'join_trees');
 		this.graph = new TableGraph(tables, options);
-		this.users = schemaData.users || [];
 		this.name = schemaData.name;
 
 		log.trace('...Schema.init()');
@@ -135,37 +125,6 @@ Schema.prototype.removeTable = function(name) {
 	this.init(schemaData);	
 }
 
-/******* user ops *******/
-
-
-Schema.prototype.user = function(name) {
-	var user = _.find(this.users, function(u) { 
-		return u.name == name; 
-	});
-	return user;
-}
-
-Schema.prototype.setUser = function(name, role) {
-	if (!role) {
-		delete this.users[name];
-		return;
-	}
-	//TODO get rid of fixed roles..
-	if ( ! _.contains(Schema.USER_ROLES, role)) { 
-		throw new Error(util.format('user role %s unknown.', role));
-	}
-	var user = this.user(name);
-	if (user) user.role = role;
-	else this.users.push({name: name, role:role});
-}
-
-//used in ApiController, smells bad..
-Schema.setAdmin = function(schemaDef, name) {
-	schemaDef.users = schemaDef.users || [];
-	if (_.findIndex(schemaDef.users, { name : name }) < 0) {
-		schemaDef.users.push({name: name, role: Schema.ADMIN_ROLE });
-	}
-}
 
 /******* file ops *******/
 
@@ -262,8 +221,7 @@ Schema.TABLE_FIELDS = ['name', 'value'];
 
 Schema.prototype.persistentProps = function() {
 	var props = { 
-		join_trees: this.graph.joinTreesJSON(),
-		users: this.users
+		join_trees: this.graph.joinTreesJSON()
 	};
 	return props;
 }

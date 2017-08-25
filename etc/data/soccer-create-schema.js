@@ -18,11 +18,6 @@ describe('Schema', function() {
 
 	var soccerSchema = {
 		name : 'soccer',
-		users : [ 
-			{ "name": "anon@donkeylift.com", "role": "reader" } 
-			, { "name": "demo@donkeylift.com", "role": "writer" }
-			, { "name": "admin@donkeylift.com", "role": "owner" }
-		],
  		tables: [
 		   { "name": "Team"
 			 , "row_alias": ["Name"]		  	

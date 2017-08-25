@@ -42,8 +42,6 @@ SchemaChange.OPS = {
 	, SET_PROP_FIELD: 'set_prop_field' 
 	, DISABLE_FIELD: 'disable_field'
 
-	, SET_USER: 'set_user' 
-	, SET_ACCESS_CONTROL: 'set_access_control'
 	, SET_ROW_ALIAS: 'set_row_alias'
 };
 
@@ -82,14 +80,8 @@ SchemaChange._create = function(patch, schema) {
 	} else if (SCTableProps.test(patch)) {
 		result = new SCTableProps(patch, schema);
 
-	} else if (SCTableAccess.test(patch)) {
-		result = new SCTableAccess(patch, schema);
-
 	} else if (SCTableRowAlias.test(patch)) {
 		result = new SCTableRowAlias(patch, schema);
-
-	} else if (SCUsers.test(patch)) {
-		result = new SCUsers(patch, schema);
 
 	} else if (SCAddTable.test(patch)) {
 		result = new SCAddTable(patch, schema);
@@ -517,41 +509,6 @@ SCDelTable.prototype.toSQL = function(sqlBuilder) {
  	return sqlBatches;
 }
 
-
-/*
- * table access control. path e.g. /tables/1/access_control
- */
-
-var SCTableAccess = function(patch, schema) {
-	log.trace({patch: patch}, "SchemaChange.SCTableAccess()");
-	SchemaChange.call(this, patch, schema);
-	this.op = SchemaChange.OPS.SET_ACCESS_CONTROL;
-	
-	var pathArray = patch.path.split('/');
-	pathArray.shift(); // leading slash,
-	pathArray.shift(); // 'tables' keyword
-	this.table = this.schema.table(pathArray.shift());
-	pathArray.shift(); // 'access_control' keyword
-	this.patch_path = '/' + pathArray.join('/');
-	this.path = '/' + this.table.name + '/access_control';
-	this.patchObj = JSON.parse(JSON.stringify(this.table.access_control)); //hold a copy
-}
-
-SCTableAccess.prototype = new SchemaChange;	
-SCTableAccess.prototype.constructor = SCTableAccess;
-
-SCTableAccess.test = function(patch) {
-	return /^\/tables\/(\w+)\/access_control/.test(patch.path);	
-}
-
-SCTableAccess.prototype.apply = function() {
-	this.table.access_control = this.patchObj;
-}
-
-SCTableAccess.prototype.toSQL = function(sqlBuilder) {
-	return [ this.table.updatePropSQL() ];
-}
-
 /*
  * table row alias. path e.g. /tables/1/row_alias
  */
@@ -632,41 +589,6 @@ SCTableProps.prototype.apply = function() {
 
 SCTableProps.prototype.toSQL = function(sqlBuilder) {
 	return [ this.table.updatePropSQL() ];
-}
-
-/*
- * database users. path e.g. /users/3
-*/
-
-var SCUsers = function(patch, schema) {
-	log.trace({patch: patch}, "SchemaChange.SCUsers()");
-	SchemaChange.call(this, patch, schema);
-	this.op = SchemaChange.OPS.SET_USER;
-
-	var pathArray = patch.path.split('/');
-	pathArray.shift(); // leading slash,
-	pathArray.shift(); // 'users' keyword
-	this.patch_path = '/' + pathArray.join('/');
-	this.path = '/users';
-	this.patchObj = JSON.parse(JSON.stringify(this.schema.users));
-}
-
-SCUsers.prototype = new SchemaChange;	
-SCUsers.prototype.constructor = SCUsers;
-
-SCUsers.test = function(patch) {
-	return /^\/users/.test(patch.path);	
-}
-
-SCUsers.prototype.apply = function() {
-	this.schema.users = [];
-	_.each(this.patchObj, function(user) {
-		this.schema.setUser(user.name, user.role); 
-	}, this);
-}
-
-SCUsers.prototype.toSQL = function(sqlBuilder) {
-	return [ this.schema.updatePropSQL() ];
 }
 
 exports.SchemaChange = SchemaChange;

@@ -100,18 +100,9 @@ Database.prototype.table = function(name) {
 	return this.schema.table(name);
 }
 
-Database.prototype.user = function(name) { 
-	return this.schema.user(name);
-}
-
 Database.prototype.tables = function() { 
 	return this.schema.tables();
 };
-
-Database.prototype.users = function() { 
-	var users = this.schema.users;
-	return _.object(_.pluck(users, 'name'), users); 
-}
 
 Database.prototype.childTables = function(tableName) {
 	return this.schema.graph.childTables(tableName);

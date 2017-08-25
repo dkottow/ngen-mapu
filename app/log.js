@@ -118,10 +118,7 @@ var rewriteRequest = function(level, msg, obj) {
 		var user;
 		if (obj.req.user) {
 			user = {
-				name: obj.req.user.name
-				, account: obj.req.user.account
-				, role: obj.req.user.role
-				, admin: obj.req.user.admin
+				name: obj.req.user.name()
 			}
 		} 
 		obj.req = {

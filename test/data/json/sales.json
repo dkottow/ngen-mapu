@@ -7,18 +7,6 @@
                 "name",
                 "email"
             ],
-            "access_control": [
-                {
-                    "role": "reader",
-                    "write": "none",
-                    "read": "all"
-                },
-                {
-                    "role": "writer",
-                    "write": "own",
-                    "read": "all"
-                }
-            ],
             "props": {},
             "fields": {
                 "id": {
@@ -114,18 +102,6 @@
             "name": "products",
             "row_alias": [
                 "name"
-            ],
-            "access_control": [
-                {
-                    "role": "reader",
-                    "write": "none",
-                    "read": "all"
-                },
-                {
-                    "role": "writer",
-                    "write": "own",
-                    "read": "all"
-                }
             ],
             "props": {},
             "fields": {
@@ -224,18 +200,6 @@
             "row_alias": [
                 "order_date",
                 "customers.name"
-            ],
-            "access_control": [
-                {
-                    "role": "reader",
-                    "write": "none",
-                    "read": "all"
-                },
-                {
-                    "role": "writer",
-                    "write": "own",
-                    "read": "all"
-                }
             ],
             "props": {},
             "fields": {
@@ -348,18 +312,6 @@
         "products_in_orders": {
             "name": "products_in_orders",
             "row_alias": [],
-            "access_control": [
-                {
-                    "role": "reader",
-                    "write": "none",
-                    "read": "all"
-                },
-                {
-                    "role": "writer",
-                    "write": "own",
-                    "read": "all"
-                }
-            ],
             "props": {},
             "fields": {
                 "id": {
@@ -501,20 +453,6 @@
                     "w": "products"
                 }
             ]
-        }
-    ],
-    "users": [
-        {
-            "name": "anon@donkeylift.com",
-            "role": "reader"
-        },
-        {
-            "name": "demo@donkeylift.com",
-            "role": "owner"
-        },
-        {
-            "name": "admin@donkeylift.com",
-            "role": "owner"
         }
     ]
 }

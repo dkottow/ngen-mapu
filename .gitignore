@@ -7,3 +7,4 @@
 *~
 donkey-error-log.json
 .env
+/public/swagger.json

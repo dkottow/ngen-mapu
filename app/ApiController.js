@@ -480,7 +480,6 @@ Controller.prototype.getRows = function(req, res) {
 		return me.access.filterQuery(data, q, req.user);
 
 	}).then((filter) => {
-
 		data.db.all(data.table.name, {
 			filter: filter 
 			, fields: params.values['$select'] 

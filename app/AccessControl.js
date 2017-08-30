@@ -233,7 +233,7 @@ if (user.name() == 'unk') {
 }
 
 	var scope = { account: path.account.name, database: path.db.name() };
-	user.isAdmin(scope).then((isAdmin) => {
+	return user.isAdmin(scope).then((isAdmin) => {
 
 		if (isAdmin) {
 			log.debug({ isAdmin: isAdmin }, '...AccessControl.filterQuery().'); 	

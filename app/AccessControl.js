@@ -123,7 +123,7 @@ AccessControl.prototype.authRequest = function(op, req, path) {
 
 //TODO remove me after pilot	
 if (req.user.name() == 'unk') {
-	log.warn('AccessControl.authRequest() temporary passthrough'); 
+	log.debug('AccessControl.authRequest() temporary passthrough'); 
 	return resolveFn('unk enabled temporary');
 }
 
@@ -228,7 +228,7 @@ AccessControl.prototype.filterQuery = function(path, query, user) {
 
 //TODO remove me after pilot	
 if (user.name() == 'unk') {
-	log.warn('AccessControl.filterQuery() temporary passthrough'); 
+	log.debug('AccessControl.filterQuery() temporary passthrough'); 
 	return Promise.resolve(query.filter);
 }
 

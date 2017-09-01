@@ -4,32 +4,22 @@
     "logs"  : {
         "transports": [
             {
-                "console": {
-                    "timestamp": true,
-                    "level": "debug",
-                    "colorize": false
-                }
+                "type": "console",
+                "timestamp": true,
+                "level": "debug",
+                "colorize": false
             },
             {
-                "azure": {
-                    "account": "azwud365test1", //Azure storage account sub domain
-                    "key": "T2I4dhffg5aWtYB8/YQ3Xe8hoVVLginL4J1dA19gKekQre41HVE7pqd51GR8cnKtFaz78XDQIIIMghYKP8oenw==",         //The long Azure storage secret key
-                    "table": "LogError", //The name of the table 
-                    "timestamp": true,
-                    "level": "warn",
-                    "metaAsColumns": true                   
-                }
-            },
-            {
-                "azure": {
-                    "account": "azwud365test1", //Azure storage account sub domain
-                    "key": "T2I4dhffg5aWtYB8/YQ3Xe8hoVVLginL4J1dA19gKekQre41HVE7pqd51GR8cnKtFaz78XDQIIIMghYKP8oenw==",         //The long Azure storage secret key
-                    "table": "LogInfo", //The name of the table 
-                    "timestamp": true,
-                    "level": "info",
-                    "metaAsColumns": true                   
-                }
+                "name": "azure-error",
+                "type": "azure",
+                "account": "azwud365test1", //Azure storage account sub domain
+                "key": "T2I4dhffg5aWtYB8/YQ3Xe8hoVVLginL4J1dA19gKekQre41HVE7pqd51GR8cnKtFaz78XDQIIIMghYKP8oenw==",         //The long Azure storage secret key
+                "table": "LogError", //The name of the table 
+                "timestamp": true,
+                "level": "warn",
+                "metaAsColumns": true                   
             }
+
         ]
     },
     

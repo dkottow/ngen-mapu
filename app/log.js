@@ -29,17 +29,18 @@ function init() {
 
 		_.each(config.logs.transports, function(logger) {
 			//set some dynamic attrs
-			if (logger.console) {
-				logger.console.prettyPrint = prettyPrint;
-				winstonLogger.add(winston.transports.Console, logger.console);
+			if (logger.type == 'console') {
+				logger.prettyPrint = prettyPrint;
+				winstonLogger.add(winston.transports.Console, logger);
 
-			} else if (logger.file && ! path.isAbsolute(logger.file.filename)) {
-				logger.file.filename = path.join(process.cwd(), logger.file.filename);
-				winstonLogger.add(winston.transports.File, logger.file);
+			} else if (logger.type == 'file' && ! path.isAbsolute(logger.filename)) {
+				logger.filename = path.join(process.cwd(), logger.filename);
+				winstonLogger.add(winston.transports.File, logger);
 
-			} else if (logger.azure) {
-                logger.azure.partition = require('os').hostname();				
-				winstonLogger.add(winston.transports.Azure, logger.azure);
+			} else if (logger.type == 'azure') {
+				logger.partition = require('os').hostname();
+console.log(logger);								
+				winstonLogger.add(winston.transports.Azure, logger);
 			}
 		});
 

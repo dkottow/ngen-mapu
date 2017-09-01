@@ -27,19 +27,18 @@
     "logs"  : {
         "transports": [
             {
-                "console": {
-                    "level": "debug",
-                    "colorize": true
-                },
-
-                "file": {
-                    "filename": "logs/donkey-error-log-json",
-                    "level": "warn",
-                    "timestamp": true,
-                    "tailable": true,
-                    "maxFiles": 10,
-                    "maxsize": 1000000
-                }
+                "type": "console",
+                "level": "debug",
+                "colorize": true
+            },
+            {
+                "type": "file",
+                "filename": "logs/donkey-error-log-json",
+                "level": "warn",
+                "timestamp": true,
+                "tailable": true,
+                "maxFiles": 10,
+                "maxsize": 1000000
             }
         ]
     },

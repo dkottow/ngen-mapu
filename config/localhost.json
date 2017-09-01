@@ -4,10 +4,9 @@
     "logs"  : {
         "transports": [
             {
-                "console": {
-                    "level": "debug",
-                    "colorize": true
-                }
+                "type": "console",
+                "level": "debug",
+                "colorize": true
             }
         ]
     },

@@ -26,21 +26,27 @@ function init() {
 	if ( ! global.init_log) {
 
 		winstonLogger = new (winston.Logger)({ transports: [] });
+		var transport;
 
-		_.each(config.logs.transports, function(logger) {
+		_.each(config.logs.transports, function(options) {
 			//set some dynamic attrs
-			if (logger.type == 'console') {
-				logger.prettyPrint = prettyPrint;
-				winstonLogger.add(winston.transports.Console, logger);
+			if (options.type == 'console') {
+				options.prettyPrint = prettyPrint;
+				transport = new winston.transports.Console(options);				
 
-			} else if (logger.type == 'file' && ! path.isAbsolute(logger.filename)) {
-				logger.filename = path.join(process.cwd(), logger.filename);
-				winstonLogger.add(winston.transports.File, logger);
+			} else if (options.type == 'file' && ! path.isAbsolute(options.filename)) {
+				options.filename = path.join(process.cwd(), options.filename);
+				transport = new winston.transports.File(options);
 
-			} else if (logger.type == 'azure') {
-				logger.partition = require('os').hostname();
-console.log(logger);								
-				winstonLogger.add(winston.transports.Azure, logger);
+			} else if (options.type == 'azure') {
+				options.partition = require('os').hostname();
+				transport = new winston.transports.Azure(options);
+				transport.name = options.name; //otherwise not picked up by winston-azure
+			}
+			if (transport) {
+				winstonLogger.add(transport, {}, true);			
+			} else {
+				throw new Error('Unknown winston transport type.');
 			}
 		});
 

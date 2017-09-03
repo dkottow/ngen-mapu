@@ -8,7 +8,8 @@
                 "timestamp": true,
                 "level": "debug",
                 "colorize": false
-            },
+            }
+/*
             {
                 "name": "azure-error",
                 "type": "azure",
@@ -30,6 +31,7 @@
                 "level": "info",
                 "metaAsColumns": true                   
             }
+*/
         ]
     },
     

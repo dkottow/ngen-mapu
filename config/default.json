@@ -16,7 +16,7 @@
             "domain": "GOLDER", //AD user domain
             "password": null
         },
-        "initRetryInterval": 5000,
+        "initRetryInterval": 100,
     },
     
     "url"   : {

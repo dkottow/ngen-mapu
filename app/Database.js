@@ -69,14 +69,17 @@ Database.prototype._init = function(cbAfter) {
 			log.debug({
 				at: new Date(), 
 				wait: config.sql.initRetryInterval
-			}, 'timeout Database.init()');
+			}, 'readingSchema true, retry. Database.init()');
 
 			setTimeout(function() {
+				me._init(cbAfter);
+/*				
 				if (me.schema.isEmpty()) {
 					cbAfter(new Error('init failed.'), null);
 				} else {
 					return cbAfter();
 				}
+*/				
 			}, config.sql.initRetryInterval);
 		}
 		

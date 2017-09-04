@@ -50,7 +50,7 @@ AccountMssql.prototype.init = function(cbAfter) {
             log.debug({sql: sql}, 'Account.init()');
 
             conn.request().query(sql).then(result => {
-                log.debug(JSON.stringify(result.recordset));
+                log.debug({databases: result.recordset}, 'Account.init()');
 
                 var doReturn = function() {
 					log.debug("...Account.init()");

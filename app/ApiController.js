@@ -480,6 +480,7 @@ Controller.prototype.getRows = function(req, res) {
 		return me.access.filterQuery(data, q, req.user);
 
 	}).then((filter) => {
+
 		data.db.all(data.table.name, {
 			filter: filter 
 			, fields: params.values['$select'] 
@@ -491,25 +492,25 @@ Controller.prototype.getRows = function(req, res) {
 			, nocounts: params.values['nocounts']	
 		},
 
-		function(err, result) { 
-			if (err) {
-				sendError(req, res, err, 400);
-				return;
+			function(err, result) { 
+				if (err) {
+					sendError(req, res, err, 400);
+					return;
+				}
+
+				//add nextUrl if nextOffset
+				if (result.nextOffset) {
+					result.nextUrl = me.nextUrl(req, result.nextOffset);
+				}
+
+				log.trace(result);
+				res.send(result); 
+				funcs.stopHRTime(reqTime);
+				log.info({req: req, time: reqTime.secs}, '...Controller.getRows().');
 			}
+		);
 
-			//add nextUrl if nextOffset
-			if (result.nextOffset) {
-				result.nextUrl = me.nextUrl(req, result.nextOffset);
-			}
-
-			log.trace(result);
-			res.send(result); 
-			funcs.stopHRTime(reqTime);
-			log.info({req: req, time: reqTime.secs}, '...Controller.getRows().');
-		}
-	);
-
-}).catch(err => {
+	}).catch(err => {
 		sendError(req, res, err);
 		return;
 	});
@@ -520,6 +521,8 @@ Controller.prototype.getRows = function(req, res) {
 Controller.prototype.getObjs = function(req, res) {
 	log.info({req: req}, 'Controller.getObjs()...');
 	var me = this;
+	var params;
+	var fields
 	var data;
 
 	this.getDataObjects(req, {account: true, db: true, table: true}).then((result) => {
@@ -528,25 +531,25 @@ Controller.prototype.getObjs = function(req, res) {
 
 	}).then((auth) => {
 
-		var params = me.parseQueryParameters(req);
+		params = me.parseQueryParameters(req);
 		if (params.error) throw params.error;
 
-		var q = { filter: params.values['$filter'], fields: params.values['$select'] };
-
-		var auth2 = me.access.filterQuery(data, q, req.user);
-		if (auth2.error) throw auth2.error;
-
-		var fields = (params.values['$select'] || []);
+		fields = (params.values['$select'] || []);
 		if ( ! _.find(fields, function(f) {
 			return f.field == 'id' && (! f.table || f.table == data.table.name);
 		})) {
 			fields.push({ field: 'id' });
 		}
 		
+		var q = { filter: params.values['$filter'], fields: fields };
+		return me.access.filterQuery(data, q, req.user);
+
+	}).then((filter) => {
+
 		var orderBy = (params.values['$orderby'] || []).push({ field: 'id', order: 'asc' });
 		
 		data.db.all(data.table.name, {
-				filter: auth2.filter 
+				filter: filter 
 				, fields: fields 
 				, order: orderBy 
 				, limit: params.values['$top'] 

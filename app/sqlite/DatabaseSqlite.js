@@ -240,8 +240,8 @@ DatabaseSqlite.prototype.insert = function(tableName, rows, options, cbResult) {
 		var fields = this.getInsertFields(rows, table);
 		var fieldNames = _.keys(fields);
 	
-		var add_by = options.username || 'unk';
-		var mod_by = add_by;
+		var add_by = options.user.name(); 
+		var own_by = options.user.principal(); 
 
 		var fieldParams = _.times(fieldNames.length, function(fn) { 
 			return "?"; 
@@ -269,8 +269,8 @@ DatabaseSqlite.prototype.insert = function(tableName, rows, options, cbResult) {
 			_.each(rows, function(r) {
 
 				r.add_on = r.mod_on = Field.dateToString(new Date());
-				r.add_by = r.mod_by = mod_by;
-				r.own_by = r.own_by || mod_by;
+				r.add_by = r.mod_by = add_by;
+				r.own_by = r.own_by || own_by;
 				//console.log(r);				
 				if (err == null) {					
 
@@ -334,7 +334,7 @@ DatabaseSqlite.prototype.update = function(tableName, rows, options, cbResult) {
 		var fields = this.getUpdateFields(rows, table);
 		var fieldNames = _.keys(fields);
 
-		var mod_by = options.username || 'unk';
+		var mod_by = options.user.name();
 
 		var sql = "UPDATE " + table.name
 				+ ' SET "' + fieldNames.join('" = ?, "') + '" = ?'

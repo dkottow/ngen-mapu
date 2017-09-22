@@ -26,6 +26,9 @@ var SqlHelperMssql = {
 	Schema: {}
 }
 
+var USER_EVERYONE = 'Everyone';
+var USER_NOBODY = 'unknown';
+
 var mssql = require('mssql');
 
 SqlHelperMssql.EncloseSQL = function(name) {
@@ -209,8 +212,11 @@ SqlHelperMssql.Field.defaultSQL = function(field) {
 		return "DEFAULT GETDATE()";
 
 	} else if (_.contains(['mod_by', 'add_by'], field.name)) {
-		return "DEFAULT 'sql'";
+		return util.format("DEFAULT '%s'", USER_NOBODY);
 
+	} else if ('own_by' == field.name) {
+		return util.format("DEFAULT '%s'", USER_EVERYONE);
+	
 	} else {
 		return '';
 	}

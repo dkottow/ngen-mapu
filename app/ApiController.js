@@ -54,7 +54,7 @@ Controller.prototype.initRoutes = function(options) {
 
 		//for testing, we supply user on query string ?user=dkottow@golder.com
 		this.router.use(function(req, res, next) {
-			req.user = new User(req.query.user || 'unk', me.accountManager.masterDatabase());
+			req.user = new User(req.query.user || User.NOBODY, me.accountManager.masterDatabase());
 			next();
 		});
 
@@ -99,7 +99,7 @@ Controller.prototype.initRoutes = function(options) {
 	
 	} else {
 		this.router.use(function(req, res, next) {
-			req.user = new User('unk', me.accountManager.masterDatabase());
+			req.user = new User(User.NOBODY, me.accountManager.masterDatabase());
 			next();
 		});
 	}
@@ -711,7 +711,7 @@ Controller.prototype.postRows = function(req, res) {
 		*/
 
 		var opts = req.query;
-		opts.user = req.user.name();
+		opts.user = req.user;
 		data.db.insert(data.table.name, rows, opts, function(err, result) {
 			if (err) {
 				sendError(req, res, err, 400);
@@ -751,7 +751,7 @@ Controller.prototype.putRows = function(req, res) {
 		*/
 
 		var opts = req.query;
-		opts.user = req.user.name();
+		opts.user = req.user;
 		data.db.update(data.table.name, rows, opts, function(err, result) {
 			if (err) {
 				sendError(req, res, err, 400);

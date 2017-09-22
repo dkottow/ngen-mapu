@@ -22,6 +22,7 @@ var Papa = require('papaparse');
 var Table = require('./Table.js').Table;
 var Schema = require('./Schema.js').Schema;
 var SchemaChange = require('./SchemaChange.js').SchemaChange;
+var User = require('./User.js').User;
 
 var SqlHelper = require('./SqlHelperFactory.js').SqlHelperFactory.create();
 var SqlBuilderFactory = require('./SqlBuilderFactory.js').SqlBuilderFactory;
@@ -186,8 +187,8 @@ Database.prototype.allById = function(tableName, rowIds, options, cbResult) {
 	return this.all(tableName, options, cbResult);
 } 
 
-Database.prototype.rowsOwned = function(tableName, rowIds, username, cbResult) {
-	log.trace({table: tableName, user: username}, 'Database.rowsOwned()...');
+Database.prototype.rowsOwned = function(tableName, rowIds, principal, cbResult) {
+	log.trace({table: tableName, principal: principal}, 'Database.rowsOwned()...');
 	log.trace({rowIds: rowIds},  'Database.rowsOwned()');
 	
 	var fields = ['id', 'own_by'];
@@ -197,7 +198,7 @@ Database.prototype.rowsOwned = function(tableName, rowIds, username, cbResult) {
 			return;
 		}
 		var notOwned = _.find(result.rows, function(row) {
-			return row.own_by != username;	
+			return row.own_by != principal && row.own_by != User.EVERYONE;	
 		});
 
 		log.trace({notOwned: notOwned}, '...Database.rowsOwned()');

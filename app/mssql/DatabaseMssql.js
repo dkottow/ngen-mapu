@@ -498,7 +498,8 @@ DatabaseMssql.prototype.insert = function(tableName, rows, options, cbResult) {
 		var fieldNames = _.keys(fields);
 		var autoId = ! _.has(fields, 'id');
 
-		var add_by = options.username || 'unk';
+		var add_by = options.user.name(); 
+		var own_by = options.user.principal(); 
 
 		var rowIds = [];
 		var sql;
@@ -561,7 +562,7 @@ DatabaseMssql.prototype.insert = function(tableName, rows, options, cbResult) {
 
 					row.add_on = row.mod_on = Field.dateToString(new Date());
 					row.add_by = row.mod_by = add_by;
-					row.own_by = row.own_by || add_by;
+					row.own_by = row.own_by || own_by;
 
 					var values = me.getFieldValues(row, fields);
 					log.trace({values: values}, 'insert row');
@@ -653,7 +654,7 @@ DatabaseMssql.prototype.update = function(tableName, rows, options, cbResult) {
 		var fields = this.getUpdateFields(rows, table);
 		var fieldNames = _.keys(fields);
 
-		var mod_by = options.username || 'unk';
+		var mod_by = options.user.name();
 		var modCount = 0;	
 
 		var transaction;

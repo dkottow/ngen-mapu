@@ -26,6 +26,9 @@ var SqlHelperSqlite = {
 	Schema: {}
 }
 
+var USER_EVERYONE = 'Everyone';
+var USER_NOBODY = 'unknown';
+
 SqlHelperSqlite.EncloseSQL = function(name) {
 	return '[' + name + ']';
 }
@@ -218,7 +221,10 @@ SqlHelperSqlite.Field.defaultSQL = function(field) {
 		return "DEFAULT(datetime('now'))";
 
 	} else if (_.contains(['mod_by', 'add_by'], field.name)) {
-		return "DEFAULT 'sql'";
+		return util.format("DEFAULT '%s'", USER_NOBODY);
+
+	} else if ('own_by' == field.name) {
+		return util.format("DEFAULT '%s'", USER_EVERYONE);
 
 	} else {
 		return '';

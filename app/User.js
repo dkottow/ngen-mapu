@@ -7,17 +7,21 @@ var Table = require('./Table.js').Table;
 var log = require('./log.js').log;
 
 var User = function(userPrincipalName, masterDatabase) {
-    this.userPrincipalName = userPrincipalName;
+    this._name = userPrincipalName;
     this.master = masterDatabase;
-    this.cache = { access: {}, admin: {} };
+    //this.cache = { access: {}, admin: {} };
 }
 
 User.TABLES = {
+    PRINCIPALS: '__data365Principals',
+    USER_PRINCIPAL: '__data365UserPrincipal',
     ACCESS: '__data365Users'
 };
 
 User.FIELDS = {
-    PRINCIPAL: 'UserPrincipalName',
+    NAME: 'UserPrincipalName',
+    PRINCIPAL: 'Principal',
+    PRINCIPAL_NAME: 'Name',
     ACCESS_SCOPE: 'Scope'
 };
 
@@ -29,8 +33,15 @@ User.PROCEDURES = {
     ACCESS_USER: 'd365_Access'
 }
 
+User.EVERYONE = 'Everyone'; //used in AccessControl.filterQuery and Database.rowsOwned
+User.NOBODY = 'unknown';
+
 User.prototype.name = function() {
-    return this.userPrincipalName;
+    return this._name || User.NOBODY;
+}
+
+User.prototype.principal = function() {
+    return this._principal || this._name || User.EVERYONE;
 }
 
 User.prototype.isAdmin = function(opts) {
@@ -51,17 +62,16 @@ User.prototype.isAdminCB = function(opts, cbResult) {
 		opts = typeof opts == 'object' ? opts : {};		
 
         var optsKey = JSON.stringify(_.pick(opts, ['account', 'database']));
-        if (this.cache.admin.hasOwnProperty(optsKey)) {
-            log.debug("User.isAdmin() cached.");
-            cbResult(null, this.cache.admin[optsKey]);
+        if (this._admin !== undefined) {
+            cbResult(null, this._admin);
             return;
-        }      
+        }
 
         var viewOpts = {
             filter: [{
-                field: User.FIELDS.PRINCIPAL,
+                field: User.FIELDS.NAME,
                 op: 'eq',
-                value: this.userPrincipalName
+                value: this._name
             }]
         };
         this.master._init(function(err) {
@@ -81,7 +91,7 @@ User.prototype.isAdminCB = function(opts, cbResult) {
                     || (row.Scope == 'Account' && opts.account == row.Account)
                     || (row.Scope == 'Database' && opts.account == row.Account && opts.database == row.Database)
                 });
-                me.cache.admin[optsKey] = Boolean(row);
+                me._admin = Boolean(row);
                 log.debug({ result: Boolean(row) }, "...User.isAdmin()");
                 cbResult(null, Boolean(row));
             });
@@ -110,17 +120,17 @@ User.prototype.accessCB = function(db, opts, cbResult) {
 		opts = typeof opts == 'object' ? opts : {};		
 
         var optsKey = JSON.stringify(_.pick(opts, ['table']));
-        if (this.cache.access.hasOwnProperty(optsKey)) {
+        if (this._access !== undefined) {
             log.debug("User.access() cached.");
-            cbResult(null, this.cache.access[optsKey]);
-            return;
-        }      
+            cbResult(null, this._access);
+            return;            
+        }
 
         var args = {
             input: [
                 {
-                    name: User.FIELDS.PRINCIPAL,
-                    value: this.userPrincipalName
+                    name: User.FIELDS.NAME,
+                    value: this._name
                 },
                 {
                     name: Table.FIELDS.ACCESS_TABLE,
@@ -130,6 +140,7 @@ User.prototype.accessCB = function(db, opts, cbResult) {
             output: [
                 { name: Table.FIELDS.ACCESS_READ, type: 'text' },
                 { name: Table.FIELDS.ACCESS_WRITE, type: 'text' },
+                { name: User.FIELDS.PRINCIPAL, type: 'text' },
             ]
         };
         db._init(function(err) {
@@ -144,7 +155,8 @@ User.prototype.accessCB = function(db, opts, cbResult) {
                     return;
                 }
                 result.output.table = opts.table;
-                me.cache.access[optsKey] = result.output;
+                me._access = result.output;
+                me._principal = result.output[User.FIELDS.PRINCIPAL];
     			log.debug({result: result.output}, '...User.access()');
                 cbResult(null, result.output);
             });

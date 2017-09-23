@@ -24,7 +24,7 @@ var config = require('config');
 var log = require('./app/log.js').log;
 var funcs = require('./app/funcs.js');
 
-log.warn({config: config}, '***** reset *****');
+log.warn({env: process.env.NODE_ENV, config: config}, '***** reset *****');
 log.info({ mem: funcs.memInfo() }, 'memory reset');
 
 var app = require('./app/app.js').app;

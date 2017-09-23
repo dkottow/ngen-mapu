@@ -1,0 +1,43 @@
+{
+    "auth": true,
+
+    "accounts": ["test"],
+
+    "logs"  : {
+        "transports": [
+            {
+                "type": "console",
+                "timestamp": true,
+                "level": "debug",
+                "stderrLevels": [ "error", "warn"],
+                "colorize": false
+            }
+        ]
+    },
+    
+     "sql": {
+        "engine"    : "mssql",
+        "pageRows"  : 5000,
+        "fullTextSearch": true,
+        "connection": {
+            "server": "azwu-test.database.windows.net",
+            "user"  : "Xidvv3jyCxQcSjbQYpf9zbiYv5MqE8Vp",
+            "password": null, //supply me through env var DL_MSSQL_PASSWORD
+            "domain": null, //AD user domain
+            "options": {
+                "encrypt": true // Use this if you're on Windows Azure
+            },            
+            "pool": {
+                "max": 15,
+                "min": 5            
+            },
+            "requestTimeout": 20000 // millisecs 
+        },
+        "elasticPool": "azwu-test-d365" //leave empty if no pool
+    },
+    
+    "url": {
+        "host": "azd365devwuas.azurewebsites.net",
+        "protocol": "https"
+    }
+}

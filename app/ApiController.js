@@ -26,6 +26,7 @@ var parser = require('./QueryParser.js');
 var AccessControl = require('./AccessControl.js').AccessControl;
 var Schema = require('./Schema.js').Schema;
 var Table = require('./Table.js').Table;
+var Field = require('./Field.js').Field;
 var User = require('./User.js').User;
 
 var log = require('./log.js').log;
@@ -291,6 +292,12 @@ Controller.prototype.getDatabase = function(req, res) {
 				t.url = '/' + data.account.name 
 						+ '/' + data.db.name() + '/' + t.name;
 			});
+
+			result.login = {
+				user: req.user.name(),
+				principal: req.user.principal(),
+				timestamp: Field.dateToString(new Date())
+			}
 
 			log.trace(result);
 			res.send(result); 

@@ -44,36 +44,51 @@ AccountManagerMssql.prototype.init = function(cbAfter) {
 
         log.trace({name: me.name}, "AccountManager.init()...");
 
-        this.readAccounts(function(err, accounts) {
-
-            var doReturn = function() {
-                log.trace("...AccountManager.init()");
-                if (cbAfter) cbAfter();
-                return;
-            };
+        if (config.accounts) {
+            log.debug({accounts: config.accounts, source: "config"}, "AccountManager.init()");
+            me._init(config.accounts, cbAfter);
             
-            if (accounts.length == 0) doReturn();
-			var doAfter = _.after(accounts.length, doReturn);
-
-            var config = _.clone(me.config);
-            _.each(accounts, function(name) {
-                config.account = name;    
-                var account = new Account(config);
-                account.init(function(err) {
-                    if (err) {
-                        cbAfter(err);
-                        return;
-                    } 
-                    me.accounts[account.name] = account;
-                    doAfter();
-                });
-            });            
-        });
+        } else {
+            this.readAccounts(function(err, accounts) {
+                if (err) {
+                    log.error({err: err}, "AccountManager.init()");
+                    return;
+                }
+                log.debug({accounts: accounts, source: "server"}, "AccountManager.init()");
+                me._init(accounts, cbAfter);
+            });    
+        }
 
 	} catch(err) {
 		log.error({err: err}, "AccountManager.init() exception.");
 		cbAfter(err);
 	}
+}
+
+AccountManagerMssql.prototype._init = function(accounts, cbAfter) {
+    var me = this;
+    var doReturn = function() {
+        log.trace("...AccountManager.init()");
+        if (cbAfter) cbAfter();
+        return;
+    };
+    
+    if (accounts.length == 0) doReturn();
+    var doAfter = _.after(accounts.length, doReturn);
+
+    var config = _.clone(me.config);
+    _.each(accounts, function(name) {
+        config.account = name;    
+        var account = new Account(config);
+        account.init(function(err) {
+            if (err) {
+                cbAfter(err);
+                return;
+            } 
+            me.accounts[account.name] = account;
+            doAfter();
+        });
+    });            
 }
 
 AccountManagerMssql.prototype.readAccounts = function(cbResult) {

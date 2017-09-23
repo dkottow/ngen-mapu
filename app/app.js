@@ -44,6 +44,8 @@ if (config.sql.engine == 'sqlite') {
 	accountConfig = config.sql.connection;
 }
 
+accountConfig.accounts = config.accounts;
+
 app.init = function(options, cbAfter) {
 	log.info({config: accountConfig}, 'app.init()...');
 

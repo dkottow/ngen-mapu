@@ -18,6 +18,7 @@ var  fs = require('fs');
 var  path = require('path');
 var _ = require('underscore');
 var util = require('util');
+var config = require('config');
 
 var TableGraph = require('./TableGraph.js').TableGraph;
 
@@ -114,10 +115,32 @@ Schema.MANDATORY_TABLES = [
 				"type": "text(256)",
 			}
 		]
-	}			
+	},
+	{
+		"name": "_d365Properties",			
+		"row_alias": ["TableName", "FieldName", "Name"],
+		"fields": [
+			{
+				"name": "Name",
+				"type": "text(256)"
+			},
+			{
+				"name": "Value",
+				"type": "text(MAX)",
+			},
+			{
+				"name": "FieldName",
+				"type": "text(256)"
+			},
+			{
+				"name": "TableName",
+				"type": "text(256)"
+			}
+		]
+	}
 ];
 
-Schema.MANDATORY_ROWS = {
+Schema.SYSTEM_ROWS = {
 	"_d365AccessScope": [
 		{ "id": 1, "Name": "all" },
 		{ "id": 2, "Name": "none" },
@@ -126,8 +149,11 @@ Schema.MANDATORY_ROWS = {
 	"_d365Principals": [
 		{ "id": 1, "Name": "Viewer", "Read_id": 1, "Write_id": 2 },
 		{ "id": 2, "Name": "Editor", "Read_id": 1, "Write_id": 1 }
+	],
+	"_d365Properties": [
+		{ "id": 1, "Name": "version", "Value": config.version }, //semver.org
 	]
-}
+};
 	
 
 Schema.TABLE = '__schemaprops__';
@@ -286,7 +312,7 @@ Schema.prototype.jsonRead = function(fileName, cbAfter) {
 
 Schema.prototype.systemRows = function(opts) {
 	//TODO add properties from table and fields if opts.deep == true
-	return Schema.MANDATORY_ROWS;
+	return Schema.SYSTEM_ROWS;
 }
 
 

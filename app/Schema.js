@@ -42,6 +42,94 @@ Schema.EMPTY = {
 	, join_trees: []
 }
 
+Schema.MANDATORY_TABLES = [
+	{
+		"name": "_d365AccessScope",
+		"row_alias": [ "Name" ],
+		"fields": [
+			{
+				"name": "Name",
+				"type": "text(256)",
+			}
+		]
+	},
+	{
+		"name": "_d365Principals",
+		"row_alias": [ "Name" ],
+		"fields": [
+			{
+				"name": "Name",
+				"type": "text(256)",
+			},
+			{
+				"name": "Read_id",
+				"type": "integer",
+				"fk": 1,
+				"fk_table": "_d365AccessScope"
+			},
+			{
+				"name": "Write_id",
+				"type": "integer",
+				"fk": 1,
+				"fk_table": "_d365AccessScope"
+			}
+		
+		]
+	},
+	{
+		"name": "_d365TableAccess",
+		"row_alias": [],
+		"fields": [
+			{
+				"name": "TableName",
+				"type": "text(256)",
+			},
+			{
+				"name": "Read_id",
+				"type": "integer",
+				"fk": 1,
+				"fk_table": "_d365AccessScope"
+			},
+			{
+				"name": "Write_id",
+				"type": "integer",
+				"fk": 1,
+				"fk_table": "_d365AccessScope"
+			}
+		
+		]
+	},
+	{
+		"name": "_d365UserPrincipal",
+		"row_alias": [],
+		"fields": [
+			{
+				"name": "Principal_id",
+				"type": "integer",
+				"fk": 1,
+				"fk_table": "_d365Principals"
+			},
+			{
+				"name": "UserPrincipalName",
+				"type": "text(256)",
+			}
+		]
+	}			
+];
+
+Schema.MANDATORY_ROWS = {
+	"_d365AccessScope": [
+		{ "id": 1, "Name": "all" },
+		{ "id": 2, "Name": "none" },
+		{ "id": 3, "Name": "own" }
+	],
+	"_d365Principals": [
+		{ "id": 1, "Name": "Viewer", "Read_id": 1, "Write_id": 2 },
+		{ "id": 2, "Name": "Editor", "Read_id": 1, "Write_id": 1 }
+	]
+}
+	
+
 Schema.TABLE = '__schemaprops__';
 
 Schema.prototype.init = function(schemaData) {
@@ -50,8 +138,16 @@ Schema.prototype.init = function(schemaData) {
 		log.trace({data: schemaData});
 		
 		schemaData = schemaData || Schema.EMPTY;
-		
-		var tables = _.map(schemaData.tables || [], function(tableDef) {
+		var tables = _.values(schemaData.tables) || [];	
+
+		var tableNames = _.pluck(tables, 'name');
+		var missTables = _.filter(Schema.MANDATORY_TABLES, function(mt) {
+			return ! _.contains(tableNames, mt.name);
+		});
+
+		tables = tables.concat(missTables);
+
+		tables = _.map(tables, function(tableDef) {
 			return new Table(tableDef);
 		});
 
@@ -80,6 +176,7 @@ Schema.prototype.get = function() {
 		throw err;
 	}
 }
+
 
 /******* table ops *******/
 Schema.prototype.isEmpty = function() {
@@ -186,6 +283,11 @@ Schema.prototype.jsonRead = function(fileName, cbAfter) {
 }
 
 // private methods..
+
+Schema.prototype.systemRows = function(opts) {
+	//TODO add properties from table and fields if opts.deep == true
+	return Schema.MANDATORY_ROWS;
+}
 
 
 Schema.prototype.applyChanges = function(changes) {

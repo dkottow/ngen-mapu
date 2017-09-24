@@ -48,7 +48,7 @@ describe('Schema', function() {
 				assert(err instanceof Error);
 			}
 		});
-		it('ctor guards opbligatory fields', function() {
+		it('ctor adds opbligatory tables and fields', function() {
 			var schema = new Schema();
 			var schemaData = { 
 				tables: [
@@ -70,7 +70,9 @@ describe('Schema', function() {
 			};
 			try {
 				schema.init(schemaData);
-				assert(false);
+				var schemaJSON = schema.get();
+				log.trace({ schema: schemaJSON }, 'schema.get()');
+				assert(_.values(schemaJSON.tables).length == schemaData.tables.length + Schema.MANDATORY_TABLES.length, 'count mandatory tables');
 
 			} catch(err) {
 				log.info(err);

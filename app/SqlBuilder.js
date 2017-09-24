@@ -243,41 +243,53 @@ SqlBuilder.prototype.queryViewSQL = function(viewName, fields, filters) {
 	};
 }
 
-SqlBuilder.prototype.createSQL = function(schema, options) {
+SqlBuilder.prototype.createDatabaseSQLBatches = function(schema, options) {
 
-	options = options || {}; 
+	return Promise.all([
+		this._createPropsSQLBatches(schema),
+		this._createTablesSQLBatches(schema),
+		this._createViewsSQLBatches(schema),
+		this._createStoredProcsSQLBatches(schema)
+		
+	]).then(function(result) {
+		return _.flatten(result);
+	});
+}
 
+SqlBuilder.prototype._createPropsSQLBatches = function(schema) {
 	var createSysTablesSQL = SqlHelper.Schema.createPropsTableSQL(Schema.TABLE)
-			+ SqlHelper.Table.createPropsTableSQL(Table.TABLE)
-			+ SqlHelper.Field.createPropsTableSQL(Field.TABLE);
+		+ SqlHelper.Table.createPropsTableSQL(Table.TABLE)
+		+ SqlHelper.Field.createPropsTableSQL(Field.TABLE);
 
 	var sysTablesInsertSQL = schema.insertPropSQL({deep: true}); 
 
-	var tables = this.graph.tablesByDependencies();
+	var sql = createSysTablesSQL + '\n\n'
+		+ sysTablesInsertSQL + '\n\n';
+	return Promise.resolve([ sql ]);	
+}
 
-	var createTableSQL = _.map(tables, function(t) {
+SqlBuilder.prototype._createTablesSQLBatches = function(schema) {
+	var tables = this.graph.tablesByDependencies();	
+	var sql = _.map(tables, function(t) {
 		return t.createSQL();
-	}).join('\n');
+	});
 
-	var createRowAliasViewSQL = _.map(tables, function(t) {
+	return Promise.resolve(sql);
+}
+
+SqlBuilder.prototype._createViewsSQLBatches = function(schema) {
+	var tables = this.graph.tables();
+	var sql = _.map(tables, function(t) {
 		var viewSQL = this.createRowAliasViewSQL(t);
 		//log.debug(viewSQL);
 		return viewSQL;
-	}, this).join('\n');
+	}, this);
 
-	var createSearchSQL = _.map(tables, function(t) {
-		return SqlHelper.Table.createSearchSQL(t);
-	}).join('\n');
+	return Promise.resolve(sql);
+}
 
-	var sql = createSysTablesSQL + '\n\n'
-			+ sysTablesInsertSQL + '\n\n'
-			+ createTableSQL + '\n\n';
-			
-	if (options.viewSQL) sql = sql + createRowAliasViewSQL + '\n\n';
-	if (options.searchSQL) sql = sql + createSearchSQL + '\n\n';
-			
-	log.trace({sql: sql}, 'SqlBuilder.createSQL');
-	return sql;
+SqlBuilder.prototype._createStoredProcsSQLBatches = function() {
+	//overwrite me
 }
 
 SqlBuilder.prototype.rowAliasFields = function(table) {

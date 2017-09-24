@@ -13,7 +13,7 @@ function createDatabase(name, options, cbAfter) {
 	var doOptions = function(db, cbAfter) {
 		if (options.schema) {
 			db.setSchema(options.schema);
-			db.writeSchema(function(err) {
+			db.write(function(err) {
 				if (err) {
 					cbAfter(err);
 					return;

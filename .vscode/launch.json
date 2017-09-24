@@ -16,7 +16,8 @@
                 "--timeout",
                 "999999",
                 "--colors",
-                "${workspaceRoot}/test/test-database.js"
+                "${workspaceRoot}/test/test-database.js",
+                "--grep schemaWrite"
             ],
             "internalConsoleOptions": "openOnSessionStart"
         },

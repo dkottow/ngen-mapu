@@ -50,18 +50,14 @@ var Table = function(tableDef) {
 					+ " Table names can only have word-type characters.");
 		}
 
-		tableDef.fields = tableDef.fields || [];
+		var fields = _.values(tableDef.fields) || [];
 
-		var fieldNames = _.pluck(tableDef.fields, 'name');
-		
+		var fieldNames = _.pluck(fields, 'name');
 		var missFields = _.filter(Table.MANDATORY_FIELDS, function(mf) {
 			return ! _.contains(fieldNames, mf.name);
 		});
 		
-		var fields = tableDef.fields;
-		_.each(missFields, function(mf) {
-			fields[mf.name] = mf;
-		});
+		fields = fields.concat(missFields);
 		
 		_.each(fields, function(f) {
 			me._fields[f.name] = Field.create(f);
@@ -223,8 +219,8 @@ Table.prototype.foreignKeys = function() {
 }
 
 Table.rowAliasView = function(name, idx) {
-	if (idx) return 'vra_' + name + ('00' + idx).substr(-2);
-	else return 'vra_' + name;
+	if (idx) return '_d365_' + name + ('00' + idx).substr(-2);
+	else return '_d365_' + name;
 }
 
 Table.prototype.rowAliasView = function(idx) { 

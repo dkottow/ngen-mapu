@@ -27,7 +27,7 @@ describe('Database', function() {
 
 	before(function(done) {
 		this.timeout(10000); //10secs
-		funcs.createDatabase('temp-sales', salesDefs, function(err, db) {
+		funcs.createDatabase('temp_sales', salesDefs, function(err, db) {
 			if ( ! db) return; //db is null first time.. weird. 
 			database = db;
 			done();
@@ -388,7 +388,8 @@ describe('Database', function() {
 
 		before(function(done) {			
 
-			funcs.createDatabase('temp-create', salesDefs, function(err, db) {
+			this.timeout(10000); //10secs
+			funcs.createDatabase('temp_create', salesDefs, function(err, db) {
 				if ( ! db) return;
 				newDb = db;
 				done();
@@ -404,7 +405,7 @@ describe('Database', function() {
 				log.info(err);
 				assert(err == null, err);
 				newDb.setSchema(schema.get());
-				newDb.writeSchema(function(err) {
+				newDb.write(function(err) {
 					log.info(err);
 					assert(err == null, err);
 					done();	

@@ -216,7 +216,7 @@ Database.prototype.getInsertFields = function(rows, table) {
 	}), 'name');
 
 	var forceFields = _.pluck(_.filter(Table.MANDATORY_FIELDS, function(mf) { 
-		return _.contains(['add_by', 'add_on', 'mod_by', 'mod_on'], mf.name); 
+		return _.contains(['add_by', 'add_on', 'mod_by', 'mod_on', 'own_by'], mf.name); 
 	}), 'name');
 
 	var fields = _.filter(table.fields(), function(field) {
@@ -288,9 +288,38 @@ Database.prototype.getFieldValues = function(row, fields) {
 	}
 }
 
-Database.prototype.createSQL = function(opts) {
-	return this.sqlBuilder.createSQL(this.schema, opts);
-}
+Database.prototype.write = function(cbAfter) {
+	log.debug("Database.write()...");
+	var me = this;
+	me.writeSchema(function(err) {
+		if (err) {
+			log.error({err: err}, "...Database.write()");
+			cbAfter(err);
+			return;
+		} 
+
+		var systemRows = me.schema.systemRows({ deep: true });
+		log.debug({ systemRows: systemRows}, 'Database.write()');
+		var doAfter = _.after(_.keys(systemRows).length, function() {
+			log.debug("...Database.write()");
+			if (cbAfter) cbAfter();
+			return;
+		});
+
+		_.each(systemRows, function(rows, tableName) {
+			var rows = _.map(rows, function(row) { return _.clone(row); });
+			me.insert(tableName, rows, function(err) {
+				if (err) {
+					log.error({err: err}, "...Database.write()");
+					cbAfter(err);
+					return;
+				} 
+				doAfter();				
+			});
+		});
+		
+	});
+} 
 
 Database.prototype.patchSchema = function(patches, cbResult) {
 	try {

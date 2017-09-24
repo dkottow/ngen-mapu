@@ -16,6 +16,8 @@
 
 var _ = require('underscore');
 var util = require('util');
+var path = require('path');
+var fs = require('fs');
 
 var Field = require('../Field.js').Field;
 var Table = require('../Table.js').Table;
@@ -116,6 +118,21 @@ SqlBuilderMssql.prototype.addDependenciesSQL = function(table) {
 		return SqlHelper.Table.addForeignKeysSQL(child, table);
 	}, '');
 	return result;
+}
+
+SqlBuilder.prototype._createStoredProcsSQLBatches = function() {
+
+	return new Promise(function(resolve, reject) {
+
+		var fn = path.join('app', 'mssql', SqlHelper.SP_ACCESS + '.sql'); 
+		fs.readFile(fn, 'utf8', function(err, sql) {
+			if (err) {
+				reject(err);
+			} else {
+				resolve(sql);	
+			}			
+		});
+	});
 }
 
 exports.SqlBuilderMssql = SqlBuilderMssql;

@@ -30,7 +30,7 @@ User.VIEWS = {
 };
 
 User.PROCEDURES = {
-    ACCESS_USER: 'd365_Access'
+    ACCESS_USER: '_d365Access'
 }
 
 User.EVERYONE = 'Everyone'; //used in AccessControl.filterQuery and Database.rowsOwned
@@ -38,6 +38,10 @@ User.NOBODY = 'unknown';
 
 User.prototype.name = function() {
     return this._name || User.NOBODY;
+}
+
+User.SystemUser = function() {
+    return new User('system');
 }
 
 User.prototype.principal = function() {

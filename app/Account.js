@@ -47,7 +47,7 @@ Account.prototype.doWriteDatabase = function(schemaData, cbResult) {
 	var newDb = this.doCreateDatabase(name);
 
 	newDb.setSchema(schemaData);
-	newDb.writeSchema(function(err) {
+	newDb.write(function(err) {
 		if (err) {
 			cbResult(err, null);
 			return;

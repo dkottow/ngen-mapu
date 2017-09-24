@@ -27,8 +27,9 @@ var config = require('config');
 var Schema = require('../Schema.js').Schema;
 var SchemaChange = require('../SchemaChange.js').SchemaChange;
 var Database = require('../Database.js').Database;
-var Field = require('../Field.js').Field;
 var Table = require('../Table.js').Table;
+var Field = require('../Field.js').Field;
+var User = require('../User.js').User;
 
 var SqlBuilder = require('./SqlBuilderMssql.js').SqlBuilderMssql;
 var SqlHelper = require('./SqlHelperMssql.js').SqlHelperMssql;
@@ -68,6 +69,12 @@ DatabaseMssql.prototype.name = function() {
 DatabaseMssql.prototype.connect = function() {
 	if ( ! this.pool) {
 		this.pool = new mssql.ConnectionPool(this.config);
+	}
+	if (this.pool.connecting) {
+		var me = this;
+		return new Promise(function(resolve, reject) {
+			setTimeout(function() { resolve(me.connect()); }, 100);
+		});
 	}
 	return this.pool.connected ? Promise.resolve() : this.pool.connect();
 }
@@ -498,8 +505,9 @@ DatabaseMssql.prototype.insert = function(tableName, rows, options, cbResult) {
 		var fieldNames = _.keys(fields);
 		var autoId = ! _.has(fields, 'id');
 
-		var add_by = options.user.name(); 
-		var own_by = options.user.principal(); 
+		var user = options.user || User.SystemUser();
+		var add_by = user.name(); 
+		var own_by = user.principal();
 
 		var rowIds = [];
 		var sql;
@@ -654,7 +662,8 @@ DatabaseMssql.prototype.update = function(tableName, rows, options, cbResult) {
 		var fields = this.getUpdateFields(rows, table);
 		var fieldNames = _.keys(fields);
 
-		var mod_by = options.user.name();
+		var user = options.user || User.SystemUser();
+		var mod_by = user.name();
 		var modCount = 0;	
 
 		var transaction;
@@ -988,11 +997,17 @@ DatabaseMssql.prototype.writeSchema = function(cbAfter) {
 		dbConfig.database = 'master'; //connect to master
 		dbConfig.requestTimeout = 100*1000; //100s - create db can take some time..
 
+		var sqlBatches;
 		var transaction;	
 		var doRollback;
 		var conn = new mssql.ConnectionPool(dbConfig);
 
-		conn.connect().then(err => {
+		this.sqlBuilder.createDatabaseSQLBatches(this.schema).then(result => {
+			sqlBatches = result;
+			log.debug('connect to master');
+			return conn.connect();
+
+		}).then(result => {
 			log.debug('create database ' + dbTemp);
 			var sql = util.format('CREATE DATABASE [%s]', dbTemp);
 			if (config.sql.elasticPool && config.sql.elasticPool.length > 0) {
@@ -1002,43 +1017,33 @@ DatabaseMssql.prototype.writeSchema = function(cbAfter) {
 			//sql = sql + ' (SERVICE_OBJECTIVE = ELASTIC_POOL(name = [S3M100]))'; 
 			return conn.request().batch(sql);
 
-		}).then(err => {
-			log.debug('close conn');
+		}).then(result => {
+			log.debug('close conn master');
 			return conn.close();	
 
-		}).then(err => {
+		}).then(result => {
 			log.debug('connect to ' + dbTemp);
 			dbConfig.database = dbTemp;
 			conn = new mssql.ConnectionPool(dbConfig);
 			return conn.connect();
 
-		}).then(err => {
+		}).then(result => {
 
 			log.debug('transaction begin');
 			transaction = new mssql.Transaction(conn);
 			return transaction.begin();
 
 		}).then(result => {
-			log.debug('create tables');
+			log.debug('execute sql batches');
 			doRollback = true;
 			transaction.on('rollback', aborted => {
 				// emitted with aborted === true
 				doRollback = false;
 			});
 			
-			var opts = { viewSQL: false, searchSQL: false };
-			var createSQL = this.createSQL(opts);
-			return new Request(transaction).batch(createSQL);
-
-		}).then(result => {
-			log.debug('create views');
-			var viewSQLs = _.map(this.tables(), function(table) {
-				return this.sqlBuilder.createRowAliasViewSQL(table); 	
-			}, this);
-
-			var chainPromises = _.reduce(viewSQLs, function(chainPromises, sql) {
+			var chainPromises = _.reduce(sqlBatches, function(chainPromises, sql) {
 				return chainPromises.then(result => {
-					log.trace('create view');
+					log.trace({sql: sql}, 'create sql batch');
 					return new Request(transaction).batch(sql);	
 				});	
 			}, Promise.resolve());

@@ -88,7 +88,9 @@ SqlHelperMssql.mssqlType = function(fieldType)
 }
 
 SqlHelperMssql.ACCOUNT_DATABASE_SEPARATOR = '$';
-SqlHelperMssql.FULLTEXT_CATALOG = 'D365_Catalog';
+SqlHelperMssql.FULLTEXT_CATALOG = '_d365Catalog';
+
+SqlHelperMssql.SP_ACCESS = '_d365Access';
 
 /********** Schema stuff *********/
 

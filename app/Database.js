@@ -36,6 +36,7 @@ var Database = function()
 	this.schema = new Schema();
 }
 
+Database.MASTER = '_d365master';
 /*	
 
 Database.prototype.init = function(cbAfter) {

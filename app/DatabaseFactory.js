@@ -25,15 +25,15 @@ var DatabaseFactory = {};
 
 var sql_engine = config.sql.engine;
 
-DatabaseFactory.create = function(config) {
+DatabaseFactory.create = function(dbConfig) {
 
 	if (sql_engine == 'sqlite') {
             var DatabaseSqlite = require('./sqlite/DatabaseSqlite.js').DatabaseSqlite;
-		return new DatabaseSqlite(config);
+		return new DatabaseSqlite(dbConfig);
 
 	} else if (sql_engine == 'mssql') {
             var DatabaseMssql = require('./mssql/DatabaseMssql.js').DatabaseMssql;
-		return new DatabaseMssql(config);
+		return new DatabaseMssql(dbConfig);
 	}
 
 	throw new Error(util.format("unsupported sql engine '%s'", sql_engine));	

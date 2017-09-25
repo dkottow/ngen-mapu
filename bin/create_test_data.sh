@@ -1,7 +1,6 @@
 # run me from root dir.
-export SRC_DIR=etc/data
+export SRC_DIR=etc/test-data
 export TEST_DIR=test/data
-export DATA_DIR=data
 
 mocha $SRC_DIR/sales-create-schema.js
 cp sales.sqlite $TEST_DIR/sqlite/sales_empty.sqlite
@@ -16,9 +15,3 @@ sqlite3 soccer.sqlite < $SRC_DIR/soccer-dim-data.sql
 mocha $SRC_DIR/soccer-generate-data.js
 
 mocha $SRC_DIR/rentals-create-schema.js
-
-#cp sales.json sandwiches.json soccer.json $TEST_DIR/json
-#cp sales.sqlite sandwiches.sqlite soccer.sqlite $TEST_DIR/sqlite
-#cp sandwiches.sqlite soccer.sqlite rentals.sqlite $DATA_DIR/demo
-#rm sales.json sandwiches.json soccer.json rentals.json
-#rm sales.sqlite sandwiches.sqlite soccer.sqlite rentals.sqlite

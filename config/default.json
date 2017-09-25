@@ -1,6 +1,6 @@
 {
     "version": "1.0.0",
-    
+
     "auth"  : false,
 
 	"ip"    : "localhost",
@@ -8,17 +8,36 @@
 
     "tempDir"  : "tmp",
 
+/*    
     "sql"   : {
+        "pageRows"  : 1000,
+        "initRetryInterval": 100,
         "engine"    : "sqlite",
         "dataDir"   : "data",
-        "pageRows"  : 1000,
         "connection": {
             "server": "localhost\\HOLEBASE_SI",
             "user": "dkottow",
             "domain": "GOLDER", //AD user domain
             "password": null
         },
+    },
+*/
+
+    "sql": {
+        "pageRows"  : 1000,
         "initRetryInterval": 100,
+        "engine"    : "mssql",
+        "connection": {
+            "server": "localhost\\HOLEBASE_SI",
+            "user"  : "dkottow",
+            "password": null, //supply me through env var DL_MSSQL_PASSWORD
+            "domain": "GOLDER", //AD user domain
+            "options": {
+                "encrypt": false // Use this if you're on Windows Azure
+            }            
+        },
+
+        "elasticPool": "" //leave empty if no pool
     },
     
     "url"   : {

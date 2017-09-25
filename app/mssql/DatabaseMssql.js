@@ -51,6 +51,10 @@ var funcs = require('../funcs.js');
 var DatabaseMssql = function(config) 
 {
 	try {
+		if ( ! (config && config.user && config.password && config.server && config.database)) {
+			log.error({config: config}, 'Missing config. new DatabaseMssql()');
+			return;
+		}
 		log.trace('new Database() ' + config.database);
 		Database.call(this);
 		this.config = _.clone(config);

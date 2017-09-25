@@ -16,7 +16,11 @@
 
 var _ = require('underscore');
 var util = require('util');
+
+var config = require('config'); 
 var log = require('./log.js').log;
+
+var Account = require('./Account.js').Account;
 
 function AccountManager() {
 	this.accounts = {};
@@ -45,7 +49,11 @@ AccountManager.prototype.get = function(name) {
 }
 
 AccountManager.prototype.masterDatabase = function() { 
-    return this.accounts['dev'].master(); 
+    var masterAccount = Account.MASTER;
+    if (config.accounts) {
+        masterAccount = _.keys(this.accounts)[0];
+    }
+    return this.accounts[masterAccount].master(); 
 }
 
 exports.AccountManager = AccountManager;

@@ -17,6 +17,8 @@
 var _ = require('underscore');
 var util = require('util');
 
+var Database = require('./Database.js').Database;
+
 var log = require('./log.js').log;
 
 function Account(name) {
@@ -27,6 +29,8 @@ function Account(name) {
 
 	log.debug("new Account " + this.name);
 }
+
+Account.MASTER = '_d365master';
 
 /* interfaces
 
@@ -141,7 +145,7 @@ Account.prototype.database = function(name) {
 }
 
 Account.prototype.master = function(name) { 
-	return this.databases['master'];
+	return this.databases[Database.MASTER];
 }
 
 Account.prototype.getInfo = function(cbResult) {

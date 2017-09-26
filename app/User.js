@@ -12,21 +12,13 @@ var User = function(userPrincipalName, masterDatabase) {
     //this.cache = { access: {}, admin: {} };
 }
 
-User.TABLES = {
-    PRINCIPALS: '__data365Principals',
-    USER_PRINCIPAL: '__data365UserPrincipal',
-    ACCESS: '__data365Users'
-};
-
 User.FIELDS = {
     NAME: 'UserPrincipalName',
-    PRINCIPAL: 'Principal',
-    PRINCIPAL_NAME: 'Name',
-    ACCESS_SCOPE: 'Scope'
+    PRINCIPAL: 'Principal'
 };
 
 User.VIEWS = {
-    ACCESS_ADMIN : 'vs_Admins'
+    ACCESS_ADMIN : '_d365Admins'
 };
 
 User.PROCEDURES = {

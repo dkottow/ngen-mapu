@@ -1,0 +1,78 @@
+{
+    "name": "_d365Master",
+    "tables": [
+        {
+            "name": "Account",
+            "row_alias": [
+                "Name"
+            ],
+            "fields": [
+                {
+                    "name": "Name",
+                    "type": "text(4000)"
+                }
+            ]
+        },
+        {
+            "name": "AccountAdmin",
+            "fields": [
+                {
+                    "name": "Account_id",
+                    "type": "integer",
+                    "fk": 1,
+                    "fk_table": "Account"
+                },
+                {
+                    "name": "UserPrincipalName",
+                    "type": "text(256)"
+                }
+            ]
+        },
+        {
+            "name": "DatabaseOwner",
+            "row_alias": [],
+            "props": {},
+            "fields": [
+                {
+                    "name": "Databases_id",
+                    "type": "integer",
+                    "fk": 1,
+                    "fk_table": "Databases"
+                },
+                {
+                    "name": "UserPrincipalName",
+                    "type": "text(256)"
+                }
+            ]
+        },
+        {
+            "name": "Databases",
+            "row_alias": [
+                "Account.Name",
+                "Name"
+            ],
+            "fields": [
+                {
+                    "name": "Account_id",
+                    "type": "integer",
+                    "fk": 1,
+                    "fk_table": "Account"
+                },
+                {
+                    "name": "Name",
+                    "type": "text(4000)"
+                }
+            ]
+        },
+        {
+            "name": "SystemAdmin",
+            "row_alias": [],
+            "fields": [
+                {
+                    "name": "UserPrincipalName",
+                    "type": "text(256)"
+                }
+            ]
+        }
+    ]
+}

@@ -18,7 +18,7 @@ program
 	.option("-p, --password <pass>", "database password")
 	.action(function (schemaFile, accountOrDatabase, params) {
         var dbConfig = config.sql.connection;
-        dbConfig.password = config.sql.connection.password || params.password;
+        dbConfig.password = params.password || config.sql.connection.password;
         var account = SqlHelper.Schema.splitName(accountOrDatabase)[0];
         var db = account != accountOrDatabase 
             ? SqlHelper.splitName(accountOrDatabase)[1]

@@ -75,6 +75,7 @@ DatabaseMssql.prototype.connect = function() {
 		this.pool = new mssql.ConnectionPool(this.config);
 	}
 	if (this.pool.connecting) {
+		//try again. later..
 		var me = this;
 		return new Promise(function(resolve, reject) {
 			setTimeout(function() { resolve(me.connect()); }, 100);

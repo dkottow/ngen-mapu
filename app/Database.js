@@ -95,11 +95,9 @@ Database.prototype.reset = function() {
 	return this.init();
 }
 
-/* 
 Database.prototype.name = function() { 
-	return this.schema.name;
+	//overwrite me
 }
-*/
 
 Database.prototype.table = function(name) { 
 	return this.schema.table(name);
@@ -300,25 +298,31 @@ Database.prototype.write = function(cbAfter) {
 		} 
 
 		var systemRows = me.schema.systemRows({ deep: true });
-		log.debug({ systemRows: systemRows}, 'Database.write()');
-		var doAfter = _.after(_.keys(systemRows).length, function() {
-			log.debug("...Database.write()");
-			if (cbAfter) cbAfter();
-			return;
-		});
+		log.trace({ systemRows: systemRows}, 'Database.write()');
 
-		_.each(systemRows, function(rows, tableName) {
-			var rows = _.map(rows, function(row) { return _.clone(row); });
-			me.insert(tableName, rows, function(err) {
-				if (err) {
-					log.error({err: err}, "...Database.write()");
-					cbAfter(err);
-					return;
-				} 
-				doAfter();				
-			});
+		var chainPromises = _.reduce(systemRows, function(chainPromises, rowGroup) {
+			return chainPromises.then(result => {
+				log.trace({table: rowGroup.table}, 'create row group inserts');
+				return new Promise(function(resolve, reject) {
+					var rows = _.map(rowGroup.rows, function(row) { return _.clone(row); });
+					me.insert(rowGroup.table, rows, function(err) {
+						if (err) {
+							reject(err);
+						} else {
+							resolve();
+						} 
+					});							
+				});
+			});	
+		}, Promise.resolve());		
+
+		chainPromises.then(result => {
+			log.debug("...Database.write()");
+			cbAfter();
+		}).catch(err => {
+			log.error({err: err}, "...Database.write()");
+			cbAfter(err);
 		});
-		
 	});
 } 
 

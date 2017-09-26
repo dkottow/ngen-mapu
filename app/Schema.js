@@ -140,20 +140,30 @@ Schema.MANDATORY_TABLES = [
 	}
 ];
 
-Schema.SYSTEM_ROWS = {
-	"_d365AccessScope": [
-		{ "id": 1, "Name": "all" },
-		{ "id": 2, "Name": "none" },
-		{ "id": 3, "Name": "own" }
-	],
-	"_d365Principals": [
-		{ "id": 1, "Name": "Viewer", "Read_id": 1, "Write_id": 2 },
-		{ "id": 2, "Name": "Editor", "Read_id": 1, "Write_id": 1 }
-	],
-	"_d365Properties": [
-		{ "id": 1, "Name": "version", "Value": config.version }, //semver.org
-	]
-};
+//system rows is an array to allow for dependencies between table rows.
+Schema.SYSTEM_ROWS = [
+	{
+		table: "_d365AccessScope",
+		rows: [
+			{ "id": 1, "Name": "all" },
+			{ "id": 2, "Name": "none" },
+			{ "id": 3, "Name": "own" }
+		],
+	},
+	{
+		table: "_d365Principals",
+		rows: [
+			{ "id": 1, "Name": "Viewer", "Read_id": 1, "Write_id": 2 },
+			{ "id": 2, "Name": "Editor", "Read_id": 1, "Write_id": 1 }
+		]
+	},
+	{
+		table: "_d365Properties",
+		rows: [
+			{ "id": 1, "Name": "version", "Value": config.version }, //semver.org
+		]
+	}
+];
 	
 
 Schema.TABLE = '__schemaprops__';

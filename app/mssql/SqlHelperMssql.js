@@ -103,6 +103,10 @@ SqlHelperMssql.Schema.fullName = function(account, db) {
 	return account + SqlHelperMssql.ACCOUNT_DATABASE_SEPARATOR + db;
 }
 
+SqlHelperMssql.Schema.splitName = function(dbName) {
+	return dbName.split(SqlHelperMssql.ACCOUNT_DATABASE_SEPARATOR);
+}
+
 SqlHelperMssql.Schema.createPropsTableSQL = function(name) {
 	return "CREATE TABLE " + name + " ("
 		+ " name VARCHAR(256) NOT NULL, "

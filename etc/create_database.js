@@ -1,38 +1,44 @@
 
 var path = require('path');
+var program = require('commander');
+
+require('dotenv').config(); 
+var config = require('config');
 
 var APP_PATH = path.join(process.cwd(), 'app');
 
 var Schema = require(path.join(APP_PATH, 'Schema.js')).Schema;
 var DatabaseFactory = require(path.join(APP_PATH, 'DatabaseFactory.js')).DatabaseFactory;
+var SqlHelper = require(path.join(APP_PATH, 'SqlHelperFactory.js')).SqlHelperFactory.create();
 
 var log = require(path.join(APP_PATH, 'log.js')).log;
 
-if (process.argv.length < 3) {
-    console.log('provide json file with schema as argument.');
-    return;
-}
+program
+    .arguments('<schema-file> <account-or-database>')
+	.option("-p, --password <pass>", "database password")
+	.action(function (schemaFile, accountOrDatabase, params) {
+        var dbConfig = config.sql.connection;
+        dbConfig.password = config.sql.connection.password || params.password;
+        var account = SqlHelper.Schema.splitName(accountOrDatabase)[0];
+        var db = account != accountOrDatabase 
+            ? SqlHelper.splitName(accountOrDatabase)[1]
+            : path.basename(process.argv[2], '.json');
 
-var config = {
-	user: 'dkottow', 
-	password: 'G0lderPass.73', 
-	domain: 'GOLDER',
-    server: 'localhost\\HOLEBASE_SI',     
-};
+        dbConfig.database = SqlHelper.Schema.fullName(account, db);
 
-var account = 'dev$';
+        createDatabase(process.argv[2], dbConfig);
 
-createDatabase(process.argv[2], config);
+    }).parse(process.argv);
 
-function createDatabase(schemaFile, config) {
+
+function createDatabase(schemaFile, dbConfig) {
     var schema = new Schema();
     schema.jsonRead(schemaFile, function(err) {
         if (err) {
             log.error({err: err}, '...createDatabase()');
             return;
         }
-        config.database = account +  path.basename(schemaFile, '.json');
-        var database = DatabaseFactory.create(config);
+        var database = DatabaseFactory.create(dbConfig);
         database.setSchema(schema.get());
         database.write(function(err) {
             if (err) {

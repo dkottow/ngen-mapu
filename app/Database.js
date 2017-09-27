@@ -132,7 +132,7 @@ Database.prototype.getInfo = function(options, cbResult) {
 	cbResult = cbResult || arguments[arguments.length - 1];	
 	options = typeof options == 'object' ? options : {};		
 
-	var counts = options.counts || false;
+	var counts = options.counts == 1 || false;
 
 	var result = this.schema.get();
 
@@ -404,9 +404,9 @@ Database.prototype.allSanitizeOptions = function(options) {
 	result.order = options.order || [];
 	result.limit = options.limit;
 	result.offset = options.offset;
-	result.debug = options.debug || false;
+	result.debug = options.debug == 1 || false;
 	result.format = options.format || 'json';
-	result.nocounts = options.nocounts || false;
+	result.counts = options.counts == 1 || false;
 	log.trace({ result: result }, '...Database.allSanitizeOptions()');
 	return result;
 }
@@ -423,7 +423,7 @@ Database.prototype.allSQL = function(tableName, options) {
 				table, opts.fields, opts.filter, 
 				opts.order, opts.limit, opts.offset);
 
-	sql.nocounts = opts.nocounts;
+	sql.counts = opts.counts;
 
 	log.debug({sql: sql.query}, "Database.allSQL()");
 	log.trace({sql: sql}, "Database.allSQL()");

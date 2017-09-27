@@ -170,7 +170,7 @@ DatabaseMssql.prototype.all = function(tableName, options, cbResult) {
 			log.trace({rows : result.recordset});
 			rows = result.recordset;
 			
-			if (sql.nocounts) {
+			if ( ! sql.counts) {
 				return Promise.resolve();
 			}
 

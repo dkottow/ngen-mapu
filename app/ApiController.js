@@ -496,7 +496,7 @@ Controller.prototype.getRows = function(req, res) {
 			, offset: params.values['$skip'] 
 			, debug: params.values['debug']	
 			, format: params.values['format']	
-			, nocounts: params.values['nocounts']	
+			, counts: params.values['counts']	
 		},
 
 			function(err, result) { 
@@ -849,7 +849,7 @@ Controller.prototype.generateCSVFile = function(req, data, cbAfter) {
 }
 
 Controller.QUERY_PARAMS = {
-	'integer': ['debug', 'nocounts']
+	'integer': ['debug', 'counts']
 };
 
 Controller.prototype.parseQueryParameters = function(req) {

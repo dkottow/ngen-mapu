@@ -395,9 +395,9 @@
                         "type": "text"
                     },
                     {
-                        "name": "nocounts",
+                        "name": "counts",
                         "in": "query",
-                        "description": "Skip internal query to obtain number of rows. \n##### Rationale\nBy default, the API will return not only the result rows, but also counts on the total number of rows of the query resultset as well as the total number of rows of the queried table (with no filters). \nIf the API does not return the complete resultset (because of internal limits), it also returns an URL to the next set of result rows (pagination).\n",
+                        "description": "Obtain total number of rows for the query. \n##### Rationale\nThe API can return not only the result rows, but also counts on the total number of rows of the query resultset as well as the total number of rows of the queried table (with no filters). \nIf the API does not return the complete resultset (because of internal paging limits), it would also return the URL for the next set of result rows (pagination).\n",
                         "required": false,
                         "default": 0,
                         "type": "integer"

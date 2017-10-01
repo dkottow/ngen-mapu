@@ -229,7 +229,7 @@ Controller.prototype.getAccount = function(req, res) {
 	this.getDataObjects(req, {account: true}).then((result) => {
 		data = result;
 		//return Promise.reject(new Error('testing error'));
-		return me.access.authRequest('getAccount', req, data);
+		return me.access.authRequest('getAccount', req, result);
 	
 	}).then((auth) => { 
 

@@ -108,7 +108,7 @@ vecop "vector operator"
  / "btwn"
 
 identifier "identifier"
- = first:[a-z]i chars:fchar* 
+ = first:[a-z0-9_]i chars:fchar* 
    { return first + chars.join(''); }
 
 fchar "name char"

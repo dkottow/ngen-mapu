@@ -137,16 +137,23 @@ if (req.user.name() == User.NOBODY) {
 			case 'delRows':
 				if (access.Write == Table.ROW_SCOPES.OWN) {
 					//check if rows affected are owned by callee 
-					var rowIds = op == 'delRows' ? req.body : _.pluck(req.body, 'id');
-					var owned = path.db.rowsOwned(path.table.name, rowIds, req.user.principal(), 
-						function(err, owned) {
-							if (err) {
-								return Promise.reject(err);
-							} 
-							if ( ! owned) {
-								return rejectFn('Table write access is own.');
-							}
-							return resolveFn('user has ' + access.Write + ' write access to ' + scope.table);
+					return new Promise(function(resolve, reject) {
+						var rowIds = op == 'delRows' ? req.body : _.pluck(req.body, 'id');
+						var owned = path.db.rowsOwned(path.table.name, rowIds, req.user.principal(), 
+							function(err, owned) {
+								if (err) {
+									log.warn({err: err}, '...AccessControl.authRequest');
+									return reject(err);
+								} 
+								if ( ! owned) {
+									var err = new Error('Table write access is own.');
+									log.warn({err: err}, '...AccessControl.authRequest');
+									return reject(err);
+								}
+								var msg = 'user has ' + access.Write + ' write access to ' + scope.table;
+								log.debug({msg: msg}, '...AccessControl.authRequest');
+								return resolve(true);
+							});
 						});
 				} else {
 					var granted = access.Write != Table.ROW_SCOPES.NONE;

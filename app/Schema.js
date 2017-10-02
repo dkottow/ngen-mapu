@@ -21,15 +21,9 @@ var util = require('util');
 var config = require('config');
 
 var TableGraph = require('./TableGraph.js').TableGraph;
-
-/*
-var TableFactory = require('./TableFactory.js').TableFactory;
-var Table = TableFactory.class();
-*/
-
 var SqlHelper = require('./SqlHelperFactory.js').SqlHelperFactory.create();
 var Table = require('./Table.js').Table;
-
+var SchemaDefs = require('./SchemaDefs.js').SchemaDefs;
 
 var log = require('./log.js').log;
 
@@ -37,134 +31,6 @@ var Schema = function() {
 	this.init();
 }
 
-Schema.EMPTY = {
-	name: ''
-	, tables: []
-	, join_trees: []
-}
-
-Schema.MANDATORY_TABLES = [
-	{
-		"name": "_d365AccessScope",
-		"row_alias": [ "Name" ],
-		"fields": [
-			{
-				"name": "Name",
-				"type": "text(256)",
-			}
-		]
-	},
-	{
-		"name": "_d365Principals",
-		"row_alias": [ "Name" ],
-		"fields": [
-			{
-				"name": "Name",
-				"type": "text(256)",
-			},
-			{
-				"name": "Read_id",
-				"type": "integer",
-				"fk": 1,
-				"fk_table": "_d365AccessScope"
-			},
-			{
-				"name": "Write_id",
-				"type": "integer",
-				"fk": 1,
-				"fk_table": "_d365AccessScope"
-			}
-		
-		]
-	},
-	{
-		"name": "_d365TableAccess",
-		"row_alias": [],
-		"fields": [
-			{
-				"name": "TableName",
-				"type": "text(256)",
-			},
-			{
-				"name": "Read_id",
-				"type": "integer",
-				"fk": 1,
-				"fk_table": "_d365AccessScope"
-			},
-			{
-				"name": "Write_id",
-				"type": "integer",
-				"fk": 1,
-				"fk_table": "_d365AccessScope"
-			}
-		
-		]
-	},
-	{
-		"name": "_d365UserPrincipal",
-		"row_alias": [],
-		"fields": [
-			{
-				"name": "Principal_id",
-				"type": "integer",
-				"fk": 1,
-				"fk_table": "_d365Principals"
-			},
-			{
-				"name": "UserPrincipalName",
-				"type": "text(256)",
-			}
-		]
-	},
-	{
-		"name": "_d365Properties",			
-		"row_alias": ["TableName", "FieldName", "Name"],
-		"fields": [
-			{
-				"name": "Name",
-				"type": "text(256)"
-			},
-			{
-				"name": "Value",
-				"type": "text(MAX)",
-			},
-			{
-				"name": "FieldName",
-				"type": "text(256)"
-			},
-			{
-				"name": "TableName",
-				"type": "text(256)"
-			}
-		]
-	}
-];
-
-//system rows is an array to allow for dependencies between table rows.
-Schema.SYSTEM_ROWS = [
-	{
-		table: "_d365AccessScope",
-		rows: [
-			{ "id": 1, "Name": "all" },
-			{ "id": 2, "Name": "none" },
-			{ "id": 3, "Name": "own" }
-		],
-	},
-	{
-		table: "_d365Principals",
-		rows: [
-			{ "id": 1, "Name": "Viewer", "Read_id": 1, "Write_id": 2 },
-			{ "id": 2, "Name": "Editor", "Read_id": 1, "Write_id": 1 }
-		]
-	},
-	{
-		table: "_d365Properties",
-		rows: [
-			{ "id": 1, "Name": "version", "Value": config.version }, //semver.org
-		]
-	}
-];
-	
 
 Schema.TABLE = '__schemaprops__';
 
@@ -173,11 +39,11 @@ Schema.prototype.init = function(schemaData) {
 		log.trace('Schema.init()...');
 		log.trace({data: schemaData});
 		
-		schemaData = schemaData || Schema.EMPTY;
+		schemaData = schemaData || SchemaDefs.EMPTY;
 		var tables = _.values(schemaData.tables) || [];	
 
 		var tableNames = _.pluck(tables, 'name');
-		var missTables = _.filter(Schema.MANDATORY_TABLES, function(mt) {
+		var missTables = _.filter(SchemaDefs.MANDATORY_TABLES, function(mt) {
 			return ! _.contains(tableNames, mt.name);
 		});
 
@@ -265,7 +131,7 @@ Schema.prototype.removeTable = function(name) {
 Schema.prototype.jsonWrite = function(fileName, cbAfter) {
 	var me = this;
 	try {
-		var data = _.pick(this.get(), _.keys(Schema.EMPTY));
+		var data = _.pick(this.get(), _.keys(SchemaDefs.EMPTY));
 		fs.writeFile(fileName, JSON.stringify(data), function(err) {
 			if (err) {
 				log.error({data: data, error: err}
@@ -322,7 +188,7 @@ Schema.prototype.jsonRead = function(fileName, cbAfter) {
 
 Schema.prototype.systemRows = function(opts) {
 	//TODO add properties from table and fields if opts.deep == true
-	return Schema.SYSTEM_ROWS;
+	return SchemaDefs.SYSTEM_ROWS;
 }
 
 

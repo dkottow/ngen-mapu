@@ -34,24 +34,24 @@ function AccessControl(options) {
 	this.auth = options.auth || false;
 }
 
-AccessControl.prototype.authRequest = function(op, req, path) {
-	log.debug({ op: op, user: req.user ? req.user.name() : '' }, 'AccessControl.authRequest()...'); 
+AccessControl.prototype.authorize = function(op, req, path) {
+	log.debug({ op: op, user: req.user ? req.user.name() : '' }, 'AccessControl.authorize()...'); 
 
-	var resolveFn = function(msg) {
-		log.debug({msg: msg}, '...AccessControl.authRequest');
-		return Promise.resolve(true);
+	var resolveFn = function(access, msg) {
+		log.debug({msg: msg}, '...AccessControl.authorize');
+		return Promise.resolve(access);
 	}
 
 	var rejectFn = function(msg) {
 		var err = new Error(msg);
 		err.code = 401;
-		log.debug({err: err}, '...AccessControl.authRequest');
+		log.debug({err: err}, '...AccessControl.authorize');
 		return Promise.reject(err);
 	}
 	
 	//auth disabled
 	if ( ! this.auth) {
-		return resolveFn('auth disabled');
+		return resolveFn(true, 'auth disabled');
 	}
 
 	//is it a nonce operation?
@@ -59,7 +59,7 @@ AccessControl.prototype.authRequest = function(op, req, path) {
 		
 		if (this.supportsNonce(op)) {
 			return this.checkNonce(req.query.nonce).then(() => { 
-				return resolveFn('valid nonce');
+				return resolveFn(true, 'valid nonce');
 			});
 		} else {
 			return rejectFn('op does not support nonce');
@@ -72,8 +72,8 @@ AccessControl.prototype.authRequest = function(op, req, path) {
 
 //TODO remove me after pilot	
 if (req.user.name() == User.NOBODY) {
-	log.debug('AccessControl.authRequest() temporary passthrough'); 
-	return resolveFn('User.NOBODY enabled temporary');
+	log.debug('AccessControl.authorize() temporary passthrough'); 
+	return resolveFn(true, 'User.NOBODY enabled temporary');
 }
 
 	var scope = {
@@ -82,7 +82,7 @@ if (req.user.name() == User.NOBODY) {
 		table: path.table ? path.table.name : null
 	}
 
-	log.debug({scope: scope}, 'AccessControl.authRequest()')
+	log.debug({scope: scope}, 'AccessControl.authorize()')
 
 	return req.user.isAdmin(scope).then((isAdmin) => {
 
@@ -90,7 +90,7 @@ if (req.user.name() == User.NOBODY) {
 //return new Promise(function(resolve, reject) { reject(new Error('this error does not work')); });
 
 		if (isAdmin) {
-			return resolveFn('user is admin');
+			return Promise.resolve(true);
 			
 		} else if (! path.db) {
 			return rejectFn('scope requires admin user');
@@ -100,7 +100,7 @@ if (req.user.name() == User.NOBODY) {
 		}
 		
 	}).then((access) => {
-		if (access === true) return Promise.resolve(true); //user is admin
+		if (access === true) return resolveFn(true, 'user is admin');
 
 		//normal user access depends on op.
 		switch(op) {
@@ -109,7 +109,7 @@ if (req.user.name() == User.NOBODY) {
 			case 'getViewRows':			
 				var granted = access.Read != Table.ROW_SCOPES.NONE;
 				if (granted) {
-					return resolveFn('user has ' + access.Read + ' access to ' + scope.database);
+					return resolveFn(access, 'user has ' + access.Read + ' access to ' + scope.database);
 				} else {
 					return rejectFn('Read access is none.');
 				} 
@@ -120,7 +120,7 @@ if (req.user.name() == User.NOBODY) {
 			case 'generateCSVFile':			
 				var granted = access.Read != Table.ROW_SCOPES.NONE;
 				if (granted) {
-					return resolveFn('user has ' + access.Read + ' read access to ' + scope.table);
+					return resolveFn(access, 'user has ' + access.Read + ' read access to ' + scope.table);
 				} else {
 					return rejectFn('Table read access is none.');
 				} 
@@ -128,7 +128,7 @@ if (req.user.name() == User.NOBODY) {
 			case 'postRows':			
 				var granted = access.Write != Table.ROW_SCOPES.NONE;
 				if (granted) {
-					return resolveFn('user has ' + access.Write + ' write access to ' + scope.table);
+					return resolveFn(access, 'user has ' + access.Write + ' write access to ' + scope.table);
 				} else {
 					return rejectFn('Table write access is none.');
 				} 
@@ -142,23 +142,23 @@ if (req.user.name() == User.NOBODY) {
 						var owned = path.db.rowsOwned(path.table.name, rowIds, req.user.principal(), 
 							function(err, owned) {
 								if (err) {
-									log.warn({err: err}, '...AccessControl.authRequest');
+									log.warn({err: err}, '...AccessControl.authorize');
 									return reject(err);
 								} 
 								if ( ! owned) {
 									var err = new Error('Table write access is own.');
-									log.warn({err: err}, '...AccessControl.authRequest');
+									log.warn({err: err}, '...AccessControl.authorize');
 									return reject(err);
 								}
 								var msg = 'user has ' + access.Write + ' write access to ' + scope.table;
-								log.debug({msg: msg}, '...AccessControl.authRequest');
+								log.debug({msg: msg}, '...AccessControl.authorize');
 								return resolve(true);
 							});
 						});
 				} else {
 					var granted = access.Write != Table.ROW_SCOPES.NONE;
 					if (granted) {
-						return resolveFn('user has ' + access.Write + ' write access to ' + scope.table);
+						return resolveFn(access, 'user has ' + access.Write + ' write access to ' + scope.table);
 					} else {
 						return rejectFn('Table write access is none.');
 					} 

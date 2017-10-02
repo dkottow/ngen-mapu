@@ -709,13 +709,10 @@ Controller.prototype.postRows = function(req, res) {
 
 		var rows = req.body;
 	
-		// TODO
-		/*
-		var table_access = data.table.access(req.user);
-		if (table_access.write != Table.ROW_SCOPES.ALL) {
-			me.stripOwnerField(rows);
+		//only users with full write access to table are allowed to set owner
+		if (access.Write == Table.ROW_SCOPES.OWN) {
+			rows = me.stripOwnerField(rows);
 		}
-		*/
 
 		var opts = req.query;
 		opts.user = req.user;
@@ -749,13 +746,10 @@ Controller.prototype.putRows = function(req, res) {
 
 		var rows = req.body;
 
-		//TODO
-		/*
-		var table_access = data.table.access(req.user);
-		if (table_access.write != Table.ROW_SCOPES.ALL) {
-			me.stripOwnerField(rows);
+		//only users with full write access to table are allowed to set owner
+		if (access.Write == Table.ROW_SCOPES.OWN) {
+			rows = me.stripOwnerField(rows);
 		}
-		*/
 
 		var opts = req.query;
 		opts.user = req.user;

@@ -147,6 +147,7 @@ if (req.user.name() == User.NOBODY) {
 								} 
 								if ( ! owned) {
 									var err = new Error('Table write access is own.');
+									err.code = 401;
 									log.warn({err: err}, '...AccessControl.authorize');
 									return reject(err);
 								}
@@ -158,7 +159,7 @@ if (req.user.name() == User.NOBODY) {
 				} else {
 					var granted = access.Write != Table.ROW_SCOPES.NONE;
 					if (granted) {
-						return resolveFn(access, 'user has ' + access.Write + ' write access to ' + scope.table);
+						return resolveFn('user has ' + access.Write + ' write access to ' + scope.table);
 					} else {
 						return rejectFn('Table write access is none.');
 					} 

@@ -227,7 +227,7 @@ Database.prototype.getInsertFields = function(rows, table) {
 			//always insert these fields, regardless of present in row
 			return true;
 		}
-		if (row[field.name]) {
+		if (row[field.name] !== undefined) {
 			//insert if present row
 			return true;
 		}
@@ -259,7 +259,7 @@ Database.prototype.getUpdateFields = function(rows, table) {
 			//always update these fields, regardless of present in row
 			return true;
 		}
-		if (row[field.name]) {
+		if (row[field.name] !== undefined) {
 			//update if present row
 			return true;
 		}

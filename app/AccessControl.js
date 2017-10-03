@@ -15,6 +15,7 @@
 */
 
 var _ = require('underscore');
+var util = require('util');
 var fs = require('fs');
 var path = require('path');
 var crypto = require('crypto');
@@ -62,12 +63,12 @@ AccessControl.prototype.authorize = function(op, req, path) {
 				return resolveFn(true, 'valid nonce');
 			});
 		} else {
-			return rejectFn('op does not support nonce');
+			return rejectFn(util.format("Action '%s' does not support nonce", op));
 		}
 	}
 
 	if ( ! req.user) {
-		return rejectFn('op requires authenticated user');
+		return rejectFn(util.format("Action '%s' requires authenticated user", op));
 	}
 
 //TODO remove me after pilot	
@@ -93,7 +94,7 @@ if (req.user.name() == User.NOBODY) {
 			return Promise.resolve(true);
 			
 		} else if (! path.db) {
-			return rejectFn('scope requires admin user');
+			return rejectFn(util.format("Action '%s' requires admin access.", op));
 
 		} else {
 			return req.user.access(path.db, scope);
@@ -111,7 +112,7 @@ if (req.user.name() == User.NOBODY) {
 				if (granted) {
 					return resolveFn(access, 'user has ' + access.Read + ' access to ' + scope.database);
 				} else {
-					return rejectFn('Read access is none.');
+					return rejectFn(util.format("Action '%s' requires read access to '%s'", op, scope.database));
 				} 
 
 			case 'getRows':			
@@ -122,7 +123,7 @@ if (req.user.name() == User.NOBODY) {
 				if (granted) {
 					return resolveFn(access, 'user has ' + access.Read + ' read access to ' + scope.table);
 				} else {
-					return rejectFn('Table read access is none.');
+					return rejectFn(util.format("Action '%s' requires read access to table '%s'", op, scope.table));
 				} 
 				
 			case 'postRows':			
@@ -130,7 +131,7 @@ if (req.user.name() == User.NOBODY) {
 				if (granted) {
 					return resolveFn(access, 'user has ' + access.Write + ' write access to ' + scope.table);
 				} else {
-					return rejectFn('Table write access is none.');
+					return rejectFn(util.format("Action '%s' requires write access to table '%s'", op, scope.table));
 				} 
 
 			case 'putRows':			
@@ -146,7 +147,7 @@ if (req.user.name() == User.NOBODY) {
 									return reject(err);
 								} 
 								if ( ! owned) {
-									var err = new Error('Table write access is own.');
+									var err = new Error(util.format("Action '%s' requires write access to all affected rows on table '%s'", op, scope.table));
 									err.code = 401;
 									log.warn({err: err}, '...AccessControl.authorize');
 									return reject(err);
@@ -161,19 +162,26 @@ if (req.user.name() == User.NOBODY) {
 					if (granted) {
 						return resolveFn('user has ' + access.Write + ' write access to ' + scope.table);
 					} else {
-						return rejectFn('Table write access is none.');
+						return rejectFn(util.format("Action '%s' requires write access to table '%s'", op, scope.table));
 					} 
 				}
 				return;						
 							
+			case 'chownRows':			
+				var granted = access.Write == Table.ROW_SCOPES.ALL;
+				if (granted) {
+					return resolveFn(access, 'user has ' + access.Write + ' write access to ' + scope.table);
+				} else {
+					return rejectFn(util.format("Action '%s' requires write access 'ALL' for table '%s'", op, scope.table));
+				} 
+
 			case 'putDatabase':			
 			case 'patchDatabase':			
 			case 'delDatabase':			
-			case 'chownRows':			
-				return rejectFn('op requires admin user.');
+				return rejectFn(util.format("Action '%s' requires admin access.", op));
 				
 			default:
-				return rejectFn('unknown op ' + op);
+				return rejectFn(util.format("Unknown action '%s'", op));
 		}		
 	});	
 }

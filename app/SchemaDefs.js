@@ -50,6 +50,11 @@ SchemaDefs.MANDATORY_TABLES = [
 				"type": "text(256)"
 			},
 			{
+				"name": "Principal_id",
+				"type": "integer",
+				"fk_table": "_d365Principals"
+			},
+			{
 				"name": "Read_id",
 				"type": "integer",
 				"fk_table": "_d365AccessScope"
@@ -190,7 +195,7 @@ SchemaDefs.SYSTEM_ROWS = [
 	{
 		table: "_d365Properties",
 		rows: [
-			{ "Name": "version", "Value": config.version }, //semver.org
+			{ "Name": "version", "Value": JSON.stringify(config.version) }, //semver.org
 		]
 	}
 ];

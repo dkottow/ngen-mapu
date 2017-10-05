@@ -199,5 +199,13 @@ SchemaDefs.SYSTEM_ROWS = [
 		]
 	}
 ];
-	
+
+SchemaDefs.PROPERTIES_TABLE = "_d365Properties";
+SchemaDefs.PROPERTIES_FIELDS = {
+	name : 'Name',
+	table : 'TableName',
+	field : 'FieldName',
+	value : 'Value'
+};
+
 exports.SchemaDefs = SchemaDefs;

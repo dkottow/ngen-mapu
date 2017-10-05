@@ -347,6 +347,15 @@ DatabaseMssql.prototype.readSchema = function(cbAfter) {
 		});
 
 		this.connect().then(() => {
+			//read system properties 
+			var sql = Database.systemPropertySelectSQL();
+			return this.conn().request().query(sql);
+
+		}).then(result => {
+			console.dir(result.recordset);
+			return Promise.resolve();			
+
+		}).then(result => {
 			//read schema properties 
 			var sql = 'SELECT ' + fields.join(',') 
 					+ ' FROM ' + Schema.TABLE;
@@ -355,7 +364,7 @@ DatabaseMssql.prototype.readSchema = function(cbAfter) {
 
 		}).then(result => {
 			//console.dir(result.recordset);
-
+			
 			_.each(result.recordset, function(r) {
 				schemaProps[r.name] = JSON.parse(r.value);
 			});

@@ -27,13 +27,14 @@ User.PROCEDURES = {
 
 User.EVERYONE = 'Everyone'; //used in AccessControl.filterQuery and Database.rowsOwned
 User.NOBODY = 'unknown';
+User.SYSTEM = 'system';
 
 User.prototype.name = function() {
     return this._name || User.NOBODY;
 }
 
 User.SystemUser = function() {
-    return new User('system');
+    return new User(User.SYSTEM);
 }
 
 User.prototype.principal = function() {

@@ -36,8 +36,8 @@ SqlBuilderFactory.create = function(tableGraph) {
 		return new SqlBuilderSqlite(tableGraph);
 
 	} else if (sql_engine == 'mssql') {
-      var SqlBuilderMssql = require('./mssql/SqlBuilderMssql.js').SqlBuilderMssql;
-		return new SqlBuilderMssql(tableGraph);
+        var SqlBuilderMssql = require('./mssql/SqlBuilderMssql.js').SqlBuilderMssql;
+    	return new SqlBuilderMssql(tableGraph);
 	}
 	throw new Error(util.format("unsupported sql engine '%s'", sql_engine));	
 }

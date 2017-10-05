@@ -21,6 +21,7 @@ var Papa = require('papaparse');
 
 var Table = require('./Table.js').Table;
 var Schema = require('./Schema.js').Schema;
+var SchemaDefs = require('./SchemaDefs.js').SchemaDefs;
 var SchemaChange = require('./SchemaChange.js').SchemaChange;
 var User = require('./User.js').User;
 
@@ -476,5 +477,20 @@ Database.prototype.allResult = function(tableName, rows, countRows, sql, options
 	log.trace({result: result}, "...Database.allResult()");
 	return result;
 }
+
+Database.systemPropertySelectSQL = function() {
+	var fields = _.map(_.values(SchemaDefs.PROPERTIES_FIELDS), function(f) {
+		return SqlHelper.EncloseSQL(f);
+	});
+	var sql = util.format("SELECT %s FROM %s WHERE own_by = '%s'", 
+		fields.join(', '),
+		SchemaDefs.PROPERTIES_TABLE,
+		User.SYSTEM
+	);
+	log.debug({sql: sql}, 'Database.systemPropertySelectSQL')
+	return sql;	
+}
+
+
 
 exports.Database = Database;

@@ -67,11 +67,19 @@ var Table = function(tableDef) {
 
 		_.each(Table.SYSTEM_PROPERTIES, function(p) {
 			if (tableDef.hasOwnProperty(p)) {
+<<<<<<< HEAD
 				me[p] = tableDef[p];	
 			} else {
 				me[p] = Table.SYSTEM_PROPERTY_DEFAULTS[p];
 			}
 		});
+=======
+				this[p] = tableDef[p];	
+			} else {
+				this[p] = Table.SYSTEM_PROPERTY_DEFAULTS[p];
+			}
+		}, this);
+>>>>>>> 5fa96dad675b0418bd5759fdd86713236061f75c
 
 	}
 }

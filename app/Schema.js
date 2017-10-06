@@ -207,11 +207,14 @@ Schema.prototype.systemPropertyRows = function() {
 			rows.push(row);
 		}
 	}, this);
+<<<<<<< HEAD
 
 	_.each(this.tables, function(table) {
 		rows = rows.concat(table.systemPropertyRows());
 	});
 	
+=======
+>>>>>>> 5fa96dad675b0418bd5759fdd86713236061f75c
 	return rows;
 }
 
@@ -255,6 +258,10 @@ Schema.prototype.applyChanges = function(changes) {
 Schema.SYSTEM_PROPERTIES = ['join_trees', 'version'];
 Schema.SYSTEM_PROPERTY_DEFAULTS = {
 	join_trees: [],
+<<<<<<< HEAD
+=======
+	version: config.version
+>>>>>>> 5fa96dad675b0418bd5759fdd86713236061f75c
 };
 
 Schema.systemPropertySelectSQL = function() {

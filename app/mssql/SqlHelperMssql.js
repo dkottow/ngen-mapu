@@ -107,14 +107,6 @@ SqlHelperMssql.Schema.splitName = function(dbName) {
 	return dbName.split(SqlHelperMssql.ACCOUNT_DATABASE_SEPARATOR);
 }
 
-SqlHelperMssql.Schema.createPropsTableSQL = function(name) {
-	return "CREATE TABLE " + name + " ("
-		+ " name VARCHAR(256) NOT NULL, "
-		+ "	value VARCHAR(MAX), "
-		+ "	PRIMARY KEY (name) "
-		+ ");\n\n"
-}
-
 SqlHelperMssql.Schema.dropSQL = function(dbName) {
 	return util.format("IF EXISTS (SELECT * FROM sys.databases WHERE name='%s')\n"
 			+ 'BEGIN\n'
@@ -125,15 +117,6 @@ SqlHelperMssql.Schema.dropSQL = function(dbName) {
 
 
 /******** Table stuff ********/
-
-SqlHelperMssql.Table.createPropsTableSQL = function(name) {
-	return "CREATE TABLE " + name + " ("
-		+ " name VARCHAR(256) NOT NULL, "
-		+ "	props VARCHAR(MAX), "
-		+ " disabled INTEGER DEFAULT 0, "
-		+ "	PRIMARY KEY (name) "
-		+ ");\n\n";
-}
 
 SqlHelperMssql.Table.hasTriggers = function() { return false; }
 
@@ -202,16 +185,6 @@ SqlHelperMssql.Table.dropForeignKeysSQL = function(table, fk_table) {
 
 /********** Field **********/
 
-SqlHelperMssql.Field.createPropsTableSQL = function(name) {
-	return " CREATE TABLE " + name + " ("
-		+ ' table_name VARCHAR(256) NOT NULL, '
-		+ ' name VARCHAR(256) NOT NULL, '
-		+ ' props VARCHAR(MAX), '
-		+ ' disabled INTEGER DEFAULT 0, '
-		+ ' PRIMARY KEY (name, table_name) '
-		+ ");\n\n";
-}
-		
 SqlHelperMssql.Field.defaultSQL = function(field) {
 
 	if (_.contains(['mod_on', 'add_on'], field.name)) {

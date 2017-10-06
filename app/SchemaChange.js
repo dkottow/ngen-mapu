@@ -39,10 +39,6 @@ SchemaChange.OPS = {
 	, DEL_TABLE: 'del_table'
 
 	//non-structural	
-	, SET_PROP_TABLE: 'set_prop_table' 
-	, SET_PROP_FIELD: 'set_prop_field' 
-	, DISABLE_FIELD: 'disable_field'
-
 	, SET_ROW_ALIAS: 'set_row_alias'
 };
 

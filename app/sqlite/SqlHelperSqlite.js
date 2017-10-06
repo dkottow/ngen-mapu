@@ -58,29 +58,11 @@ SqlHelperSqlite.FileExtension = '.sqlite';
 
 SqlHelperSqlite.Schema.PragmaSQL = "PRAGMA journal_mode=WAL;\n\n";
 
-SqlHelperSqlite.Schema.createPropsTableSQL = function(name) {
-	return "CREATE TABLE " + name + " ("
-		+ " name VARCHAR NOT NULL, "
-		+ "	value VARCHAR, "
-		+ "	PRIMARY KEY (name) "
-		+ ");\n\n"
-}
-
 /******** Table stuff ********/
 
 SqlHelperSqlite.Table.createPrimaryKeySQL = function(name) {
 	return "PRIMARY KEY (id)";
 }
-
-SqlHelperSqlite.Table.createPropsTableSQL = function(name) {
-	return "CREATE TABLE " + name + " ("
-		+ " name VARCHAR NOT NULL, "
-		+ "	props VARCHAR, "
-		+ " disabled INTEGER DEFAULT 0, "
-		+ "	PRIMARY KEY (name) "
-		+ ");\n\n";
-}
-
 
 /* 
 
@@ -205,16 +187,6 @@ SqlHelperSqlite.Table.dropForeignKeysSQL = function(table) {
 
 /********** Field **********/
 
-SqlHelperSqlite.Field.createPropsTableSQL = function(name) {
-	return " CREATE TABLE " + name + " ("
-		+ ' table_name VARCHAR(256) NOT NULL, '
-		+ ' name VARCHAR NOT NULL, '
-		+ ' props VARCHAR, '
-		+ ' disabled INTEGER DEFAULT 0, '
-		+ ' PRIMARY KEY (name, table_name) '
-		+ ");\n\n";
-}
-		
 SqlHelperSqlite.Field.defaultSQL = function(field) {
 
 	if (_.contains(['mod_on', 'add_on'], field.name)) {

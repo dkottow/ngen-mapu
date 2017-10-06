@@ -156,16 +156,6 @@ Field.prototype.parse = function() {
 	throw new Error('Field base class does not define parse().');
 }
 
-Field.prototype.setProp = function(name, value) {
-	this.props = this.props || {};
-	this.props[name] = value;
-}
-
-Field.prototype.setDisabled = function(disabled) {
-	this.disabled = disabled == true;
-}
-
-
 Field.prototype.toSQL = function(table) {
 	var sql = '"' + this.name + '" ' + SqlHelper.Field.typeSQL(this.type);
 	if (this.name == 'id') sql += ' ' + SqlHelper.Field.autoIncrementSQL();

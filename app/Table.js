@@ -21,8 +21,8 @@ var util = require('util');
 var FieldFactory = require('./FieldFactory.js').FieldFactory;
 var Field = FieldFactory.class();
 */
-
 var SqlHelper = require('./SqlHelperFactory.js').SqlHelperFactory.create();
+var SchemaDefs = require('./SchemaDefs.js').SchemaDefs;
 var Field = require('./Field.js').Field;
 
 var log = require('./log.js').log;
@@ -67,11 +67,11 @@ var Table = function(tableDef) {
 
 		_.each(Table.SYSTEM_PROPERTIES, function(p) {
 			if (tableDef.hasOwnProperty(p)) {
-				this[p] = tableDef[p];	
+				me[p] = tableDef[p];	
 			} else {
-				this[p] = Table.SYSTEM_PROPERTY_DEFAULTS[p];
+				me[p] = Table.SYSTEM_PROPERTY_DEFAULTS[p];
 			}
-		}, this);
+		});
 
 	}
 }
@@ -162,10 +162,9 @@ Table.prototype.viewFields = function() {
 }
 
 Table.prototype.enabledFields = function() {
-	var enabledFields = _.filter(this.fields()
-		, function(f) {
-			return f.disabled != true;
-		});
+	var enabledFields = _.filter(this.fields(), function(f) {
+		return f.disabled != true;
+	});
 
 	return _.pluck(enabledFields, 'name');
 }
@@ -279,6 +278,34 @@ Table.prototype.dropViewSQL = function() {
 
 Table.prototype.dropSQL = function() {
 	return 'DROP TABLE ' + this.name + ';\n\n';
+}
+
+Table.prototype.deletePropSQL = function() {
+	var sql = util.format("DELETE FROM %s WHERE %s = '%s'", 
+		SchemaDefs.PROPERTIES_TABLE,
+		SchemaDefs.PROPERTIES_FIELDS.table,
+		this.name
+	);
+	return sql;
+}
+
+Table.prototype.systemPropertyRows = function() {
+	var rows = [];
+	_.each(Table.SYSTEM_PROPERTIES, function(name) {
+		if (this.hasOwnProperty(name) 
+			&& this[name] != Table.SYSTEM_PROPERTY_DEFAULTS[name]) {
+
+			row[SchemaDefs.PROPERTIES_FIELDS.name] = name;
+			row[SchemaDefs.PROPERTIES_FIELDS.value] = JSON.stringify(this[name]);
+			rows.push(row);
+		}
+	}, this);
+
+	_.each(this.fields, function(field) {
+		rows = rows.concat(field.systemPropertyRows());
+	});
+	
+	return rows;
 }
 
 Table.TABLE_FIELD_SEPARATOR = '$';

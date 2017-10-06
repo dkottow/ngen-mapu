@@ -21,6 +21,7 @@ var assert = require('assert');
 var log = require('./log.js').log;
 
 var SqlHelper = require('./SqlHelperFactory.js').SqlHelperFactory.create();
+var SchemaDefs = require('./SchemaDefs.js').SchemaDefs;
 
 var Field = function(fieldDef) {
 	//prototype defs call the ctor with no args, get out!
@@ -67,11 +68,11 @@ var Field = function(fieldDef) {
 
 		_.each(Field.SYSTEM_PROPERTIES, function(p) {
 			if (fieldDef.hasOwnProperty(p)) {
-				this[p] = fieldDef[p];	
+				me[p] = fieldDef[p];	
 			} else {
-				this[p] = Field.SYSTEM_PROPERTY_DEFAULTS[p];
+				me[p] = Field.SYSTEM_PROPERTY_DEFAULTS[p];
 			}
-		}, this);
+		});
 
 	}
 }
@@ -165,6 +166,22 @@ Field.prototype.toSQL = function(table) {
 	sql += ' ' +  SqlHelper.Field.foreignKeySQL(table, this);
 	return sql;
 }
+
+Field.prototype.systemPropertyRows = function() {
+	var rows = [];
+	_.each(Field.SYSTEM_PROPERTIES, function(name) {
+		if (this.hasOwnProperty(name) 
+			&& this[name] != Field.SYSTEM_PROPERTY_DEFAULTS[name]) {
+
+			row[SchemaDefs.PROPERTIES_FIELDS.name] = name;
+			row[SchemaDefs.PROPERTIES_FIELDS.value] = JSON.stringify(this[name]);
+			rows.push(row);
+		}
+	}, this);
+
+	return rows;
+}
+
 
 //Field.TYPES = ['text', 'integer', 'decimal', 'date', 'timestamp', 'float' ];
 var FieldText = function(attrs) {

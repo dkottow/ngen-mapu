@@ -24,6 +24,7 @@ var Table = require('./Table.js').Table;
 var Field = require('./Field.js').Field;
 
 var SqlHelper = require('./SqlHelperFactory.js').SqlHelperFactory.create();
+var SchemaDefs = require('./SchemaDefs.js').SchemaDefs;
 
 var SchemaChange = function(patch, schema) {
 	this.schema = schema;
@@ -70,15 +71,6 @@ SchemaChange._create = function(patch, schema) {
 		//ignore
 		log.debug({patch: patch, SchemaChange: null}, 'SchemaChange._create()');
 		return null;
-
-	} else if (SCFieldProps.test(patch)) {
-		result = new SCFieldProps(patch, schema);
-		
-	} else if (SCDisableField.test(patch)) {
-		result = new SCDisableField(patch, schema);
-
-	} else if (SCTableProps.test(patch)) {
-		result = new SCTableProps(patch, schema);
 
 	} else if (SCTableRowAlias.test(patch)) {
 		result = new SCTableRowAlias(patch, schema);
@@ -164,6 +156,10 @@ SchemaChange.prototype.afterSQL = function(sqlBuilder) {
 	return []; //nothing
 }
 
+SchemaChange.prototype.insertRows = function() {
+	return []; //nothing
+}
+
 /**** SchemaChange ops *****/ 
 
 var SCAddField = function(patch, schema) {
@@ -209,9 +205,17 @@ SCAddField.prototype.toSQL = function(sqlBuilder) {
 		sqlBatches.push(SqlHelper.Table.createTriggerSQL(this.table));		
 	}
 
-	sqlBatches.push(field.insertPropSQL(this.table));
+	//sqlBatches.push(field.insertPropSQL(this.table));
 	
 	return sqlBatches;
+}
+
+SCAddField.prototype.insertRows = function() {
+	var field = this.table.field(this.changeObj.name);
+	return {
+		table: SchemaDefs.PROPERTIES_TABLE,
+		rows: field.systemPropertyRows()
+	};
 }
 
 
@@ -238,103 +242,6 @@ SCDelField.test = function(patch) {
 		&& /^\/tables\/(\w+)\/fields\/(\w+)$/.test(patch.path)); 
 }
 
-SCDelField.prototype.apply = function() {
-	this.table.removeField(this.field.name);	
-}
-
-SCDelField.prototype.toSQL = function(sqlBuilder) {
-	var sqlBatches = [];
-
-	sqlBatches.push(this.table.removeFieldSQL(this.field.name));
-	sqlBatches.push(this.table.dropViewSQL());
-	sqlBatches.push(sqlBuilder.createRowAliasViewSQL(this.table));
-
-	if (SqlHelper.Table.hasTriggers()) {
-		sqlBatches.push(SqlHelper.Table.dropTriggerSQL(this.table));		
-		sqlBatches.push(SqlHelper.Table.createTriggerSQL(this.table));		
-	}
-
-	sqlBatches.push(field.insertPropSQL(this.table));
-	
-	return sqlBatches;
-}
-*/
-
-/*
- * field properties. path e.g. /tables/customers/fields/name/props/order
- */
-
-var SCFieldProps = function(patch, schema) {
-	log.trace({patch: patch}, "SchemaChange.SCFieldProps()");
-	SchemaChange.call(this, patch, schema);
-	this.op = SchemaChange.OPS.SET_PROP_FIELD;
-	
-	var pathArray = patch.path.split('/');
-	pathArray.shift(); // leading slash,
-	pathArray.shift(); // 'tables' keyword
-	this.table = this.schema.table(pathArray.shift());
-	pathArray.shift(); // 'field' keyword
-	this.field = this.table.field(pathArray.shift());
-	pathArray.shift(); // 'props' keyword
-	this.patch_path = '/' + pathArray.join('/');
-	this.path = '/' + this.table.name + '/' + this.field.name + '/props';
-	this.patchObj = JSON.parse(JSON.stringify(this.field.props)); //hold a copy
-}
-
-
-SCFieldProps.prototype = new SchemaChange;	
-SCFieldProps.prototype.constructor = SCFieldProps;
-
-SCFieldProps.test = function(patch) {
-	return /^\/tables\/(\w+)\/fields\/(\w+)\/props\//.test(patch.path);	
-}
-
-SCFieldProps.prototype.apply = function() {
-	_.each(this.patchObj, function(v, k) {
-		this.field.setProp(k, v); 
-	}, this);
-}
-
-SCFieldProps.prototype.toSQL = function(sqlBuilder) {
-	return [ this.field.updatePropSQL(this.table) ];
-}
-
-
-/*
- * disable field path e.g. /tables/3/fields/4/disabled
- */
-
-var SCDisableField = function(patch, schema) {
-	log.trace({patch: patch}, "SchemaChange.SCDisableField()");
-	SchemaChange.call(this, patch, schema);
-	this.op = SchemaChange.OPS.DISABLE_FIELD;
-	
-	var pathArray = patch.path.split('/');
-	pathArray.shift(); // leading slash,
-	pathArray.shift(); // 'tables' keyword
-	this.table = this.schema.table(pathArray.shift());
-	pathArray.shift(); // 'field' keyword
-	this.field = this.table.field(pathArray.shift());
-	this.patch_path = '/' + pathArray.join('/');
-	this.path = '/' + this.table.name + '/' + this.field.name + '/disabled';
-	this.patchObj = JSON.parse(JSON.stringify(this.field)); 
-}
-
-
-SCDisableField.prototype = new SchemaChange;	
-SCDisableField.prototype.constructor = SCDisableField;
-
-SCDisableField.test = function(patch) {
-	return /^\/tables\/(\w+)\/fields\/(\w+)\/disabled/.test(patch.path);	
-}
-
-SCDisableField.prototype.apply = function() {
-	this.field.setDisabled(this.patchObj.disabled);
-}
-
-SCDisableField.prototype.toSQL = function(sqlBuilder) {
-	return [ this.field.updatePropSQL(this.table) ];
-}
 
 /*
  * add table. 
@@ -375,7 +282,7 @@ SCAddTable.prototype.toSQL = function(sqlBuilder) {
 
 	sqlBatches.push(table.createSQL());
 	sqlBatches.push(sqlBuilder.createRowAliasViewSQL(table));
-	sqlBatches.push(table.insertPropSQL({deep: true}));
+	//sqlBatches.push(table.insertPropSQL({deep: true}));
 
 	return sqlBatches;
 }
@@ -386,6 +293,14 @@ SCAddTable.prototype.afterSQL = function(sqlBuilder) {
 	var sql = SqlHelper.Table.createSearchSQL(table);
 	if (sql.length > 0) sqlBatches.push(sql);
 	return sqlBatches;
+}
+
+SCAddTable.prototype.insertRows = function() {
+	var table = this.schema.table(this.changeObj.name);
+	return {
+		table: SchemaDefs.PROPERTIES_TABLE,
+		rows: table.systemPropertyRows()
+	};
 }
 
 /*
@@ -427,8 +342,6 @@ SCSetTable.prototype.toSQL = function(sqlBuilder) {
 	var sql;
 	var sqlBatches = [];
 
-	sqlBatches.push(table.deletePropSQL({deep: true}));
-
 	sql = SqlHelper.Table.dropSearchSQL(table);
 	if (sql.length > 0) sqlBatches.push(sql);
 
@@ -437,14 +350,15 @@ SCSetTable.prototype.toSQL = function(sqlBuilder) {
 
 	sqlBatches.push(table.dropViewSQL());
 	sqlBatches.push(table.dropSQL());
-
+	sqlBatches.push(table.deletePropSQL());
+	
 	sqlBatches.push(table.createSQL());
 	sqlBatches.push(sqlBuilder.createRowAliasViewSQL(table));
 
 	sql = sqlBuilder.addDependenciesSQL(table);
 	if (sql.length > 0) sqlBatches.push(sql);
 
-	sqlBatches.push(table.insertPropSQL({deep: true}));
+	//TODO sqlBatches.push(table.insertPropSQL({deep: true}));
 
 	return sqlBatches;
 }
@@ -455,6 +369,14 @@ SCSetTable.prototype.afterSQL = function(sqlBuilder) {
 	var sql = SqlHelper.Table.createSearchSQL(table);
 	if (sql.length > 0) sqlBatches.push(sql);
 	return sqlBatches;
+}
+
+SCSetTable.prototype.insertRows = function() {
+	var table = this.schema.table(this.patchObj.name);
+	return {
+		table: SchemaDefs.PROPERTIES_TABLE,
+		rows: table.systemPropertyRows()
+	};
 }
 
 /*
@@ -495,7 +417,7 @@ SCDelTable.prototype.toSQL = function(sqlBuilder) {
 	var sql;
 	var sqlBatches = [];
 
-	sqlBatches.push(this.table.deletePropSQL({deep: true}));
+	//sqlBatches.push(this.table.deletePropSQL({deep: true}));
 
 	sql = SqlHelper.Table.dropSearchSQL(this.table);
 	if (sql.length > 0) sqlBatches.push(sql);
@@ -505,7 +427,8 @@ SCDelTable.prototype.toSQL = function(sqlBuilder) {
 
 	sqlBatches.push(this.table.dropViewSQL());
 	sqlBatches.push(this.table.dropSQL());
-
+	sqlBatches.push(this.table.deletePropSQL());
+	
  	return sqlBatches;
 }
 
@@ -550,45 +473,28 @@ SCTableRowAlias.prototype.toSQL = function(sqlBuilder) {
 		sqlBatches.push(SqlHelper.Table.createTriggerSQL(this.table));
 	}
 
-	sqlBatches.push(this.table.updatePropSQL());
-
+	var sql = util.format("DELETE FROM %s WHERE %s = '%s' AND %s = 'row_alias'", 
+		SchemaDefs.PROPERTIES_TABLE,
+		SchemaDefs.PROPERTIES_FIELDS.table,
+		this.name,
+		SchemaDefs.PROPERTIES_FIELDS.name
+	);
+	sqlBatches.push(sql);
+	
 	return sqlBatches;
 }
 
-/*
- * table properties. path e.g. /tables/3/props/order
- */
+SCTableRowAlias.prototype.insertRows = function() {
+	var row = {};
 
-var SCTableProps = function(patch, schema) {
-	log.trace({patch: patch}, "SchemaChange.SCTableProps()");
-	SchemaChange.call(this, patch, schema);
-	this.op = SchemaChange.OPS.SET_PROP_TABLE;
+	row[SchemaDefs.PROPERTIES_FIELDS.name] = 'row_alias';
+	row[SchemaDefs.PROPERTIES_FIELDS.table] = this.table.name;
+	row[SchemaDefs.PROPERTIES_FIELDS.value] = JSON.stringify(this.table.row_alias);
 	
-	var pathArray = patch.path.split('/');
-	pathArray.shift(); // leading slash,
-	pathArray.shift(); // 'tables' keyword
-	this.table = this.schema.table(pathArray.shift());
-	pathArray.shift(); // 'props' keyword
-	this.patch_path = '/' + pathArray.join('/');
-	this.path = '/' + this.table.name + '/props';
-	this.patchObj = JSON.parse(JSON.stringify(this.table.props)); //hold a copy
-}
-
-SCTableProps.prototype = new SchemaChange;	
-SCTableProps.prototype.constructor = SCTableProps;
-
-SCTableProps.test = function(patch) {
-	return /^\/tables\/(\w+)\/props\//.test(patch.path);	
-}
-
-SCTableProps.prototype.apply = function() {
-	_.each(this.patchObj, function(v, k) {
-		this.table.setProp(k, v); 
-	}, this);
-}
-
-SCTableProps.prototype.toSQL = function(sqlBuilder) {
-	return [ this.table.updatePropSQL() ];
+	return {
+		table: SchemaDefs.PROPERTIES_TABLE,
+		rows: [ row ] 
+	};
 }
 
 exports.SchemaChange = SchemaChange;

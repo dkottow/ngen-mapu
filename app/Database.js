@@ -287,6 +287,26 @@ Database.prototype.getFieldValues = function(row, fields) {
 	}
 }
 
+Database.prototype.chainInsertRows = function(rowGroups) {
+	var me = this;
+	var chainPromises = _.reduce(rowGroups, function(chainPromises, rowGroup) {
+		return chainPromises.then(result => {
+			log.trace({table: rowGroup.table}, 'create row group inserts');
+			return new Promise(function(resolve, reject) {
+				var rows = _.map(rowGroup.rows, function(row) { return _.clone(row); });
+				me.insert(rowGroup.table, rows, function(err) {
+					if (err) {
+						reject(err);
+					} else {
+						resolve();
+					} 
+				});							
+			});
+		});	
+	}, Promise.resolve());		
+	return chainPromises;
+}
+
 Database.prototype.write = function(cbAfter) {
 	log.debug("Database.write()...");
 	var me = this;
@@ -297,9 +317,11 @@ Database.prototype.write = function(cbAfter) {
 			return;
 		} 
 
-		var systemRows = me.schema.systemRows({ deep: true });
+		var systemRows = me.schema.systemRows();
 		log.trace({ systemRows: systemRows}, 'Database.write()');
 
+		 
+/*
 		var chainPromises = _.reduce(systemRows, function(chainPromises, rowGroup) {
 			return chainPromises.then(result => {
 				log.trace({table: rowGroup.table}, 'create row group inserts');
@@ -317,6 +339,9 @@ Database.prototype.write = function(cbAfter) {
 		}, Promise.resolve());		
 
 		chainPromises.then(result => {
+*/
+	
+		this.chainInsertRows(systemRows).then(result => {
 			log.debug("...Database.write()");
 			cbAfter();
 		}).catch(err => {
@@ -326,6 +351,13 @@ Database.prototype.write = function(cbAfter) {
 	});
 } 
 
+Database.prototype.getChangeRows = function(changes) {
+	var rowGroups = _.map(changes, function(change) {
+		return change.insertRows();
+	});
+	return rowGroups;
+}
+	
 Database.prototype.patchSchema = function(patches, cbResult) {
 	try {
 		log.debug({patches: patches}, 'Database.patchSchema()...');
@@ -372,17 +404,26 @@ Database.prototype.patchSchema = function(patches, cbResult) {
 			me.writeSchemaChanges(changes, function(err) {
 
 				if (err) {
-					log.error({err: err}, "Database.patchSchema() failed.");
+					log.error({err: err}, "Database.patchSchema() - writeSchemaChanges failed.");
 					//TODO read from disk?
 					cbPatchError(err);
 					return;
 				}
+				var rows = me.getChangeRows(changes);	
+				log.debug({ changeRows: rows}, 'Database.patchSchema()');
+				me.chainInsertRows(rows).then(result => {
 
-				//replace database schema by patched one 
-				me.setSchema(patchedSchema);
+					//replace database schema by patched one 
+					me.setSchema(patchedSchema);
+					
+					//return patched schema info (use getInfo to return rowCounts)
+					me.getInfo(cbResult);
 
-				//return patched schema info (use getInfo to return rowCounts)
-				me.getInfo(cbResult);
+				}).catch(err => {
+					log.error({err: err}, "Database.patchSchema() - insertChangeRows() failed.");
+					cbPatchError(err);
+				});
+	
 			});
 
 		});

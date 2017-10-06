@@ -207,6 +207,11 @@ Schema.prototype.systemPropertyRows = function() {
 			rows.push(row);
 		}
 	}, this);
+
+	_.each(this.tables, function(table) {
+		rows = rows.concat(table.systemPropertyRows());
+	});
+	
 	return rows;
 }
 
@@ -250,7 +255,6 @@ Schema.prototype.applyChanges = function(changes) {
 Schema.SYSTEM_PROPERTIES = ['join_trees', 'version'];
 Schema.SYSTEM_PROPERTY_DEFAULTS = {
 	join_trees: [],
-	version: config.version
 };
 
 Schema.systemPropertySelectSQL = function() {

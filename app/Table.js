@@ -65,25 +65,24 @@ var Table = function(tableDef) {
 
 		me.name = tableDef.name;
 
-		//row alias
-		me.row_alias = tableDef.row_alias || [];
-
-		//dont set disable prop if false
-		if (tableDef.disabled) me.disabled = true;
-
-		//property values
-		me.props = tableDef.props || {};
+		_.each(Table.SYSTEM_PROPERTIES, function(p) {
+			if (tableDef.hasOwnProperty(p)) {
+				this[p] = tableDef[p];	
+			} else {
+				this[p] = Table.SYSTEM_PROPERTY_DEFAULTS[p];
+			}
+		}, this);
 
 	}
 }
 
 Table.MANDATORY_FIELDS = [
-	{ name: 'id', type: 'integer', props: { order: 10} }
-	, { name : 'own_by', type: 'text(256)', props: {order: 110} }
-	, { name : 'mod_by', type: 'text(256)', props: {order: 120} }
-	, { name : 'mod_on', type: 'timestamp', props: {order: 130} }
-	, { name : 'add_by', type: 'text(256)', props: {order: 140} }
-	, { name : 'add_on', type: 'timestamp', props: {order: 150} }
+	{ name: 'id', type: 'integer' }
+	, { name : 'own_by', type: 'text(256)' }
+	, { name : 'mod_by', type: 'text(256)' }
+	, { name : 'mod_on', type: 'timestamp' }
+	, { name : 'add_by', type: 'text(256)' }
+	, { name : 'add_on', type: 'timestamp' }
 ];
 
 Table.ROW_SCOPES = {
@@ -92,8 +91,6 @@ Table.ROW_SCOPES = {
 	ALL: "all" 
 }
 
-Table.TABLE = '__tableprops__';
-Table.TABLE_FIELDS = ['name', 'props', 'disabled'];
 Table.ALL_FIELDS = '*';
 
 Table.TABLES = {
@@ -106,94 +103,16 @@ Table.FIELDS = {
 	ACCESS_WRITE: 'Write'
 };
 
-//only these are stored and returned as JSON
-Table.PROPERTIES = ['order', 'label'];
+Table.SYSTEM_PROPERTIES = ['row_alias', 'disabled'];
+Table.SYSTEM_PROPERTY_DEFAULTS = {
+	row_alias: [],
+	disabled: false
+};
 
 Table.prototype.setProp = function(name, value) {
+	this.props = this.props || {};
 	this.props[name] = value;
 }
-
-Table.prototype.persistentProps = function() {
-	var dbProps = {
-		row_alias: this.row_alias
-	};
-	_.extend(dbProps, _.pick(this.props, Table.PROPERTIES));
-	return dbProps;
-}
-
-
-Table.prototype.updatePropSQL = function(opts) {
-
-	opts = opts || {};
-	var deep = opts.deep || false;
-
-	var props = this.persistentProps();
-
-	var sql = "UPDATE " + Table.TABLE 
-			+ " SET props = '" + JSON.stringify(props) + "'"
-			+ " , disabled = " + (this.disabled ? 1 : 0)
-			+ " WHERE name = '" + this.name + "'; ";
-
-	if (deep) {
-		_.each(this.fields(), function(f) {
-			sql += "\n" + f.updatePropSQL(this);
-		}, this);
-	}
-
-	log.trace({sql: sql}, "Table.updatePropSQL()");
-	return sql;
-}
-
-Table.prototype.insertPropSQL = function(opts) {
-
-	opts = opts || {};
-	var deep = opts.deep || false;
-
-	var props = this.persistentProps();
-
-	var values = _.map([
-			this.name, 
-			JSON.stringify(props),
-		], function(v) {
-		return "'" + v + "'";
-	}).concat([
-		this.disabled ? 1 : 0
-	]);
-
-	var fields = _.map(Table.TABLE_FIELDS, function(f) {
-		return '"' + f + '"';
-	});
-
-	var sql = 'INSERT INTO ' + Table.TABLE
-			+ ' (' + fields.join(',') + ') ' 
-			+ ' VALUES (' + values.join(',') + '); ';
-
-	if (deep) {
-		_.each(this.fields(), function(f) {
-			sql += "\n" + f.insertPropSQL(this);
-		}, this);
-	}
-
-	log.trace({sql: sql}, "Table.insertPropSQL()");
-	return sql;
-}
-
-Table.prototype.deletePropSQL = function(opts) {
-	opts = opts || {};
-	var deep = opts.deep || false;
-
-	var sql = 'DELETE FROM ' + Table.TABLE 
-		+ " WHERE name = '" + this.name + "'" + ';\n';
-
-	if (deep) {
-		sql += 'DELETE FROM ' + Field.TABLE
-		+ " WHERE table_name = '" + this.name + "'" + ';\n';
-	}
-
-	log.trace({sql: sql}, "Table.deletePropSQL()");
-	return sql;
-}
-
 
 
 Table.prototype.fields = function() {
@@ -294,13 +213,11 @@ Table.prototype.toJSON = function() {
 
 	var result = {
 		name: this.name 
-		, row_alias: this.row_alias
-		, props: _.pick(this.props, Table.PROPERTIES)
 	};
 
-	if (this.disabled) {
-		result.disabled = this.disabled;
-	}
+	_.each(Table.SYSTEM_PROPERTIES, function(p) {
+		result[p] = this[p];
+	}, this);
 
 	result.fields = _.mapObject(this.fields(), function(field) {
 		return field.toJSON();

@@ -335,153 +335,96 @@ DatabaseMssql.prototype.readSchema = function(cbAfter) {
 
 	var me = this;
 
-	try {
-		log.debug({db: this.config}, "Database.readSchema()");
-		me._readingSchema = true;
-		var schemaProps = {
-			name: this.name()
-		};
+	log.debug({db: this.config}, "Database.readSchema()");
+	me._readingSchema = true;
+
+	var schemaData = {
+		name: this.name(),
+		tables: {}
+	};
+	
+	this.connect().then(() => {
+
+		//read field definitions from information schema 
+		var sql = 'SELECT C.table_name, C.column_name, C.data_type ' 
+		+ ', C.character_maximum_length, C.numeric_precision, C.numeric_scale'
+		+ ', C.is_nullable, C.column_default'  
+		+ ' FROM information_schema.columns C'
+		+ ' INNER JOIN information_schema.tables T'
+		+ ' ON C.table_name = T.table_name '
+		+ " WHERE table_type = 'BASE TABLE'";
+
+		return this.conn().request().query(sql);
+
+	}).then(result => {
+		//console.dir(result.recordset);
+
+		_.each(result.recordset, function(r) {
+
+			if ( ! schemaData.tables[r.table_name] ) {
+				schemaData.tables[r.table_name] = { 
+					name: r.table_name,
+					fields: {} 
+				};					
+			}
+			var field = { 
+				name: r.column_name,
+				type: SqlHelper.Field.fromSQLType(r),
+				notnull: 1*(r.is_nullable == 'NO')	//0 or 1
+			};
+			schemaData.tables[r.table_name].fields[r.column_name] = field;
+		});
+
+	}).then(result => {
+
+		//read foreign key definitions from information schema 
+		var sql = 'SELECT KCU1.column_name'
+		+ ', KCU1.table_name'
+		+ ', KCU2.TABLE_NAME AS fk_table'
+		+ ' FROM INFORMATION_SCHEMA.REFERENTIAL_CONSTRAINTS RC'
+		+ ' JOIN INFORMATION_SCHEMA.KEY_COLUMN_USAGE KCU1'
+		+ '		ON KCU1.CONSTRAINT_CATALOG = RC.CONSTRAINT_CATALOG' 
+		+ '		AND KCU1.CONSTRAINT_SCHEMA = RC.CONSTRAINT_SCHEMA'
+		+ '		AND KCU1.CONSTRAINT_NAME = RC.CONSTRAINT_NAME'
+		+ ' JOIN INFORMATION_SCHEMA.KEY_COLUMN_USAGE KCU2'
+		+ '		ON KCU2.CONSTRAINT_CATALOG = RC.UNIQUE_CONSTRAINT_CATALOG' 
+		+ '		AND KCU2.CONSTRAINT_SCHEMA = RC.UNIQUE_CONSTRAINT_SCHEMA'
+		+ '		AND KCU2.CONSTRAINT_NAME = RC.UNIQUE_CONSTRAINT_NAME'
+		+ '		AND KCU2.ORDINAL_POSITION = KCU1.ORDINAL_POSITION';
+
+		return this.conn().request().query(sql);
+
+	}).then(result => {
+		//console.log(result.recordset);
+
+		_.each(result.recordset, function(r) {
+			var field = schemaData.tables[r.table_name].fields[r.column_name];
+			field.fk = 1;
+			field.fk_table = r.fk_table;
+		});
+
+		log.debug({ schema: JSON.stringify(schemaData) }, '...Database.readSchema()');
+
+		//read system properties 
+		var sql = Schema.systemPropertySelectSQL();
+		return this.conn().request().query(sql);
+
+	}).then(result => {
+
+		log.debug({ props: JSON.stringify(result.recordset) }, '...Database.readSchema()');
+
+		Schema.setSystemProperties(schemaData, result.recordset);
+		me.setSchema(schemaData);
 		
-		var fields = _.map(Schema.TABLE_FIELDS, function(f) {
-			return '"' + f + '"';
-		});
-
-		this.connect().then(() => {
-			//read system properties 
-			var sql = Database.systemPropertySelectSQL();
-			return this.conn().request().query(sql);
-
-		}).then(result => {
-			console.dir(result.recordset);
-			return Promise.resolve();			
-
-		}).then(result => {
-			//read schema properties 
-			var sql = 'SELECT ' + fields.join(',') 
-					+ ' FROM ' + Schema.TABLE;
-
-			return this.conn().request().query(sql);
-
-		}).then(result => {
-			//console.dir(result.recordset);
-			
-			_.each(result.recordset, function(r) {
-				schemaProps[r.name] = JSON.parse(r.value);
-			});
-
-			var fields = _.map(Table.TABLE_FIELDS, function(f) {
-				return '"' + f + '"';
-			});
-
-			//read table properties 
-			var sql = 'SELECT ' + fields.join(',') 
-					+ ' FROM ' + Table.TABLE;
-
-			return this.conn().request().query(sql);
-
-		}).then(result => {
-			//console.dir(result.recordset);
-
-			var tables = _.map(result.recordset, function(r) {
-				var table = { 
-					name: r.name,
-					disabled: r.disabled
-				};
-				var props =  JSON.parse(r.props);
-				table.row_alias = props.row_alias;
-				table.props = _.pick(props, Table.PROPERTIES);
-				return table;
-			});
-
-			schemaProps.tables = _.object(_.pluck(tables, 'name'), tables);
-				
-			var fields = _.map(Field.TABLE_FIELDS, function(f) {
-				return '"' + f + '"';
-			});
-
-			//read field properties 
-			var sql = 'SELECT ' + fields.join(',') 
-					+ ' FROM ' + Field.TABLE;
-
-			return this.conn().request().query(sql);
-
-		}).then(result => {
-			//console.dir(result.recordset);
-
-			_.each(result.recordset, function(r) {
-				var field = { 
-					name: r.name,
-					disabled: r.disabled,
-					fk: 0	
-				};
-				var props =  JSON.parse(r.props);
-				field.props = _.pick(props, Field.PROPERTIES);
-				schemaProps.tables[r.table_name].fields = schemaProps.tables[r.table_name].fields || {};
-				schemaProps.tables[r.table_name].fields[r.name] = field;
-			});
-
-			//read field definitions from information schema 
-			var sql = 'SELECT table_name, column_name, data_type ' 
-					+ ', character_maximum_length, numeric_precision, numeric_scale'
-					+ ', is_nullable, column_default'  
-					+ ' FROM information_schema.columns'
-					+ util.format(' WHERE table_name in (%s)', "'" 
-						+ _.pluck(schemaProps.tables, 'name').join("', '") + "'");
-
-			return this.conn().request().query(sql);
-
-		}).then(result => {
-			//console.dir(result.recordset);
-
-			_.each(result.recordset, function(r) {
-				var field = schemaProps.tables[r.table_name].fields[r.column_name];
-				field.type = SqlHelper.Field.fromSQLType(r);
-				field.notnull = 1*(r.is_nullable == 'NO');	//0 or 1
-			});
-
-			//read foreign key definitions from information schema 
-			var sql = 'SELECT KCU1.column_name'
-					+ ', KCU1.table_name'
-					+ ', KCU2.TABLE_NAME AS fk_table'
-					+ ' FROM INFORMATION_SCHEMA.REFERENTIAL_CONSTRAINTS RC'
-					+ ' JOIN INFORMATION_SCHEMA.KEY_COLUMN_USAGE KCU1'
-					+ '		ON KCU1.CONSTRAINT_CATALOG = RC.CONSTRAINT_CATALOG' 
-					+ '		AND KCU1.CONSTRAINT_SCHEMA = RC.CONSTRAINT_SCHEMA'
-					+ '		AND KCU1.CONSTRAINT_NAME = RC.CONSTRAINT_NAME'
-					+ ' JOIN INFORMATION_SCHEMA.KEY_COLUMN_USAGE KCU2'
-					+ '		ON KCU2.CONSTRAINT_CATALOG = RC.UNIQUE_CONSTRAINT_CATALOG' 
-					+ '		AND KCU2.CONSTRAINT_SCHEMA = RC.UNIQUE_CONSTRAINT_SCHEMA'
-					+ '		AND KCU2.CONSTRAINT_NAME = RC.UNIQUE_CONSTRAINT_NAME'
-					+ '		AND KCU2.ORDINAL_POSITION = KCU1.ORDINAL_POSITION';
-
-			return this.conn().request().query(sql);
-
-		}).then(result => {
-			//console.log(result.recordset);
-
-			_.each(result.recordset, function(r) {
-				var field = schemaProps.tables[r.table_name].fields[r.column_name];
-				field.fk = 1;
-				field.fk_table = r.fk_table;
-			});
-
-			log.trace({ schema: JSON.stringify(schemaProps) }, '...Database.readSchema()');
-
-			me.setSchema(schemaProps);
-			me._readingSchema = false;
-			cbAfter();
-
-		}).catch(err => {
-			me._readingSchema = false;
-			log.error({err: err}, "Database.readSchema() query exception.");
-			cbAfter(err);
-		});
-
-	} catch(err) {
 		me._readingSchema = false;
-		log.error({err: err}, "Database.readSchema() exception.");
+		cbAfter();
+
+	}).catch(err => {
+		me._readingSchema = false;
+		log.error({err: err}, "Database.readSchema() query exception.");
 		cbAfter(err);
-	}
+	});
+
 }
 
 DatabaseMssql.prototype.logTransactionError = function(err, fn) {

@@ -246,7 +246,6 @@ SqlBuilder.prototype.queryViewSQL = function(viewName, fields, filters) {
 SqlBuilder.prototype.createDatabaseSQLBatches = function(schema, options) {
 
 	return Promise.all([
-		this._createPropsSQLBatches(schema),
 		this._createTablesSQLBatches(schema),
 		this._createViewsSQLBatches(schema),
 		this._createStoredProcsSQLBatches(schema)
@@ -254,18 +253,6 @@ SqlBuilder.prototype.createDatabaseSQLBatches = function(schema, options) {
 	]).then(function(result) {
 		return _.flatten(result);
 	});
-}
-
-SqlBuilder.prototype._createPropsSQLBatches = function(schema) {
-	var createSysTablesSQL = SqlHelper.Schema.createPropsTableSQL(Schema.TABLE)
-		+ SqlHelper.Table.createPropsTableSQL(Table.TABLE)
-		+ SqlHelper.Field.createPropsTableSQL(Field.TABLE);
-
-	var sysTablesInsertSQL = schema.insertPropSQL({deep: true}); 
-
-	var sql = createSysTablesSQL + '\n\n'
-		+ sysTablesInsertSQL + '\n\n';
-	return Promise.resolve([ sql ]);	
 }
 
 SqlBuilder.prototype._createTablesSQLBatches = function(schema) {

@@ -32,17 +32,23 @@ var Field = function(fieldDef) {
 	function init(fieldDef) {
 		var errMsg = util.format("Field.init(%s) failed. "
 					, util.inspect(fieldDef));
-		assert(_.isObject(fieldDef), errMsg);
-		assert(_.has(fieldDef, "name"), errMsg + " Name attr missing.");
-		assert(_.has(fieldDef, "type"), errMsg + " Type attr missing.");
 
-		me.name = fieldDef.name;
-
-		if ( ! /^\w+$/.test(fieldDef.name)) {
-			throw new Error(errMsg 
-					+ " Field names can only have word-type characters.");
+		if ( ! fieldDef.name) {
+			log.error({ fieldDef: fieldDef }, "Field.init() failed.");
+			throw new Error("Field.init() failed. Field name missing.");
 		}
 
+		if ( ! fieldDef.type) {
+			log.error({ fieldDef: fieldDef }, "Field.init() failed.");
+			throw new Error("Field.init() failed. Field type missing.");
+		}
+								
+		if ( ! /^\w+$/.test(fieldDef.name)) {
+			log.error({ fieldDef: fieldDef }, "Field.init() failed.");
+			throw new Error(" Field names can only have word-type characters.");
+		}
+
+		me.name = fieldDef.name;
 		me.type = fieldDef.type;
 
 		//fk
@@ -59,22 +65,24 @@ var Field = function(fieldDef) {
 			me.notnull = fieldDef.notnull || 0;
 		}
 
-		//dont show falsy disable prop
-		if (fieldDef.disabled) me.disabled = true;
+		_.each(Field.SYSTEM_PROPERTIES, function(p) {
+			if (fieldDef.hasOwnProperty(p)) {
+				this[p] = fieldDef[p];	
+			} else {
+				this[p] = Field.SYSTEM_PROPERTY_DEFAULTS[p];
+			}
+		}, this);
 
-		//property values
-		me.props = fieldDef.props || {};
-
-		me.props.order = me.props.order || 100;
-		me.props.width = me.props.width || me.defaultWidth();
 	}
 }
 
-Field.TABLE = '__fieldprops__';
-Field.TABLE_FIELDS = ['name', 'table_name', 'props', 'disabled'];
+Field.SYSTEM_PROPERTIES = ['disabled'];
+Field.SYSTEM_PROPERTY_DEFAULTS = {
+	disabled: false
+};
 
-//adding or removing PROPERTIES needs no change in db schema
-Field.PROPERTIES = ['order', 'width', 'scale', 'visible', 'label'];
+
+//Field.PROPERTIES = ['order', 'width', 'scale', 'visible', 'label'];
 
 //logical field type names - mapped to SQL types through SqlHelper.typeSQL
 //	text has optional length arg, e.g. text(256) or text(MAX)
@@ -105,10 +113,6 @@ Field.dateToString = function(date) {
 	return date.toISOString().replace('T', ' ').substr(0, 19); //up to secs
 }
 
-Field.prototype.defaultWidth = function() {
-	return 16; //override me according to type
-}
-
 Field.prototype.toJSON = function() {
 
 	var result = {
@@ -116,16 +120,15 @@ Field.prototype.toJSON = function() {
 		, type: this.type
 		, fk: this.fk
 		, notnull: this.notnull
-		, props: _.pick(this.props, Field.PROPERTIES)
 	};
-
-	if (this.disabled) {
-		result.disabled = this.disabled;
-	}
 
 	if (result.fk == 1) {
 		result.fk_table = this.fk_table;
 	}
+	
+	_.each(Field.SYSTEM_PROPERTIES, function(p) {
+		result[p] = this[p];
+	}, this);
 
 	return result;
 }
@@ -145,57 +148,14 @@ Field.prototype.parse = function() {
 }
 
 Field.prototype.setProp = function(name, value) {
-	if (_.contains(Field.PROPERTIES, name)) {
-		this.props[name] = value;
-	} else {
-		throw new Error(util.format('prop %s not found.', name));
-	}
+	this.props = this.props || {};
+	this.props[name] = value;
 }
 
 Field.prototype.setDisabled = function(disabled) {
 	this.disabled = disabled == true;
 }
 
-Field.prototype.persistentProps = function() {
-	return _.pick(this.props, Field.PROPERTIES);
-}
-
-Field.prototype.updatePropSQL = function(table) {
-	var props = this.persistentProps();
-
-	var sql = 'UPDATE ' + Field.TABLE
-			+ " SET props = '" + JSON.stringify(props) + "'"
-			+ " , disabled = " + (this.disabled ? 1 : 0)
-			+ util.format(" WHERE name = '%s' AND table_name = '%s'; ",
-				this.name, table.name);
-
-	return sql;
-}
-
-Field.prototype.insertPropSQL = function(table) {
-
-	var props = this.persistentProps();
-
-	var values = _.map([
-			this.name, 
-			table.name, 
-			JSON.stringify(props)
-		], function(v) {
-		return "'" + v + "'";
-	}).concat([
-		this.disabled ? 1 : 0]
-	);
-
-	var fields = _.map(Field.TABLE_FIELDS, function(f) {
-		return SqlHelper.EncloseSQL(f);
-	});
-
-	var sql = 'INSERT INTO ' + Field.TABLE
-			+ ' (' + fields.join(',') + ') ' 
-			+ ' VALUES (' + values.join(',') + '); ';
-
-	return sql;
-}
 
 Field.prototype.toSQL = function(table) {
 	var sql = '"' + this.name + '" ' + SqlHelper.Field.typeSQL(this.type);
@@ -214,7 +174,6 @@ var FieldText = function(attrs) {
 FieldText.prototype = new Field;	
 FieldText.prototype.constructor = FieldText;
 FieldText.prototype.typeName = function() { return 'text'; }
-FieldText.prototype.defaultWidth = function() { return 20; }
 FieldText.prototype.parse = function(val) { return val == null ? null : String(val); }
 
 
@@ -224,7 +183,6 @@ var FieldInteger = function(attrs) {
 }
 FieldInteger.prototype = new Field;	
 FieldInteger.prototype.constructor = FieldInteger;
-FieldInteger.prototype.defaultWidth = function() { return 4; }
 FieldInteger.prototype.parse = function(val) { return val == null ? null : parseInt(val); }
 
 
@@ -235,7 +193,6 @@ var FieldDecimal = function(attrs) {
 FieldDecimal.prototype = new Field;	
 FieldDecimal.prototype.constructor = FieldDecimal;
 FieldDecimal.prototype.typeName = function() { return 'decimal'; }
-FieldDecimal.prototype.defaultWidth = function() { return 8; }
 FieldDecimal.prototype.parse = function(val) { return val == null ? null : parseFloat(val); }
 
 
@@ -245,7 +202,6 @@ var FieldDate = function(attrs) {
 }
 FieldDate.prototype = new Field;	
 FieldDate.prototype.constructor = FieldDate;
-FieldDate.prototype.defaultWidth = function() { return 8; }
 FieldDate.prototype.parse = function(val) { 
 	if (val == null) return null;
 	var d = Field.parseDateUTC(val);
@@ -259,7 +215,6 @@ var FieldTimestamp = function(attrs) {
 }
 FieldTimestamp.prototype = new Field;	
 FieldTimestamp.prototype.constructor = FieldTimestamp;
-FieldTimestamp.prototype.defaultWidth = function() { return 16; }
 FieldTimestamp.prototype.parse = function(val) { return val == null ? null : new Date(val).toISOString(); }
 FieldDate.prototype.parse = function(val) { 
 	if (val == null) return null;
@@ -274,7 +229,6 @@ var FieldFloat = function(attrs) {
 }
 FieldFloat.prototype = new Field;	
 FieldFloat.prototype.constructor = FieldFloat;
-FieldFloat.prototype.defaultWidth = function() { return 8; }
 FieldFloat.prototype.parse = function(val) { return val == null ? null : parseFloat(val); }
 
 exports.Field = Field;

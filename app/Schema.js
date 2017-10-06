@@ -23,6 +23,7 @@ var config = require('config');
 var TableGraph = require('./TableGraph.js').TableGraph;
 var SqlHelper = require('./SqlHelperFactory.js').SqlHelperFactory.create();
 var Table = require('./Table.js').Table;
+var Field = require('./Field.js').Field;
 var SchemaDefs = require('./SchemaDefs.js').SchemaDefs;
 
 var log = require('./log.js').log;
@@ -30,9 +31,6 @@ var log = require('./log.js').log;
 var Schema = function() {
 	this.init();
 }
-
-
-Schema.TABLE = '__schemaprops__';
 
 Schema.prototype.init = function(schemaData) {
 	try {
@@ -57,6 +55,14 @@ Schema.prototype.init = function(schemaData) {
 		this.graph = new TableGraph(tables, options);
 		this.name = schemaData.name;
 
+		_.each(Schema.SYSTEM_PROPERTIES, function(p) {
+			if (schemaData.hasOwnProperty(p)) {
+				this[p] = schemaData[p];	
+			} else {
+				this[p] = Schema.SYSTEM_PROPERTY_DEFAULTS[p];
+			}
+		}, this);
+
 		log.trace('...Schema.init()');
 
 	} catch(err) {
@@ -70,7 +76,11 @@ Schema.prototype.get = function() {
 	try {
 		var result = this.graph.toJSON();
 		result.name = this.name;
-		result.users = this.users; 
+		_.each(Schema.SYSTEM_PROPERTIES, function(p) {
+			if ( ! result.hasOwnProperty(p)) {
+				result[p] = this[p];
+			}
+		}, this);
 		return result;
 		
 	} catch(err) {
@@ -131,7 +141,7 @@ Schema.prototype.removeTable = function(name) {
 Schema.prototype.jsonWrite = function(fileName, cbAfter) {
 	var me = this;
 	try {
-		var data = _.pick(this.get(), _.keys(SchemaDefs.EMPTY));
+		var data = this.get(); //_.pick(this.get(), _.keys(SchemaDefs.EMPTY));
 		fs.writeFile(fileName, JSON.stringify(data), function(err) {
 			if (err) {
 				log.error({data: data, error: err}
@@ -186,9 +196,28 @@ Schema.prototype.jsonRead = function(fileName, cbAfter) {
 
 // private methods..
 
-Schema.prototype.systemRows = function(opts) {
+Schema.prototype.systemPropertyRows = function() {
+	var rows = [];
+	_.each(Schema.SYSTEM_PROPERTIES, function(name) {
+		if (this.hasOwnProperty(name) 
+			&& this[name] != Schema.SYSTEM_PROPERTY_DEFAULTS[name]) {
+
+			row[SchemaDefs.PROPERTIES_FIELDS.name] = name;
+			row[SchemaDefs.PROPERTIES_FIELDS.value] = JSON.stringify(this[name]);
+			rows.push(row);
+		}
+	}, this);
+	return rows;
+}
+
+Schema.prototype.systemRows = function() {
 	//TODO add properties from table and fields if opts.deep == true
-	return SchemaDefs.SYSTEM_ROWS;
+	var propertyRows = this.systemPropertyRows();
+
+	var result = SchemaDefs.SYSTEM_ROWS;
+	result[SchemaDefs.PROPERTIES_TABLE] = propertyRows;
+	
+	return result;
 }
 
 
@@ -218,65 +247,56 @@ Schema.prototype.applyChanges = function(changes) {
 }
 
 
-Schema.TABLE = "__schemaprops__";
-Schema.TABLE_FIELDS = ['name', 'value'];
+Schema.SYSTEM_PROPERTIES = ['join_trees', 'version'];
+Schema.SYSTEM_PROPERTY_DEFAULTS = {
+	join_trees: [],
+	version: config.version
+};
 
-//Schema.PROPERTIES = [];
+Schema.systemPropertySelectSQL = function() {
+	var fields = _.map(_.values(SchemaDefs.PROPERTIES_FIELDS), function(f) {
+		return SqlHelper.EncloseSQL(f);
+	});
+	var props = Schema.SYSTEM_PROPERTIES.concat(
+		Table.SYSTEM_PROPERTIES, 
+		Field.SYSTEM_PROPERTIES
+	);
+	props = _.map(props, function(p) {
+		return util.format("'%s'", p);
+	}).join(', ');
+	sql = util.format("SELECT %s FROM %s WHERE name IN (%s)", 
+		fields.join(', '),
+		SchemaDefs.PROPERTIES_TABLE,
+		props
+	);
 
-Schema.prototype.persistentProps = function() {
-	var props = { 
-		join_trees: this.graph.joinTreesJSON()
-	};
-	return props;
+	log.debug({sql: sql}, 'Database.systemPropertySelectSQL')
+	return sql;	
 }
 
-Schema.prototype.updatePropSQL = function(opts) {
+Schema.setSystemProperties = function(schemaData, rows) {
+	_.each(rows, function(r) {
+		var name = r[SchemaDefs.PROPERTIES_FIELDS.name];
+		var value = JSON.parse(r[SchemaDefs.PROPERTIES_FIELDS.value]);
 
-	opts = opts || {};
-	var deep = opts.deep || false;
+		if (r[SchemaDefs.PROPERTIES_FIELDS.table] === null) {
+			schemaData[name] = value;
 
-	var sql = _.map(this.persistentProps(), function(v, k) {
-		return "UPDATE " + Schema.TABLE 
-			+ " SET value = '" + JSON.stringify(v) + "'"
-			+ " WHERE name = '" + k + "'; ";		
-	}).join('\n');
+		} else if (r[SchemaDefs.PROPERTIES_FIELDS.field] === null) {
+			var table = schemaData
+				.tables[r[SchemaDefs.PROPERTIES_FIELDS.table]];
+			table[name] = value;
 
-	if (deep) {
-		_.each(this.tables(), function(t) {
-			sql += "\n" + t.updatePropSQL(opts);
-		}, this);
-	}
-
-	log.debug({sql: sql}, "Schema.updatePropSQL()");
-	return sql;
-}
-
-Schema.prototype.insertPropSQL = function(opts) {
-
-	opts = opts || {};
-	var deep = opts.deep || false;
-
-	var values = _.map(this.persistentProps(), function(v, k) {
-		return "('" + k + "', '" + JSON.stringify(v) + "')";
+		} else {
+			var field = schemaData
+				.tables[r[SchemaDefs.PROPERTIES_FIELDS.table]]
+				.fields[r[SchemaDefs.PROPERTIES_FIELDS.field]];
+			field[name] = value;
+		}
 	});
 
-	var fields = _.map(Schema.TABLE_FIELDS, function(f) {
-		return '"' + f + '"';
-	});
-
-	var sql = 'INSERT INTO ' + Schema.TABLE
-			+ ' (' + fields.join(',') + ') ' 
-			+ ' VALUES ' + values.join(',') + '; ';
-
-	if (deep) {
-		_.each(this.tables(), function(t) {
-			sql += "\n" + t.insertPropSQL(opts);
-		}, this);
-	}
-
-	log.trace({sql: sql}, "Schema.insertPropSQL()");
-	return sql;
 }
+
 
 exports.Schema = Schema;
 

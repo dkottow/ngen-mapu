@@ -6,7 +6,6 @@ var SchemaDefs = {};
 SchemaDefs.EMPTY = {
 	name: ''
 	, tables: []
-	, join_trees: []
 }
 
 SchemaDefs.MANDATORY_TABLES = [
@@ -190,12 +189,6 @@ SchemaDefs.SYSTEM_ROWS = [
                 "Read_id": keys.TABLE_ACCESS.ALL, 
                 "Write_id": keys.TABLE_ACCESS.OWN
             }
-		]
-	},
-	{
-		table: "_d365Properties",
-		rows: [
-			{ "Name": "version", "Value": JSON.stringify(config.version) }, //semver.org
 		]
 	}
 ];

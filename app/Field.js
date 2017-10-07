@@ -68,19 +68,11 @@ var Field = function(fieldDef) {
 
 		_.each(Field.SYSTEM_PROPERTIES, function(p) {
 			if (fieldDef.hasOwnProperty(p)) {
-<<<<<<< HEAD
 				me[p] = fieldDef[p];	
 			} else {
 				me[p] = Field.SYSTEM_PROPERTY_DEFAULTS[p];
 			}
 		});
-=======
-				this[p] = fieldDef[p];	
-			} else {
-				this[p] = Field.SYSTEM_PROPERTY_DEFAULTS[p];
-			}
-		}, this);
->>>>>>> 5fa96dad675b0418bd5759fdd86713236061f75c
 
 	}
 }

@@ -4,14 +4,9 @@ var config = require('config');
 var SchemaDefs = {};
 
 SchemaDefs.EMPTY = {
-<<<<<<< HEAD
 	name: '',
 	tables: [],
 	version: config.version
-=======
-	name: ''
-	, tables: []
->>>>>>> 5fa96dad675b0418bd5759fdd86713236061f75c
 }
 
 SchemaDefs.MANDATORY_TABLES = [

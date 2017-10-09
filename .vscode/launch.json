@@ -33,7 +33,7 @@
             "request": "launch",
             "name": "Run Azure SQL",
             "program": "${workspaceRoot}\\server.js",
-            "env":  {"NODE_ENV": "production", "DL_MSSQL_PASSWORD": "tI27k7i06mEUVh4TAxoavL$ErZwH@c49"} 
+            "env":  {"NODE_ENV": "azure-dev", "DL_MSSQL_PASSWORD": "tI27k7i06mEUVh4TAxoavL$ErZwH@c49"} 
         },
         {
             "type": "node",

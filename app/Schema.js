@@ -265,6 +265,7 @@ Schema.systemPropertySelectSQL = function() {
 		Table.SYSTEM_PROPERTIES, 
 		Field.SYSTEM_PROPERTIES
 	);
+	props = _.unique(props);
 	props = _.map(props, function(p) {
 		return util.format("'%s'", p);
 	}).join(', ');
@@ -280,23 +281,27 @@ Schema.systemPropertySelectSQL = function() {
 
 Schema.setSystemProperties = function(schemaData, rows) {
 	_.each(rows, function(r) {
-		var name = r[SchemaDefs.PROPERTIES_FIELDS.name];
-		var value = JSON.parse(r[SchemaDefs.PROPERTIES_FIELDS.value]);
+		try {
+			var name = r[SchemaDefs.PROPERTIES_FIELDS.name];
+			var value = JSON.parse(r[SchemaDefs.PROPERTIES_FIELDS.value]);
 
-		if (r[SchemaDefs.PROPERTIES_FIELDS.table] === null) {
-			schemaData[name] = value;
+			if (r[SchemaDefs.PROPERTIES_FIELDS.table] === null) {
+				schemaData[name] = value;
 
-		} else if (r[SchemaDefs.PROPERTIES_FIELDS.field] === null) {
-			var table = schemaData
-				.tables[r[SchemaDefs.PROPERTIES_FIELDS.table]];
-			table[name] = value;
+			} else if (r[SchemaDefs.PROPERTIES_FIELDS.field] === null) {
+				var table = schemaData
+					.tables[r[SchemaDefs.PROPERTIES_FIELDS.table]];
+				table[name] = value;
 
-		} else {
-			var field = schemaData
-				.tables[r[SchemaDefs.PROPERTIES_FIELDS.table]]
-				.fields[r[SchemaDefs.PROPERTIES_FIELDS.field]];
-			field[name] = value;
-		}
+			} else {
+				var field = schemaData
+					.tables[r[SchemaDefs.PROPERTIES_FIELDS.table]]
+					.fields[r[SchemaDefs.PROPERTIES_FIELDS.field]];
+				field[name] = value;
+			}
+		} catch (err) {
+			log.error({err: err, property: name, value: r[SchemaDefs.PROPERTIES_FIELDS.value]}, 'Schema.setSystemProperties().');
+		}	
 	});
 
 }

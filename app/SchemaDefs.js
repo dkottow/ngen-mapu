@@ -179,17 +179,22 @@ SchemaDefs.SYSTEM_ROWS = [
                 "Write_id": keys.TABLE_ACCESS.NONE 
             }, 
 
-            //editors get write access to UserPrincipal and Properties
-            { "TableName": "_d365Properties", 
-                "Principal_id": keys.PRINCIPALS.EDITOR, 
-                "Read_id": keys.TABLE_ACCESS.ALL, 
-                "Write_id": keys.TABLE_ACCESS.OWN 
-            }, 
-            { "TableName": "_d365UserPrincipal", 
+            //editors get write access to Principals, UserPrincipal and Properties
+            { "TableName": "_d365Principals", 
+				"Principal_id": keys.PRINCIPALS.EDITOR, 
+				"Read_id": keys.TABLE_ACCESS.ALL, 
+				"Write_id": keys.TABLE_ACCESS.OWN 
+			}, 
+			{ "TableName": "_d365UserPrincipal", 
                 "Principal_id": keys.PRINCIPALS.EDITOR, 
                 "Read_id": keys.TABLE_ACCESS.ALL, 
                 "Write_id": keys.TABLE_ACCESS.OWN
-            }
+            },
+            { "TableName": "_d365Properties", 
+				"Principal_id": keys.PRINCIPALS.EDITOR, 
+				"Read_id": keys.TABLE_ACCESS.ALL, 
+				"Write_id": keys.TABLE_ACCESS.OWN 
+			}			
 		]
 	}
 ];

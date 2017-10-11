@@ -51,7 +51,7 @@ AccountManager.prototype.get = function(name) {
 AccountManager.prototype.masterDatabase = function() { 
     var masterAccount = Account.MASTER;
     if (config.accounts) {
-        masterAccount = _.keys(this.accounts)[0];
+        masterAccount = config.accounts[0]; //_.keys(this.accounts)[0];
     }
     return this.accounts[masterAccount].master(); 
 }

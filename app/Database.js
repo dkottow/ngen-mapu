@@ -320,28 +320,7 @@ Database.prototype.write = function(cbAfter) {
 		var systemRows = me.schema.systemRows();
 		log.trace({ systemRows: systemRows}, 'Database.write()');
 
-		 
-/*
-		var chainPromises = _.reduce(systemRows, function(chainPromises, rowGroup) {
-			return chainPromises.then(result => {
-				log.trace({table: rowGroup.table}, 'create row group inserts');
-				return new Promise(function(resolve, reject) {
-					var rows = _.map(rowGroup.rows, function(row) { return _.clone(row); });
-					me.insert(rowGroup.table, rows, function(err) {
-						if (err) {
-							reject(err);
-						} else {
-							resolve();
-						} 
-					});							
-				});
-			});	
-		}, Promise.resolve());		
-
-		chainPromises.then(result => {
-*/
-	
-		this.chainInsertRows(systemRows).then(result => {
+		me.chainInsertRows(systemRows).then(result => {
 			log.debug("...Database.write()");
 			cbAfter();
 		}).catch(err => {

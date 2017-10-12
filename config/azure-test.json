@@ -1,12 +1,14 @@
 {
     "auth": true,
 
+    "accounts": [ "test" ],
+          
     "logs"  : {
         "transports": [
             {
                 "type": "console",
                 "timestamp": true,
-                "level": "debug",
+                "level": "info",
                 "stderrLevels": [ "error", "warn"],
                 "colorize": false
             }

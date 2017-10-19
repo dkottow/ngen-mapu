@@ -210,7 +210,7 @@ SCAddField.prototype.insertRows = function() {
 	var field = this.table.field(this.changeObj.name);
 	return {
 		table: SchemaDefs.PROPERTIES_TABLE,
-		rows: field.systemPropertyRows()
+		rows: field.systemPropertyRows(this.table)
 	};
 }
 

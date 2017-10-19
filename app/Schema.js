@@ -76,11 +76,11 @@ Schema.prototype.get = function() {
 	try {
 		var result = this.graph.toJSON();
 		result.name = this.name;
-		_.each(Schema.SYSTEM_PROPERTIES, function(p) {
-			if ( ! result.hasOwnProperty(p)) {
-				result[p] = this[p];
-			}
+
+		_.each(_.without(Schema.SYSTEM_PROPERTIES, 'join_trees'), function(p) {
+			result[p] = this[p];				
 		}, this);
+
 		return result;
 		
 	} catch(err) {
@@ -199,13 +199,15 @@ Schema.prototype.jsonRead = function(fileName, cbAfter) {
 Schema.prototype.systemPropertyRows = function() {
 	var rows = [];
 	_.each(Schema.SYSTEM_PROPERTIES, function(name) {
-		if (this.hasOwnProperty(name) 
-			&& this[name] != Schema.SYSTEM_PROPERTY_DEFAULTS[name]) {
-
+		var propVal = JSON.stringify(this[name]);
+		var defVal = JSON.stringify(Schema.SYSTEM_PROPERTY_DEFAULTS[name]);
+		if (propVal != defVal) {
+			var row = {};	
 			row[SchemaDefs.PROPERTIES_FIELDS.name] = name;
-			row[SchemaDefs.PROPERTIES_FIELDS.value] = JSON.stringify(this[name]);
+			row[SchemaDefs.PROPERTIES_FIELDS.value] = propVal;
 			rows.push(row);
 		}
+
 	}, this);
 
 	_.each(this.tables, function(table) {
@@ -216,8 +218,7 @@ Schema.prototype.systemPropertyRows = function() {
 }
 
 Schema.prototype.systemRows = function() {
-	//TODO add properties from table and fields if opts.deep == true
-	var propertyRows = this.systemPropertyRows();
+	var propertyRows = this.systemPropertyRows(); //includes table and field props
 
 	var result = SchemaDefs.SYSTEM_ROWS;
 	result[SchemaDefs.PROPERTIES_TABLE] = propertyRows;

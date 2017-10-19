@@ -157,16 +157,21 @@ Field.prototype.toSQL = function(table) {
 	return sql;
 }
 
-Field.prototype.systemPropertyRows = function() {
+Field.prototype.systemPropertyRows = function(table) {
 	var rows = [];
 	_.each(Field.SYSTEM_PROPERTIES, function(name) {
-		if (this.hasOwnProperty(name) 
-			&& this[name] != Field.SYSTEM_PROPERTY_DEFAULTS[name]) {
 
+		var propVal = JSON.stringify(this[name]);
+		var defVal = JSON.stringify(Table.SYSTEM_PROPERTY_DEFAULTS[name]);
+		if (propVal != defVal) {
+			var row = {};	
+			row[SchemaDefs.PROPERTIES_FIELDS.table] = table.name;
+			row[SchemaDefs.PROPERTIES_FIELDS.field] = this.name;
 			row[SchemaDefs.PROPERTIES_FIELDS.name] = name;
-			row[SchemaDefs.PROPERTIES_FIELDS.value] = JSON.stringify(this[name]);
+			row[SchemaDefs.PROPERTIES_FIELDS.value] = propVal;
 			rows.push(row);
 		}
+
 	}, this);
 
 	return rows;

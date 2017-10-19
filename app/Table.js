@@ -291,19 +291,25 @@ Table.prototype.deletePropSQL = function() {
 
 Table.prototype.systemPropertyRows = function() {
 	var rows = [];
-	_.each(Table.SYSTEM_PROPERTIES, function(name) {
-		if (this.hasOwnProperty(name) 
-			&& this[name] != Table.SYSTEM_PROPERTY_DEFAULTS[name]) {
 
+
+	_.each(Table.SYSTEM_PROPERTIES, function(name) {
+
+		var propVal = JSON.stringify(this[name]);
+		var defVal = JSON.stringify(Table.SYSTEM_PROPERTY_DEFAULTS[name]);
+		if (propVal != defVal) {
+			var row = {};	
+			row[SchemaDefs.PROPERTIES_FIELDS.table] = this.name;
 			row[SchemaDefs.PROPERTIES_FIELDS.name] = name;
-			row[SchemaDefs.PROPERTIES_FIELDS.value] = JSON.stringify(this[name]);
+			row[SchemaDefs.PROPERTIES_FIELDS.value] = propVal;
 			rows.push(row);
 		}
+
 	}, this);
 
 	_.each(this.fields, function(field) {
-		rows = rows.concat(field.systemPropertyRows());
-	});
+		rows = rows.concat(field.systemPropertyRows(this));
+	}, this);
 	
 	return rows;
 }

@@ -309,9 +309,20 @@
                         "default": 0,
                         "type": "integer"
                     }
-                ]
-            }
-        },
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Returned view rows ok."
+                    },
+                    "default": {
+                        "description": "Unexpected error",
+                        "schema": {
+                            "$ref": "#/definitions/Error"
+                        }
+                    }
+                }
+                }
+    },
         "/{account}/{database}/{table}.rows": {
             "get": {
                 "summary": "Get rows",
@@ -833,11 +844,12 @@
             }
         },
         "Row": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "integer"
-                }
+            "type": "array",
+            "items": {
+                "oneOf": [
+                    "string",
+                    "number"
+                ]
             }
         },
         "Rows": {

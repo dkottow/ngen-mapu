@@ -162,7 +162,7 @@ Field.prototype.systemPropertyRows = function(table) {
 	_.each(Field.SYSTEM_PROPERTIES, function(name) {
 
 		var propVal = JSON.stringify(this[name]);
-		var defVal = JSON.stringify(Table.SYSTEM_PROPERTY_DEFAULTS[name]);
+		var defVal = JSON.stringify(Field.SYSTEM_PROPERTY_DEFAULTS[name]);
 		if (propVal != defVal) {
 			var row = {};	
 			row[SchemaDefs.PROPERTIES_FIELDS.table] = table.name;

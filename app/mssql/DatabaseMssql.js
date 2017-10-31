@@ -403,7 +403,7 @@ DatabaseMssql.prototype.readSchema = function(cbAfter) {
 			field.fk_table = r.fk_table;
 		});
 
-		log.debug({ schema: JSON.stringify(schemaData) }, '...Database.readSchema()');
+		log.trace({ schema: JSON.stringify(schemaData) }, 'Database.readSchema()');
 
 		//read system properties 
 		var sql = Schema.systemPropertySelectSQL();
@@ -411,12 +411,13 @@ DatabaseMssql.prototype.readSchema = function(cbAfter) {
 
 	}).then(result => {
 
-		log.debug({ props: JSON.stringify(result.recordset) }, '...Database.readSchema()');
+		log.trace({ props: JSON.stringify(result.recordset) }, 'Database.readSchema()');
 
 		Schema.setSystemProperties(schemaData, result.recordset);
 		me.setSchema(schemaData);
 		
 		me._readingSchema = false;
+		log.debug({ schema: me.schema.name }, '...Database.readSchema()');
 		cbAfter();
 
 	}).catch(err => {

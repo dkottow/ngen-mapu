@@ -468,14 +468,23 @@ Database.prototype.allResult = function(tableName, rows, countRows, sql, options
 
 	if (opts.format == 'csv') {
 		return Papa.unparse(rows);
-	}	
 
-	//json
-
+	} 
+	
 	var result = { 
-		rows: rows, 
 		query: query
 	};
+	
+	if (opts.format == 'json-table') {
+		result.rows = _.map(rows, function(row) { return _.values(row); } );
+		result.columns = rows.length > 0 ? _.keys(rows[0]) : [];
+
+	} else {
+		//json
+		result.rows = rows;
+	}
+
+	
 
 	if (countRows && countRows.length) {
 		result.count = countRows[0].count;

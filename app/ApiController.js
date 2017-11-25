@@ -19,8 +19,10 @@ var util = require('util');
 var url = require('url');
 var express = require('express');
 var bodyParser = require('body-parser');
-var jwt = require('express-jwt');
 var config = require('config');
+
+//var jwt = require('express-jwt'); //Auth0
+var jwt = require('azure-ad-jwt');	//AAD
 
 var parser = require('./QueryParser.js');
 var AccessControl = require('./AccessControl.js').AccessControl;
@@ -53,12 +55,27 @@ Controller.prototype.initRoutes = function(options) {
 
 	if (this.auth) {
 
-		//for testing, we supply user on query string ?user=dkottow@golder.com
 		this.router.use(function(req, res, next) {
-			req.user = new User(req.query.user || User.NOBODY, me.accountManager.masterDatabase());
-			next();
-		});
+			//decode AAD Authorization token
+			var token = req.header('Authorization');
+			if (token && token.startsWith('Bearer')) {
+					log.debug({jwt: token}, 'Authorization token');
+					jwt.verify(token.substr('Bearer '.length), null, function(err, result) {
+						if (err) {
+							log.error({err: err}, 'Authorization token');
+							sendError(req, res, err, 401);
+							return;
+						}
+						req.user = new User(result.upn, me.accountManager.masterDatabase());
+						next();
+					});
+			} else {
+				//for testing, we supply user on query string ?user=dkottow@golder.com
+				req.user = new User(req.query.user || User.NOBODY, me.accountManager.masterDatabase());				
+				next();
+			}
 
+		});
 
 /* Auth0		
 		var auth_token = jwt({
@@ -89,8 +106,8 @@ Controller.prototype.initRoutes = function(options) {
  * see here: https://docs.microsoft.com/en-us/azure/active-directory/develop/active-directory-token-and-claims
  * we need to 
  * 1) obtain kid value from the header of the JWT token 
- * 2) get data for all AAD keys from https://login.microsoftonline.com/common/discovery/v2.0/keys
- * 3) get correct public key by mathcing the kid attributes to our kid value.
+ * 2) get data for all AAD keys from https://login.microsoftonline.com/common/discovery/keys
+ * 3) get correct public key by matching the kid attributes to our kid value.
  * 4) get key.x5c[0] and put into public key format:
  *  	var pem = '-----BEGIN CERTIFICATE-----\n' + key.x5c[0].match(/.{1,64}/g).join('\n')
 				+ '\n-----END CERTIFICATE-----\n' 	 

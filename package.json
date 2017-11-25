@@ -9,6 +9,7 @@
     , "body-parser": "*"
     , "jsonwebtoken": "*"
     , "express-jwt": "*"
+    , "azure-ad-jwt": "*"
     , "winston": "*"
     , "winston-azure": "*"
     , "dotenv": "*"

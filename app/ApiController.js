@@ -86,10 +86,11 @@ Controller.prototype.initRoutes = function(options) {
 /** TODO
  * 
  * AAD does not use a secret but a public key to sign JWT
+ * see here: https://docs.microsoft.com/en-us/azure/active-directory/develop/active-directory-token-and-claims
  * we need to 
  * 1) obtain kid value from the header of the JWT token 
  * 2) get data for all AAD keys from https://login.microsoftonline.com/common/discovery/v2.0/keys
- * 3) get correct key by mathcing the kid attributes to our kid value.
+ * 3) get correct public key by mathcing the kid attributes to our kid value.
  * 4) get key.x5c[0] and put into public key format:
  *  	var pem = '-----BEGIN CERTIFICATE-----\n' + key.x5c[0].match(/.{1,64}/g).join('\n')
 				+ '\n-----END CERTIFICATE-----\n' 	 

@@ -132,6 +132,9 @@ var rewriteRequest = function(level, msg, obj) {
 			url: obj.req.url
 			, method: obj.req.method
 			, user: user
+			, headers: obj.req.headers
+			, params: obj.req.params
+			, query: obj.req.query
 		};
 	}
 	return obj;

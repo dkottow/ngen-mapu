@@ -356,7 +356,7 @@ Controller.prototype.delDatabase = function(req, res) {
 	
 	}).then((access) => { 
 
-		var opts = req.query;
+		var opts = _.clone(req.query);
 		data.account.delDatabase(data.db.name(), opts, function(err, success) {
 			if (err) {
 				sendError(req, res, err, 400);
@@ -715,7 +715,7 @@ Controller.prototype.postRows = function(req, res) {
 			rows = me.stripOwnerField(rows);
 		}
 
-		var opts = req.query;
+		var opts = _.clone(req.query);
 		opts.user = req.user;
 		data.db.insert(data.table.name, rows, opts, function(err, result) {
 			if (err) {
@@ -752,7 +752,7 @@ Controller.prototype.putRows = function(req, res) {
 			rows = me.stripOwnerField(rows);
 		}
 
-		var opts = req.query;
+		var opts = _.clone(req.query);
 		opts.user = req.user;
 		data.db.update(data.table.name, rows, opts, function(err, result) {
 			if (err) {

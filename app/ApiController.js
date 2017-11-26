@@ -63,7 +63,7 @@ Controller.prototype.initRoutes = function(options) {
 					jwt.verify(token.substr('Bearer '.length), null, function(err, result) {
 						if (err) {
 							log.error({err: err}, 'Authorization token');
-							sendError(req, res, err, 401);
+							sendError(req, res, new Error("Authorization token '" + token + "' not valid"), 401);
 							return;
 						}
 						req.user = new User(result.upn, me.accountManager.masterDatabase());

@@ -1,7 +1,7 @@
 {
     "auth": true,
 
-    "accounts": [ "dev", "test" ],
+    "accounts": [ "test", "dev" ],
 
     "logs"  : {
         "transports": [

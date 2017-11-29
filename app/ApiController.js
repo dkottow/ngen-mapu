@@ -71,8 +71,9 @@ Controller.prototype.initRoutes = function(options) {
 					});
 			} else {
 				//for testing, we supply user on query string ?user=dkottow@golder.com
-				req.user = new User(req.query.user || User.NOBODY, me.accountManager.masterDatabase());				
-				next();
+				log.error('Authorization token missing');
+				sendError(req, res, new Error("Authorization token missing"), 401);
+				return;
 			}
 
 		});

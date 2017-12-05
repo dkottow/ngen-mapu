@@ -13,7 +13,19 @@
     "produces": [
         "application/json"
     ],
-    "paths": {
+    "securityDefinitions": {
+        "api_key": {
+          "type": "apiKey",
+          "name": "Authorization",
+          "in": "header"
+        }
+      },
+      "security": [
+        { 
+            "api_key": [] 
+        }
+      ],
+      "paths": {
         "/{account}": {
             "get": {
                 "summary": "Get Account",
@@ -299,7 +311,7 @@
                         "description": "define row output format. currently supported are json, csv.",
                         "required": false,
                         "default": "json",
-                        "type": "text"
+                        "type": "string"
                     },
                     {
                         "name": "debug",
@@ -403,7 +415,7 @@
                         "description": "define row output format. currently supported are json, csv.",
                         "required": false,
                         "default": "json",
-                        "type": "text"
+                        "type": "string"
                     },
                     {
                         "name": "counts",
@@ -846,10 +858,7 @@
         "Row": {
             "type": "array",
             "items": {
-                "oneOf": [
-                    "string",
-                    "number"
-                ]
+                "type": "string"
             }
         },
         "Rows": {

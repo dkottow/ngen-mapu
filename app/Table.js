@@ -273,7 +273,7 @@ Table.prototype.fkAliasSQL = function(fk, idx) {
 }
 
 Table.prototype.dropViewSQL = function() {
-	return 'DROP VIEW ' + this.rowAliasView() + ';\n'
+	return 'DROP VIEW IF EXISTS ' + this.rowAliasView() + ';\n'
 }
 
 Table.prototype.dropSQL = function() {

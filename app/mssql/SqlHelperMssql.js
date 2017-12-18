@@ -84,6 +84,8 @@ SqlHelperMssql.mssqlType = function(fieldType)
 	else if (typeName == 'timestamp') return mssql.VarChar(256); //TODO - use real js dates?
 	else if (typeName == 'date') return mssql.VarChar(256); //TODO - use real js dates?
 	else if (typeName == 'float') return mssql.Float;
+	else if (typeName == 'boolean') return mssql.Bit;
+
 	else throw new Error("unknown type '" + fieldType + "'");
 }
 
@@ -212,6 +214,8 @@ SqlHelperMssql.Field.typeSQL = function(fieldType)
 	else if (typeName == 'timestamp') return 'DATETIME';
 	else if (typeName == 'date') return 'DATE'; 
 	else if (typeName == 'float') return 'FLOAT'; 
+	else if (typeName == 'boolean') return 'BIT'; 
+	
 	else throw new Error("SqlHelperMssql unknown type '" + fieldType + "'");
 }
 
@@ -233,6 +237,8 @@ SqlHelperMssql.Field.fromSQLType = function(sqlTypeInfo)
 		return 'date';
 	} else if (sqlTypeInfo.data_type == 'float') {
 		return 'float';
+	} else if (sqlTypeInfo.data_type == 'bit') {
+		return 'boolean';
 	} 
 	throw new Error("SqlHelperMssql.Field.fromSQLType '" + sqlTypeInfo.data_type + "'");
 }

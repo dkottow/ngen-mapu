@@ -1,7 +1,7 @@
 {
-    "auth": true,
+    "auth": false,
 
-    "accounts": [ "dev" ], //if undefined, AccountManager scans from server / disk
+    "accounts": [ "test" ], //if undefined, AccountManager scans from server / disk
 
     "logs"  : {
         "transports": [

@@ -46,7 +46,7 @@ var Field = function(fieldDef) {
 								
 		if ( ! /^\w+$/.test(fieldDef.name)) {
 			log.error({ fieldDef: fieldDef }, "Field.init() failed.");
-			throw new Error(" Field names can only have word-type characters.");
+			throw new Error("Field names can only have word-type characters: '" + fieldDef.name + "'");
 		}
 
 		me.name = fieldDef.name;
@@ -88,7 +88,7 @@ Field.SYSTEM_PROPERTY_DEFAULTS = {
 //logical field type names - mapped to SQL types through SqlHelper.typeSQL
 //	text has optional length arg, e.g. text(256) or text(MAX)
 //	decimal has optional precision and scale args, e.g. decimal(6,2) 
-Field.TYPES = ['text', 'integer', 'decimal', 'date', 'timestamp', 'float' ];
+Field.TYPES = ['text', 'integer', 'decimal', 'date', 'timestamp', 'float', 'boolean' ];
 
 Field.create = function(fieldDef) {
 	var fieldType = SqlHelper.typeName(fieldDef.type);
@@ -99,7 +99,8 @@ Field.create = function(fieldDef) {
 	if (fieldType == 'date') return new FieldDate(fieldDef);
 	if (fieldType == 'timestamp') return new FieldTimestamp(fieldDef);
 	if (fieldType == 'float') return new FieldFloat(fieldDef);
-
+	if (fieldType == 'boolean') return new FieldBoolean(fieldDef);
+	
 	throw new Error(util.format("Field.create(%s) failed. Unknown type.", util.inspect(fieldDef)));
 }
 
@@ -242,6 +243,14 @@ var FieldFloat = function(attrs) {
 FieldFloat.prototype = new Field;	
 FieldFloat.prototype.constructor = FieldFloat;
 FieldFloat.prototype.parse = function(val) { return val == null ? null : parseFloat(val); }
+
+var FieldBoolean = function(attrs) {
+	log.trace({attrs: attrs}, "new FieldBoolean()");
+	Field.call(this, attrs);
+}
+FieldBoolean.prototype = new Field;	
+FieldBoolean.prototype.constructor = FieldBoolean;
+FieldBoolean.prototype.parse = function(val) { return val == null ? null : Boolean(val); }
 
 exports.Field = Field;
 

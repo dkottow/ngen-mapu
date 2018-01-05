@@ -46,7 +46,7 @@ var Table = function(tableDef) {
 
 		if ( ! /^\w+$/.test(tableDef.name)) {
 			log.error({ tableDef: tableDef }, "Table.init() failed.");
-			throw new Error("Table.init() failed. "
+			throw new Error("Table.init() failed."
 					+ " Table names can only have word-type characters.");
 		}
 
@@ -60,7 +60,12 @@ var Table = function(tableDef) {
 		fields = fields.concat(missFields);
 		
 		_.each(fields, function(f) {
-			me._fields[f.name] = Field.create(f);
+			try {
+				me._fields[f.name] = Field.create(f);
+			} catch(err) {
+				log.warn({field: f, err: err}, 
+					"Field.create() failed. Ignoring field '" + f.name + "'");
+			}
 		});
 
 		me.name = tableDef.name;

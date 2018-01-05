@@ -360,19 +360,23 @@ DatabaseMssql.prototype.readSchema = function(cbAfter) {
 		//console.dir(result.recordset);
 
 		_.each(result.recordset, function(r) {
-
-			if ( ! schemaData.tables[r.table_name] ) {
-				schemaData.tables[r.table_name] = { 
-					name: r.table_name,
-					fields: {} 
-				};					
+			try {
+				if ( ! schemaData.tables[r.table_name] ) {
+					schemaData.tables[r.table_name] = { 
+						name: r.table_name,
+						fields: {} 
+					};					
+				}
+				var field = { 
+					name: r.column_name,
+					type: SqlHelper.Field.fromSQLType(r),
+					notnull: 1*(r.is_nullable == 'NO')	//0 or 1
+				};
+				schemaData.tables[r.table_name].fields[r.column_name] = field;
+			} catch(err) {
+				log.warn({column: r, err: err}, 
+					"DatabaseMssql.readSchema() failed. Ignoring column '" + r.column_name + "'");
 			}
-			var field = { 
-				name: r.column_name,
-				type: SqlHelper.Field.fromSQLType(r),
-				notnull: 1*(r.is_nullable == 'NO')	//0 or 1
-			};
-			schemaData.tables[r.table_name].fields[r.column_name] = field;
 		});
 
 	}).then(result => {

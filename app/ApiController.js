@@ -47,28 +47,41 @@ Controller.prototype.initRoutes = function(options) {
 	log.trace("Controller.initRoutes()...");		
 	var me = this;
 
-	var nonceRoutes = _.values(Controller.NonceRoutes);
-
 	//json parsing 
 	var reqSizeLimit = options.bodyParser ? options.bodyParser.limit : '1mb';
 	this.router.use(bodyParser.json({ limit: reqSizeLimit }));
 
 	if (this.auth) {
 
+		var isNonceRoute = function(path) {
+			var result = _.find(_.values(Controller.NonceRoutes), function(regExp) {
+				return path.match(regExp);
+			});					
+			return result === undefined;
+		};
+	
 		this.router.use(function(req, res, next) {
+
+			if (isNonceRoute(req.path)) {
+				log.debug({path: req.path}, 'Nonce request.. pass through');
+				next();
+				return;
+			}
+
 			//decode AAD Authorization token
 			var token = req.header('Authorization');
-			if (token && token.startsWith('Bearer')) {
-					log.debug({jwt: token}, 'Authorization token');
-					jwt.verify(token.substr('Bearer '.length), null, function(err, result) {
-						if (err) {
-							log.error({err: err}, 'Authorization token');
-							sendError(req, res, new Error("Authorization token '" + token + "' not valid"), 401);
-							return;
-						}
-						req.user = new User(result.upn, me.accountManager.masterDatabase());
-						next();
-					});
+			if (token && token.startsWith('Bearer ')) {
+				log.debug({jwt: token}, 'Authorization token');
+				jwt.verify(token.substr('Bearer '.length), null, function(err, result) {
+					if (err) {
+						log.error({err: err}, 'Authorization token');
+						sendError(req, res, new Error("Authorization token '" + token + "' not valid"), 401);
+						return;
+					}
+					req.user = new User(result.upn, me.accountManager.masterDatabase());
+					next();
+				});
+
 			} else {
 				//for testing, we supply user on query string ?user=dkottow@golder.com
 				log.error('Authorization token missing');
@@ -78,45 +91,6 @@ Controller.prototype.initRoutes = function(options) {
 
 		});
 
-/* Auth0		
-		var auth_token = jwt({
-			  secret: new Buffer(config.auth0.clientSecret, 'base64'),
-			  audience: config.auth0.clientId,
-		}).unless({path: nonceRoutes});
-
-		this.router.use(auth_token);
-
-		this.router.use(function(req, res, next) {
-			if (req.user && req.user.app_metadata) {
-				req.user.account = req.user.app_metadata.account;
-				req.user.root = req.user.app_metadata.root || false;
-				req.user.admin = req.user.app_metadata.admin || false;
-				req.user.name = req.user.email;
-			} else {
-				 // needed to handle anonymous GET on nonceRoutes 
-				req.user = { name: 'unk' }; 
-			}
-			log.debug({'req.user': req.user}, 'router.use');
-			next();
-		});
-*/
-
-/** TODO
- * 
- * AAD does not use a secret but a public key to sign JWT
- * see here: https://docs.microsoft.com/en-us/azure/active-directory/develop/active-directory-token-and-claims
- * we need to 
- * 1) obtain kid value from the header of the JWT token 
- * 2) get data for all AAD keys from https://login.microsoftonline.com/common/discovery/keys
- * 3) get correct public key by matching the kid attributes to our kid value.
- * 4) get key.x5c[0] and put into public key format:
- *  	var pem = '-----BEGIN CERTIFICATE-----\n' + key.x5c[0].match(/.{1,64}/g).join('\n')
-				+ '\n-----END CERTIFICATE-----\n' 	 
- * 5) now verify / decode our JWT calling jwt.verify(token, pem) 
- * TODO NOT SURE how to do all of this using the express middleware... 				
- */
-	
-	
 	} else {
 		this.router.use(function(req, res, next) {
 			req.user = new User(User.NOBODY);

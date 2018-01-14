@@ -3,6 +3,8 @@
 
     "accounts": [ "test", "dev" ],
 
+    "tempDir"  : "tmp",
+
     "logs"  : {
         "transports": [
             {

@@ -455,6 +455,10 @@ Controller.prototype.doNonceRequest = function(req, res) {
 	if (req.body.path.match(Controller.NonceRoutes.TABLE_CSV_FILE)) {
 		op = 'generateCSVFile';
 		opts = {account: true, db: true, table: true };
+	} else {
+		var err = new Error("unknown nonce operation '" + req.body.path + "'");
+		sendError(req, res, err, 400);
+		return;		
 	}
 
 	var data;
@@ -854,11 +858,51 @@ Controller.prototype.chownRows = function(req, res) {
 
 var fs = require('fs');
 
+
+
 Controller.prototype.generateCSVFile = function(req, data, cbAfter) {
-	var content = 'Soon...' + JSON.stringify(req.body);
-	fs.writeFile(this.access.getCSVFilename(data.nonce), content, function(err) {
+	var me = this;
+
+	var params = me.parseQueryParameters(req);
+	if (params.error) {
+		cbAfter(params.error);
+		return;
+	}
+
+	var q = { filter: params.values['$filter'], fields: params.values['$select'] };
+
+	me.access.filterQuery(data, q, req.user).then((filter) => {
+
+		var limit = params.values['$top'] || 1000000; //max 1M rows
+
+		data.db.all(data.table.name, {
+			filter: filter 
+			, fields: params.values['$select'] 
+			, order: params.values['$orderby'] 
+			, limit: limit 
+			, format: 'csv'	
+		},
+
+			function(err, result) { 
+				if (err) {
+					cbAfter(err);
+					return;
+				}
+
+				var content = result;
+				fs.writeFile(me.access.getCSVFilename(data.nonce), content, function(err) {
+					cbAfter(err);
+					log.info({ req: req }, '...Controller.generateCSVFile().');
+				});							
+			}
+		);
+
+	}).catch(err => {
 		cbAfter(err);
+		return;
 	});
+
+	log.debug('...Controller.generateCSVFile().');
 }
 
 Controller.QUERY_PARAMS = {

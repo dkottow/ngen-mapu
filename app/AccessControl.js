@@ -284,9 +284,10 @@ AccessControl.prototype.createNonce = function(op, cbResult) {
 }
 
 AccessControl.prototype.checkNonce = function(nonce) {
+	var me = this;
 	return new Promise(function(resolve, reject) {
 
-		fs.unlink(this.getNoncePath(nonce), function(err) {
+		fs.unlink(me.getNoncePath(nonce), function(err) {
 			if (err) {
 				log.error({ err: err, nonce: nonce }, 'AccessControl.checkNonce');
 				var err = new Error('invalid nonce');

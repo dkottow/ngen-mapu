@@ -477,7 +477,7 @@ Controller.prototype.getRows = function(req, res) {
 
 	}).then((access) => {
 
-		params = me.parseQueryParameters(req);
+		params = me.parseQueryParameters(req.query);
 		if (params.error) throw params.error;
 
 		var q = { filter: params.values['$filter'], fields: params.values['$select'] };
@@ -535,7 +535,7 @@ Controller.prototype.getObjs = function(req, res) {
 
 	}).then((access) => {
 
-		params = me.parseQueryParameters(req);
+		params = me.parseQueryParameters(req.query);
 		if (params.error) throw params.error;
 
 		fields = (params.values['$select'] || []);
@@ -615,7 +615,7 @@ Controller.prototype.getStats = function(req, res) {
 
 	}).then((access) => {
 
-		var params = me.parseQueryParameters(req);
+		var params = me.parseQueryParameters(req.query);
 		if (params.error) throw params.error;
 
 		//TODO add access control filter
@@ -659,7 +659,7 @@ Controller.prototype.getViewRows = function(req, res) {
 
 	}).then((access) => {
 
-		var params = me.parseQueryParameters(req);
+		var params = me.parseQueryParameters(req.query);
 		if (params.error) throw params.error;
 
 		data.db.allView(viewName, {
@@ -837,7 +837,8 @@ var fs = require('fs');
 Controller.prototype.generateCSVFile = function(req, data, cbAfter) {
 	var me = this;
 
-	var params = me.parseQueryParameters(req);
+	var urlObj = url.parse(req.body.path, true);
+	var params = me.parseQueryParameters(urlObj.query);
 	if (params.error) {
 		cbAfter(params.error);
 		return;
@@ -883,10 +884,10 @@ Controller.QUERY_PARAMS = {
 	'integer': ['debug', 'counts']
 };
 
-Controller.prototype.parseQueryParameters = function(req) {
+Controller.prototype.parseQueryParameters = function(queryObj) {
 	var error;
 	var params = {};
-	_.each(req.query, function(v, k) {
+	_.each(queryObj, function(v, k) {
 		try {
 			if (k[0] == '$') {
 				var param = parser.parse(k + "=" + v);	

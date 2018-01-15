@@ -57,7 +57,7 @@ Controller.prototype.initRoutes = function(options) {
 			var result = _.find(_.values(Controller.NonceRoutes), function(regExp) {
 				return path.match(regExp);
 			});					
-			return result === undefined;
+			return !! result;
 		};
 	
 		this.router.use(function(req, res, next) {
@@ -982,7 +982,7 @@ Controller.prototype.getDataObjects = function(req, objs) {
 }
 
 Controller.NonceRoutes = {
-	TABLE_CSV_FILE: /^\/(\w+)\/(\w+)\/(\w+)\.csv?/   	//get table csv file
+	TABLE_CSV_FILE: /^\/(\w+)\/(\w+)\/(\w+)\.csv/   	//get table csv file
 };
 
 exports.ApiController = Controller;

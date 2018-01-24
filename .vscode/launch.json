@@ -37,6 +37,13 @@
         },
         {
             "type": "node",
+            "request": "launch",
+            "name": "Run Azure SQL Prod",
+            "program": "${workspaceRoot}\\server.js",
+            "env":  {"NODE_ENV": "azure-prod", "DL_MSSQL_PASSWORD": ""} 
+        },
+        {
+            "type": "node",
             "request": "attach",
             "name": "Attach to Port",
             "address": "localhost",

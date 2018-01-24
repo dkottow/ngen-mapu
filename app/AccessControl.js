@@ -77,6 +77,7 @@ if (req.user.name() == User.NOBODY) {
 	return resolveFn(true, 'User.NOBODY enabled temporary');
 }
 
+	path = path || {};
 	var scope = {
 		account: path.account ? path.account.name : null,
 		database: path.db ? path.db.name() : null,

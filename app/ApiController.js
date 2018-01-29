@@ -68,6 +68,13 @@ Controller.prototype.initRoutes = function(options) {
 				return;
 			}
 
+			//pick up identity
+			if (req.header('x-ms-client-principal-name')) {
+				req.user = new User(req.header('x-ms-client-principal-name'), me.accountManager.masterDatabase());
+				next();			
+				return;
+			}
+
 			//decode AAD Authorization token
 			var token = req.header('Authorization');
 			if (token && token.startsWith('Bearer ')) {

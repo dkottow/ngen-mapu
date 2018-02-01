@@ -412,12 +412,12 @@ Controller.prototype.getCSVFile = function(req, res) {
 		return me.access.authorize('getCSVFile', req, data);
 	
 	}).then((access) => { 
-
-		res.sendFile(me.access.getCSVFilename(req.query.nonce), function(err) {
+		res.sendFile(me.access.getNoncePath(req.query.nonce, "csv"), function(err) {
 			if (err) {
 				sendError(req, res, err);
 				return;
 			}
+			me.access.deleteNonceFile(req.query.nonce, "csv"); //returns promise we don't have to await.
 			log.info({req: req}, '...Controller.getCSVFile().');
 		});
 
@@ -839,8 +839,6 @@ Controller.prototype.chownRows = function(req, res) {
 
 var fs = require('fs');
 
-
-
 Controller.prototype.generateCSVFile = function(req, data, cbAfter) {
 	var me = this;
 
@@ -872,7 +870,7 @@ Controller.prototype.generateCSVFile = function(req, data, cbAfter) {
 				}
 
 				var content = result;
-				fs.writeFile(me.access.getCSVFilename(data.nonce), content, function(err) {
+				fs.writeFile(me.access.getNoncePath(data.nonce, "csv"), content, function(err) {
 					cbAfter(err);
 					log.info({ req: req }, '...Controller.generateCSVFile().');
 				});							

@@ -248,9 +248,9 @@ if (user.name() == User.NOBODY) {
 
 }
 
-AccessControl.prototype.getNoncePath = function(nonce) {
+AccessControl.prototype.getNoncePath = function(nonce, ext) {
 	var nonceDir = tempDir;
-	return path.join(nonceDir, nonce + ".nonce");
+	return path.join(nonceDir, nonce + "." + ext);
 }
 
 AccessControl.prototype.supportsNonce = function(op) {
@@ -267,7 +267,7 @@ AccessControl.prototype.createNonce = function(op, cbResult) {
 
 		if (me.supportsNonce(op)) {
 			var nonce = crypto.randomBytes(48).toString('hex');
-			var path = me.getNoncePath(nonce);
+			var path = me.getNoncePath(nonce, "nonce");
 			fs.open(path, "w", function (err, fd) {
 				if (err) {
 					reject(err);
@@ -285,12 +285,16 @@ AccessControl.prototype.createNonce = function(op, cbResult) {
 }
 
 AccessControl.prototype.checkNonce = function(nonce) {
+	return this.deleteNonceFile(nonce, "nonce");
+}
+
+AccessControl.prototype.deleteNonceFile = function(nonce, ext) {
 	var me = this;
 	return new Promise(function(resolve, reject) {
 
-		fs.unlink(me.getNoncePath(nonce), function(err) {
+		fs.unlink(me.getNoncePath(nonce, ext), function(err) {
 			if (err) {
-				log.error({ err: err, nonce: nonce }, 'AccessControl.checkNonce');
+				log.error({ err: err, nonce: nonce }, 'AccessControl.deleteNonceFile');
 				var err = new Error('invalid nonce');
 				return reject(err);
 			} else {
@@ -300,11 +304,6 @@ AccessControl.prototype.checkNonce = function(nonce) {
 
 	});
 }
-
-AccessControl.prototype.getCSVFilename = function(nonce) {
-	return path.join(tempDir, nonce + ".csv");
-}
-
 
 exports.AccessControl = AccessControl;
 

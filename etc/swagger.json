@@ -18,14 +18,21 @@
           "type": "apiKey",
           "name": "Authorization",
           "in": "header"
+        },
+        "AAD": {
+            "type": "oauth2",
+            "flow": "accessCode",
+            "authorizationUrl": "https://login.windows.net/common/oauth2/authorize",
+            "tokenUrl": "https://login.windows.net/common/oauth2/token",
+            "scopes": {}
         }
-      },
-      "security": [
+    },
+    "security": [
         { 
             "api_key": [] 
         }
-      ],
-      "paths": {
+    ],
+    "paths": {
         "/{account}": {
             "get": {
                 "summary": "Get Account",
@@ -333,8 +340,8 @@
                         }
                     }
                 }
-                }
-    },
+            }
+        },
         "/{account}/{database}/{table}.rows": {
             "get": {
                 "summary": "Get rows",

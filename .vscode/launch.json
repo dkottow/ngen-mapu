@@ -31,7 +31,7 @@
         {
             "type": "node",
             "request": "launch",
-            "name": "Run Azure SQL",
+            "name": "Run Azure SQL Test",
             "program": "${workspaceRoot}\\server.js",
             "env":  {"NODE_ENV": "azure-test", "DL_MSSQL_PASSWORD": "tI27k7i06mEUVh4TAxoavL$ErZwH@c49"} 
         },

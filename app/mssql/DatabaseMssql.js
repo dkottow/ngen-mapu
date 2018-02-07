@@ -384,7 +384,8 @@ DatabaseMssql.prototype.readSchema = function(cbAfter) {
 		//read foreign key definitions from information schema 
 		var sql = 'SELECT KCU1.column_name'
 		+ ', KCU1.table_name'
-		+ ', KCU2.TABLE_NAME AS fk_table'
+		+ ', KCU2.column_name AS fk_field'
+		+ ', KCU2.table_name AS fk_table'
 		+ ' FROM INFORMATION_SCHEMA.REFERENTIAL_CONSTRAINTS RC'
 		+ ' JOIN INFORMATION_SCHEMA.KEY_COLUMN_USAGE KCU1'
 		+ '		ON KCU1.CONSTRAINT_CATALOG = RC.CONSTRAINT_CATALOG' 
@@ -400,11 +401,14 @@ DatabaseMssql.prototype.readSchema = function(cbAfter) {
 
 	}).then(result => {
 		//console.log(result.recordset);
-
+		
 		_.each(result.recordset, function(r) {
-			var field = schemaData.tables[r.table_name].fields[r.column_name];
-			field.fk = 1;
-			field.fk_table = r.fk_table;
+			//foreign keys are only treated as such if they reference the id column of the fk table.
+			if (r.fk_field == 'id') {
+				var field = schemaData.tables[r.table_name].fields[r.column_name];
+				field.fk = 1;
+				field.fk_table = r.fk_table;
+			}
 		});
 
 		log.trace({ schema: JSON.stringify(schemaData) }, 'Database.readSchema()');

@@ -340,19 +340,20 @@ DatabaseMssql.prototype.readSchema = function(cbAfter) {
 
 	var schemaData = {
 		name: this.name(),
-		tables: {}
+		tables: {},
+		views: {}
 	};
 	
 	this.connect().then(() => {
 
 		//read field definitions from information schema 
-		var sql = 'SELECT C.table_name, C.column_name, C.data_type ' 
+		var sql = 'SELECT T.table_name, T.table_type, C.column_name, C.data_type ' 
 		+ ', C.character_maximum_length, C.numeric_precision, C.numeric_scale'
 		+ ', C.is_nullable, C.column_default'  
 		+ ' FROM information_schema.columns C'
 		+ ' INNER JOIN information_schema.tables T'
 		+ ' ON C.table_name = T.table_name '
-		+ " WHERE table_type = 'BASE TABLE'";
+		+ " WHERE T.table_type IN ('BASE TABLE', 'VIEW')";
 
 		return this.conn().request().query(sql);
 
@@ -361,18 +362,26 @@ DatabaseMssql.prototype.readSchema = function(cbAfter) {
 
 		_.each(result.recordset, function(r) {
 			try {
-				if ( ! schemaData.tables[r.table_name] ) {
-					schemaData.tables[r.table_name] = { 
-						name: r.table_name,
-						fields: {} 
-					};					
-				}
 				var field = { 
 					name: r.column_name,
 					type: SqlHelper.Field.fromSQLType(r),
 					notnull: 1*(r.is_nullable == 'NO')	//0 or 1
 				};
-				schemaData.tables[r.table_name].fields[r.column_name] = field;
+
+				var tables = schemaData.tables;
+				if (r.table_type == 'VIEW') {
+					tables = schemaData.views;
+				}
+
+				if ( ! tables[r.table_name] ) {
+					tables[r.table_name] = { 
+						name: r.table_name,
+						fields: {} 
+					};					
+				}
+
+				tables[r.table_name].fields[r.column_name] = field;
+
 			} catch(err) {
 				log.warn({column: r, err: err}, 
 					"DatabaseMssql.readSchema() failed. Ignoring column '" + r.column_name + "'");

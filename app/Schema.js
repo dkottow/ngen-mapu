@@ -63,6 +63,8 @@ Schema.prototype.init = function(schemaData) {
 			}
 		}, this);
 
+		this.views = schemaData.views || [];
+
 		log.trace('...Schema.init()');
 
 	} catch(err) {
@@ -80,6 +82,8 @@ Schema.prototype.get = function() {
 		_.each(_.without(Schema.SYSTEM_PROPERTIES, 'join_trees'), function(p) {
 			result[p] = this[p];				
 		}, this);
+
+		result.views = this.views;
 
 		return result;
 		

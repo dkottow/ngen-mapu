@@ -1,8 +1,6 @@
 {
     "auth": true,
 
-    "accounts": [ "_d365", "swe", "aus", "test" ],
-
     "tempDir"  : "tmp",
 
     "logs"  : {

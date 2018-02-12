@@ -30,7 +30,7 @@ function Account(name) {
 	log.debug("new Account " + this.name);
 }
 
-Account.MASTER = '_d365Master';
+Account.MASTER = '_d365';
 
 /* interfaces
 

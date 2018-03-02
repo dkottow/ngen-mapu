@@ -953,6 +953,11 @@ Controller.prototype.getDataObjects = function(req, objs) {
 		return Promise.resolve(result);
 	}
 
+//TODO hack to redirect test/_d365Master to _d365/_d365Master
+	if (req.param[0] == 'test' && req.param[1] == '_d265Master') {
+		req.param[0] = '_d365';
+	}
+
 	result.account = me.account(req.params[0]);
 	if ( ! result.account) {
 		var err = new Error("Account '" + req.params[0] + "' not found");

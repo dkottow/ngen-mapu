@@ -955,7 +955,7 @@ Controller.prototype.getDataObjects = function(req, objs) {
 
 
 	//TODO hack to redirect test/_d365Master to _d365/_d365Master
-	if (req.params[0] == 'test' && req.params[1] == '_d265Master') {
+	if (req.params[0] == 'test' && req.params[1] == '_d365Master') {	
 		log.warn("epic hack to redirect to _d365/_d365Master");
 		req.params[0] = '_d365';
 	}

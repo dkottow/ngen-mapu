@@ -1,6 +1,8 @@
 {
     "auth": true,
 
+    "accounts": [ "test", "dev" ],
+
     "tempDir"  : "tmp",
 
     "logs"  : {
@@ -20,8 +22,8 @@
         "pageRows"  : 5000,
         "fullTextSearch": true,
         "connection": {
-            "server": "azd365prodwuss.database.windows.net",
-            "user"  : "g17MIWsrw6mjiKDneE5C5rDtZug6eED1",
+            "server": "azwu-test.database.windows.net",
+            "user"  : "Xidvv3jyCxQcSjbQYpf9zbiYv5MqE8Vp",
             "password": null, //supply me through env var DL_MSSQL_PASSWORD
             "domain": null, //AD user domain
             "options": {
@@ -33,17 +35,11 @@
             },
             "requestTimeout": 20000 // millisecs 
         },
-        "elasticPool": "AZD365ProdWUSEP" //leave empty if no pool
+        "elasticPool": "azwu-test-d365" //leave empty if no pool
     },
     
     "url": {
-        "host": "azd365devwuas.azurewebsites.net",
+        "host": "data365.golder.com",
         "protocol": "https"
-    },
-
-    "http": {
-        "headers": {
-            "AccessControlAllowOrigin": "https://golderassociates.sharepoint.com"
-        }
     }
 }

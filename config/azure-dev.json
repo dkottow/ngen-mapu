@@ -39,11 +39,5 @@
     "url": {
         "host": "azd365devwuas.azurewebsites.net",
         "protocol": "https"
-    },
-
-    "http": {
-        "headers": {
-            "AccessControlAllowOrigin": "https://golderassociates.sharepoint.com"
-        }
     }
 }

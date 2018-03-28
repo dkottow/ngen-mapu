@@ -47,9 +47,12 @@ Controller.prototype.initRoutes = function(options) {
 	log.trace("Controller.initRoutes()...");		
 	var me = this;
 
-	//json parsing 
 	var reqSizeLimit = options.bodyParser ? options.bodyParser.limit : '1mb';
+
+	//json parsing 
 	this.router.use(bodyParser.json({ limit: reqSizeLimit }));
+	//urlencoded parsing (used by POST requests to add/mod/del rows)
+	this.router.use(bodyParser.urlencoded({ limit: reqSizeLimit, extended: true }));
 
 	if (this.auth) {
 
@@ -157,6 +160,18 @@ Controller.prototype.initRoutes = function(options) {
 		.delete(function(req, res) {
 			me.delRows(req, res);
 		});
+
+	this.router.post(/^\/(\w+)\/(\w+)\/(\w+)\.mod_rows$/, function(req, res) {
+		me.putRows(req, res);
+	});
+
+	this.router.post(/^\/(\w+)\/(\w+)\/(\w+)\.add_rows$/, function(req, res) {
+		me.postRows(req, res);
+	});
+	
+	this.router.post(/^\/(\w+)\/(\w+)\/(\w+)\.del_rows$/, function(req, res) {
+		me.delRows(req, res);
+	});
 
 	this.router.get(/^\/(\w+)\/(\w+)\/(\w+).stats$/, function(req, res) {
 		me.getStats(req, res);
@@ -711,7 +726,7 @@ Controller.prototype.postRows = function(req, res) {
 
 	}).then((access) => {
 
-		var rows = req.body;
+		var rows = me.getRowsFromBody(req);
 	
 		//only users with full write access to table are allowed to set owner
 		if (access.Write == Table.ROW_SCOPES.OWN) {
@@ -748,7 +763,7 @@ Controller.prototype.putRows = function(req, res) {
 
 	}).then((access) => {
 
-		var rows = req.body;
+		var rows = me.getRowsFromBody(req);
 
 		//only users with full write access to table are allowed to set owner
 		if (access.Write == Table.ROW_SCOPES.OWN) {
@@ -786,7 +801,8 @@ Controller.prototype.delRows = function(req, res) {
 
 	}).then((access) => {
 
-		var rowIds = req.body;
+		var rowIds = me.getRowsFromBody(req);
+		
 		data.db.delete(data.table.name, rowIds, function(err, result) {
 			if (err) {
 				sendError(req, res, err, 400);
@@ -924,6 +940,12 @@ Controller.prototype.stripOwnerField = function(rows) {
 	return _.map(rows, function(row) {
 		return _.omit(row, 'own_by');
 	});
+}
+
+Controller.prototype.getRowsFromBody = function(req) {
+	if (_.isArray(req.body)) return req.body;
+	if (_.isArray(req.body.rows)) return req.body.rows;
+	return [];
 }
 
 function sendError(req, res, err, code) {

@@ -26,7 +26,6 @@ var config = require('config');
 var AccountManager = require('./AccountManagerFactory.js').AccountManagerFactory;
 
 var ApiController = require('./ApiController.js').ApiController;
-var SignupController = require('./SignupController.js').SignupController;
 var funcs = require('./funcs.js');
 
 var app = express();
@@ -73,10 +72,6 @@ function initRoutes(options) {
 		if (req.method == 'OPTIONS') res.status(200).send();
 		else next();
 	});
-
-	//signup
-	var signupController = new SignupController();
-	app.use('/public', signupController.router);
 
 	app.use('/public', express.static('./public', { fallthrough: false }));
 

@@ -71,14 +71,19 @@ DatabaseMssql.prototype.name = function() {
 }
 
 DatabaseMssql.prototype.connect = function() {
+	var me = this;
 	if ( ! this.pool) {
 		this.pool = new mssql.ConnectionPool(this.config);
+		//kill pool after a while.
+		setTimeout(function() { 
+			me.pool.close();
+			me.pool = null; 
+		}, 3600*1000);
 	}
 	if (this.pool.connecting) {
 		//try again. later..
-		var me = this;
 		return new Promise(function(resolve, reject) {
-			setTimeout(function() { resolve(me.connect()); }, 100);
+			setTimeout(function() { resolve(me.connect()); }, 500);
 		});
 	}
 	return this.pool.connected ? Promise.resolve() : this.pool.connect();

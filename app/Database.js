@@ -211,17 +211,6 @@ Database.prototype.getInsertFields = function(rows, table) {
 		return ! _.isNumber(row.id);
 	});
 
-	var fields = noId ? _.without(table.fields(), 'id') : table.fields();
-	return _.object(_.pluck(fields, 'name'), fields);
-	
-}
-
-Database.prototype.getInsertFields = function(rows, table) {
-
-	var noId = _.find(rows, function(row) {
-		return ! _.isNumber(row.id);
-	});
-
 	var fields = table.fields();
 	if (noId) {
 		fields = _.reject(fields, function(field) {

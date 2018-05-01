@@ -1,12 +1,14 @@
 {
     "auth": true,
 
+    "tempDir"  : "tmp",
+
     "logs"  : {
         "transports": [
             {
                 "type": "console",
                 "timestamp": true,
-                "level": "debug",
+                "level": "info",
                 "stderrLevels": [ "error", "warn"],
                 "colorize": false
             }
@@ -18,8 +20,8 @@
         "pageRows"  : 5000,
         "fullTextSearch": true,
         "connection": {
-            "server": "azwu-test.database.windows.net",
-            "user"  : "Xidvv3jyCxQcSjbQYpf9zbiYv5MqE8Vp",
+            "server": "azd365prodwuss.database.windows.net",
+            "user"  : "g17MIWsrw6mjiKDneE5C5rDtZug6eED1",
             "password": null, //supply me through env var DL_MSSQL_PASSWORD
             "domain": null, //AD user domain
             "options": {
@@ -31,11 +33,17 @@
             },
             "requestTimeout": 20000 // millisecs 
         },
-        "elasticPool": "azwu-test-d365" //leave empty if no pool
+        "elasticPool": "AZD365ProdWUSEP" //leave empty if no pool
     },
     
     "url": {
-        "host": "azwu-data365-test01.azurewebsites.net",
+        "host": "azd365prodwuas.azurewebsites.net",
         "protocol": "https"
+    },
+
+    "http": {
+        "headers": {
+            "AccessControlAllowOrigin": "https://golderassociates.sharepoint.com"
+        }
     }
 }

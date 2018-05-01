@@ -19,11 +19,10 @@
         "connection": {
             "server": "localhost",
             "user"  : "sa",
-            "password": null, //supply me through env var DL_MSSQL_PASSWORD
+            "password": "sa", 
             "domain": null, //AD user domain
             "options": {
-                "instanceName": "SQLEXPRESS",
-                "encrypt": true // Use this if you're on Windows Azure
+                "instanceName": "SQLEXPRESS"
             }            
         },
 

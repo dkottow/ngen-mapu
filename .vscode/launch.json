@@ -26,7 +26,7 @@
             "request": "launch",
             "name": "Run localhost",
             "program": "${workspaceRoot}\\server.js",
-            "env":  {"NODE_ENV": "localhost-home", "DL_MSSQL_PASSWORD": "sa"} 
+            "env":  { "DL_MSSQL_PASSWORD": "sa" } 
         },
         {
             "type": "node",

@@ -207,6 +207,23 @@ Database.prototype.rowsOwned = function(tableName, rowIds, principal, cbResult) 
 
 Database.prototype.getInsertFields = function(rows, table) {
 
+	var noId = _.find(rows, function(row) {
+		return ! _.isNumber(row.id);
+	});
+
+	var fields = table.fields();
+	if (noId) {
+		fields = _.reject(fields, function(field) {
+			return field.name == 'id';
+		});
+	}
+
+	return _.object(_.pluck(fields, 'name'), fields);	
+}
+
+
+Database.prototype.getInsertFieldsOMG = function(rows, table) {
+
 	var row = rows[0]; //all based on first row
 
 	var rejectFields = _.pluck(_.filter(Table.MANDATORY_FIELDS, function(mf) { 

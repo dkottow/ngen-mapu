@@ -64,6 +64,7 @@ app.init = function(options, cbAfter) {
 function initRoutes(options) {
 
 	//enable CORS
+/*
 	app.use(function(req, res, next) {
 		res.header("Access-Control-Allow-Credentials", "true");
 		res.header("Access-Control-Allow-Origin", config.http.headers.AccessControlAllowOrigin);
@@ -72,6 +73,7 @@ function initRoutes(options) {
 		if (req.method == 'OPTIONS') res.status(200).send();
 		else next();
 	});
+*/
 
 	app.use('/public', express.static('./public', { fallthrough: false }));
 

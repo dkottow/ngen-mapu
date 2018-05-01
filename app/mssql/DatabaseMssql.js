@@ -74,11 +74,6 @@ DatabaseMssql.prototype.connect = function() {
 	var me = this;
 	if ( ! this.pool) {
 		this.pool = new mssql.ConnectionPool(this.config);
-		//kill pool after a while.
-		setTimeout(function() { 
-			me.pool.close();
-			me.pool = null; 
-		}, 3600*1000);
 	}
 	if (this.pool.connecting) {
 		//try again. later..
@@ -86,6 +81,15 @@ DatabaseMssql.prototype.connect = function() {
 			setTimeout(function() { resolve(me.connect()); }, 500);
 		});
 	}
+
+	//recycle pool if idle.
+	if (this.recyclePoolTimeout) clearTimeout(this.recyclePoolTimeout);
+	this.recyclePoolTimeout = setTimeout(function() { 
+		log.info('recycling conn pool ' + me.name());
+		me.pool.close();
+		me.pool = null;
+	}, 600*1000);
+
 	return this.pool.connected ? Promise.resolve() : this.pool.connect();
 }
 

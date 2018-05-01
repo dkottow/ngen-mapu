@@ -1,0 +1,52 @@
+{
+    "version": "1.0.0",
+
+    "auth"  : false,
+
+	"ip"    : "localhost",
+	"port"  : 3000, 
+
+    "tempDir"  : "tmp",
+
+    "apiRoute" : "/api",
+
+    "apiServer" : "", //same as www server
+
+    "sql": {
+        "pageRows"  : 1000,
+        "initRetryInterval": 100,
+        "engine"    : "mssql",
+        "connection": {
+            "server": "localhost",
+            "user"  : "sa",
+            "password": null, //supply me through env var DL_MSSQL_PASSWORD
+            "domain": null, //AD user domain
+            "options": {
+                "instanceName": "SQLEXPRESS",
+                "encrypt": true // Use this if you're on Windows Azure
+            }            
+        },
+
+        "elasticPool": "" //leave empty if no pool
+    },
+    
+    "url"   : {
+        "host"  : "localhost:3000",
+        "protocol"  : "http",
+    },
+
+    "logs"  : {
+        "transports": [
+            {
+                "type": "console",
+                "level": "debug",
+                "colorize": true
+            }
+        ]
+    },
+
+    "http": {
+        "cors": false
+    }
+
+}

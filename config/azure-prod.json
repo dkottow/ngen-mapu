@@ -8,7 +8,7 @@
             {
                 "type": "console",
                 "timestamp": true,
-                "level": "debug",
+                "level": "info",
                 "stderrLevels": [ "error", "warn"],
                 "colorize": false
             }
